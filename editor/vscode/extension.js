@@ -2,6 +2,7 @@ const vscode = require('vscode');
 const { execFile } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 /**
  * Get configured or discovered path to tmd binary.
@@ -164,6 +165,186 @@ function activate(context) {
             });
         });
     }));
+
+    // Diagnostic collection for measure consistency
+    const diagnosticCollection = vscode.languages.createDiagnosticCollection('tmd');
+    context.subscriptions.push(diagnosticCollection);
+
+    function runMeasureCheck(document, showNotification = false) {
+        if (!document || document.languageId !== 'tmd') {
+            return;
+        }
+
+        const tmdBin = getTmdExecutable();
+        let targetFilePath = document.fileName;
+        let isTempFile = false;
+
+        // If document is dirty or untitled, write buffer to a temporary file
+        if (document.isDirty || document.isUntitled) {
+            const tempDir = os.tmpdir();
+            targetFilePath = path.join(tempDir, `tmd_check_${Date.now()}_${path.basename(document.fileName || 'untitled.tmd')}`);
+            try {
+                fs.writeFileSync(targetFilePath, document.getText(), 'utf8');
+                isTempFile = true;
+            } catch (err) {
+                console.error('Failed to write temporary file for measure check:', err);
+                return;
+            }
+        }
+
+        execFile(tmdBin, ['check', targetFilePath], (error, stdout, stderr) => {
+            if (isTempFile) {
+                try {
+                    fs.unlinkSync(targetFilePath);
+                } catch (e) {}
+            }
+
+            const output = (stdout || '') + '\n' + (stderr || '');
+            const diagnostics = [];
+
+            if (!error && output.includes('✅ All measures')) {
+                diagnosticCollection.set(document.uri, []);
+                if (showNotification) {
+                    vscode.window.showInformationMessage('TMD: All measures conform to expected time signatures.');
+                }
+                return;
+            }
+
+            // Regex parsing TMDMeasureIssue format:
+            // verse:Piano (line 10, measure 2): Expected 4 units (4/4 at <4*>), found 3 units (-1 units)
+            const issueRegex = /([^\n()]+?)\s*\(line\s+(\d+),\s*measure\s+(\d+)\):\s*([^\n]+)/g;
+            let match;
+
+            while ((match = issueRegex.exec(output)) !== null) {
+                const prefix = match[1].trim();
+                const lineNum = Math.max(0, parseInt(match[2], 10) - 1);
+                const measureNum = match[3];
+                const detail = match[4].trim();
+
+                const message = `${prefix} (measure ${measureNum}): ${detail}`;
+
+                let lineRange;
+                if (lineNum < document.lineCount) {
+                    const lineText = document.lineAt(lineNum).text;
+                    const firstNonWhitespace = lineText.search(/\S/);
+                    const startCol = firstNonWhitespace >= 0 ? firstNonWhitespace : 0;
+                    lineRange = new vscode.Range(lineNum, startCol, lineNum, lineText.length);
+                } else {
+                    lineRange = new vscode.Range(lineNum, 0, lineNum, 0);
+                }
+
+                const diagnostic = new vscode.Diagnostic(
+                    lineRange,
+                    message,
+                    vscode.DiagnosticSeverity.Warning
+                );
+                diagnostic.source = 'tmd';
+                diagnostics.push(diagnostic);
+            }
+
+            diagnosticCollection.set(document.uri, diagnostics);
+
+            if (showNotification) {
+                if (diagnostics.length > 0) {
+                    vscode.window.showWarningMessage(`TMD: Found ${diagnostics.length} measure discrepancy issue(s). Check the Problems panel for details.`);
+                } else if (error) {
+                    const errMsg = (stderr && stderr.trim().length > 0) ? stderr.trim() : (stdout || error.message);
+                    vscode.window.showErrorMessage(`TMD Check Error: ${errMsg}`);
+                }
+            }
+        });
+    }
+
+    // Command: Check Measure Consistency
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.checkMeasures', () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showErrorMessage('No active editor found. Please open a .tmd file.');
+            return;
+        }
+        runMeasureCheck(editor.document, true);
+    }));
+
+    // Command: Format Document
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.formatDocument', () => {
+        return vscode.commands.executeCommand('editor.action.formatDocument');
+    }));
+
+    // Document Formatting Provider
+    context.subscriptions.push(
+        vscode.languages.registerDocumentFormattingEditProvider('tmd', {
+            provideDocumentFormattingEdits(document) {
+                return new Promise((resolve) => {
+                    const tmdBin = getTmdExecutable();
+                    const tempDir = os.tmpdir();
+                    const tempFilePath = path.join(tempDir, `tmd_format_${Date.now()}_${path.basename(document.fileName || 'untitled.tmd')}`);
+
+                    try {
+                        fs.writeFileSync(tempFilePath, document.getText(), 'utf8');
+                    } catch (err) {
+                        vscode.window.showErrorMessage(`TMD Format failed to create temp file: ${err.message}`);
+                        resolve([]);
+                        return;
+                    }
+
+                    execFile(tmdBin, ['format', tempFilePath], (error, stdout, stderr) => {
+                        try {
+                            fs.unlinkSync(tempFilePath);
+                        } catch (e) {}
+
+                        if (error) {
+                            const errMsg = (stderr && stderr.trim().length > 0) ? stderr.trim() : error.message;
+                            vscode.window.showErrorMessage(`TMD Format failed: ${errMsg}`);
+                            resolve([]);
+                            return;
+                        }
+
+                        if (!stdout || stdout.trim().length === 0) {
+                            resolve([]);
+                            return;
+                        }
+
+                        const fullRange = new vscode.Range(
+                            document.positionAt(0),
+                            document.positionAt(document.getText().length)
+                        );
+                        resolve([vscode.TextEdit.replace(fullRange, stdout)]);
+                    });
+                });
+            }
+        })
+    );
+
+    // Auto-check on save / open / close / text change
+    context.subscriptions.push(
+        vscode.workspace.onDidOpenTextDocument((doc) => {
+            if (doc.languageId === 'tmd') {
+                runMeasureCheck(doc);
+            }
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.workspace.onDidSaveTextDocument((doc) => {
+            if (doc.languageId === 'tmd') {
+                const config = vscode.workspace.getConfiguration('tmd');
+                if (config.get('checkOnSave') !== false) {
+                    runMeasureCheck(doc);
+                }
+            }
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.workspace.onDidCloseTextDocument((doc) => {
+            diagnosticCollection.delete(doc.uri);
+        })
+    );
+
+    // Initial check for currently active editor
+    if (vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.languageId === 'tmd') {
+        runMeasureCheck(vscode.window.activeTextEditor.document);
+    }
 }
 
 function deactivate() {}

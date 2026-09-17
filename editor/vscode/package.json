@@ -90,6 +90,16 @@
         "command": "tmd.installSkills",
         "title": "Install AI Agent Skills",
         "category": "TMD"
+      },
+      {
+        "command": "tmd.formatDocument",
+        "title": "Format Document",
+        "category": "TMD"
+      },
+      {
+        "command": "tmd.checkMeasures",
+        "title": "Check Measure Consistency",
+        "category": "TMD"
       }
     ],
     "menus": {
@@ -123,6 +133,16 @@
           "command": "tmd.renderPDF",
           "when": "editorLangId == tmd",
           "group": "tmd_export@5"
+        },
+        {
+          "command": "tmd.formatDocument",
+          "when": "editorLangId == tmd",
+          "group": "tmd_tools@1"
+        },
+        {
+          "command": "tmd.checkMeasures",
+          "when": "editorLangId == tmd",
+          "group": "tmd_tools@2"
         }
       ],
       "editor/title": [
@@ -145,6 +165,11 @@
           "type": "string",
           "default": "",
           "description": "Custom path to the tmd command line tool. If empty, the extension looks for 'tmd' in the system PATH."
+        },
+        "tmd.checkOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically check measure consistency on save and display diagnostics."
         }
       }
     }

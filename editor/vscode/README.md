@@ -22,6 +22,8 @@ Official Visual Studio Code extension providing language support, syntax highlig
   - `tup`: Inserts a tuplet group.
   - `ch`: Inserts a chord symbol.
 - **Commands & Export Integrations** (via `tmd` CLI):
+  - `TMD: Format Document` (`Shift + Option + F` standard format document provider)
+  - `TMD: Check Measure Consistency` (live diagnostics and warnings in Problems panel)
   - `TMD: Play Audio Preview in Terminal` (editor top-right title bar & context menu)
   - `TMD: Export to MIDI (.mid)`
   - `TMD: Export to MusicXML (.musicxml)`
@@ -30,6 +32,10 @@ Official Visual Studio Code extension providing language support, syntax highlig
   - `TMD: Render to PDF via LilyPond (.pdf)`
   - `TMD: Render to WAV Audio (.wav)`
   - `TMD: Install AI Agent Skills`
+- **Diagnostics & Formatting**:
+  - Automatically checks beat counts in bar lines (`|`) on save and open.
+  - Highlights incorrect measures with warning squigglies and details in VS Code's Problems view.
+  - Native document formatter cleans indentation and spacing inside paragraph blocks while preserving all comments and directives.
 - **Language Configuration**:
   - Auto-closing pairs and surrounding brackets for `{}`, `[]`, `()`, `<>`, `/**/`, `****`.
   - Code folding for paragraph blocks `{ ... }`.
