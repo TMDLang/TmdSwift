@@ -10,21 +10,26 @@ SIGN="${SIGN:-1}"
 if [ "$(uname)" = "Darwin" ]; then
     echo "Building universal binary for macOS (arm64 + x86_64)..."
     swift build -c debug -Xswiftc -Osize --arch arm64 --arch x86_64
-    BINARY_PATH=".build/apple/Products/Debug/tmd"
+    BIN_DIR="$(swift build -c debug --arch arm64 --arch x86_64 --show-bin-path)"
+    BINARY_PATH="$BIN_DIR/tmd"
 else
     echo "Building debug binary..."
     swift build -c debug -Xswiftc -Osize
-    BINARY_PATH=".build/debug/tmd"
+    BIN_DIR="$(swift build -c debug --show-bin-path)"
+    BINARY_PATH="$BIN_DIR/tmd"
 fi
 
 if [ -f "$BINARY_PATH" ]; then
-    echo "Installing tmd to $INSTALL_PATH..."
+    echo "Installing tmd from $BINARY_PATH to $INSTALL_PATH..."
     mkdir -p "$INSTALL_DIR"
     cp "$BINARY_PATH" "$INSTALL_PATH"
     if command -v strip >/dev/null 2>&1; then
         echo "Stripping debug symbols..."
         strip "$INSTALL_PATH" 2>/dev/null || true
     fi
+else
+    echo "Error: Binary not found at $BINARY_PATH"
+    exit 1
 fi
 
 if [ "$(uname)" = "Darwin" ] && [ "$SIGN" != "0" ]; then

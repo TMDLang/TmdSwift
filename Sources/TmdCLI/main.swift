@@ -12,12 +12,248 @@ import TmdSkill
 import TmdVocaloid
 import TmdUTAU
 
+// MARK: - Format Subcommand
+
+struct TmdFormatCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "format",
+        abstract: "Format a TMD file with standardized indentation, spacing, and comments preserved."
+    )
+
+    @Argument(help: "Path to the .tmd file to format.")
+    var inputPath: String
+
+    @Flag(name: [.short, .long], help: "Modify the file in-place.")
+    var inPlace: Bool = false
+
+    @Option(name: [.short, .long], help: "Output formatted score to the specified path.")
+    var output: String?
+
+    func run() throws {
+        let content: String
+        do {
+            content = try String(contentsOfFile: inputPath, encoding: .utf8)
+        } catch {
+            print("Error reading \(inputPath): \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
+        let formatted = TMDRefactor.format(content)
+
+        if inPlace {
+            do {
+                try formatted.write(toFile: inputPath, atomically: true, encoding: .utf8)
+                print("Formatted \(inputPath) in-place.")
+            } catch {
+                print("Error writing \(inputPath): \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        } else if let outPath = output {
+            do {
+                try formatted.write(toFile: outPath, atomically: true, encoding: .utf8)
+                print("Formatted output written to \(outPath).")
+            } catch {
+                print("Error writing \(outPath): \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        } else {
+            print(formatted, terminator: "")
+        }
+    }
+}
+
+// MARK: - Refactor Subcommands
+
+struct TmdRefactorRenameInstrument: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "rename-instrument",
+        abstract: "Rename all occurrences of an instrument in a TMD score."
+    )
+
+    @Argument(help: "Path to the .tmd file to refactor.")
+    var inputPath: String
+
+    @Option(name: .long, help: "Existing instrument name to rename from.")
+    var from: String
+
+    @Option(name: .long, help: "New instrument name to rename to.")
+    var to: String
+
+    @Flag(name: [.short, .long], help: "Modify the file in-place.")
+    var inPlace: Bool = false
+
+    @Option(name: [.short, .long], help: "Output refactored score to the specified path.")
+    var output: String?
+
+    func run() throws {
+        let content: String
+        do {
+            content = try String(contentsOfFile: inputPath, encoding: .utf8)
+        } catch {
+            print("Error reading \(inputPath): \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
+        let refactored: String
+        do {
+            refactored = try TMDRefactor.renameInstrument(in: content, from: from, to: to)
+        } catch {
+            print("Refactor error: \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
+        if inPlace {
+            do {
+                try refactored.write(toFile: inputPath, atomically: true, encoding: .utf8)
+                print("Renamed instrument in \(inputPath) in-place.")
+            } catch {
+                print("Error writing \(inputPath): \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        } else if let outPath = output {
+            do {
+                try refactored.write(toFile: outPath, atomically: true, encoding: .utf8)
+                print("Refactored score written to \(outPath).")
+            } catch {
+                print("Error writing \(outPath): \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        } else {
+            print(refactored, terminator: "")
+        }
+    }
+}
+
+struct TmdRefactorRenameSection: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "rename-section",
+        abstract: "Rename all occurrences of a section across paragraphs and orders in a TMD score."
+    )
+
+    @Argument(help: "Path to the .tmd file to refactor.")
+    var inputPath: String
+
+    @Option(name: .long, help: "Existing section name to rename from.")
+    var from: String
+
+    @Option(name: .long, help: "New section name to rename to.")
+    var to: String
+
+    @Flag(name: [.short, .long], help: "Modify the file in-place.")
+    var inPlace: Bool = false
+
+    @Option(name: [.short, .long], help: "Output refactored score to the specified path.")
+    var output: String?
+
+    func run() throws {
+        let content: String
+        do {
+            content = try String(contentsOfFile: inputPath, encoding: .utf8)
+        } catch {
+            print("Error reading \(inputPath): \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
+        let refactored: String
+        do {
+            refactored = try TMDRefactor.renameSection(in: content, from: from, to: to)
+        } catch {
+            print("Refactor error: \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
+        if inPlace {
+            do {
+                try refactored.write(toFile: inputPath, atomically: true, encoding: .utf8)
+                print("Renamed section in \(inputPath) in-place.")
+            } catch {
+                print("Error writing \(inputPath): \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        } else if let outPath = output {
+            do {
+                try refactored.write(toFile: outPath, atomically: true, encoding: .utf8)
+                print("Refactored score written to \(outPath).")
+            } catch {
+                print("Error writing \(outPath): \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        } else {
+            print(refactored, terminator: "")
+        }
+    }
+}
+
+struct TmdRefactorExtractInstrument: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "extract-instrument",
+        abstract: "Extract all tracks belonging to an instrument into a separate TMD document."
+    )
+
+    @Argument(help: "Path to the .tmd file.")
+    var inputPath: String
+
+    @Option(name: .long, help: "Instrument name to extract.")
+    var instrument: String
+
+    @Option(name: [.short, .long], help: "Output path for the extracted TMD document.")
+    var output: String?
+
+    func run() throws {
+        let content: String
+        do {
+            content = try String(contentsOfFile: inputPath, encoding: .utf8)
+        } catch {
+            print("Error reading \(inputPath): \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
+        let extracted: String
+        do {
+            extracted = try TMDRefactor.extractInstrument(from: content, instrument: instrument)
+        } catch {
+            print("Refactor error: \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
+        if let outPath = output {
+            do {
+                try extracted.write(toFile: outPath, atomically: true, encoding: .utf8)
+                print("Extracted instrument '\(instrument)' to \(outPath).")
+            } catch {
+                print("Error writing \(outPath): \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        } else {
+            print(extracted, terminator: "")
+        }
+    }
+}
+
+struct TmdRefactorCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "refactor",
+        abstract: "Music score refactoring tools (rename instruments, rename sections, extract tracks).",
+        subcommands: [
+            TmdRefactorRenameInstrument.self,
+            TmdRefactorRenameSection.self,
+            TmdRefactorExtractInstrument.self
+        ]
+    )
+}
+
+// MARK: - Main TMD Command
+
 struct TmdCLICommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "tmd",
         abstract: "A compiler and toolkit for the TMD (Timebase Mark Down) music markup language.",
         discussion: "In memory of Chen, Chih-Han / aguai (阿怪, 1974–2019).\nOriginal project: https://github.com/aguai/TMDLang",
-        version: TmdVersion.current
+        version: TmdVersion.current,
+        subcommands: [
+            TmdFormatCommand.self,
+            TmdRefactorCommand.self
+        ]
     )
 
     @Argument(help: "Path to the .tmd file to process.")
@@ -314,4 +550,14 @@ struct TmdCLICommand: ParsableCommand {
     }
 }
 
-TmdCLICommand.main()
+// Route subcommand dispatch manually if first argument matches a subcommand
+let rawArgs = Array(CommandLine.arguments.dropFirst())
+if let first = rawArgs.first, ["format", "refactor"].contains(first) {
+    if first == "format" {
+        TmdFormatCommand.main(Array(rawArgs.dropFirst()))
+    } else {
+        TmdRefactorCommand.main(Array(rawArgs.dropFirst()))
+    }
+} else {
+    TmdCLICommand.main()
+}
