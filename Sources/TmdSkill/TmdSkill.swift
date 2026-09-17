@@ -310,7 +310,13 @@ tmd score.tmd --vsqx-output vocal.vsqx --singer Miku
 # 9. Export vocal track to UTAU / OpenUtau (.ust)
 tmd score.tmd -u vocal.ust
 
-# 10. Install this skill into AI agent directories
+# 10. Check measure consistency and beat accuracy (Essential for AI self-verification)
+tmd check score.tmd
+
+# 11. Format document layout and indentation
+tmd format score.tmd -i
+
+# 12. Install this skill into AI agent directories
 tmd --install-skills
 ```
 
@@ -359,7 +365,11 @@ AI agents should assist human composers through these distinct collaborative pat
 - **Pattern B: Motif Continuation**: Given a 2-bar or 4-bar human idea, develop it into a complete structured A/B section.
 - **Pattern C: Re-Harmonization**: Propose alternative chord progressions (e.g., standard pop, secondary dominants, modal mixture, or jazz extensions like `[Cmaj9]`, `[Am7]`, `[6m]`, `[2m7-5]`).
 - **Pattern D: Style Transformation**: Convert a pop/folk lead sheet into multi-part strings, big band brass, or a full symphony orchestra.
-- **Pattern E: Validation & Ear Check Loop**: Run `tmd score.tmd -p` to verify syntax, then render offline audio via `tmd score.tmd -w preview.wav` so the composer can immediately verify voice leading with their ears.
+- **Pattern E: Automated Self-Verification & Ear Check Loop**:
+  1. **Measure Consistency Check**: Always run `tmd check <file.tmd>`. If any measure length discrepancy is reported (e.g. `verse:Piano (line 12, measure 3): Expected 4 units, found 3 units (-1 units)`), immediately locate the line and add or remove rhythm units/dashes `-`/rests `0` until all measures pass.
+  2. **Auto-Formatting**: Run `tmd format <file.tmd> -i` to clean up block indentation and spacing.
+  3. **Syntax & Structure Verification**: Run `tmd <file.tmd> -p` to verify execution flow and track summary.
+  4. **Audio Ear Check**: Render audio via `tmd <file.tmd> -w preview.wav` so the human composer can immediately audition counterpoint, voice leading, and rhythmic balance.
 
 ---
 
