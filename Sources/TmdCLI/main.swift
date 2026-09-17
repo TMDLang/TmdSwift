@@ -14,6 +14,37 @@ import TmdUTAU
 
 // MARK: - Format Subcommand
 
+struct TmdCheckCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "check",
+        abstract: "Check measure consistency and report incorrect beat counts between bar lines '|'."
+    )
+
+    @Argument(help: "Path to the .tmd file to check.")
+    var inputPath: String
+
+    func run() throws {
+        let content: String
+        do {
+            content = try String(contentsOfFile: inputPath, encoding: .utf8)
+        } catch {
+            print("Error reading \(inputPath): \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
+        let issues = TMDMeasureChecker.check(source: content)
+        if issues.isEmpty {
+            print("✅ All measures in \(inputPath) conform to expected time signatures.")
+        } else {
+            print("❌ Found \(issues.count) measure discrepancy issue\(issues.count == 1 ? "" : "s") in \(inputPath):\n")
+            for issue in issues {
+                print(issue)
+            }
+            throw ExitCode.failure
+        }
+    }
+}
+
 struct TmdFormatCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "format",
@@ -251,6 +282,7 @@ struct TmdCLICommand: ParsableCommand {
         discussion: "In memory of Chen, Chih-Han / aguai (阿怪, 1974–2019).\nOriginal project: https://github.com/aguai/TMDLang",
         version: TmdVersion.current,
         subcommands: [
+            TmdCheckCommand.self,
             TmdFormatCommand.self,
             TmdRefactorCommand.self
         ]
@@ -552,8 +584,10 @@ struct TmdCLICommand: ParsableCommand {
 
 // Route subcommand dispatch manually if first argument matches a subcommand
 let rawArgs = Array(CommandLine.arguments.dropFirst())
-if let first = rawArgs.first, ["format", "refactor"].contains(first) {
-    if first == "format" {
+if let first = rawArgs.first, ["check", "format", "refactor"].contains(first) {
+    if first == "check" {
+        TmdCheckCommand.main(Array(rawArgs.dropFirst()))
+    } else if first == "format" {
         TmdFormatCommand.main(Array(rawArgs.dropFirst()))
     } else {
         TmdRefactorCommand.main(Array(rawArgs.dropFirst()))
