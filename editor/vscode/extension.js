@@ -31,8 +31,9 @@ function getActiveTmdFilePath() {
         return null;
     }
     const ext = path.extname(doc.fileName).toLowerCase();
-    if (ext !== '.tmd') {
-        vscode.window.showWarningMessage('The active file does not appear to be a .tmd file.');
+    if (doc.languageId !== 'tmd' && ext !== '.tmd') {
+        vscode.window.showErrorMessage('TMD export commands can only be used on .tmd files.');
+        return null;
     }
     return doc.fileName;
 }

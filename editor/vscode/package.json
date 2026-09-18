@@ -54,37 +54,44 @@
       {
         "command": "tmd.exportMIDI",
         "title": "Export to MIDI (.mid)",
-        "category": "TMD"
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.exportMusicXML",
         "title": "Export to MusicXML (.musicxml)",
-        "category": "TMD"
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.exportABC",
         "title": "Export to ABC Notation (.abc)",
-        "category": "TMD"
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.exportLilyPond",
         "title": "Export to LilyPond (.ly)",
-        "category": "TMD"
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.renderPDF",
         "title": "Render to PDF via LilyPond (.pdf)",
-        "category": "TMD"
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.renderWAV",
         "title": "Render to WAV Audio (.wav)",
-        "category": "TMD"
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.playAudio",
         "title": "Play Audio Preview in Terminal",
-        "category": "TMD"
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.installSkills",
@@ -94,12 +101,14 @@
       {
         "command": "tmd.formatDocument",
         "title": "Format Document",
-        "category": "TMD"
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.checkMeasures",
         "title": "Check Measure Consistency",
-        "category": "TMD"
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
       }
     ],
     "menus": {
