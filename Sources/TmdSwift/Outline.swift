@@ -78,19 +78,12 @@ public struct TMDOutlineGenerator {
         var scoreHeaderStart: SourcePosition?
         var scoreHeaderEnd: SourcePosition?
 
-        struct MeasureOccurrence {
-            let index: Int
-            let snippet: String
-            let range: TMDOutlineRange
-        }
-
         struct TrackOccurrence {
             let sectionName: String
             let instrument: String
             let range: TMDOutlineRange
             let selectionRange: TMDOutlineRange
             let detail: String?
-            let measures: [MeasureOccurrence]
         }
 
         var trackOccurrences: [TrackOccurrence] = []
@@ -195,14 +188,9 @@ public struct TMDOutlineGenerator {
 
                 var braceCount = 0
                 var paraEndTok = paraStartTok
-                var measures: [MeasureOccurrence] = []
                 if current()?.token == .openBrace {
                     _ = advance()
                     braceCount = 1
-
-                    var currentMeasureIndex = 0
-                    var currentSnippetTokens: [String] = []
-                    var measureStartPos: SourcePosition?
 
                     while pos < tokens.count && braceCount > 0 {
                         guard let bodyTok = advance() else { break }
@@ -212,63 +200,7 @@ public struct TMDOutlineGenerator {
                             braceCount += 1
                         } else if bodyTok.token == .closeBrace {
                             braceCount -= 1
-                            if braceCount == 0 {
-                                if !currentSnippetTokens.isEmpty, let mStart = measureStartPos {
-                                    currentMeasureIndex += 1
-                                    let mRange = TMDOutlineRange(start: mStart, end: bodyTok.range.start)
-                                    measures.append(MeasureOccurrence(
-                                        index: currentMeasureIndex,
-                                        snippet: currentSnippetTokens.joined(separator: " "),
-                                        range: mRange
-                                    ))
-                                }
-                                break
-                            }
-                        }
-
-                        if braceCount == 1 {
-                            if bodyTok.token == .openAngle {
-                                // Skip section-level grid changes like <4*> or <8*>
-                                var isGrid = false
-                                if pos + 1 < tokens.count && tokens[pos].token == .asterisk && tokens[pos + 1].token == .closeAngle {
-                                    // e.g. < * >
-                                    isGrid = true
-                                    pos += 2
-                                } else if pos + 2 < tokens.count && tokens[pos + 1].token == .asterisk && tokens[pos + 2].token == .closeAngle {
-                                    // e.g. < 4 * >
-                                    isGrid = true
-                                    pos += 3
-                                }
-                                if isGrid {
-                                    continue
-                                }
-                            }
-
-                            if bodyTok.token == .pipe {
-                                if !currentSnippetTokens.isEmpty, let mStart = measureStartPos {
-                                    currentMeasureIndex += 1
-                                    let mEnd = SourcePosition(
-                                        offset: bodyTok.range.endOffset,
-                                        line: bodyTok.range.start.line,
-                                        column: bodyTok.range.start.column + bodyTok.range.length
-                                    )
-                                    measures.append(MeasureOccurrence(
-                                        index: currentMeasureIndex,
-                                        snippet: currentSnippetTokens.joined(separator: " "),
-                                        range: TMDOutlineRange(start: mStart, end: mEnd)
-                                    ))
-                                    currentSnippetTokens = []
-                                    measureStartPos = nil
-                                } else {
-                                    // Start of measure at pipe
-                                    measureStartPos = bodyTok.range.start
-                                }
-                            } else {
-                                if measureStartPos == nil {
-                                    measureStartPos = bodyTok.range.start
-                                }
-                                currentSnippetTokens.append(bodyTok.text)
-                            }
+                            if braceCount == 0 { break }
                         }
                     }
                 }
@@ -298,8 +230,7 @@ public struct TMDOutlineGenerator {
                     instrument: instName,
                     range: range,
                     selectionRange: selectionRange,
-                    detail: detail,
-                    measures: measures
+                    detail: detail
                 ))
                 continue
             }
@@ -424,23 +355,12 @@ public struct TMDOutlineGenerator {
             let secRange = TMDOutlineRange(startLine: minLine, startColumn: minCol, endLine: maxLine, endColumn: maxCol)
 
             let trackNodes = tracks.map { track in
-                let measureNodes = track.measures.map { m in
-                    TMDOutlineNode(
-                        name: "Measure \(m.index)",
-                        detail: m.snippet.isEmpty ? nil : m.snippet,
-                        kind: "string",
-                        range: m.range,
-                        selectionRange: m.range
-                    )
-                }
-
-                return TMDOutlineNode(
+                TMDOutlineNode(
                     name: track.instrument,
                     detail: track.detail,
                     kind: "field",
                     range: track.range,
-                    selectionRange: track.selectionRange,
-                    children: measureNodes.isEmpty ? nil : measureNodes
+                    selectionRange: track.selectionRange
                 )
             }
 

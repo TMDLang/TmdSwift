@@ -336,20 +336,89 @@ function activate(context) {
         });
     }
 
+    /**
+     * Detects the section and instrument name at the active editor's cursor position.
+     */
+    function detectContextAtCursor() {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) return { section: undefined, instrument: undefined };
+
+        const document = editor.document;
+        const currentLine = editor.selection.active.line;
+
+        // Scan upwards from current line to find the enclosing paragraph header
+        for (let i = currentLine; i >= 0; i--) {
+            const line = document.lineAt(i).text.trim();
+            const match = line.match(/^([a-zA-Z0-9_\u4e00-\u9fa5-]+)\s*:\s*([a-zA-Z0-9_\u4e00-\u9fa5-]+)(@[^{]*)?\s*\{/);
+            if (match) {
+                return { section: match[1], instrument: match[2] };
+            }
+            // If we hit a closing brace before a header going upwards, we might be outside
+            // but check if there is an outer paragraph
+        }
+        return { section: undefined, instrument: undefined };
+    }
+
+    /**
+     * Helper to prompt user whether to apply refactor globally or to current section.
+     */
+    async function promptScopeChoice(detectedContext, actionName) {
+        if (!detectedContext.section) {
+            return { section: undefined };
+        }
+
+        const choice = await vscode.window.showQuickPick([
+            {
+                label: `Current Section only (${detectedContext.section})`,
+                description: `Apply ${actionName} only to section '${detectedContext.section}'`,
+                section: detectedContext.section
+            },
+            {
+                label: 'Entire Score (All Sections)',
+                description: `Apply ${actionName} across all sections in the score`,
+                section: undefined
+            }
+        ], {
+            placeHolder: `Select the target scope for ${actionName}`
+        });
+
+        if (!choice) return null; // user cancelled
+        return { section: choice.section };
+    }
+
     // 1. Refactor: Double Grid
-    context.subscriptions.push(vscode.commands.registerCommand('tmd.refactorDoubleGrid', () => {
-        runTmdRefactor(['double-grid'], 'Double Grid Resolution');
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.refactorDoubleGrid', async () => {
+        const context = detectContextAtCursor();
+        const scope = await promptScopeChoice(context, 'Double Grid');
+        if (!scope) return;
+
+        const args = ['double-grid'];
+        if (scope.section) {
+            args.push('--section', scope.section);
+        }
+        runTmdRefactor(args, scope.section ? `Double Grid (${scope.section})` : 'Double Grid Resolution');
     }));
 
     // 2. Refactor: Halve Grid
-    context.subscriptions.push(vscode.commands.registerCommand('tmd.refactorHalveGrid', () => {
-        runTmdRefactor(['halve-grid'], 'Halve Grid Resolution');
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.refactorHalveGrid', async () => {
+        const context = detectContextAtCursor();
+        const scope = await promptScopeChoice(context, 'Halve Grid');
+        if (!scope) return;
+
+        const args = ['halve-grid'];
+        if (scope.section) {
+            args.push('--section', scope.section);
+        }
+        runTmdRefactor(args, scope.section ? `Halve Grid (${scope.section})` : 'Halve Grid Resolution');
     }));
 
     // 3. Refactor: Duplicate Track
     context.subscriptions.push(vscode.commands.registerCommand('tmd.refactorDuplicateTrack', async () => {
+        const cursorContext = detectContextAtCursor();
+
         const sourceInst = await vscode.window.showInputBox({
             prompt: 'Enter source instrument name to duplicate (e.g. Lead, Piano)',
+            value: cursorContext.instrument || '',
             validateInput: v => v && v.trim().length > 0 ? null : 'Source instrument name is required'
         });
         if (!sourceInst) return;
@@ -366,17 +435,25 @@ function activate(context) {
         });
         if (octaveStr === undefined) return;
 
-        const section = await vscode.window.showInputBox({
-            prompt: 'Optional section filter (leave blank for all sections)'
-        });
+        let targetSection = cursorContext.section;
+        if (cursorContext.section) {
+            const scope = await promptScopeChoice(cursorContext, 'Duplicate Track');
+            if (!scope) return;
+            targetSection = scope.section;
+        } else {
+            const secInput = await vscode.window.showInputBox({
+                prompt: 'Optional section filter (leave blank for all sections)'
+            });
+            targetSection = secInput && secInput.trim().length > 0 ? secInput.trim() : undefined;
+        }
 
         const args = ['duplicate-track', '--source', sourceInst.trim(), '--target', targetInst.trim()];
         const oct = parseInt(octaveStr, 10);
         if (!isNaN(oct) && oct !== 0) {
             args.push('--octave', String(oct));
         }
-        if (section && section.trim().length > 0) {
-            args.push('--section', section.trim());
+        if (targetSection) {
+            args.push('--section', targetSection);
         }
 
         runTmdRefactor(args, `Duplicate Track ${sourceInst} -> ${targetInst}`);
@@ -384,8 +461,11 @@ function activate(context) {
 
     // 4. Refactor: Generate Harmony
     context.subscriptions.push(vscode.commands.registerCommand('tmd.refactorGenerateHarmony', async () => {
+        const cursorContext = detectContextAtCursor();
+
         const sourceInst = await vscode.window.showInputBox({
             prompt: 'Enter melody source instrument name (e.g. Vocal)',
+            value: cursorContext.instrument || '',
             validateInput: v => v && v.trim().length > 0 ? null : 'Source instrument name is required'
         });
         if (!sourceInst) return;
@@ -403,17 +483,25 @@ function activate(context) {
         });
         if (intervalStr === undefined) return;
 
-        const section = await vscode.window.showInputBox({
-            prompt: 'Optional section filter (leave blank for all sections)'
-        });
+        let targetSection = cursorContext.section;
+        if (cursorContext.section) {
+            const scope = await promptScopeChoice(cursorContext, 'Generate Harmony');
+            if (!scope) return;
+            targetSection = scope.section;
+        } else {
+            const secInput = await vscode.window.showInputBox({
+                prompt: 'Optional section filter (leave blank for all sections)'
+            });
+            targetSection = secInput && secInput.trim().length > 0 ? secInput.trim() : undefined;
+        }
 
         const args = ['generate-harmony', '--source', sourceInst.trim(), '--target', targetInst.trim()];
         const interval = parseInt(intervalStr, 10);
         if (!isNaN(interval)) {
             args.push('--interval', String(interval));
         }
-        if (section && section.trim().length > 0) {
-            args.push('--section', section.trim());
+        if (targetSection) {
+            args.push('--section', targetSection);
         }
 
         runTmdRefactor(args, `Generate Harmony for ${sourceInst}`);

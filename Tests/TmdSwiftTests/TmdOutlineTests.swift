@@ -58,17 +58,11 @@ import Foundation
     #expect(introTracks.count == 2)
     #expect(introTracks[0].name == "CHORD")
     #expect(introTracks[0].kind == "field")
-    let chordMeasures = introTracks[0].children ?? []
-    #expect(chordMeasures.count == 1)
-    #expect(chordMeasures[0].name == "Measure 1")
-    #expect(chordMeasures[0].detail == "[G] [D] [Em] [C]")
+    #expect(introTracks[0].children == nil)
 
     #expect(introTracks[1].name == "Piano")
     #expect(introTracks[1].kind == "field")
-    let pianoMeasures = introTracks[1].children ?? []
-    #expect(pianoMeasures.count == 1)
-    #expect(pianoMeasures[0].name == "Measure 1")
-    #expect(pianoMeasures[0].detail == "1 2 3 4")
+    #expect(introTracks[1].children == nil)
 
     let verseNode = sectionChildren[1]
     #expect(verseNode.name == "verse")
@@ -77,10 +71,7 @@ import Foundation
     #expect(verseTracks.count == 1)
     #expect(verseTracks[0].name == "CHORD")
     #expect(verseTracks[0].kind == "field")
-    let verseChordMeasures = verseTracks[0].children ?? []
-    #expect(verseChordMeasures.count == 1)
-    #expect(verseChordMeasures[0].name == "Measure 1")
-    #expect(verseChordMeasures[0].detail == "[G] - [D] -")
+    #expect(verseTracks[0].children == nil)
 
     // 3. Orders node
     let ordersNode = nodes[2]
