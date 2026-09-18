@@ -164,15 +164,48 @@ public enum TMDPlaybackRenderer {
                         events.append(PlaybackEvent(position: position, duration: groupDuration, content: .rest, state: state))
                     }
                 } else {
-                    let eventDuration = groupDuration / Double(activeUnits.count)
-                    for (index, unit) in activeUnits.enumerated() {
-                        guard let content = content(of: unit) else { continue }
-                        events.append(PlaybackEvent(
-                            position: position + Double(index) * eventDuration,
-                            duration: eventDuration,
-                            content: content,
-                            state: state
-                        ))
+                    let baseSlotDuration = groupDuration / Double(max(1, group.units.count))
+                    var currentEventIndex = -1
+
+                    for (idx, unit) in group.units.enumerated() {
+                        if unit == .tie {
+                            if currentEventIndex >= 0 {
+                                let ev = events[currentEventIndex]
+                                events[currentEventIndex] = PlaybackEvent(
+                                    position: ev.position,
+                                    duration: ev.duration + baseSlotDuration,
+                                    content: ev.content,
+                                    state: ev.state
+                                )
+                            } else if !events.isEmpty {
+                                let last = events.removeLast()
+                                events.append(PlaybackEvent(
+                                    position: last.position,
+                                    duration: last.duration + baseSlotDuration,
+                                    content: last.content,
+                                    state: last.state
+                                ))
+                                currentEventIndex = events.count - 1
+                            } else {
+                                events.append(PlaybackEvent(
+                                    position: position + Double(idx) * baseSlotDuration,
+                                    duration: baseSlotDuration,
+                                    content: .rest,
+                                    state: state
+                                ))
+                                currentEventIndex = events.count - 1
+                            }
+                        } else {
+                            if let content = content(of: unit) {
+                                events.append(PlaybackEvent(
+                                    position: position + Double(idx) * baseSlotDuration,
+                                    duration: baseSlotDuration,
+                                    content: content,
+                                    state: state
+                                ))
+                                currentEventIndex = events.count - 1
+                            }
+                        }
                     }
                 }
                 position += groupDuration

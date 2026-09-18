@@ -776,6 +776,71 @@ import TmdSkill
     #expect(noteEvents[1].duration == 4.0)
 }
 
+@Test func testTupletTieExtension() throws {
+    let tmd = """
+    ::SCORE::
+    ** Tuplet Tie Test **
+    != 120
+    ?= C
+    <4/4>
+
+    intro:Piano@|0|{
+        <4*>
+        (1 2 3 -)%(--) -
+    }
+
+    -> intro ->#
+    """
+
+    let sheet = try TmdParser.parseThrowing(string: tmd)
+    let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+    let noteEvents = timeline.events.filter {
+        if case .note = $0.content { return true }
+        return false
+    }
+    #expect(noteEvents.count == 3)
+    // In <4*>, 2 beats total for the paragraph:
+    // (1 2 3 -)%(--) is length 2, so groupDuration = 2.0.
+    // Each of the 4 slots has baseSlotDuration = 2.0 / 4 = 0.5.
+    // Slot 0: note 1 (dur 0.5)
+    // Slot 1: note 2 (dur 0.5)
+    // Slot 2: note 3 (dur 0.5 + 0.5 from internal tie = 1.0)
+    // Following tie "-" is length 1 (duration 1.0), which extends note 3 to 1.0 + 1.0 = 2.0.
+    #expect(noteEvents[0].duration == 0.5)
+    #expect(noteEvents[1].duration == 0.5)
+    #expect(noteEvents[2].duration == 2.0)
+}
+
+@Test func testNegativeTransposition() throws {
+    let tmd = """
+    ::SCORE::
+    ** Negative Transposition Test **
+    != 120
+    ?= C
+    <4/4>
+
+    sec:Piano@|0|{
+        <4*>
+        1 2 3 4
+    }
+
+    -> sec -> {?-1} -> sec ->#
+    """
+
+    let sheet = try TmdParser.parseThrowing(string: tmd)
+    #expect(sheet.orders.count == 3)
+    #expect(sheet.orders[1] == .relative("-1"))
+
+    let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+    let noteEvents = timeline.events.filter {
+        if case .note = $0.content { return true }
+        return false
+    }
+    #expect(noteEvents.count == 8)
+    #expect(noteEvents[0].state.keyOffset == 0)
+    #expect(noteEvents[4].state.keyOffset == -1)
+}
+
 @Test func testChordOctaveShift() throws {
     let chordNormal = ChordSymbol(string: "6m")
     #expect(chordNormal.root.octave == 0)
