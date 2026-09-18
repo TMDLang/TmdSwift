@@ -47,7 +47,6 @@
     const btnStop = document.getElementById('btn-stop');
     const synthSelect = document.getElementById('synth-select');
     const statusText = document.getElementById('status-text');
-    const tracksContainer = document.getElementById('tracks-container');
 
     function formatTime(seconds) {
         if (isNaN(seconds) || seconds < 0) seconds = 0;
@@ -377,19 +376,6 @@
                     bytes[i] = binaryStr.charCodeAt(i);
                 }
                 currentMidiBytes = bytes;
-
-                // Inspect track names if possible
-                if (tracksContainer) {
-                    tracksContainer.innerHTML = '';
-                    if (message.tracks && message.tracks.length > 0) {
-                        message.tracks.forEach((track, index) => {
-                            const badge = document.createElement('div');
-                            badge.className = 'track-badge';
-                            badge.innerHTML = `<span>🎵 ${track.name || `Track ${index + 1}`}</span><span style="color: var(--text-muted); font-size: 11px;">${track.instrument || ''}</span>`;
-                            tracksContainer.appendChild(badge);
-                        });
-                    }
-                }
 
                 setStatus('MIDI loaded. Ready to play.');
                 if (message.autoPlay) {

@@ -189,13 +189,6 @@ function activate(context) {
     </div>
 
     <div id="status-text" class="status-bar">Ready</div>
-
-    <div class="track-info-card">
-      <div class="track-info-title">Score Tracks</div>
-      <div id="tracks-container" class="tracks-list">
-        <div style="color: var(--text-muted); font-size: 11px;">Tracks will be displayed when playback starts.</div>
-      </div>
-    </div>
   </div>
 
   <script src="${jzzUri}"></script>
@@ -266,25 +259,11 @@ function activate(context) {
                         }
                     }
 
-                    // Extract instrument tracks
-                    const trackNames = [];
-                    if (activeDoc) {
-                        const matches = activeDoc.getText().matchAll(/^[a-zA-Z0-9_\u4e00-\u9fa5-]+\s*:\s*([a-zA-Z0-9_\u4e00-\u9fa5-]+)/gm);
-                        const seen = new Set();
-                        for (const m of matches) {
-                            if (!seen.has(m[1])) {
-                                seen.add(m[1]);
-                                trackNames.push({ name: m[1], instrument: 'Instrument' });
-                            }
-                        }
-                    }
-
                     currentMidiPanel.webview.postMessage({
                         command: 'loadMidi',
                         title: displayTitle,
                         sourceFile: scoreBaseName,
                         base64: base64Midi,
-                        tracks: trackNames,
                         autoPlay: true
                     });
                 } catch (readErr) {
