@@ -88,6 +88,13 @@
         "enablement": "editorLangId == tmd"
       },
       {
+        "command": "tmd.openMidiPlayer",
+        "title": "Play Score in Web MIDI Player",
+        "category": "TMD",
+        "icon": "$(play-circle)",
+        "enablement": "editorLangId == tmd"
+      },
+      {
         "command": "tmd.playAudio",
         "title": "Play Audio Preview in Terminal",
         "category": "TMD",
@@ -162,9 +169,14 @@
     "menus": {
       "editor/context": [
         {
-          "command": "tmd.playAudio",
+          "command": "tmd.openMidiPlayer",
           "when": "editorLangId == tmd",
           "group": "tmd_preview@1"
+        },
+        {
+          "command": "tmd.playAudio",
+          "when": "editorLangId == tmd",
+          "group": "tmd_preview@2"
         },
         {
           "command": "tmd.exportMIDI",
@@ -244,14 +256,19 @@
       ],
       "editor/title": [
         {
-          "command": "tmd.playAudio",
+          "command": "tmd.openMidiPlayer",
           "when": "editorLangId == tmd",
           "group": "navigation@1"
         },
         {
-          "command": "tmd.renderWAV",
+          "command": "tmd.playAudio",
           "when": "editorLangId == tmd",
           "group": "navigation@2"
+        },
+        {
+          "command": "tmd.renderWAV",
+          "when": "editorLangId == tmd",
+          "group": "navigation@3"
         }
       ]
     },

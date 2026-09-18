@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#0d1117"/>
+  <rect x="2" y="2" width="60" height="60" rx="12" fill="#161b22" stroke="#30363d" stroke-width="2"/>
+  <defs>
+    <linearGradient id="noteGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#58a6ff"/>
+      <stop offset="100%" stop-color="#bc8cff"/>
+    </linearGradient>
+  </defs>
+  <path d="M22 38 A 6 5 0 1 1 16 33 L 22 18 L 44 14 L 44 32 A 6 5 0 1 1 38 27 L 44 14 L 22 18 Z" fill="url(#noteGrad)"/>
+  <polygon points="22,18 44,14 44,20 22,24" fill="#58a6ff"/>
+</svg>

@@ -131,6 +131,169 @@ function activate(context) {
         runTmdExport([filePath, '-w', outputPath], `Rendered to WAV Audio: ${path.basename(outputPath)}`, outputPath);
     }));
 
+    // Webview MIDI Player Panel tracking
+    let currentMidiPanel = null;
+
+    function getMidiWebviewContent(webview, extensionUri) {
+        const jzzUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'JZZ.js'));
+        const jzzSmfUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'JZZ.midi.SMF.js'));
+        const jzzTinyUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'JZZ.synth.Tiny.js'));
+        const soundfontUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'soundfont-player.min.js'));
+        const playerJsUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'player.js'));
+        const playerCssUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'player.css'));
+
+        return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TMD MIDI Player</title>
+  <link rel="stylesheet" href="${playerCssUri}">
+</head>
+<body>
+  <div class="player-container">
+    <div class="player-header">
+      <div id="player-icon" class="player-icon">🎵</div>
+      <div class="player-header-info">
+        <div id="score-title" class="score-title">TMD Web MIDI Player</div>
+        <div id="score-subtitle" class="score-subtitle">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Progress Timeline -->
+    <div class="progress-section">
+      <div class="slider-container">
+        <input type="range" id="timeline-slider" class="timeline-slider" min="0" max="100" value="0" step="0.1" />
+      </div>
+      <div class="time-row">
+        <span id="current-time">00:00</span>
+        <span id="total-time">00:00</span>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls-section">
+      <div class="playback-buttons">
+        <button id="btn-play-pause" class="btn-ctrl btn-main" title="Play">▶</button>
+        <button id="btn-stop" class="btn-ctrl" title="Stop">⏹</button>
+      </div>
+
+      <div class="synth-selector-group">
+        <span class="synth-label">Synth:</span>
+        <select id="synth-select" class="synth-select">
+          <option value="piano">🎹 Grand Piano (FluidR3)</option>
+          <option value="tiny">⚡ Tiny Synth (Chiptune)</option>
+          <option value="webmidi">🎛 System MIDI Out</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="status-text" class="status-bar">Ready</div>
+
+    <div class="track-info-card">
+      <div class="track-info-title">Score Tracks</div>
+      <div id="tracks-container" class="tracks-list">
+        <div style="color: var(--text-muted); font-size: 11px;">Tracks will be displayed when playback starts.</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="${jzzUri}"></script>
+  <script src="${jzzSmfUri}"></script>
+  <script src="${jzzTinyUri}"></script>
+  <script src="${soundfontUri}"></script>
+  <script src="${playerJsUri}"></script>
+</body>
+</html>`;
+    }
+
+    // 6.5. Open Web MIDI Player
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.openMidiPlayer', () => {
+        const filePath = getActiveTmdFilePath();
+        if (!filePath) return;
+
+        const activeDoc = vscode.window.activeTextEditor?.document;
+        const savePromise = (activeDoc && activeDoc.isDirty) ? activeDoc.save() : Promise.resolve(true);
+
+        savePromise.then(() => {
+            const column = vscode.ViewColumn.Beside;
+            if (currentMidiPanel) {
+                currentMidiPanel.reveal(column);
+            } else {
+                currentMidiPanel = vscode.window.createWebviewPanel(
+                    'tmdMidiPlayer',
+                    'TMD MIDI Player',
+                    column,
+                    {
+                        enableScripts: true,
+                        retainContextWhenHidden: true,
+                        localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'media')]
+                    }
+                );
+
+                currentMidiPanel.iconPath = vscode.Uri.joinPath(context.extensionUri, 'media', 'player.svg');
+                currentMidiPanel.webview.html = getMidiWebviewContent(currentMidiPanel.webview, context.extensionUri);
+
+                currentMidiPanel.onDidDispose(() => {
+                    currentMidiPanel = null;
+                }, null, context.subscriptions);
+            }
+
+            // Export to temporary MIDI and send base64 to webview
+            const tmdBin = getTmdExecutable();
+            const tempMidiPath = path.join(os.tmpdir(), `tmd_preview_${Date.now()}.mid`);
+
+            execFile(tmdBin, [filePath, '-m', tempMidiPath], (error, stdout, stderr) => {
+                if (error) {
+                    const errMsg = (stderr && stderr.trim().length > 0) ? stderr.trim() : error.message;
+                    vscode.window.showErrorMessage(`Failed to export MIDI for player: ${errMsg}`);
+                    return;
+                }
+
+                try {
+                    const midiBuffer = fs.readFileSync(tempMidiPath);
+                    const base64Midi = midiBuffer.toString('base64');
+                    try { fs.unlinkSync(tempMidiPath); } catch (_) {}
+
+                    const scoreBaseName = path.basename(filePath);
+
+                    // Extract score name from file header if available
+                    let displayTitle = scoreBaseName;
+                    if (activeDoc) {
+                        const match = activeDoc.getText().match(/^\s*name\s*:\s*(.+)$/m);
+                        if (match) {
+                            displayTitle = match[1].trim();
+                        }
+                    }
+
+                    // Extract instrument tracks
+                    const trackNames = [];
+                    if (activeDoc) {
+                        const matches = activeDoc.getText().matchAll(/^[a-zA-Z0-9_\u4e00-\u9fa5-]+\s*:\s*([a-zA-Z0-9_\u4e00-\u9fa5-]+)/gm);
+                        const seen = new Set();
+                        for (const m of matches) {
+                            if (!seen.has(m[1])) {
+                                seen.add(m[1]);
+                                trackNames.push({ name: m[1], instrument: 'Instrument' });
+                            }
+                        }
+                    }
+
+                    currentMidiPanel.webview.postMessage({
+                        command: 'loadMidi',
+                        title: displayTitle,
+                        sourceFile: scoreBaseName,
+                        base64: base64Midi,
+                        tracks: trackNames,
+                        autoPlay: true
+                    });
+                } catch (readErr) {
+                    vscode.window.showErrorMessage(`Failed to read MIDI preview data: ${readErr.message}`);
+                }
+            });
+        });
+    }));
+
     // 7. Play Audio in Terminal Preview
     context.subscriptions.push(vscode.commands.registerCommand('tmd.playAudio', () => {
         const filePath = getActiveTmdFilePath();
