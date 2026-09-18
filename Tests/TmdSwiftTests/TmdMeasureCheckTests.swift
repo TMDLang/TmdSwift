@@ -302,10 +302,11 @@ struct TmdMeasureCheckTests {
             | 1 2 3 4 |
         }
 
-        -> verse -> chorus ->#
+        -> verse -> chorus -> #
         """
 
         let issues = TMDMeasureChecker.check(source: input)
+        // 'chorus' is undefined, but '#' should be considered valid terminator and not reported!
         #expect(issues.count == 1)
         guard let issue = issues.first else { return }
         #expect(issue.paragraphName == "chorus")

@@ -298,6 +298,9 @@ public struct TMDMeasureChecker {
         // Check for undefined sections referenced in execution orders (-> section)
         let definedSectionNames = Set(paragraphInfos.map(\.paragraphName))
         for order in orderSections {
+            if order.name == "#" {
+                continue
+            }
             if !definedSectionNames.contains(order.name) {
                 issues.append(TMDMeasureIssue(
                     paragraphName: order.name,
