@@ -175,11 +175,6 @@
           "group": "tmd_preview@1"
         },
         {
-          "command": "tmd.playAudio",
-          "when": "editorLangId == tmd",
-          "group": "tmd_preview@2"
-        },
-        {
           "command": "tmd.exportMIDI",
           "when": "editorLangId == tmd",
           "group": "tmd_export@1"
@@ -260,16 +255,6 @@
           "command": "tmd.openMidiPlayer",
           "when": "editorLangId == tmd",
           "group": "navigation@1"
-        },
-        {
-          "command": "tmd.playAudio",
-          "when": "editorLangId == tmd",
-          "group": "navigation@2"
-        },
-        {
-          "command": "tmd.renderWAV",
-          "when": "editorLangId == tmd",
-          "group": "navigation@3"
         }
       ]
     },
