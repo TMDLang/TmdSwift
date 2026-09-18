@@ -663,6 +663,7 @@ struct TmdCLICommand: ParsableCommand {
         subcommands: [
             TmdCheckCommand.self,
             TmdFormatCommand.self,
+            TmdOutlineCommand.self,
             TmdRefactorCommand.self
         ]
     )
@@ -682,7 +683,7 @@ struct TmdCLICommand: ParsableCommand {
     @Option(name: [.short, .long], help: "Export to MIDI file at the specified path.")
     var midiOutput: String?
 
-    @Option(name: [.customShort("r"), .long], help: "Export to REAPER project (.rpp) file at the specified path.")
+    @Option(name: [.customShort("r"), .long, .customLong("rpp-output")], help: "Export to REAPER project (.rpp) file at the specified path.")
     var reaperOutput: String?
 
     @Option(name: [.customShort("x"), .long], help: "Export to MusicXML file at the specified path.")
