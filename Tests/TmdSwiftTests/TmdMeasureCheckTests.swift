@@ -288,5 +288,31 @@ struct TmdMeasureCheckTests {
         let issues = TMDMeasureChecker.check(source: input)
         #expect(issues.isEmpty)
     }
+
+    @Test func testReportsIssueWhenExecutionOrderRefersToUndefinedSection() throws {
+        let input = """
+        ::SCORE::
+        ** Undefined Order Section Song **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Piano@|0|{
+            <4*>
+            | 1 2 3 4 |
+        }
+
+        -> verse -> chorus ->#
+        """
+
+        let issues = TMDMeasureChecker.check(source: input)
+        #expect(issues.count == 1)
+        guard let issue = issues.first else { return }
+        #expect(issue.paragraphName == "chorus")
+        #expect(issue.instrument == "Order")
+        #expect(issue.measureIndex == 0)
+        #expect(issue.description.contains("Undefined section 'chorus' in playback order"))
+    }
 }
+
 

@@ -17,6 +17,9 @@ public struct TMDMeasureIssue: Equatable, CustomStringConvertible, Sendable {
     }
 
     public var description: String {
+        if instrument == "Order" {
+            return "Order (line \(lineNumber)): Undefined section '\(paragraphName)' in playback order (\(snippet))"
+        }
         let diffStr = deltaUnits > 0 ? "+\(deltaUnits)" : "\(deltaUnits)"
         if measureIndex == 0 {
             // Section-level instrument length mismatch issue
@@ -58,6 +61,7 @@ public struct TMDMeasureChecker {
 
         var issues: [TMDMeasureIssue] = []
         var paragraphInfos: [ParagraphSpanInfo] = []
+        var orderSections: [(name: String, line: Int)] = []
         var pos = 0
 
         func current() -> LexedToken? {
@@ -279,8 +283,33 @@ public struct TMDMeasureChecker {
                     endQuarterNotes: positiveQuarterNotes
                 )
                 paragraphInfos.append(info)
+            } else if tok.token == .arrow {
+                let arrowLine = tok.range.start.line
+                _ = advance() // ->
+                if let nextTok = current(), case .identifier(let orderSecName) = nextTok.token {
+                    orderSections.append((name: orderSecName, line: nextTok.range.start.line != 0 ? nextTok.range.start.line : arrowLine))
+                    _ = advance()
+                }
             } else {
                 _ = advance()
+            }
+        }
+
+        // Check for undefined sections referenced in execution orders (-> section)
+        let definedSectionNames = Set(paragraphInfos.map(\.paragraphName))
+        for order in orderSections {
+            if !definedSectionNames.contains(order.name) {
+                issues.append(TMDMeasureIssue(
+                    paragraphName: order.name,
+                    instrument: "Order",
+                    lineNumber: order.line,
+                    measureIndex: 0,
+                    expectedUnits: 0,
+                    actualUnits: 0,
+                    noteLength: 4,
+                    beat: beat,
+                    snippet: "-> \(order.name)"
+                ))
             }
         }
 
