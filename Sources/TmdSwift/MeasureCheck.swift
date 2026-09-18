@@ -18,12 +18,19 @@ public struct TMDMeasureIssue: Equatable, CustomStringConvertible, Sendable {
 
     public var description: String {
         let diffStr = deltaUnits > 0 ? "+\(deltaUnits)" : "\(deltaUnits)"
-        var desc = "\(paragraphName):\(instrument) (line \(lineNumber), measure \(measureIndex)): "
-        desc += "Expected \(expectedUnits) units (\(beat.count)/\(beat.noteValue) at <\(noteLength)*>), found \(actualUnits) units (\(diffStr) units)"
-        if !snippet.isEmpty {
-            desc += "\n  --> | \(snippet) |"
+        if measureIndex == 0 {
+            // Section-level instrument length mismatch issue
+            var desc = "\(paragraphName):\(instrument) (line \(lineNumber)): "
+            desc += "Expected \(expectedUnits) measures (\(snippet)), found \(actualUnits) measures (\(diffStr) measures)"
+            return desc
+        } else {
+            var desc = "\(paragraphName):\(instrument) (line \(lineNumber), measure \(measureIndex)): "
+            desc += "Expected \(expectedUnits) units (\(beat.count)/\(beat.noteValue) at <\(noteLength)*>), found \(actualUnits) units (\(diffStr) units)"
+            if !snippet.isEmpty {
+                desc += "\n  --> | \(snippet) |"
+            }
+            return desc
         }
-        return desc
     }
 }
 
@@ -50,6 +57,7 @@ public struct TMDMeasureChecker {
         }
 
         var issues: [TMDMeasureIssue] = []
+        var paragraphInfos: [ParagraphSpanInfo] = []
         var pos = 0
 
         func current() -> LexedToken? {
@@ -123,6 +131,7 @@ public struct TMDMeasureChecker {
                 var measureCount = 0
                 var insideBar = false
                 var measureStartLine = paraStartLine
+                var paragraphQuarterNotes = 0.0
 
                 func expectedUnitsForMeasure() -> Int {
                     // expected units = beat.count * (noteLength / beat.noteValue)
@@ -184,6 +193,8 @@ public struct TMDMeasureChecker {
                     }
 
                     // Count unit duration
+                    let unitQuarterNotes = 4.0 / Double(max(1, noteLength))
+
                     if item.token == .openParen {
                         // Tuplet / unit group: ( ... ) % ( -- )
                         _ = advance() // (
@@ -207,6 +218,7 @@ public struct TMDMeasureChecker {
                             length = max(1, dashes)
                         }
 
+                        paragraphQuarterNotes += Double(length) * unitQuarterNotes
                         if insideBar {
                             currentMeasureUnits += length
                             currentMeasureSnippet.append("(\(innerUnits.joined(separator: " ")))")
@@ -218,12 +230,14 @@ public struct TMDMeasureChecker {
                     switch item.token {
                     case .note, .chord, .tie, .percussion:
                         _ = advance()
+                        paragraphQuarterNotes += unitQuarterNotes
                         if insideBar {
                             currentMeasureUnits += 1
                             currentMeasureSnippet.append(item.text)
                         }
                     case .number(let n):
                         _ = advance()
+                        paragraphQuarterNotes += unitQuarterNotes
                         if insideBar {
                             currentMeasureUnits += 1
                             currentMeasureSnippet.append(String(n))
@@ -236,12 +250,108 @@ public struct TMDMeasureChecker {
                 if current()?.token == .closeBrace {
                     _ = advance() // }
                 }
+
+                // If measureCount was counted via bar lines, use measureCount.
+                // Otherwise calculate measure count based on total quarter notes / measure duration.
+                let nominalMeasureDur = Double(max(1, beat.count)) * 4.0 / Double(max(1, beat.noteValue))
+                let calculatedMeasures = Int(round(paragraphQuarterNotes / nominalMeasureDur))
+                let actualMeasures = measureCount > 0 ? measureCount : max(1, calculatedMeasures)
+
+                // When startOffset < 0 (e.g. -1 for pickup measure), the positive measures spanned are (startOffset + actualMeasures)
+                let endMeasure = startOffset < 0 ? max(0, startOffset + actualMeasures) : startOffset + actualMeasures
+                let positiveQuarterNotes = startOffset < 0 ? max(0, paragraphQuarterNotes + Double(startOffset) * nominalMeasureDur) : Double(startOffset) * nominalMeasureDur + paragraphQuarterNotes
+
+                let info = ParagraphSpanInfo(
+                    paragraphName: pName,
+                    instrument: instName,
+                    startLine: paraStartLine,
+                    startOffset: startOffset,
+                    measures: actualMeasures,
+                    endMeasure: endMeasure,
+                    quarterNotes: paragraphQuarterNotes,
+                    endQuarterNotes: positiveQuarterNotes
+                )
+                paragraphInfos.append(info)
             } else {
                 _ = advance()
             }
         }
 
+        // Section length consistency check
+        // Group paragraphs by paragraphName (section name)
+        var paragraphsBySection: [String: [ParagraphSpanInfo]] = [:]
+        for p in paragraphInfos {
+            paragraphsBySection[p.paragraphName, default: []].append(p)
+        }
+
+        for (sectionName, list) in paragraphsBySection {
+            guard list.count > 1 else { continue }
+            // Determine baseline: find the longest track by endMeasure (and endQuarterNotes)
+            guard let maxTrack = list.max(by: {
+                if $0.endMeasure != $1.endMeasure {
+                    return $0.endMeasure < $1.endMeasure
+                }
+                return $0.endQuarterNotes < $1.endQuarterNotes
+            }) else { continue }
+
+            let expectedMeasures = maxTrack.endMeasure
+            let expectedBeats = maxTrack.endQuarterNotes
+
+            for track in list {
+                // If the track ends at fewer positive measures than expected, report issue
+                if track.endMeasure < expectedMeasures {
+                    let diffBeats = track.endQuarterNotes - expectedBeats
+                    let diffBeatsStr = diffBeats > 0 ? "+\(String(format: "%.1f", diffBeats))" : String(format: "%.1f", diffBeats)
+                    let expectedBeatsStr = String(format: "%.1f", expectedBeats)
+                    let trackBeatsStr = String(format: "%.1f", track.endQuarterNotes)
+
+                    let snippet = "\(expectedBeatsStr) beats based on \(maxTrack.instrument); found \(trackBeatsStr) beats, \(diffBeatsStr) beats"
+                    issues.append(TMDMeasureIssue(
+                        paragraphName: sectionName,
+                        instrument: track.instrument,
+                        lineNumber: track.startLine,
+                        measureIndex: 0,
+                        expectedUnits: expectedMeasures,
+                        actualUnits: track.endMeasure,
+                        noteLength: 4,
+                        beat: beat,
+                        snippet: snippet
+                    ))
+                } else if track.endMeasure == expectedMeasures && track.startOffset >= 0 && maxTrack.startOffset >= 0 && track.endQuarterNotes + 1e-4 < expectedBeats {
+                    // Both are non-pickup tracks with same nominal measure count, but beat durations differ
+                    let diffBeats = track.endQuarterNotes - expectedBeats
+                    let diffBeatsStr = diffBeats > 0 ? "+\(String(format: "%.1f", diffBeats))" : String(format: "%.1f", diffBeats)
+                    let expectedBeatsStr = String(format: "%.1f", expectedBeats)
+                    let trackBeatsStr = String(format: "%.1f", track.endQuarterNotes)
+
+                    let snippet = "\(expectedBeatsStr) beats based on \(maxTrack.instrument); found \(trackBeatsStr) beats, \(diffBeatsStr) beats"
+                    issues.append(TMDMeasureIssue(
+                        paragraphName: sectionName,
+                        instrument: track.instrument,
+                        lineNumber: track.startLine,
+                        measureIndex: 0,
+                        expectedUnits: expectedMeasures,
+                        actualUnits: track.endMeasure,
+                        noteLength: 4,
+                        beat: beat,
+                        snippet: snippet
+                    ))
+                }
+            }
+        }
+
         return issues
+    }
+
+    private struct ParagraphSpanInfo {
+        let paragraphName: String
+        let instrument: String
+        let startLine: Int
+        let startOffset: Int
+        let measures: Int
+        let endMeasure: Int
+        let quarterNotes: Double
+        let endQuarterNotes: Double
     }
 
     private static func intValueOfToken(_ token: Token) -> Int? {

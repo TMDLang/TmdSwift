@@ -155,4 +155,110 @@ struct TmdMeasureCheckTests {
         #expect(outputStr.contains("Expected 4"))
         #expect(outputStr.contains("found 3"))
     }
+
+    @Test func testSectionInstrumentLengthMismatchReportsIssue() throws {
+        let input = """
+        ::SCORE::
+        ** Mismatched Section Length Song **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Piano@|0|{
+            <4*>
+            | 1 2 3 4 |
+            | 1 2 3 4 |
+            | 1 2 3 4 |
+            | 1 2 3 4 |
+        }
+
+        verse:Bass@|0|{
+            <4*>
+            | 1 - - - |
+            | 1 - - - |
+        }
+
+        -> verse ->#
+        """
+
+        let issues = TMDMeasureChecker.check(source: input)
+        // verse:Piano has 4 measures (16 beats).
+        // verse:Bass only has 2 measures (8 beats).
+        // Should report a section length discrepancy issue.
+        let sectionIssues = issues.filter { $0.measureIndex == 0 }
+        #expect(sectionIssues.count == 1)
+        if let issue = sectionIssues.first {
+            #expect(issue.paragraphName == "verse")
+            #expect(issue.instrument == "Bass")
+            #expect(issue.expectedUnits == 4) // Expected measures
+            #expect(issue.actualUnits == 2)   // Actual measures
+            #expect(issue.description.contains("Expected 4 measures"))
+            #expect(issue.description.contains("found 2 measures"))
+        }
+    }
+
+    @Test func testSectionInstrumentLengthWithDelayedStartMatches() throws {
+        let input = """
+        ::SCORE::
+        ** Delayed Start Section Song **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Piano@|0|{
+            <4*>
+            | 1 2 3 4 |
+            | 1 2 3 4 |
+            | 1 2 3 4 |
+            | 1 2 3 4 |
+        }
+
+        verse:Chorus@|+2|{
+            <4*>
+            | 1 2 3 4 |
+            | 1 2 3 4 |
+        }
+
+        -> verse ->#
+        """
+
+        let issues = TMDMeasureChecker.check(source: input)
+        // verse:Piano ends at 0 + 4 = 4 measures.
+        // verse:Chorus starts at 2 and has 2 measures -> ends at 2 + 2 = 4 measures.
+        // Both end at measure 4, so no mismatch.
+        #expect(issues.isEmpty)
+    }
+
+    @Test func testSectionInstrumentLengthWithPickupMatches() throws {
+        let input = """
+        ::SCORE::
+        ** Pickup Section Song **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Vocal@|-1|{
+            <4*>
+            | 5 |
+            | 1 2 3 4 |
+            | 1 2 3 4 |
+            | 1 2 3 4 |
+            | 1 2 3 4 |
+        }
+
+        verse:Piano@|0|{
+            <4*>
+            | 1 2 3 4 |
+            | 1 2 3 4 |
+            | 1 2 3 4 |
+            | 1 2 3 4 |
+        }
+
+        -> verse ->#
+        """
+
+        let issues = TMDMeasureChecker.check(source: input)
+        // Both end at positive measure 4, so no mismatch.
+        #expect(issues.isEmpty)
+    }
 }

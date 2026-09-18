@@ -211,8 +211,9 @@ function activate(context) {
             }
 
             // Regex parsing TMDMeasureIssue format:
-            // verse:Piano (line 10, measure 2): Expected 4 units (4/4 at <4*>), found 3 units (-1 units)
-            const issueRegex = /([^\n()]+?)\s*\(line\s+(\d+),\s*measure\s+(\d+)\):\s*([^\n]+)/g;
+            // Format 1 (Measure issue): verse:Piano (line 10, measure 2): Expected 4 units (4/4 at <4*>), found 3 units (-1 units)
+            // Format 2 (Section length mismatch): verse:Bass (line 45): Expected 4 measures (16.0 beats based on Piano...), found 2 measures (-2 measures)
+            const issueRegex = /([^\n()]+?)\s*\(line\s+(\d+)(?:,\s*measure\s+(\d+))?\):\s*([^\n]+)/g;
             let match;
 
             while ((match = issueRegex.exec(output)) !== null) {
@@ -221,7 +222,9 @@ function activate(context) {
                 const measureNum = match[3];
                 const detail = match[4].trim();
 
-                const message = `${prefix} (measure ${measureNum}): ${detail}`;
+                const message = measureNum
+                    ? `${prefix} (measure ${measureNum}): ${detail}`
+                    : `${prefix}: ${detail}`;
 
                 let lineRange;
                 if (lineNum < document.lineCount) {
