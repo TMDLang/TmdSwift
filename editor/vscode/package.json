@@ -16,7 +16,8 @@
   },
   "main": "./extension.js",
   "activationEvents": [
-    "onLanguage:tmd"
+    "onLanguage:tmd",
+    "onCommand:tmd.openMidiPlayer"
   ],
   "categories": [
     "Programming Languages",
