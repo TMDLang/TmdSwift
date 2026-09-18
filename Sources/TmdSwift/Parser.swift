@@ -308,10 +308,16 @@ public final class Lexer {
             }
         }
 
-        // %(
-        if c == "%" && peek(offset: 1) == "(" {
-            advance(); advance()
-            return .percentOpenParen
+        // %( (optional whitespace handled by lexer)
+        if c == "%" {
+            var offset = 1
+            while let sc = peek(offset: offset), sc == " " || sc == "\t" {
+                offset += 1
+            }
+            if peek(offset: offset) == "(" {
+                for _ in 0...offset { advance() }
+                return .percentOpenParen
+            }
         }
 
         // != (optional whitespace handled by lexer)
@@ -899,8 +905,9 @@ private struct TokenParser {
                         while current != .closeParen && current != .eof {
                             skipPipes()
                             if current == .closeParen { break }
-                            if let unit = parseUnit() {
-                                groupUnits.append(unit)
+                            let units = parseUnits()
+                            if !units.isEmpty {
+                                groupUnits.append(contentsOf: units)
                             } else {
                                 advance()
                             }
@@ -917,10 +924,15 @@ private struct TokenParser {
                             match(.closeParen)
                         }
                         unitGroups.append(UnitGroup(units: groupUnits, length: length))
-                    } else if let unit = parseUnit() {
-                        unitGroups.append(UnitGroup(units: [unit], length: 1))
                     } else {
-                        advance()
+                        let units = parseUnits()
+                        if !units.isEmpty {
+                            for unit in units {
+                                unitGroups.append(UnitGroup(units: [unit], length: 1))
+                            }
+                        } else {
+                            advance()
+                        }
                     }
                 }
                 sections.append(Section(noteLength: noteLength, unitGroups: unitGroups, directives: directives))
@@ -932,6 +944,33 @@ private struct TokenParser {
         match(.closeBrace)
 
         return Paragraph(name: name, instrument: instrument, start: start, sections: sections, executionTime: executionTime)
+    }
+
+    private mutating func parseUnits() -> [Unit] {
+        skipPipes()
+        if case .number(let n) = current {
+            let text = String(n)
+            var units: [Unit] = []
+            var allValid = true
+            for ch in text {
+                if let d = Int(String(ch)), d >= 1 && d <= 7 {
+                    units.append(.note(Note(accidental: .natural, degree: ScaleDegree(rawValue: d)!, octave: 0)))
+                } else if ch == "0" {
+                    units.append(.rest)
+                } else {
+                    allValid = false
+                    break
+                }
+            }
+            if allValid && !units.isEmpty {
+                advance()
+                return units
+            }
+        }
+        if let unit = parseUnit() {
+            return [unit]
+        }
+        return []
     }
 
     private mutating func parseUnit() -> Unit? {
@@ -957,6 +996,7 @@ private struct TokenParser {
             return .percussion(value)
         default:
             return nil
+
         }
     }
 

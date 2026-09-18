@@ -226,9 +226,16 @@ public struct TMDMeasureChecker {
                         continue
                     }
 
-                    // Check for standard units: note, chord, tie, percussion, rest
+                    // Check for standard units: note, chord, tie, percussion, rest, drum identifiers
                     switch item.token {
                     case .note, .chord, .tie, .percussion:
+                        _ = advance()
+                        paragraphQuarterNotes += unitQuarterNotes
+                        if insideBar {
+                            currentMeasureUnits += 1
+                            currentMeasureSnippet.append(item.text)
+                        }
+                    case .identifier(let value) where !value.isEmpty && value.allSatisfy({ "XxTtSsDdBbOoCc".contains($0) }):
                         _ = advance()
                         paragraphQuarterNotes += unitQuarterNotes
                         if insideBar {

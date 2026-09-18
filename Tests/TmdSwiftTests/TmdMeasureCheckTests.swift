@@ -261,4 +261,32 @@ struct TmdMeasureCheckTests {
         // Both end at positive measure 4, so no mismatch.
         #expect(issues.isEmpty)
     }
+
+    @Test func testRecognizesPercussionTokensAndGroups() throws {
+        let input = """
+        ::SCORE::
+        ** Drum Song **
+        != 120
+        ?= C
+        <4/4>
+
+        v2:Drum-Kick@|0| {
+            <4*>
+            | D - - - | D - - - | D - - - | D - - - |
+            | D - - - | D - - - | D - - - | D - x X |
+        }
+
+        intro:Drum@|0| {
+            <4*>
+            | - - - - |
+            | (xxxx) - - - |
+        }
+
+        -> v2 ->#
+        """
+
+        let issues = TMDMeasureChecker.check(source: input)
+        #expect(issues.isEmpty)
+    }
 }
+

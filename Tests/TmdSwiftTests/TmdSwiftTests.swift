@@ -825,3 +825,76 @@ import TmdSkill
 
     try? FileManager.default.removeItem(at: tempDir)
 }
+
+@Test func testTupletWhitespaceAndUnspacedDigits() throws {
+    func makeScore(_ body: String) -> String {
+        """
+        ::SCORE::
+        ** Repro **
+        != 100
+        <4/4>
+
+        m:piano@|0|{
+            <4*>
+            \(body)
+        }
+
+        -> m ->#
+        """
+    }
+
+    // 1. Tuplet with whitespace between % and (: (1 2 5 1 2 5) % (--) 4 3
+    let sheet1 = TmdParser.parse(string: makeScore("(1 2 5 1 2 5) % (--) 4 3"))
+    #expect(sheet1 != nil)
+    guard let s1 = sheet1 else { return }
+    let groups1 = s1.paragraphs[0].sections[0].unitGroups
+    let beats1 = groups1.reduce(0) { $0 + $1.length }
+    #expect(beats1 == 4)
+    #expect(groups1.count == 3)
+    #expect(groups1[0].units.count == 6)
+    #expect(groups1[0].length == 2)
+    #expect(groups1[1].length == 1)
+    #expect(groups1[2].length == 1)
+
+    // 2. Unspaced digits inside and outside tuplets: (125125)%(--) 43
+    let sheet2 = TmdParser.parse(string: makeScore("(125125)%(--) 43"))
+    #expect(sheet2 != nil)
+    guard let s2 = sheet2 else { return }
+    let groups2 = s2.paragraphs[0].sections[0].unitGroups
+    let beats2 = groups2.reduce(0) { $0 + $1.length }
+    #expect(beats2 == 4)
+    #expect(groups2.count == 3)
+    #expect(groups2[0].units.count == 6)
+    #expect(groups2[0].length == 2)
+    #expect(groups2[1].units[0] == .note(Note(accidental: .natural, degree: 4, octave: 0)))
+    #expect(groups2[2].units[0] == .note(Note(accidental: .natural, degree: 3, octave: 0)))
+
+    // 3. Unspaced digits with spaces in tuplet: (125125) % (--) 43
+    let sheet3 = TmdParser.parse(string: makeScore("(125125) % (--) 43"))
+    #expect(sheet3 != nil)
+    guard let s3 = sheet3 else { return }
+    let groups3 = s3.paragraphs[0].sections[0].unitGroups
+    let beats3 = groups3.reduce(0) { $0 + $1.length }
+    #expect(beats3 == 4)
+    #expect(groups3.count == 3)
+    #expect(groups3[0].units.count == 6)
+    #expect(groups3[0].length == 2)
+
+    // 4. Consecutive unspaced ties following notes and rests: 1--- 0--- 5-- 1-
+    let sheet4 = TmdParser.parse(string: makeScore("1--- 0--- 5-- 1-"))
+    #expect(sheet4 != nil)
+    guard let s4 = sheet4 else { return }
+    let groups4 = s4.paragraphs[0].sections[0].unitGroups
+    let beats4 = groups4.reduce(0) { $0 + $1.length }
+    #expect(beats4 == 13)
+    #expect(groups4.count == 13)
+    #expect(groups4[0].units[0] == .note(Note(accidental: .natural, degree: 1, octave: 0)))
+    #expect(groups4[1].units[0] == .tie)
+    #expect(groups4[2].units[0] == .tie)
+    #expect(groups4[3].units[0] == .tie)
+    #expect(groups4[4].units[0] == .rest)
+    #expect(groups4[5].units[0] == .tie)
+    #expect(groups4[6].units[0] == .tie)
+    #expect(groups4[7].units[0] == .tie)
+}
+
