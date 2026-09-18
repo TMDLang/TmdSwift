@@ -868,7 +868,7 @@ function activate(context) {
         })
     );
 
-    // Auto-check on save / open / close / text change
+    // Auto-check on save / open / close / text change / active editor change
     context.subscriptions.push(
         vscode.workspace.onDidOpenTextDocument((doc) => {
             if (doc.languageId === 'tmd') {
@@ -884,6 +884,33 @@ function activate(context) {
                 if (config.get('checkOnSave') !== false) {
                     runMeasureCheck(doc);
                 }
+            }
+        })
+    );
+
+    // Debounced check while typing
+    let changeDebounceTimer = null;
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeTextDocument((event) => {
+            const doc = event.document;
+            if (doc.languageId === 'tmd') {
+                const config = vscode.workspace.getConfiguration('tmd');
+                if (config.get('checkOnChange') !== false) {
+                    if (changeDebounceTimer) {
+                        clearTimeout(changeDebounceTimer);
+                    }
+                    changeDebounceTimer = setTimeout(() => {
+                        runMeasureCheck(doc);
+                    }, 400);
+                }
+            }
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.window.onDidChangeActiveTextEditor((editor) => {
+            if (editor && editor.document.languageId === 'tmd') {
+                runMeasureCheck(editor.document);
             }
         })
     );

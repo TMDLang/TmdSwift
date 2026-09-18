@@ -269,7 +269,12 @@
         "tmd.checkOnSave": {
           "type": "boolean",
           "default": true,
-          "description": "Automatically check measure consistency on save and display diagnostics."
+          "description": "Automatically check measure consistency on save and display diagnostics in the Problems panel."
+        },
+        "tmd.checkOnChange": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically check measure consistency as you type (debounced) and update the Problems panel."
         }
       }
     }
