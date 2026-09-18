@@ -131,6 +131,30 @@ function activate(context) {
         runTmdExport([filePath, '-w', outputPath], `Rendered to WAV Audio: ${path.basename(outputPath)}`, outputPath);
     }));
 
+    // 6.1. Export to VOCALOID3/4 (.vsqx)
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.exportVSQX', () => {
+        const filePath = getActiveTmdFilePath();
+        if (!filePath) return;
+        const outputPath = filePath.replace(/\.[^/.]+$/, '') + '.vsqx';
+        runTmdExport([filePath, '--vsqx-output', outputPath], `Exported to VOCALOID3/4: ${path.basename(outputPath)}`, outputPath);
+    }));
+
+    // 6.2. Export to VOCALOID2 (.vsq)
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.exportVSQ', () => {
+        const filePath = getActiveTmdFilePath();
+        if (!filePath) return;
+        const outputPath = filePath.replace(/\.[^/.]+$/, '') + '.vsq';
+        runTmdExport([filePath, '--vsq-output', outputPath], `Exported to VOCALOID2: ${path.basename(outputPath)}`, outputPath);
+    }));
+
+    // 6.3. Export to UTAU (.ust)
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.exportUST', () => {
+        const filePath = getActiveTmdFilePath();
+        if (!filePath) return;
+        const outputPath = filePath.replace(/\.[^/.]+$/, '') + '.ust';
+        runTmdExport([filePath, '--ust-output', outputPath], `Exported to UTAU: ${path.basename(outputPath)}`, outputPath);
+    }));
+
     // Webview MIDI Player Panel tracking
     let currentMidiPanel = null;
 

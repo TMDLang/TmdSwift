@@ -89,6 +89,24 @@
         "enablement": "editorLangId == tmd"
       },
       {
+        "command": "tmd.exportVSQX",
+        "title": "Export to VOCALOID3/4 (.vsqx)",
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
+      },
+      {
+        "command": "tmd.exportVSQ",
+        "title": "Export to VOCALOID2 (.vsq)",
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
+      },
+      {
+        "command": "tmd.exportUST",
+        "title": "Export to UTAU (.ust)",
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
+      },
+      {
         "command": "tmd.openMidiPlayer",
         "title": "Play Score in Web MIDI Player",
         "category": "TMD",
@@ -198,6 +216,21 @@
           "command": "tmd.renderPDF",
           "when": "editorLangId == tmd",
           "group": "tmd_export@5"
+        },
+        {
+          "command": "tmd.exportVSQX",
+          "when": "editorLangId == tmd",
+          "group": "tmd_export@6"
+        },
+        {
+          "command": "tmd.exportVSQ",
+          "when": "editorLangId == tmd",
+          "group": "tmd_export@7"
+        },
+        {
+          "command": "tmd.exportUST",
+          "when": "editorLangId == tmd",
+          "group": "tmd_export@8"
         },
         {
           "command": "tmd.formatDocument",
