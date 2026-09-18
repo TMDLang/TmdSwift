@@ -257,4 +257,217 @@ struct TmdRefactorTests {
         #expect(extractedContent.contains("Chorus:Cello@|0|{"))
         #expect(!extractedContent.contains("Fiddle"))
     }
+
+    @Test func testDoubleGridAndHalveGridResolution() throws {
+        let input = """
+        ::SCORE::
+        ** Grid Test **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Piano@|0|{
+            <4*>
+            | 1 2 3 4 |
+            | [C] - 0 D |
+        }
+
+        -> verse ->#
+        """
+
+        let doubled = try TMDRefactor.doubleGrid(source: input)
+        #expect(doubled.contains("<8*>"))
+        #expect(doubled.contains("| 1 - 2 - 3 - 4 - |"))
+        #expect(doubled.contains("| [C] - - - 0 - D - |"))
+
+        let doubleIssues = TMDMeasureChecker.check(source: doubled)
+        #expect(doubleIssues.isEmpty)
+
+        let halved = try TMDRefactor.halveGrid(source: doubled)
+        #expect(halved.contains("<4*>"))
+        #expect(halved.contains("| 1 2 3 4 |"))
+        #expect(halved.contains("| [C] - 0 D |"))
+
+        let halveIssues = TMDMeasureChecker.check(source: halved)
+        #expect(halveIssues.isEmpty)
+    }
+
+    @Test func testDoubleAndHalveGridWithTupletsAndSpacedSyntax() throws {
+        let input = """
+        ::SCORE::
+        ** Tuplet Grid Test **
+        != 120
+        ?= C
+        <4/4>
+
+        Intro:vocal@|0|{
+            <4*>
+            | 1 2 3 1 | 1 2 (3 1) % (-) 1 |
+        }
+
+        -> Intro ->#
+        """
+
+        let doubled = try TMDRefactor.doubleGrid(source: input)
+        #expect(doubled.contains("<8*>"))
+        #expect(doubled.contains("(3 1)%(--)"))
+        let doubleIssues = TMDMeasureChecker.check(source: doubled)
+        #expect(doubleIssues.isEmpty)
+
+        let halved = try TMDRefactor.halveGrid(source: doubled)
+        #expect(halved.contains("<4*>"))
+        #expect(halved.contains("(3 1)%(-)"))
+        let halveIssues = TMDMeasureChecker.check(source: halved)
+        #expect(halveIssues.isEmpty)
+    }
+
+    @Test func testHalveGridThrowsErrorOnIndivisibleMeasure() throws {
+        let input = """
+        ::SCORE::
+        ** Indivisible Test **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Piano@|0|{
+            <8*>
+            | 1 2 3 4 5 6 7 8 |
+        }
+
+        -> verse ->#
+        """
+
+        #expect(throws: Error.self) {
+            _ = try TMDRefactor.halveGrid(source: input)
+        }
+    }
+
+    @Test func testDuplicateTrack() throws {
+        let input = """
+        ::SCORE::
+        ** Dup Test **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Lead@|0|{
+            <4*>
+            | 1 2 3 5 |
+        }
+
+        -> verse ->#
+        """
+
+        let duped = try TMDRefactor.duplicateTrack(
+            source: input,
+            sourceInstrument: "Lead",
+            targetInstrument: "Synth",
+            octaveShift: -1
+        )
+        #expect(duped.contains("verse:Lead@|0|{"))
+        #expect(duped.contains("verse:Synth@|0|{"))
+        #expect(duped.contains("1_ 2_ 3_ 5_"))
+
+        let issues = TMDMeasureChecker.check(source: duped)
+        #expect(issues.isEmpty)
+    }
+
+    @Test func testDuplicateTrackRestrictedToSection() throws {
+        let input = """
+        ::SCORE::
+        ** Multi-Section Dup Test **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Lead@|0|{
+            <4*>
+            | 1 2 3 4 |
+        }
+
+        chorus:Lead@|0|{
+            <4*>
+            | 5 6 7 1^ |
+        }
+
+        -> verse -> chorus ->#
+        """
+
+        let duped = try TMDRefactor.duplicateTrack(
+            source: input,
+            sourceInstrument: "Lead",
+            targetInstrument: "Synth",
+            section: "chorus",
+            octaveShift: 1
+        )
+        #expect(duped.contains("chorus:Synth@|0|{"))
+        #expect(duped.contains("5^ 6^ 7^ 1^^"))
+        #expect(!duped.contains("verse:Synth@"))
+
+        let issues = TMDMeasureChecker.check(source: duped)
+        #expect(issues.isEmpty)
+    }
+
+    @Test func testGenerateHarmony() throws {
+        let input = """
+        ::SCORE::
+        ** Harmony Test **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Vocal@|0|{
+            <4*>
+            | 1 2 3 1 | [C] - - - |
+        }
+
+        -> verse ->#
+        """
+
+        let harmonized = try TMDRefactor.generateHarmony(
+            source: input,
+            sourceInstrument: "Vocal",
+            harmonyInstrument: "Harmony",
+            intervalSteps: 2
+        )
+        #expect(harmonized.contains("verse:Vocal@|0|{"))
+        #expect(harmonized.contains("verse:Harmony@|0|{"))
+        #expect(harmonized.contains("3 4 5 3"))
+        #expect(harmonized.contains("[C] - - -"))
+
+        let issues = TMDMeasureChecker.check(source: harmonized)
+        #expect(issues.isEmpty)
+    }
+
+    @Test func testInlineOrders() throws {
+        let input = """
+        ::SCORE::
+        ** Unroll Test **
+        != 120
+        ?= C
+        <4/4>
+
+        intro:Piano@|0|{
+            <4*>
+            | 1 2 3 4 |
+        }
+
+        verse:Piano@|0|{
+            <4*>
+            | 5 6 7 1^ |
+        }
+
+        -> intro -> verse -> intro ->#
+        """
+
+        let inlined = try TMDRefactor.inlineOrders(source: input)
+        #expect(inlined.contains("linear:Piano@|0|{"))
+        #expect(inlined.contains("-> linear ->#"))
+        #expect(inlined.contains("1 2 3 4"))
+        #expect(inlined.contains("5 6 7 1^"))
+
+        let sheet = try #require(TmdParser.parse(string: inlined))
+        #expect(sheet.paragraphs.count == 1)
+        #expect(sheet.paragraphs[0].sections[0].unitGroups.count == 12)
+    }
 }

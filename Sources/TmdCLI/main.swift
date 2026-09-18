@@ -45,6 +45,60 @@ struct TmdCheckCommand: ParsableCommand {
     }
 }
 
+struct TmdOutlineCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "outline",
+        abstract: "Generate a document symbol outline of a TMD score."
+    )
+
+    @Argument(help: "Path to the .tmd file to inspect.")
+    var inputPath: String
+
+    @Flag(name: [.customLong("json")], help: "Output outline as JSON.")
+    var json: Bool = false
+
+    func run() throws {
+        let content: String
+        do {
+            content = try String(contentsOfFile: inputPath, encoding: .utf8)
+        } catch {
+            print("Error reading \(inputPath): \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
+        let nodes = TMDOutlineGenerator.generate(source: content)
+
+        if json {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted]
+            if let data = try? encoder.encode(nodes), let str = String(data: data, encoding: .utf8) {
+                print(str)
+            } else {
+                print("[]")
+            }
+        } else {
+            func printNode(_ node: TMDOutlineNode, indent: Int) {
+                let pad = String(repeating: "  ", count: indent)
+                var line = "\(pad)- [\(node.kind)] \(node.name)"
+                if let detail = node.detail, !detail.isEmpty {
+                    line += " (\(detail))"
+                }
+                line += " [L\(node.range.startLine):C\(node.range.startColumn) - L\(node.range.endLine):C\(node.range.endColumn)]"
+                print(line)
+                if let children = node.children {
+                    for child in children {
+                        printNode(child, indent: indent + 1)
+                    }
+                }
+            }
+
+            for node in nodes {
+                printNode(node, indent: 0)
+            }
+        }
+    }
+}
+
 struct TmdFormatCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "format",
@@ -261,14 +315,339 @@ struct TmdRefactorExtractInstrument: ParsableCommand {
     }
 }
 
+struct TmdRefactorDoubleGrid: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "double-grid",
+        abstract: "Double grid resolution (<4*> -> <8*>) padding units with ties."
+    )
+
+    @Argument(help: "Path to the .tmd file.")
+    var inputPath: String
+
+    @Option(name: .long, help: "Optional section filter.")
+    var section: String?
+
+    @Option(name: .long, help: "Optional instrument filter.")
+    var instrument: String?
+
+    @Flag(name: [.short, .long], help: "Modify the file in-place.")
+    var inPlace: Bool = false
+
+    @Option(name: [.short, .long], help: "Output path for the refactored TMD document.")
+    var output: String?
+
+    func run() throws {
+        let content: String
+        do {
+            content = try String(contentsOfFile: inputPath, encoding: .utf8)
+        } catch {
+            print("Error reading \(inputPath): \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
+        let target = (section != nil || instrument != nil) ? TMDRefactorTarget(section: section, instrument: instrument) : nil
+        let result: String
+        do {
+            result = try TMDRefactor.doubleGrid(source: content, target: target)
+        } catch {
+            print("Refactor error: \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
+        if inPlace {
+            do {
+                try result.write(toFile: inputPath, atomically: true, encoding: .utf8)
+                print("Transformed grid (double-grid) in \(inputPath) in-place.")
+            } catch {
+                print("Error writing \(inputPath): \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        } else if let outPath = output {
+            do {
+                try result.write(toFile: outPath, atomically: true, encoding: .utf8)
+                print("Transformed score written to \(outPath).")
+            } catch {
+                print("Error writing \(outPath): \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        } else {
+            print(result, terminator: "")
+        }
+    }
+}
+
+struct TmdRefactorHalveGrid: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "halve-grid",
+        abstract: "Halve grid resolution (<8*> -> <4*>) collapsing ties."
+    )
+
+    @Argument(help: "Path to the .tmd file.")
+    var inputPath: String
+
+    @Option(name: .long, help: "Optional section filter.")
+    var section: String?
+
+    @Option(name: .long, help: "Optional instrument filter.")
+    var instrument: String?
+
+    @Flag(name: [.short, .long], help: "Modify the file in-place.")
+    var inPlace: Bool = false
+
+    @Option(name: [.short, .long], help: "Output path for the refactored TMD document.")
+    var output: String?
+
+    func run() throws {
+        let content: String
+        do {
+            content = try String(contentsOfFile: inputPath, encoding: .utf8)
+        } catch {
+            print("Error reading \(inputPath): \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
+        let target = (section != nil || instrument != nil) ? TMDRefactorTarget(section: section, instrument: instrument) : nil
+        let result: String
+        do {
+            result = try TMDRefactor.halveGrid(source: content, target: target)
+        } catch {
+            print("Refactor error: \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
+        if inPlace {
+            do {
+                try result.write(toFile: inputPath, atomically: true, encoding: .utf8)
+                print("Transformed grid (halve-grid) in \(inputPath) in-place.")
+            } catch {
+                print("Error writing \(inputPath): \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        } else if let outPath = output {
+            do {
+                try result.write(toFile: outPath, atomically: true, encoding: .utf8)
+                print("Transformed score written to \(outPath).")
+            } catch {
+                print("Error writing \(outPath): \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        } else {
+            print(result, terminator: "")
+        }
+    }
+}
+
+struct TmdRefactorDuplicateTrack: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "duplicate-track",
+        abstract: "Duplicate a track with a new instrument name and optional octave shift."
+    )
+
+    @Argument(help: "Path to the .tmd file.")
+    var inputPath: String
+
+    @Option(name: .long, help: "Source instrument name to duplicate.")
+    var source: String
+
+    @Option(name: .long, help: "Target new instrument name.")
+    var target: String
+
+    @Option(name: .long, help: "Optional section filter.")
+    var section: String?
+
+    @Option(name: .long, help: "Octave shift (e.g. +1, -1).")
+    var octave: Int = 0
+
+    @Flag(name: [.short, .long], help: "Modify the file in-place.")
+    var inPlace: Bool = false
+
+    @Option(name: [.short, .long], help: "Output path for the refactored TMD document.")
+    var output: String?
+
+    func run() throws {
+        let content: String
+        do {
+            content = try String(contentsOfFile: inputPath, encoding: .utf8)
+        } catch {
+            print("Error reading \(inputPath): \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
+        let result: String
+        do {
+            result = try TMDRefactor.duplicateTrack(
+                source: content,
+                sourceInstrument: source,
+                targetInstrument: target,
+                section: section,
+                octaveShift: octave
+            )
+        } catch {
+            print("Refactor error: \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
+        if inPlace {
+            do {
+                try result.write(toFile: inputPath, atomically: true, encoding: .utf8)
+                print("Duplicated track in \(inputPath) in-place.")
+            } catch {
+                print("Error writing \(inputPath): \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        } else if let outPath = output {
+            do {
+                try result.write(toFile: outPath, atomically: true, encoding: .utf8)
+                print("Refactored score written to \(outPath).")
+            } catch {
+                print("Error writing \(outPath): \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        } else {
+            print(result, terminator: "")
+        }
+    }
+}
+
+struct TmdRefactorGenerateHarmony: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "generate-harmony",
+        abstract: "Generate parallel diatonic harmony for an instrument."
+    )
+
+    @Argument(help: "Path to the .tmd file.")
+    var inputPath: String
+
+    @Option(name: .long, help: "Source melody instrument name.")
+    var source: String
+
+    @Option(name: .long, help: "Target harmony instrument name.")
+    var target: String
+
+    @Option(name: .long, help: "Optional section filter.")
+    var section: String?
+
+    @Option(name: .long, help: "Interval steps (e.g. +2 for 3rd up, -2 for 3rd down).")
+    var interval: Int = 2
+
+    @Flag(name: [.short, .long], help: "Modify the file in-place.")
+    var inPlace: Bool = false
+
+    @Option(name: [.short, .long], help: "Output path for the refactored TMD document.")
+    var output: String?
+
+    func run() throws {
+        let content: String
+        do {
+            content = try String(contentsOfFile: inputPath, encoding: .utf8)
+        } catch {
+            print("Error reading \(inputPath): \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
+        let result: String
+        do {
+            result = try TMDRefactor.generateHarmony(
+                source: content,
+                sourceInstrument: source,
+                harmonyInstrument: target,
+                section: section,
+                intervalSteps: interval
+            )
+        } catch {
+            print("Refactor error: \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
+        if inPlace {
+            do {
+                try result.write(toFile: inputPath, atomically: true, encoding: .utf8)
+                print("Generated harmony in \(inputPath) in-place.")
+            } catch {
+                print("Error writing \(inputPath): \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        } else if let outPath = output {
+            do {
+                try result.write(toFile: outPath, atomically: true, encoding: .utf8)
+                print("Refactored score written to \(outPath).")
+            } catch {
+                print("Error writing \(outPath): \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        } else {
+            print(result, terminator: "")
+        }
+    }
+}
+
+struct TmdRefactorInlineOrders: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "inline-orders",
+        abstract: "Unroll / inline score playback orders into a linear score."
+    )
+
+    @Argument(help: "Path to the .tmd file.")
+    var inputPath: String
+
+    @Flag(name: [.short, .long], help: "Modify the file in-place.")
+    var inPlace: Bool = false
+
+    @Option(name: [.short, .long], help: "Output path for the inlined TMD document.")
+    var output: String?
+
+    func run() throws {
+        let content: String
+        do {
+            content = try String(contentsOfFile: inputPath, encoding: .utf8)
+        } catch {
+            print("Error reading \(inputPath): \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
+        let result: String
+        do {
+            result = try TMDRefactor.inlineOrders(source: content)
+        } catch {
+            print("Refactor error: \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
+        if inPlace {
+            do {
+                try result.write(toFile: inputPath, atomically: true, encoding: .utf8)
+                print("Inlined orders in \(inputPath) in-place.")
+            } catch {
+                print("Error writing \(inputPath): \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        } else if let outPath = output {
+            do {
+                try result.write(toFile: outPath, atomically: true, encoding: .utf8)
+                print("Inlined score written to \(outPath).")
+            } catch {
+                print("Error writing \(outPath): \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        } else {
+            print(result, terminator: "")
+        }
+    }
+}
+
 struct TmdRefactorCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "refactor",
-        abstract: "Music score refactoring tools (rename instruments, rename sections, extract tracks).",
+        abstract: "Music score refactoring tools (rename, extract, grid scale, harmony, unroll orders).",
         subcommands: [
             TmdRefactorRenameInstrument.self,
             TmdRefactorRenameSection.self,
-            TmdRefactorExtractInstrument.self
+            TmdRefactorExtractInstrument.self,
+            TmdRefactorDoubleGrid.self,
+            TmdRefactorHalveGrid.self,
+            TmdRefactorDuplicateTrack.self,
+            TmdRefactorGenerateHarmony.self,
+            TmdRefactorInlineOrders.self
         ]
     )
 }
@@ -584,9 +963,11 @@ struct TmdCLICommand: ParsableCommand {
 
 // Route subcommand dispatch manually if first argument matches a subcommand
 let rawArgs = Array(CommandLine.arguments.dropFirst())
-if let first = rawArgs.first, ["check", "format", "refactor"].contains(first) {
+if let first = rawArgs.first, ["check", "outline", "format", "refactor"].contains(first) {
     if first == "check" {
         TmdCheckCommand.main(Array(rawArgs.dropFirst()))
+    } else if first == "outline" {
+        TmdOutlineCommand.main(Array(rawArgs.dropFirst()))
     } else if first == "format" {
         TmdFormatCommand.main(Array(rawArgs.dropFirst()))
     } else {

@@ -109,6 +109,54 @@
         "title": "Check Measure Consistency",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
+      },
+      {
+        "command": "tmd.refactorDoubleGrid",
+        "title": "Refactor: Double Grid Resolution (<4*> -> <8*>)",
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
+      },
+      {
+        "command": "tmd.refactorHalveGrid",
+        "title": "Refactor: Halve Grid Resolution (<8*> -> <4*>)",
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
+      },
+      {
+        "command": "tmd.refactorDuplicateTrack",
+        "title": "Refactor: Duplicate Track...",
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
+      },
+      {
+        "command": "tmd.refactorGenerateHarmony",
+        "title": "Refactor: Generate Harmony...",
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
+      },
+      {
+        "command": "tmd.refactorInlineOrders",
+        "title": "Refactor: Unroll / Inline Orders to Linear Score",
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
+      },
+      {
+        "command": "tmd.refactorRenameInstrument",
+        "title": "Refactor: Rename Instrument...",
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
+      },
+      {
+        "command": "tmd.refactorRenameSection",
+        "title": "Refactor: Rename Section...",
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
+      },
+      {
+        "command": "tmd.refactorExtractInstrument",
+        "title": "Refactor: Extract Instrument Track...",
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
       }
     ],
     "menus": {
@@ -152,6 +200,46 @@
           "command": "tmd.checkMeasures",
           "when": "editorLangId == tmd",
           "group": "tmd_tools@2"
+        },
+        {
+          "command": "tmd.refactorDoubleGrid",
+          "when": "editorLangId == tmd",
+          "group": "tmd_refactor@1"
+        },
+        {
+          "command": "tmd.refactorHalveGrid",
+          "when": "editorLangId == tmd",
+          "group": "tmd_refactor@2"
+        },
+        {
+          "command": "tmd.refactorDuplicateTrack",
+          "when": "editorLangId == tmd",
+          "group": "tmd_refactor@3"
+        },
+        {
+          "command": "tmd.refactorGenerateHarmony",
+          "when": "editorLangId == tmd",
+          "group": "tmd_refactor@4"
+        },
+        {
+          "command": "tmd.refactorInlineOrders",
+          "when": "editorLangId == tmd",
+          "group": "tmd_refactor@5"
+        },
+        {
+          "command": "tmd.refactorRenameInstrument",
+          "when": "editorLangId == tmd",
+          "group": "tmd_refactor@6"
+        },
+        {
+          "command": "tmd.refactorRenameSection",
+          "when": "editorLangId == tmd",
+          "group": "tmd_refactor@7"
+        },
+        {
+          "command": "tmd.refactorExtractInstrument",
+          "when": "editorLangId == tmd",
+          "group": "tmd_refactor@8"
         }
       ],
       "editor/title": [
