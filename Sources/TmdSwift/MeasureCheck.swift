@@ -18,7 +18,11 @@ public struct TMDMeasureIssue: Equatable, CustomStringConvertible, Sendable {
 
     public var description: String {
         if instrument == "Order" {
-            return "Order (line \(lineNumber)): Undefined section '\(paragraphName)' in playback order (\(snippet))"
+            if !paragraphName.isEmpty {
+                return "Order (line \(lineNumber)): Undefined section '\(paragraphName)' in playback order (\(snippet))"
+            } else {
+                return "Order (line \(lineNumber)): \(snippet)"
+            }
         }
         let diffStr = deltaUnits > 0 ? "+\(deltaUnits)" : "\(deltaUnits)"
         if measureIndex == 0 {
@@ -62,6 +66,9 @@ public struct TMDMeasureChecker {
         var issues: [TMDMeasureIssue] = []
         var paragraphInfos: [ParagraphSpanInfo] = []
         var orderSections: [(name: String, line: Int)] = []
+        var hasOrder = false
+        var terminatedWithHash = false
+        var lastOrderTokenLine = 1
         var pos = 0
 
         func current() -> LexedToken? {
@@ -285,14 +292,58 @@ public struct TMDMeasureChecker {
                 paragraphInfos.append(info)
             } else if tok.token == .arrow {
                 let arrowLine = tok.range.start.line
+                lastOrderTokenLine = arrowLine
+                hasOrder = true
                 _ = advance() // ->
-                if let nextTok = current(), case .identifier(let orderSecName) = nextTok.token {
-                    orderSections.append((name: orderSecName, line: nextTok.range.start.line != 0 ? nextTok.range.start.line : arrowLine))
-                    _ = advance()
+                if let nextTok = current() {
+                    lastOrderTokenLine = nextTok.range.start.line != 0 ? nextTok.range.start.line : arrowLine
+                    if nextTok.token == .arrowEnd {
+                        terminatedWithHash = true
+                        _ = advance()
+                    } else if case .identifier(let orderSecName) = nextTok.token {
+                        if orderSecName == "#" {
+                            terminatedWithHash = true
+                        }
+                        orderSections.append((name: orderSecName, line: lastOrderTokenLine))
+                        _ = advance()
+                    }
                 }
+            } else if tok.token == .arrowEnd {
+                lastOrderTokenLine = tok.range.start.line
+                hasOrder = true
+                terminatedWithHash = true
+                _ = advance()
             } else {
                 _ = advance()
             }
+        }
+
+        // Check playback order existence and termination
+        if !hasOrder {
+            let lastLine = tokensWithRanges.last(where: { $0.token != .eof })?.range.start.line ?? 1
+            issues.append(TMDMeasureIssue(
+                paragraphName: "",
+                instrument: "Order",
+                lineNumber: lastLine,
+                measureIndex: 0,
+                expectedUnits: 0,
+                actualUnits: 0,
+                noteLength: 4,
+                beat: beat,
+                snippet: "Missing playback order"
+            ))
+        } else if !terminatedWithHash {
+            issues.append(TMDMeasureIssue(
+                paragraphName: "",
+                instrument: "Order",
+                lineNumber: lastOrderTokenLine,
+                measureIndex: 0,
+                expectedUnits: 0,
+                actualUnits: 0,
+                noteLength: 4,
+                beat: beat,
+                snippet: "Playback order must terminate with '#'"
+            ))
         }
 
         // Check for undefined sections referenced in execution orders (-> section)

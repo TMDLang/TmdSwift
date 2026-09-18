@@ -314,6 +314,50 @@ struct TmdMeasureCheckTests {
         #expect(issue.measureIndex == 0)
         #expect(issue.description.contains("Undefined section 'chorus' in playback order"))
     }
+
+    @Test func testReportsIssueWhenPlaybackOrderIsMissing() throws {
+        let input = """
+        ::SCORE::
+        ** No Order Song **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Piano@|0|{
+            <4*>
+            | 1 2 3 4 |
+        }
+        """
+
+        let issues = TMDMeasureChecker.check(source: input)
+        #expect(issues.count == 1)
+        guard let issue = issues.first else { return }
+        #expect(issue.instrument == "Order")
+        #expect(issue.description.contains("Missing playback order"))
+    }
+
+    @Test func testReportsIssueWhenPlaybackOrderDoesNotEndWithHash() throws {
+        let input = """
+        ::SCORE::
+        ** Unterminated Order Song **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Piano@|0|{
+            <4*>
+            | 1 2 3 4 |
+        }
+
+        -> verse
+        """
+
+        let issues = TMDMeasureChecker.check(source: input)
+        #expect(issues.count == 1)
+        guard let issue = issues.first else { return }
+        #expect(issue.instrument == "Order")
+        #expect(issue.description.contains("Playback order must terminate with '#'"))
+    }
 }
 
 
