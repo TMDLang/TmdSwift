@@ -896,5 +896,34 @@ import TmdSkill
     #expect(groups4[5].units[0] == .tie)
     #expect(groups4[6].units[0] == .tie)
     #expect(groups4[7].units[0] == .tie)
+
+    // 5. Tuplets with various dash lengths: (1 2 3)% (---) (123)%(----)
+    let sheet5 = TmdParser.parse(string: makeScore("(1 2 3)% (---) (123)%(----)"))
+    #expect(sheet5 != nil)
+    guard let s5 = sheet5 else { return }
+    let groups5 = s5.paragraphs[0].sections[0].unitGroups
+    #expect(groups5.count == 2)
+    #expect(groups5[0].units.count == 3)
+    #expect(groups5[0].length == 3)
+    #expect(groups5[1].units.count == 3)
+    #expect(groups5[1].length == 4)
+
+    // 6. Unspaced notes with octave and accidental modifiers mixed with consecutive ties: 1'^2,_3^-- 43-
+    let sheet6 = TmdParser.parse(string: makeScore("1'^2,_3^-- 43-"))
+    #expect(sheet6 != nil)
+    guard let s6 = sheet6 else { return }
+    let groups6 = s6.paragraphs[0].sections[0].unitGroups
+    let beats6 = groups6.reduce(0) { $0 + $1.length }
+    #expect(beats6 == 8)
+    #expect(groups6.count == 8)
+    #expect(groups6[0].units[0] == .note(Note(accidental: .sharp, degree: 1, octave: 1)))
+    #expect(groups6[1].units[0] == .note(Note(accidental: .flat, degree: 2, octave: -1)))
+    #expect(groups6[2].units[0] == .note(Note(accidental: .natural, degree: 3, octave: 1)))
+    #expect(groups6[3].units[0] == .tie)
+    #expect(groups6[4].units[0] == .tie)
+    #expect(groups6[5].units[0] == .note(Note(accidental: .natural, degree: 4, octave: 0)))
+    #expect(groups6[6].units[0] == .note(Note(accidental: .natural, degree: 3, octave: 0)))
+    #expect(groups6[7].units[0] == .tie)
 }
+
 
