@@ -8,20 +8,44 @@ Original project: [https://github.com/aguai/TMDLang](https://github.com/aguai/TM
 
 ## About TMD
 
-TMD is a plain-text musical notation DSL designed by composer and music producer 阿怪 (aguai, known for classics such as A-Mei's 《三天三夜》). It allows musicians and arrangers to describe multi-track songs, numbered musical notation (jianpu), chord progressions, tuplets, and playback arrangements in a concise, human-readable text format.
+### Origins & Heritage
 
-In the age of generative AI, TMD can also serve as a music-native intermediate representation between a creator's intent and final music files:
-- **More reliable musical generation**: AI can describe reusable motifs, chord progressions, arrangement changes, and key transpositions without regenerating every note, reducing structural and consistency errors.
-- **Lower token usage**: Repetition, variation, and transposition can be expressed as structure instead of duplicated note data.
-- **Preserved musical relationships**: The connection between a motif, its variations, and the overall song arrangement remains explicit.
-- **Verifiable and reproducible output**: Structured text is easier to validate, edit, regenerate, and review than unstructured generated audio.
-- **Interoperability**: TMD can be converted into MIDI, MusicXML, LilyPond, ABC notation, or audio for downstream tools.
+**TMD** (Timebase Mark Down) was originally conceived and designed by the celebrated Taiwanese songwriter, composer, and producer **Chen, Chih-Han / [aguai](https://github.com/aguai) (阿怪, 1974–2019)**, renowned for Mandopop classics such as A-Mei's 《三天三夜》 (*Three Days and Three Nights*).
 
-At its core, TMD reflects the practical workflow and mental model of modern popular music songwriting and arrangement:
-- **Lead-sheet and Jianpu thinking**: Melodies are expressed in movable-do numbered scale degrees (`1`–`7`), octaves (`^`, `_`), and accidentals (`'`, `,`), making transpositions and melodic contours intuitive without the visual clutter of traditional staves.
-- **Harmony-first architecture**: Chord symbols (both harmonic scale degrees like `[1]`, `[6m]` and standard chord names like `[Cmaj7]`) are treated as first-class citizens alongside melody lines.
-- **Section-oriented modularity**: Songs are broken down into named song forms (`intro`, `verse`, `chorus`, `bridge`), with independent multi-instrument tracks entering at specified measure offsets (`@|+4|`).
-- **Arrangement as linear execution flow**: Song playback and modulations (`{?+3}`, `{?-3}`) are declared as an explicit execution sequence (`-> intro -> A -> B -> C ->#`), mirroring how musicians and producers compose, rehearse, and structure arrangements in their minds.
+### Core Philosophy: An Intermediate Representation (IR) for Music
+
+Most digital music tools treat music as one of two paradigms:
+1. **An Audio Engineering problem** (DAWs like Logic, Pro Tools, Cubase): Faders, decibel meters, audio tracks, and millisecond waveforms.
+2. **A Desktop Publishing problem** (Engravers like Sibelius, Finale, LilyPond): Stem directions, collision avoidance, beam slants, and printable paper layout.
+
+**TMD treats music as Source Code.**
+
+TMD is designed as a **music-native Intermediate Representation (IR)**—a format that is **compilable, analyzable, refactorable, and seamlessly understood by both humans and AI**:
+- **Sections are Modules**: `intro`, `verse`, and `chorus` are self-contained, reusable blocks.
+- **Arrangement is Control Flow**: `-> intro -> verse -> chorus -> {?+1} -> chorus ->#` represents the executable flow of the song, complete with dynamic key modulations.
+- **Relative Pitch & Jianpu Thinking**: Melody notes are expressed as movable-do scale degrees (`1`–`7`), octaves (`^`, `_`), and accidentals (`'`, `,`), making transpositions and melodic contours intuitive without staff clutter.
+- **Consistency Check is a Typechecker**: The TMD compiler inspects beat counts against time signatures in each measure like a strict linter.
+- **Song Inspector is a Profiler**: Instead of measuring track volume in decibels, the `tmd inspect` profiler analyzes real songwriting invariants: vocal range and tessitura (lowest/highest note, span in semitones), section duration ratios, harmonic vocabulary, and arrangement density.
+
+### Designed for Songwriters, Not Print Shops
+
+TMD was created for people who write, produce, and arrange songs, rather than orchestra sight-readers or sheet music engravers. Yet, because of its semantic purity as an IR, a single `.tmd` score can be compiled and exported into virtually any downstream musical format:
+- **MIDI (.mid)**: Multi-track SMF Type 1 for importing into any digital audio workstation.
+- **REAPER Project (.rpp)**: Complete with tempo markers, region markers, and multi-track MIDI.
+- **MusicXML (.musicxml)**: W3C MusicXML 4.0 for notation software (MuseScore, Sibelius, Finale, Dorico).
+- **LilyPond (.ly & .pdf)**: For publication-grade engraved sheet music.
+- **ABC Notation (.abc)**: For lightweight web score rendering (`abcjs`).
+- **Vocal Synthesizers (.vsqx, .vsq, .ust)**: For VOCALOID2/3/4 and UTAU/OpenUtau tuning.
+- **WAV Audio (.wav)**: Built-in synthesis via CoreAudio and SoundFont banks.
+
+### Why TMD Excels in Human-AI Musical Co-Creation
+
+When collaborating with Large Language Models (LLMs) on musical tasks, standard notation formats often introduce friction:
+- **Drastically Reduced Syntax Noise**: Unlike MusicXML's verbose XML tree tags or LilyPond's complex macro typography, TMD uses concise Markdown-like syntax. This minimizes LLM token consumption and drastically reduces syntax hallucinations.
+- **No Multi-Track "Rest Hell" (TMD vs. ABC Notation)**: In ABC notation, arranging multiple parallel instruments across an entire song requires padding inactive instruments with dozens of consecutive measure rests (`| z4 | z4 | z4 |`), which easily desynchronizes LLM context windows. In TMD, instruments specify their exact entry point with an offset (`@|+4|`), and silent measures require zero syntax tokens.
+- **Composable Motifs & Dynamic Key Modulations**: An AI agent can express dynamic modulations (`{?+2}`), melodic continuation, and counterpoint as high-level musical constructs rather than recalculating raw MIDI ticks.
+
+### The TmdSwift Implementation
 
 **TmdSwift** re-implements the original parser into a clean, modern Swift architecture featuring:
 - A two-stage Lexer + TokenParser pipeline.
@@ -39,7 +63,7 @@ At its core, TMD reflects the practical workflow and mental model of modern popu
 
 Because TMD is a concise, text-based, and human-readable musical notation DSL, it serves as an ideal bridge between human musical ideas and generative AI / Large Language Models (LLMs). Instead of wrestling with opaque binary formats (MIDI) or unstructured audio waveforms, creators and AI agents can pair-program music interactively in TMD.
 
-### 🚀 Equip Your AI Assistant in One Command
+### Equip Your AI Assistant in One Command
 
 `TmdSwift` comes with an official AI Agent skill (`SKILL.md`) covering TMD syntax, modular section chunking, human composition principles, motif development, and counterpoint rules. You can install it directly into your local AI environment (supporting Codex, Claude Code, Antigravity, and Gemini):
 
@@ -69,7 +93,7 @@ Once installed, your AI agent will automatically understand how to compose, arra
 6. **Style & Metric Variations**:
    Prompt the AI to adapt a 4/4 ballad into a 3/4 waltz, re-groove straight rhythms into syncopated Funk/R&B patterns, or add tuplet ornaments `(1 2 3)%(--)`.
 
-> 📖 **Detailed Guide & Prompt Examples**: See [`docs/AI-Co-Composing-With-TMD.md`](docs/AI-Co-Composing-With-TMD.md) for concrete workflows, step-by-step examples, and copy-pasteable prompt templates.
+See [`docs/AI-Co-Composing-With-TMD.md`](docs/AI-Co-Composing-With-TMD.md) for concrete workflows, step-by-step examples, and copy-pasteable prompt templates.
 
 ## Platform Support
 
@@ -141,7 +165,13 @@ swift run tmd sample/basic/三天三夜.tmd -a score.abc
 # 8. Render to WAV audio file (macOS built-in DLS or custom SoundFont)
 swift run tmd sample/basic/三天三夜.tmd -w score.wav
 
-# 9. Install TMD skill definition for AI agents (Codex, Antigravity, Claude, etc.)
+# 9. Inspect song profile (vocal range, structure, chords, density)
+swift run tmd inspect sample/basic/三天三夜.tmd
+
+# 10. Inspect song profile in structured JSON format
+swift run tmd inspect sample/basic/三天三夜.tmd --json
+
+# 11. Install TMD skill definition for AI agents (Codex, Antigravity, Claude, etc.)
 swift run tmd --install-skills
 ```
 
