@@ -41,7 +41,7 @@ TMD was created for people who write, produce, and arrange songs, rather than or
 ### Why TMD Excels in Human-AI Musical Co-Creation
 
 When collaborating with Large Language Models (LLMs) on musical tasks, standard notation formats often introduce friction:
-- **Drastically Reduced Syntax Noise**: Unlike MusicXML's verbose XML tree tags or LilyPond's complex macro typography, TMD uses concise Markdown-like syntax. This minimizes LLM token consumption and drastically reduces syntax hallucinations.
+- **Drastically Reduced Syntax Noise**: Unlike MusicXML's verbose XML tree tags or LilyPond's complex macro typography, TMD uses concise Markdown-like syntax. Even if modern LLMs are capable of generating valid LilyPond code, LilyPond is notorious for being hostile to human reading and editing; using it as an interactive shared medium between human creators and AI becomes agonizing. TMD balances brevity and clarity, minimizing LLM token consumption, preventing syntax hallucinations, and keeping the score immediately readable and editable by humans.
 - **No Multi-Track "Rest Hell" (TMD vs. ABC Notation)**: In ABC notation, arranging multiple parallel instruments across an entire song requires padding inactive instruments with dozens of consecutive measure rests (`| z4 | z4 | z4 |`), which easily desynchronizes LLM context windows. In TMD, instruments specify their exact entry point with an offset (`@|+4|`), and silent measures require zero syntax tokens.
 - **Composable Motifs & Dynamic Key Modulations**: An AI agent can express dynamic modulations (`{?+2}`), melodic continuation, and counterpoint as high-level musical constructs rather than recalculating raw MIDI ticks.
 
