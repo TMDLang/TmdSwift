@@ -878,9 +878,14 @@ struct TmdCLICommand: ParsableCommand {
 
         // Render to WAV audio if requested
         if let wavPath = wavOutput {
-            let soundBankURL = soundfont != nil ? URL(fileURLWithPath: soundfont!) : nil
+            let soundBankURL = soundfont.map { URL(fileURLWithPath: $0) }
             do {
-                let wavData = try TMDWAVRenderer.renderWAV(from: sheet, soundBankURL: soundBankURL)
+                let wavData = try TMDWAVRenderer.renderWAV(
+                    from: sheet,
+                    soundBankURL: soundBankURL,
+                    targetParagraph: section,
+                    targetInstrument: instrument
+                )
                 let outURL = URL(fileURLWithPath: wavPath)
                 try wavData.write(to: outURL)
                 print("WAV rendered successfully to \(wavPath) (\(wavData.count) bytes)")

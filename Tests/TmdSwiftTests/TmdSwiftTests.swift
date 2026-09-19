@@ -544,6 +544,19 @@ import TmdSkill
         #expect(FileManager.default.fileExists(atPath: midiOutPath))
         let cliData = try Data(contentsOf: URL(fileURLWithPath: midiOutPath))
         #expect(!cliData.isEmpty)
+
+#if os(macOS)
+        let wavOutPath = tempDir.appendingPathComponent("intro_piano.wav").path
+        let wavProcess = Process()
+        wavProcess.executableURL = tmdURL
+        wavProcess.arguments = [tmdPath, "-w", wavOutPath, "--section", "intro", "--instrument", "Piano"]
+        try wavProcess.run()
+        wavProcess.waitUntilExit()
+        #expect(wavProcess.terminationStatus == 0)
+        #expect(FileManager.default.fileExists(atPath: wavOutPath))
+        let cliWavData = try Data(contentsOf: URL(fileURLWithPath: wavOutPath))
+        #expect(!cliWavData.isEmpty)
+#endif
     } else {
         Issue.record("tmd binary must be built and available")
     }

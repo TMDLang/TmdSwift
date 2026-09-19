@@ -246,25 +246,27 @@ public struct TMDOutlineGenerator {
                 if let next = current() {
                     if next.token == .arrowEnd {
                         orderSnippet.append("#")
-                        let arrowEndTok = advance()!
-                        orderEndPos = SourcePosition(
-                            offset: arrowEndTok.range.endOffset,
-                            line: arrowEndTok.range.start.line,
-                            column: arrowEndTok.range.start.column + arrowEndTok.range.length
-                        )
+                        if let arrowEndTok = advance() {
+                            orderEndPos = SourcePosition(
+                                offset: arrowEndTok.range.endOffset,
+                                line: arrowEndTok.range.start.line,
+                                column: arrowEndTok.range.start.column + arrowEndTok.range.length
+                            )
+                        }
                     } else if case .identifier(let orderSec) = next.token {
                         orderSnippet.append(orderSec)
-                        let secTok = advance()!
-                        let oRange = TMDOutlineRange(
-                            start: secTok.range.start,
-                            end: SourcePosition(
-                                offset: secTok.range.endOffset,
-                                line: secTok.range.start.line,
-                                column: secTok.range.start.column + secTok.range.length
+                        if let secTok = advance() {
+                            let oRange = TMDOutlineRange(
+                                start: secTok.range.start,
+                                end: SourcePosition(
+                                    offset: secTok.range.endOffset,
+                                    line: secTok.range.start.line,
+                                    column: secTok.range.start.column + secTok.range.length
+                                )
                             )
-                        )
-                        orderItems.append(OrderItem(name: orderSec, range: oRange))
-                        orderEndPos = oRange.endPosition(from: secTok)
+                            orderItems.append(OrderItem(name: orderSec, range: oRange))
+                            orderEndPos = oRange.endPosition(from: secTok)
+                        }
                     } else if next.token == .relativeOrderPrefix || next.token == .absoluteOrderPrefix {
                         var bracketStr = next.token == .relativeOrderPrefix ? "{?" : "{?="
                         _ = advance()
@@ -275,12 +277,13 @@ public struct TMDOutlineGenerator {
                         }
                         if current()?.token == .closeBrace {
                             bracketStr += "}"
-                            let braceTok = advance()!
-                            orderEndPos = SourcePosition(
-                                offset: braceTok.range.endOffset,
-                                line: braceTok.range.start.line,
-                                column: braceTok.range.start.column + braceTok.range.length
-                            )
+                            if let braceTok = advance() {
+                                orderEndPos = SourcePosition(
+                                    offset: braceTok.range.endOffset,
+                                    line: braceTok.range.start.line,
+                                    column: braceTok.range.start.column + braceTok.range.length
+                                )
+                            }
                         }
                         orderSnippet.append(bracketStr)
                     } else {
@@ -296,12 +299,13 @@ public struct TMDOutlineGenerator {
                     orderStartPos = tok.range.start
                 }
                 orderSnippet.append("->#")
-                let arrowEndTok = advance()!
-                orderEndPos = SourcePosition(
-                    offset: arrowEndTok.range.endOffset,
-                    line: arrowEndTok.range.start.line,
-                    column: arrowEndTok.range.start.column + arrowEndTok.range.length
-                )
+                if let arrowEndTok = advance() {
+                    orderEndPos = SourcePosition(
+                        offset: arrowEndTok.range.endOffset,
+                        line: arrowEndTok.range.start.line,
+                        column: arrowEndTok.range.start.column + arrowEndTok.range.length
+                    )
+                }
                 continue
             }
 

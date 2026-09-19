@@ -419,7 +419,9 @@ public final class Lexer {
 
             if isModifier || !isDigit {
                 advance()
-                let degree = ScaleDegree(rawValue: Int(c.value - UnicodeScalar("0").value))!
+                guard let degree = ScaleDegree(rawValue: Int(c.value - UnicodeScalar("0").value)) else {
+                    return .identifier(String(Character(c)))
+                }
                 var accidental: Accidental = .natural
                 var octave = 0
                 while !isAtEnd {
@@ -953,8 +955,8 @@ private struct TokenParser {
             var units: [Unit] = []
             var allValid = true
             for ch in text {
-                if let d = Int(String(ch)), d >= 1 && d <= 7 {
-                    units.append(.note(Note(accidental: .natural, degree: ScaleDegree(rawValue: d)!, octave: 0)))
+                if let d = Int(String(ch)), let degree = ScaleDegree(rawValue: d) {
+                    units.append(.note(Note(accidental: .natural, degree: degree, octave: 0)))
                 } else if ch == "0" {
                     units.append(.rest)
                 } else {

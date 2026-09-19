@@ -189,7 +189,7 @@ public struct ChordSymbol: Equatable, Hashable, Sendable, ExpressibleByStringLit
         let isDegree = ("1"..."7").contains(String(first))
         let degree: ScaleDegree
         let rootEnd: Int
-        if isDegree, let parsed = ScaleDegree(rawValue: Int(String(first))!) {
+        if isDegree, let intVal = Int(String(first)), let parsed = ScaleDegree(rawValue: intVal) {
             degree = parsed
             rootEnd = 1
         } else {

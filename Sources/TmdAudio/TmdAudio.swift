@@ -295,11 +295,33 @@ public struct TMDWAVRenderer {
     }
 }
 #else
-public enum TmdAudioError: Error {
+public enum TmdAudioError: Error, LocalizedError {
     case unsupportedPlatform
+
+    public var errorDescription: String? {
+        switch self {
+        case .unsupportedPlatform:
+            return "Audio rendering is only supported on Apple platforms (macOS / iOS)."
+        }
+    }
 }
+
 public struct TMDWAVRenderer {
-    public static func renderWAV(from sheet: Sheet, soundBankURL: URL? = nil, sampleRate: Double = 44100.0) throws -> Data {
+    public static func renderWAV(
+        from sheet: Sheet,
+        soundBankURL: URL? = nil,
+        sampleRate: Double = 44100.0,
+        targetParagraph: String? = nil,
+        targetInstrument: String? = nil
+    ) throws -> Data {
+        throw TmdAudioError.unsupportedPlatform
+    }
+
+    public static func renderWAV(
+        fromMIDIData midiData: Data,
+        soundBankURL: URL? = nil,
+        sampleRate: Double = 44100.0
+    ) throws -> Data {
         throw TmdAudioError.unsupportedPlatform
     }
 }
