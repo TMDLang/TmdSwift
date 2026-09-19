@@ -67,22 +67,10 @@ See [`docs/AI-Co-Composing-With-TMD.md`](docs/AI-Co-Composing-With-TMD.md) for c
 
 ## Automated Refactoring & Macro Song Inspection
 
-Beyond AI pair-programming and multi-format exports, TMD empowers songwriters with an entire suite of automated refactoring tools and macro inspection utilities:
+Beyond AI pair-programming, TMD provides automated tools tailored for the real-world songwriting and arranging process:
 
-- **Song Inspector & Tessitura Profiler (`tmd inspect`)**:
-  - **Vocal Range Verification**: Instantly calculates the exact lowest and highest notes (with absolute MIDI pitch and note names like `C4`, `A#5`), span in semitones, and the specific sections where vocal peaks occur. Songwriters can immediately verify whether a singer can comfortably hit the notes or if a key transposition is needed.
-  - **Song Structure & Timeline Timing**: Calculates precise playback seconds and measure counts for every section (`intro`, `verse`, `chorus`) across the timeline.
-  - **Arrangement Density & Peak Concurrency**: Analyzes orchestration density section by section, identifying the peak concurrent track count and dynamically built-up sections.
-  - **Harmonic Vocabulary & Modulations**: Lists all distinct chords used across the piece and tracks key modulation history.
-  - **Structured JSON Output**: Use `--json` to feed musical profile data into web dashboards, automated tests, or external analytics scripts.
-
-- **Music Score Refactoring Suite (`tmd refactor`)**:
-  - **Resolution Scaling (`double-grid` / `halve-grid`)**: Scale rhythm subdivision grids up (`<4*>` to `<8*>`) by padding units with ties, or halve them down, without breaking measure math.
-  - **Global Renaming (`rename-instrument` / `rename-section`)**: Safely rename an instrument or section across all paragraphs, tracks, and playback order sequences simultaneously.
-  - **Track Extraction (`extract-instrument`)**: Extract all tracks belonging to a specific instrument (e.g. Lead Vocal, Bass) into an isolated TMD document for rehearsal, stems, or solo printing.
-  - **Track Duplication & Octave Doubling (`duplicate-track`)**: Duplicate any existing melody track with optional octave shifts (`--octave 1`) to instantly create doubled leads or sub-bass lines.
-  - **Automatic Diatonic Harmony (`generate-harmony`)**: Generate parallel diatonic harmony tracks (e.g. parallel 3rds up or down) following the score's key signature.
-  - **Inline Playback Orders (`inline-orders`)**: Unroll and inline repeating sections and relative key changes into a linear, single-pass score when preparing final arrangements.
+- **Song Inspector (`tmd inspect`)**: Analyzes vocal tessitura (exact highest/lowest notes and semitone span to verify whether a singer can hit the notes), song section timing (seconds and measures), chord vocabulary, and peak arrangement density. Supports `--json` for dashboards and automated pipelines.
+- **Score Refactoring Suite (`tmd refactor`)**: Perform safe, scriptable musical transforms in seconds—scale rhythm grids (`double-grid` / `halve-grid`), rename instruments or sections globally, extract isolated tracks, duplicate melodies with octave shifts, generate parallel diatonic harmonies, or inline repeating orders into a linear score.
 
 ## Platform Support
 
