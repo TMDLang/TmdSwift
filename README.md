@@ -36,7 +36,7 @@ Yet because of its structural purity, a `.tmd` score compiles cleanly to virtual
 Writing an entire multi-movement symphony, orchestral score, or intricate pop arrangement in a single monolithic file or prompt is impractical—human focus scatters, and AI context windows drift into hallucination. TMD inherently supports a **Divide-and-Conquer** architecture:
 
 1. **Atomic Motifs & Sections**: Draft isolated thematic components (`intro`, `verse`, `chorus`, or motivic variations) independently without carrying the baggage of the rest of the score.
-2. **Instant Sensory Feedback Loop**: Inspect vocal tessitura (`tmd inspect`), lint measure rhythm math (`tmd check`), and render offline audio (`tmd render song.wav`) in seconds directly from the command line. Tweak each part in a rapid, tight verification loop.
+2. **Instant Sensory Feedback Loop**: Inspect vocal tessitura (`tmd inspect`), lint measure rhythm math (`tmd check`), and render offline audio (`tmd input.tmd -w song.wav`) in seconds directly from the command line. Tweak each part in a rapid, tight verification loop.
 3. **Macro Integration**: Assemble verified sectional blocks into full-length arrangements or multi-movement suites using the conductor timeline (`-> intro -> verse -> motif_a -> chorus -> {?+1} -> chorus ->#`).
 
 ## Co-Composing with AI Using TMD
