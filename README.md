@@ -34,9 +34,17 @@ It provides a **music-native Intermediate Representation (IR)**—as natural and
 - **Measure Consistency as a Helpful Typechecker**: Just as a Markdown linter catches broken links, `tmd check` verifies measure beat counts against time signatures to catch rhythmic typos early.
 - **Song Profile as a Macro Diagnostic**: Instead of measuring track volume in decibels, `tmd inspect` analyzes what songwriters actually care about: vocal range and tessitura (lowest/highest note, span in semitones), section duration ratios, harmonic vocabulary, and arrangement density.
 
-### Designed for Songwriters, Not Print Shops
+### Designed for Songwriters, Not Print Shops nor Archives
 
-TMD was built for people who write, produce, and arrange songs, rather than orchestra sight-readers or engravers. Yet, because of its semantic purity as an IR, a single `.tmd` score can be compiled and exported into virtually any downstream musical format:
+Publishing engravers (like LilyPond or Sibelius) and historic tune archives (like ABC notation) are exceptional at what they do—the former excels at publication-grade sheet layout, while the latter is peerless for indexing and archiving world folk melodies.
+
+However, their workflow assumes the composition is already finished: the song was drafted on manuscript paper or scribbled in a notebook, and only entered into the software once finalized.
+
+The iterative creative workflow of a pop songwriter and producer like **aguai (阿怪)** is fundamentally different. Songwriting is an active, messy, living process: humming melodies in movable-do, auditioning chords, testing whether a singer can hit high notes, experimenting with band arrangements, and restructuring song forms on the fly. 
+
+**TMD moves that creative notebook directly onto the computer—and makes it effortlessly mutable.**
+
+Instead of wrestling with mouse clicks in a DAW or fixed notation engravers, songwriters can sketch, mutate, and re-arrange musical ideas in seconds, co-creating interactively alongside AI. Yet, because of its semantic purity as an IR, a single `.tmd` score can be seamlessly compiled and exported into virtually any downstream musical format:
 - **MIDI (.mid)**: Multi-track SMF Type 1 for importing into any digital audio workstation.
 - **REAPER Project (.rpp)**: Complete with tempo markers, region markers, and multi-track MIDI.
 - **MusicXML (.musicxml)**: W3C MusicXML 4.0 for notation software (MuseScore, Sibelius, Finale, Dorico).
