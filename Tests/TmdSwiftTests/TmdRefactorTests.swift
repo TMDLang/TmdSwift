@@ -470,4 +470,98 @@ struct TmdRefactorTests {
         #expect(sheet.paragraphs.count == 1)
         #expect(sheet.paragraphs[0].sections[0].unitGroups.count == 12)
     }
+
+    @Test func testDuplicateTrackPreservesComments() throws {
+        let input = """
+        ::SCORE::
+        /* Header comment */
+        ** My Song **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Lead@|0|{
+            <4*>
+            | 1 2 3 4 | /* bar comment */
+        }
+
+        -> verse -># /* order comment */
+        """
+
+        let duped = try TMDRefactor.duplicateTrack(source: input, sourceInstrument: "Lead", targetInstrument: "Synth", octaveShift: 1)
+        #expect(duped.contains("/* Header comment */"))
+        #expect(duped.contains("/* bar comment */"))
+        #expect(duped.contains("/* order comment */"))
+        #expect(duped.contains("verse:Lead@|0|{"))
+        #expect(duped.contains("verse:Synth@|0|{"))
+        #expect(duped.contains("1^ 2^ 3^ 4^"))
+
+        let issues = TMDMeasureChecker.check(source: duped)
+        #expect(issues.isEmpty)
+    }
+
+    @Test func testGenerateHarmonyPreservesComments() throws {
+        let input = """
+        ::SCORE::
+        /* Header comment */
+        ** Harmony Song **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Vocal@|0|{
+            <4*>
+            | 1 2 3 1 | /* bar comment */
+        }
+
+        -> verse -># /* order comment */
+        """
+
+        let harmonized = try TMDRefactor.generateHarmony(source: input, sourceInstrument: "Vocal", harmonyInstrument: "Backing", intervalSteps: 2)
+        #expect(harmonized.contains("/* Header comment */"))
+        #expect(harmonized.contains("/* bar comment */"))
+        #expect(harmonized.contains("/* order comment */"))
+        #expect(harmonized.contains("verse:Vocal@|0|{"))
+        #expect(harmonized.contains("verse:Backing@|0|{"))
+        #expect(harmonized.contains("3 4 5 3"))
+
+        let issues = TMDMeasureChecker.check(source: harmonized)
+        #expect(issues.isEmpty)
+    }
+
+    @Test func testExtractInstrumentPreservesComments() throws {
+        let input = """
+        ::SCORE::
+        /* Header Comment */
+        ** Full Song **
+        != 120
+        ?= C
+        <4/4>
+
+        intro:Piano@|0|{
+            <4*>
+            | 1 2 3 4 | /* piano comment */
+        }
+
+        intro:Bass@|0|{
+            <4*>
+            | 1_ - - - | /* bass comment */
+        }
+
+        verse:Piano@|0|{
+            <4*>
+            | 5 6 7 1^ | /* verse piano */
+        }
+
+        -> intro -> verse -># /* order comment */
+        """
+
+        let extracted = try TMDRefactor.extractInstrument(from: input, instrument: "Piano")
+        #expect(extracted.contains("/* Header Comment */"))
+        #expect(extracted.contains("/* piano comment */"))
+        #expect(extracted.contains("/* verse piano */"))
+        #expect(!extracted.contains(":Bass@"))
+        #expect(!extracted.contains("/* bass comment */"))
+        #expect(extracted.contains("/* order comment */"))
+    }
 }

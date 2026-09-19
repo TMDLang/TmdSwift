@@ -155,7 +155,7 @@ public struct TMDRefactor {
     }
 
     /// Extracts all tracks matching the given instrument from the score into a new TMD document.
-    /// Preserves score metadata, headers, tempo, key, beat, and orders.
+    /// Preserves score metadata, headers, tempo, key, beat, comments, and orders.
     public static func extractInstrument(from source: String, instrument: String) throws -> String {
         let sheet = try TmdParser.parseThrowing(string: source)
         let matchingParagraphs = sheet.paragraphs.filter { $0.instrument == instrument }
@@ -163,17 +163,59 @@ public struct TMDRefactor {
             throw TMDRefactorError.instrumentNotFound(instrument)
         }
 
-        let extractedSheet = Sheet(
-            name: sheet.name,
-            speed: sheet.speed,
-            keySignature: sheet.keySignature,
-            beat: sheet.beat,
-            paragraphs: matchingParagraphs,
-            orders: sheet.orders,
-            metadata: sheet.metadata
-        )
+        let rawLines = source.components(separatedBy: .newlines)
+        var resultLines: [String] = []
+        var insideParagraph = false
+        var keepParagraph = false
 
-        return format(extractedSheet.format())
+        let headerPattern = "^([a-zA-Z0-9_\\u4e00-\\u9fa5-]+)\\s*:\\s*([a-zA-Z0-9_\\u4e00-\\u9fa5-]+)(@[^{]*)?\\s*\\{"
+        let headerRegex = try? NSRegularExpression(pattern: headerPattern, options: [])
+
+        for rawLine in rawLines {
+            let trimmed = rawLine.trimmingCharacters(in: .whitespaces)
+
+            var isHeader = false
+            var pInst = ""
+            if let regex = headerRegex {
+                let range = NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)
+                if let match = regex.firstMatch(in: trimmed, options: [], range: range),
+                   let instRange = Range(match.range(at: 2), in: trimmed) {
+                    isHeader = true
+                    pInst = String(trimmed[instRange])
+                }
+            }
+
+            if isHeader {
+                insideParagraph = true
+                keepParagraph = (pInst == instrument)
+                if keepParagraph {
+                    resultLines.append(rawLine)
+                }
+                continue
+            }
+
+            if trimmed == "}" {
+                if insideParagraph && keepParagraph {
+                    resultLines.append(rawLine)
+                }
+                insideParagraph = false
+                keepParagraph = false
+                continue
+            }
+
+            if insideParagraph {
+                if keepParagraph {
+                    resultLines.append(rawLine)
+                }
+                continue
+            }
+
+            resultLines.append(rawLine)
+        }
+
+        let formatted = format(resultLines.joined(separator: "\n"))
+        _ = try TmdParser.parseThrowing(string: formatted)
+        return formatted
     }
 
     /// Duplicates a track with an optional target section and octave shift.
@@ -223,16 +265,24 @@ public struct TMDRefactor {
             )
         }
 
-        let newSheet = Sheet(
-            name: sheet.name,
-            speed: sheet.speed,
-            keySignature: sheet.keySignature,
-            beat: sheet.beat,
-            paragraphs: sheet.paragraphs + duplicatedParagraphs,
-            orders: sheet.orders,
-            metadata: sheet.metadata
-        )
-        return format(newSheet.format())
+        let newParagraphsText = duplicatedParagraphs
+            .map { $0.format() }
+            .joined(separator: "\n")
+
+        var combined: String
+        let orderPattern = "(^|\\n)\\s*->"
+        if let regex = try? NSRegularExpression(pattern: orderPattern, options: []),
+           let match = regex.firstMatch(in: source, options: [], range: NSRange(source.startIndex..<source.endIndex, in: source)) {
+            let matchedRange = Range(match.range, in: source)!
+            let insertPos = source.index(matchedRange.lowerBound, offsetBy: source[matchedRange.lowerBound] == "\n" ? 1 : 0)
+            combined = String(source[..<insertPos]) + "\n" + newParagraphsText + "\n" + String(source[insertPos...])
+        } else {
+            combined = source + "\n\n" + newParagraphsText
+        }
+
+        let formatted = format(combined)
+        _ = try TmdParser.parseThrowing(string: formatted)
+        return formatted
     }
 
     /// Generates diatonic harmony (e.g. parallel 3rd up: intervalSteps = 2, 3rd down: intervalSteps = -2).
@@ -289,16 +339,24 @@ public struct TMDRefactor {
             )
         }
 
-        let newSheet = Sheet(
-            name: sheet.name,
-            speed: sheet.speed,
-            keySignature: sheet.keySignature,
-            beat: sheet.beat,
-            paragraphs: sheet.paragraphs + harmonizedParagraphs,
-            orders: sheet.orders,
-            metadata: sheet.metadata
-        )
-        return format(newSheet.format())
+        let newParagraphsText = harmonizedParagraphs
+            .map { $0.format() }
+            .joined(separator: "\n")
+
+        var combined: String
+        let orderPattern = "(^|\\n)\\s*->"
+        if let regex = try? NSRegularExpression(pattern: orderPattern, options: []),
+           let match = regex.firstMatch(in: source, options: [], range: NSRange(source.startIndex..<source.endIndex, in: source)) {
+            let matchedRange = Range(match.range, in: source)!
+            let insertPos = source.index(matchedRange.lowerBound, offsetBy: source[matchedRange.lowerBound] == "\n" ? 1 : 0)
+            combined = String(source[..<insertPos]) + "\n" + newParagraphsText + "\n" + String(source[insertPos...])
+        } else {
+            combined = source + "\n\n" + newParagraphsText
+        }
+
+        let formatted = format(combined)
+        _ = try TmdParser.parseThrowing(string: formatted)
+        return formatted
     }
 
     /// Unrolls / inlines score playback orders into a linear score sequence.
