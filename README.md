@@ -289,9 +289,10 @@ ln -s "$(pwd)/editor/vscode" ~/.vscode/extensions/tmd-vscode
 
 ## Documentation & Language Specification
 
-For the formal TMD language specification implemented in TmdSwift, please refer to:
-- English: [`docs/TMD-Language-Specification.en.md`](docs/TMD-Language-Specification.en.md)
-- Traditional Chinese: [`docs/TMD-Language-Specification.zh-TW.md`](docs/TMD-Language-Specification.zh-TW.md)
+- Frequently Asked Questions: [`docs/FAQ.md`](docs/FAQ.md)
+- Formal Language Specification (English): [`docs/TMD-Language-Specification.en.md`](docs/TMD-Language-Specification.en.md)
+- Formal Language Specification (Traditional Chinese): [`docs/TMD-Language-Specification.zh-TW.md`](docs/TMD-Language-Specification.zh-TW.md)
+- AI Co-Composing Guide: [`docs/AI-Co-Composing-With-TMD.md`](docs/AI-Co-Composing-With-TMD.md)
 
 Historical draft notes and original design concepts are preserved in [`docs/Band-Score.syntax.zh_TW.md`](docs/Band-Score.syntax.zh_TW.md).
 
