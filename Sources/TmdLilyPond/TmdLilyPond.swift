@@ -32,8 +32,7 @@ public struct TMDLilyPondGenerator {
 
         """
 
-        let distinctInstruments = Array(Set(sheet.paragraphs.map { $0.instrument })).sorted()
-        let instruments = distinctInstruments.isEmpty ? ["Piano"] : distinctInstruments
+        let instruments = sheet.distinctInstruments()
 
         var identifierMap: [String: String] = [:]
         var usedNames: Set<String> = []

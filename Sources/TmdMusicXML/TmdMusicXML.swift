@@ -30,8 +30,7 @@ public struct TMDMusicXMLGenerator {
 
         """
 
-        let distinctInstruments = Array(Set(sheet.paragraphs.map { $0.instrument })).sorted()
-        let instruments = distinctInstruments.isEmpty ? ["Piano"] : distinctInstruments
+        let instruments = sheet.distinctInstruments()
 
         // Part List
         xml += "  <part-list>\n"

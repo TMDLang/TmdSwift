@@ -57,18 +57,7 @@ public struct TMDVSQGenerator: Sendable {
     }
 
     private static func resolveTargetInstrument(sheet: Sheet, requested: String?) -> String {
-        let distinct = Array(Set(sheet.paragraphs.map { $0.instrument })).sorted()
-        if let req = requested, distinct.contains(req) {
-            return req
-        }
-        // Match vocal, voice, miku, melody
-        let regex = try? NSRegularExpression(pattern: "vocal|voice|miku|sing|lead|melody", options: .caseInsensitive)
-        if let matched = distinct.first(where: { inst in
-            regex?.firstMatch(in: inst, range: NSRange(inst.startIndex..., in: inst)) != nil
-        }) {
-            return matched
-        }
-        return distinct.first ?? "Vocal"
+        sheet.resolveVocalInstrument(requested: requested)
     }
 
     private static func generateVsqTrack(

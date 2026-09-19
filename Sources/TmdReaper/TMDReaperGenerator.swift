@@ -15,7 +15,7 @@ public struct TMDReaperGenerator {
 
     /// Generates REAPER project file content (.rpp) from a Sheet.
     public static func generateRPP(from sheet: Sheet, ppq: UInt16 = defaultPPQ) -> String {
-        let distinctInstruments = Array(Set(sheet.paragraphs.map { $0.instrument })).sorted()
+        let distinctInstruments = sheet.distinctInstruments()
         let timelineInstrument = sheet.paragraphs.first {
             $0.sections.contains { !$0.directives.isEmpty }
         }?.instrument ?? distinctInstruments.first ?? "Piano"

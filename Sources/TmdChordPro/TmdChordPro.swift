@@ -59,7 +59,7 @@ public struct TMDChordProGenerator: Sendable {
         }
 
         // Determine target track: pick guitar/chords instrument or first instrument
-        let distinctInstruments = Array(Set(sheet.paragraphs.map { $0.instrument })).sorted()
+        let distinctInstruments = sheet.distinctInstruments(fallbackToDefault: false)
         let regex = try? NSRegularExpression(pattern: "guitar|chord|lead|piano", options: .caseInsensitive)
         let targetInstrument = distinctInstruments.first { inst in
             regex?.firstMatch(in: inst, range: NSRange(inst.startIndex..., in: inst)) != nil

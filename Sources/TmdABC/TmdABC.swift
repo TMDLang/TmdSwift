@@ -20,8 +20,7 @@ public struct TMDABCGenerator {
         abc += "Q:1/4=\(Int(sheet.speed > 0 ? sheet.speed : 120))\n"
         abc += "K:\(abcKey(sheet.keySignature.description))\n\n"
 
-        let distinctInstruments = Array(Set(sheet.paragraphs.map { $0.instrument })).sorted()
-        let instruments = distinctInstruments.isEmpty ? ["Piano"] : distinctInstruments
+        let instruments = sheet.distinctInstruments()
 
         // Output Voice headers
         for (idx, inst) in instruments.enumerated() {

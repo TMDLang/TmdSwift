@@ -26,7 +26,7 @@ public struct TMDMIDIGenerator {
             )
         }
 
-        var distinctInstruments = Array(Set(effectiveSheet.paragraphs.map { $0.instrument })).sorted()
+        var distinctInstruments = effectiveSheet.distinctInstruments(fallbackToDefault: false)
         if let targetInstrument {
             distinctInstruments = distinctInstruments.filter { $0 == targetInstrument }
         }

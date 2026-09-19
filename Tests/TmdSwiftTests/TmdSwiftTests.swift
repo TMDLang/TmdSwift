@@ -1070,4 +1070,33 @@ import TmdSkill
     #expect(groups6[7].units[0] == .tie)
 }
 
+@Test func testSheetInstrumentHelper() throws {
+    let sheetWithInstruments = Sheet(
+        paragraphs: [
+            Paragraph(name: "intro", instrument: "Guitar"),
+            Paragraph(name: "verse", instrument: "Bass"),
+            Paragraph(name: "chorus", instrument: "Vocal"),
+            Paragraph(name: "intro", instrument: "Piano")
+        ]
+    )
 
+    #expect(sheetWithInstruments.distinctInstruments() == ["Bass", "Guitar", "Piano", "Vocal"])
+    #expect(sheetWithInstruments.distinctInstruments(fallbackToDefault: false) == ["Bass", "Guitar", "Piano", "Vocal"])
+
+    let emptySheet = Sheet(paragraphs: [])
+    #expect(emptySheet.distinctInstruments(fallbackToDefault: true) == ["Piano"])
+    #expect(emptySheet.distinctInstruments(fallbackToDefault: false) == [])
+
+    // Vocal track resolution
+    #expect(sheetWithInstruments.resolveVocalInstrument() == "Vocal")
+    #expect(sheetWithInstruments.resolveVocalInstrument(requested: "Guitar") == "Guitar")
+    #expect(sheetWithInstruments.resolveVocalInstrument(requested: "Unknown") == "Vocal")
+
+    let sheetWithMiku = Sheet(paragraphs: [Paragraph(name: "verse", instrument: "Hatsune_Miku")])
+    #expect(sheetWithMiku.resolveVocalInstrument() == "Hatsune_Miku")
+
+    let sheetOnlyBass = Sheet(paragraphs: [Paragraph(name: "verse", instrument: "Bass")])
+    #expect(sheetOnlyBass.resolveVocalInstrument() == "Bass")
+
+    #expect(emptySheet.resolveVocalInstrument() == "Vocal")
+}

@@ -1,3 +1,5 @@
+import Foundation
+
 /// Time signature of the piece (e.g. `<4/4>` or `<3/4>`).
 ///
 /// > Note: Originally named `Beat` in Aguai's C++ code, where the denominator
@@ -598,5 +600,33 @@ public struct Sheet: Equatable {
         metadata: [String: String] = [:]
     ) {
         self.init(name: name, speed: speed, keySignature: KeySignature(string: keySignature), beat: beat, paragraphs: paragraphs, orders: orders, metadata: metadata)
+    }
+
+    /// Returns a sorted list of unique instrument names present across all paragraphs in the sheet.
+    /// - Parameter fallbackToDefault: If true and no instruments exist, returns `["Piano"]`.
+    public func distinctInstruments(fallbackToDefault: Bool = true) -> [String] {
+        let distinct = Array(Set(paragraphs.map(\.instrument))).sorted()
+        if distinct.isEmpty && fallbackToDefault {
+            return ["Piano"]
+        }
+        return distinct
+    }
+
+    /// Resolves the target vocal instrument for singing-synthesis exporters (VSQ, VSQX, UST).
+    /// Checks the requested instrument first, then matches common vocal keywords, falling back to the first instrument or `"Vocal"`.
+    public func resolveVocalInstrument(requested: String? = nil) -> String {
+        let distinct = distinctInstruments(fallbackToDefault: false)
+        if let requested = requested, distinct.contains(requested) {
+            return requested
+        }
+
+        let regex = try? NSRegularExpression(pattern: "vocal|voice|miku|utau|teto|sing|lead|melody", options: .caseInsensitive)
+        if let matched = distinct.first(where: { inst in
+            regex?.firstMatch(in: inst, range: NSRange(inst.startIndex..., in: inst)) != nil
+        }) {
+            return matched
+        }
+
+        return distinct.first ?? "Vocal"
     }
 }
