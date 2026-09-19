@@ -455,6 +455,31 @@ function activate(context) {
         runMeasureCheck(editor.document, true);
     }));
 
+    // Output channel for Song Inspection
+    let inspectOutputChannel = null;
+
+    // Command: Inspect Song Profile
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.inspectSong', async () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || (editor.document.languageId !== 'tmd' && !editor.document.fileName.endsWith('.tmd'))) {
+            vscode.window.showErrorMessage('No active TMD score found. Please open a .tmd file.');
+            return;
+        }
+        const text = editor.document.getText();
+        const res = await runTmdInspectBuffer(text);
+        if (res.success && res.report) {
+            if (!inspectOutputChannel) {
+                inspectOutputChannel = vscode.window.createOutputChannel('TMD Song Inspector');
+                context.subscriptions.push(inspectOutputChannel);
+            }
+            inspectOutputChannel.clear();
+            inspectOutputChannel.appendLine(res.report);
+            inspectOutputChannel.show(true);
+        } else {
+            vscode.window.showErrorMessage(`TMD Inspect Error: ${res.error || 'Failed to inspect song'}`);
+        }
+    }));
+
     // Command: Format Document
     context.subscriptions.push(vscode.commands.registerCommand('tmd.formatDocument', () => {
         return vscode.commands.executeCommand('editor.action.formatDocument');
@@ -1249,6 +1274,31 @@ function activate(context) {
         });
     }
 
+    function runTmdInspectBuffer(text, asJson = false) {
+        return new Promise((resolve) => {
+            const tmdBin = getTmdExecutable();
+            const tempDir = os.tmpdir();
+            const tempFilePath = path.join(tempDir, `tmd_chat_inspect_${Date.now()}.tmd`);
+
+            try {
+                fs.writeFileSync(tempFilePath, text, 'utf8');
+            } catch (err) {
+                resolve({ success: false, error: err.message, report: '' });
+                return;
+            }
+
+            const args = asJson ? ['inspect', tempFilePath, '--json'] : ['inspect', tempFilePath];
+            execFile(tmdBin, args, (error, stdout, stderr) => {
+                try { fs.unlinkSync(tempFilePath); } catch (_) {}
+                if (error && (!stdout || stdout.trim().length === 0)) {
+                    resolve({ success: false, error: (stderr || error?.message || 'Inspect failed'), report: '' });
+                } else {
+                    resolve({ success: true, report: stdout.trim() });
+                }
+            });
+        });
+    }
+
     function getTmdSpecificationText() {
         try {
             const skillPath = path.join(context.extensionPath, 'skill.md');
@@ -1312,6 +1362,36 @@ function activate(context) {
             })
         );
 
+        // Tool: tmd_inspect
+        context.subscriptions.push(
+            vscode.lm.registerTool('tmd_inspect', {
+                async invoke(options, token) {
+                    const input = options.input || {};
+                    let scoreText = input.text;
+                    if (!scoreText && input.filePath && fs.existsSync(input.filePath)) {
+                        scoreText = fs.readFileSync(input.filePath, 'utf8');
+                    }
+                    if (!scoreText) {
+                        const editor = vscode.window.activeTextEditor;
+                        if (editor && editor.document.languageId === 'tmd') {
+                            scoreText = editor.document.getText();
+                        }
+                    }
+
+                    if (!scoreText) {
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart('Error: No TMD score text provided or active TMD document found.')
+                        ]);
+                    }
+
+                    const result = await runTmdInspectBuffer(scoreText, input.asJson ?? false);
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart(result.report || result.error || 'Inspection failed')
+                    ]);
+                }
+            })
+        );
+
         // Tool: tmd_get_specification
         context.subscriptions.push(
             vscode.lm.registerTool('tmd_get_specification', {
@@ -1333,6 +1413,22 @@ function activate(context) {
             const activeCode = (activeEditor && activeEditor.document.languageId === 'tmd')
                 ? activeEditor.document.getText()
                 : '';
+
+            if (request.command === 'inspect') {
+                stream.progress('Inspecting song musical profile, vocal tessitura, and arrangement density...');
+                const textToInspect = request.prompt.trim().length > 0 ? request.prompt : activeCode;
+                if (!textToInspect) {
+                    stream.markdown('Please open a `.tmd` file or provide TMD score text to inspect.');
+                    return;
+                }
+                const res = await runTmdInspectBuffer(textToInspect);
+                if (res.success && res.report) {
+                    stream.markdown('```text\n' + res.report + '\n```\n');
+                } else {
+                    stream.markdown('Inspection error: ' + (res.error || 'Unknown error'));
+                }
+                return;
+            }
 
             if (request.command === 'check') {
                 stream.progress('Checking TMD measure consistency and syntax...');

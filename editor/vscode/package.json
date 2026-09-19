@@ -137,6 +137,12 @@
         "enablement": "editorLangId == tmd"
       },
       {
+        "command": "tmd.inspectSong",
+        "title": "Inspect Song Profile (Vocal Range & Structure)",
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
+      },
+      {
         "command": "tmd.refactorDoubleGrid",
         "title": "Refactor: Double Grid Resolution (<4*> -> <8*>)",
         "category": "TMD",
@@ -301,6 +307,11 @@
           "group": "tmd_tools@2"
         },
         {
+          "command": "tmd.inspectSong",
+          "when": "editorLangId == tmd",
+          "group": "tmd_tools@3"
+        },
+        {
           "command": "tmd.refactorDoubleGrid",
           "when": "editorLangId == tmd",
           "group": "tmd_refactor@1"
@@ -361,6 +372,10 @@
             "description": "Inspect measure consistency, beat calculations, and syntax in TMD score."
           },
           {
+            "name": "inspect",
+            "description": "Inspect song musical profile, vocal tessitura/range, and arrangement density."
+          },
+          {
             "name": "compose",
             "description": "Compose, harmonize, or orchestrate TMD musical sections and tracks."
           },
@@ -391,6 +406,29 @@
             "filePath": {
               "type": "string",
               "description": "Optional file path to the .tmd file to check."
+            }
+          }
+        }
+      },
+      {
+        "name": "tmd_inspect",
+        "toolReferenceName": "tmdInspect",
+        "displayName": "TMD Song Inspector",
+        "modelDescription": "Inspects and profiles a TMD song: vocal pitch range/tessitura, key modulations, section timing/structure, chord vocabulary, and arrangement density.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "The TMD score source code to inspect. If omitted, the active editor's document is inspected."
+            },
+            "filePath": {
+              "type": "string",
+              "description": "Optional file path to the .tmd file to inspect."
+            },
+            "asJson": {
+              "type": "boolean",
+              "description": "Whether to return the profile in structured JSON format instead of human-readable text report."
             }
           }
         }

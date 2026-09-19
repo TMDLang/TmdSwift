@@ -99,6 +99,43 @@ struct TmdOutlineCommand: ParsableCommand {
     }
 }
 
+struct TmdInspectCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "inspect",
+        abstract: "Inspect full song musical profile, vocal tessitura, key modulations, and arrangement density."
+    )
+
+    @Argument(help: "Path to the .tmd file to inspect.")
+    var inputPath: String
+
+    @Flag(name: [.customLong("json")], help: "Output song profile as JSON.")
+    var json: Bool = false
+
+    func run() throws {
+        let sheet: Sheet
+        do {
+            sheet = try TmdParser.parseThrowing(filePathOrURL: inputPath)
+        } catch {
+            print("Error reading \(inputPath): \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
+        let profile = TMDSongInspector.inspect(sheet: sheet)
+
+        if json {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted]
+            if let data = try? encoder.encode(profile), let str = String(data: data, encoding: .utf8) {
+                print(str)
+            } else {
+                print("{}")
+            }
+        } else {
+            print(TMDSongInspector.generateReport(profile))
+        }
+    }
+}
+
 struct TmdFormatCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "format",
@@ -662,6 +699,7 @@ struct TmdCLICommand: ParsableCommand {
         version: TmdVersion.current,
         subcommands: [
             TmdCheckCommand.self,
+            TmdInspectCommand.self,
             TmdFormatCommand.self,
             TmdOutlineCommand.self,
             TmdRefactorCommand.self
@@ -673,6 +711,9 @@ struct TmdCLICommand: ParsableCommand {
 
     @Flag(name: [.short, .long], help: "Only parse and display the score structure summary.")
     var parseOnly: Bool = false
+
+    @Flag(name: [.customLong("inspect")], help: "Inspect full song musical profile, vocal range, and orchestration density.")
+    var inspectSong: Bool = false
 
     @Flag(name: [.long], help: "Play the score using the macOS default sound bank.")
     var play: Bool = false
@@ -760,6 +801,12 @@ struct TmdCLICommand: ParsableCommand {
         print("----------------------------------------")
         print(sheet.summary())
         print("----------------------------------------")
+
+        if inspectSong {
+            let profile = TMDSongInspector.inspect(sheet: sheet)
+            print(TMDSongInspector.generateReport(profile))
+            return
+        }
 
         if parseOnly {
             return
@@ -984,9 +1031,11 @@ struct TmdCLICommand: ParsableCommand {
 
 // Route subcommand dispatch manually if first argument matches a subcommand
 let rawArgs = Array(CommandLine.arguments.dropFirst())
-if let first = rawArgs.first, ["check", "outline", "format", "refactor"].contains(first) {
+if let first = rawArgs.first, ["check", "inspect", "outline", "format", "refactor"].contains(first) {
     if first == "check" {
         TmdCheckCommand.main(Array(rawArgs.dropFirst()))
+    } else if first == "inspect" {
+        TmdInspectCommand.main(Array(rawArgs.dropFirst()))
     } else if first == "outline" {
         TmdOutlineCommand.main(Array(rawArgs.dropFirst()))
     } else if first == "format" {
