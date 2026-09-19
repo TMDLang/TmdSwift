@@ -719,6 +719,12 @@ struct TmdCLICommand: ParsableCommand {
     @Option(name: [.long], help: "Optional SoundFont (.sf2) or DLS soundbank path for audio rendering.")
     var soundfont: String?
 
+    @Option(name: .long, help: "Optional section filter for MIDI export or playback.")
+    var section: String?
+
+    @Option(name: .long, help: "Optional instrument filter for MIDI export or playback.")
+    var instrument: String?
+
     func run() throws {
         if installSkills {
             print("Installing TMD skill for AI agents...")
@@ -760,12 +766,16 @@ struct TmdCLICommand: ParsableCommand {
         }
 
         if play {
-            try play(sheet: sheet)
+            try play(sheet: sheet, targetParagraph: section, targetInstrument: instrument)
         }
 
         // Export to MIDI if requested
         if let outputPath = midiOutput {
-            let midiData = TMDMIDIGenerator.generateMIDI(from: sheet)
+            let midiData = TMDMIDIGenerator.generateMIDI(
+                from: sheet,
+                targetParagraph: section,
+                targetInstrument: instrument
+            )
             let outURL = URL(fileURLWithPath: outputPath)
             do {
                 try midiData.write(to: outURL)
@@ -923,12 +933,17 @@ struct TmdCLICommand: ParsableCommand {
         }
     }
 
-    private func play(sheet: Sheet) throws {
+    private func play(sheet: Sheet, targetParagraph: String? = nil, targetInstrument: String? = nil) throws {
 #if os(macOS)
         let soundBankURL = soundfont.map { URL(fileURLWithPath: $0) }
         let wavData: Data
         do {
-            wavData = try TMDWAVRenderer.renderWAV(from: sheet, soundBankURL: soundBankURL)
+            wavData = try TMDWAVRenderer.renderWAV(
+                from: sheet,
+                soundBankURL: soundBankURL,
+                targetParagraph: targetParagraph,
+                targetInstrument: targetInstrument
+            )
         } catch {
             print("Error rendering audio for playback: \(error.localizedDescription)")
             throw ExitCode.failure

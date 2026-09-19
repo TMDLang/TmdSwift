@@ -483,6 +483,78 @@ import TmdSkill
     #expect(abc.contains("%%MIDI channel 10"))
 }
 
+@Test func testMIDIGenerationWithTargetSectionAndInstrument() throws {
+    let tmd = """
+    ::SCORE::
+    ** Multi Section Song **
+    != 120
+    ?= C
+    <4/4>
+
+    intro:Piano@|0|{
+        <4*>
+        1 2 3 4
+    }
+
+    intro:Bass@|0|{
+        <4*>
+        1_ - - -
+    }
+
+    verse:Piano@|0|{
+        <4*>
+        5 6 7 1^
+    }
+
+    -> intro -> verse ->#
+    """
+
+    let sheet = try #require(TmdParser.parse(string: tmd))
+
+    // 1. Generate full MIDI: should contain both Piano and Bass tracks
+    let fullMidi = TMDMIDIGenerator.generateMIDI(from: sheet)
+    #expect(!fullMidi.isEmpty)
+
+    // 2. Generate section-only MIDI: intro
+    let introMidi = TMDMIDIGenerator.generateMIDI(from: sheet, targetParagraph: "intro")
+    #expect(!introMidi.isEmpty)
+
+    // 3. Generate solo track MIDI: intro (Piano only)
+    let pianoIntroMidi = TMDMIDIGenerator.generateMIDI(from: sheet, targetParagraph: "intro", targetInstrument: "Piano")
+    #expect(!pianoIntroMidi.isEmpty)
+    // Should be smaller than introMidi because Bass track is excluded
+    #expect(pianoIntroMidi.count < introMidi.count)
+
+    // 4. Test CLI export with --section and --instrument flags
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    let tmdPath = tempDir.appendingPathComponent("score.tmd").path
+    try tmd.write(toFile: tmdPath, atomically: true, encoding: .utf8)
+    let midiOutPath = tempDir.appendingPathComponent("intro_piano.mid").path
+
+    var tmdURL = URL(fileURLWithPath: ProcessInfo.processInfo.arguments[0]).deletingLastPathComponent().appendingPathComponent("tmd")
+    if !FileManager.default.isExecutableFile(atPath: tmdURL.path) {
+        let fallbackURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            .appendingPathComponent(".build/out/Products/Debug/tmd")
+        if FileManager.default.isExecutableFile(atPath: fallbackURL.path) {
+            tmdURL = fallbackURL
+        }
+    }
+    if FileManager.default.isExecutableFile(atPath: tmdURL.path) {
+        let process = Process()
+        process.executableURL = tmdURL
+        process.arguments = [tmdPath, "-m", midiOutPath, "--section", "intro", "--instrument", "Piano"]
+        try process.run()
+        process.waitUntilExit()
+        #expect(process.terminationStatus == 0)
+        #expect(FileManager.default.fileExists(atPath: midiOutPath))
+        let cliData = try Data(contentsOf: URL(fileURLWithPath: midiOutPath))
+        #expect(!cliData.isEmpty)
+    }
+}
+
 @Test func testLegacySectionMarkerSyntax() throws {
     let tmd = """
     ::SCORE:: ** Legacy ** != 120 ?= C <4/4>

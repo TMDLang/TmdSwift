@@ -35,12 +35,20 @@ public struct TMDWAVRenderer {
     ///   - sheet: The TMD Sheet AST to render.
     ///   - soundBankURL: Optional custom SoundFont (.sf2) or DLS soundbank URL. If nil, uses macOS default Roland GS soundbank.
     ///   - sampleRate: Sample rate in Hz (default: 44100).
+    ///   - targetParagraph: Optional section filter.
+    ///   - targetInstrument: Optional instrument filter.
     public static func renderWAV(
         from sheet: Sheet,
         soundBankURL: URL? = nil,
-        sampleRate: Double = 44100.0
+        sampleRate: Double = 44100.0,
+        targetParagraph: String? = nil,
+        targetInstrument: String? = nil
     ) throws -> Data {
-        let midiData = TMDMIDIGenerator.generateMIDI(from: sheet)
+        let midiData = TMDMIDIGenerator.generateMIDI(
+            from: sheet,
+            targetParagraph: targetParagraph,
+            targetInstrument: targetInstrument
+        )
         return try renderWAV(fromMIDIData: midiData, soundBankURL: soundBankURL, sampleRate: sampleRate)
     }
 

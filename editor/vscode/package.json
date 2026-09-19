@@ -183,9 +183,67 @@
         "title": "Refactor: Extract Instrument Track...",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
+      },
+      {
+        "command": "tmd.playSection",
+        "title": "Play Section",
+        "category": "TMD",
+        "icon": "$(play)"
+      },
+      {
+        "command": "tmd.playTrack",
+        "title": "Play Track (Solo)",
+        "category": "TMD",
+        "icon": "$(play)"
+      },
+      {
+        "command": "tmd.playCurrentSection",
+        "title": "Play Current Section at Cursor",
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
+      },
+      {
+        "command": "tmd.playCurrentTrack",
+        "title": "Play Current Track at Cursor",
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
+      },
+      {
+        "command": "tmd.refreshOutline",
+        "title": "Refresh Outline",
+        "category": "TMD",
+        "icon": "$(refresh)"
       }
     ],
+    "views": {
+      "explorer": [
+        {
+          "id": "tmdOutlineView",
+          "name": "TMD Outline & Player",
+          "when": "editorLangId == tmd || tmdHasActiveDocument"
+        }
+      ]
+    },
     "menus": {
+      "view/title": [
+        {
+          "command": "tmd.refreshOutline",
+          "when": "view == tmdOutlineView",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "tmd.playSection",
+          "when": "view == tmdOutlineView && viewItem == sectionNode",
+          "group": "inline"
+        },
+        {
+          "command": "tmd.playTrack",
+          "when": "view == tmdOutlineView && viewItem == trackNode",
+          "group": "inline"
+        }
+      ],
       "editor/context": [
         {
           "command": "tmd.openMidiPlayer",

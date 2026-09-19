@@ -224,8 +224,7 @@ function activate(context) {
 </html>`;
     }
 
-    // 6.5. Open Web MIDI Player
-    context.subscriptions.push(vscode.commands.registerCommand('tmd.openMidiPlayer', () => {
+    function playMidiWithFilter(options = {}) {
         const filePath = getActiveTmdFilePath();
         if (!filePath) return;
 
@@ -260,7 +259,15 @@ function activate(context) {
             const tmdBin = getTmdExecutable();
             const tempMidiPath = path.join(os.tmpdir(), `tmd_preview_${Date.now()}.mid`);
 
-            execFile(tmdBin, [filePath, '-m', tempMidiPath], (error, stdout, stderr) => {
+            const args = [filePath, '-m', tempMidiPath];
+            if (options.section) {
+                args.push('--section', options.section);
+            }
+            if (options.instrument) {
+                args.push('--instrument', options.instrument);
+            }
+
+            execFile(tmdBin, args, (error, stdout, stderr) => {
                 if (error) {
                     const errMsg = (stderr && stderr.trim().length > 0) ? stderr.trim() : error.message;
                     vscode.window.showErrorMessage(`Failed to export MIDI for player: ${errMsg}`);
@@ -283,6 +290,14 @@ function activate(context) {
                         }
                     }
 
+                    if (options.section && options.instrument) {
+                        displayTitle += ` [${options.section}:${options.instrument}]`;
+                    } else if (options.section) {
+                        displayTitle += ` [Section: ${options.section}]`;
+                    } else if (options.instrument) {
+                        displayTitle += ` [Track: ${options.instrument}]`;
+                    }
+
                     currentMidiPanel.webview.postMessage({
                         command: 'loadMidi',
                         title: displayTitle,
@@ -295,6 +310,11 @@ function activate(context) {
                 }
             });
         });
+    }
+
+    // 6.5. Open Web MIDI Player
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.openMidiPlayer', () => {
+        playMidiWithFilter();
     }));
 
     // 7. Play Audio in Terminal Preview
@@ -945,10 +965,241 @@ function activate(context) {
         })
     );
 
-    // Initial check for currently active editor
-    if (vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.languageId === 'tmd') {
-        runMeasureCheck(vscode.window.activeTextEditor.document);
+    // Outline & Play Commands
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.playSection', (nodeOrArg) => {
+        let section = null;
+        if (typeof nodeOrArg === 'string') {
+            section = nodeOrArg;
+        } else if (nodeOrArg && nodeOrArg.sectionName) {
+            section = nodeOrArg.sectionName;
+        }
+        if (section) {
+            playMidiWithFilter({ section });
+        } else {
+            vscode.window.showWarningMessage('No section specified to play.');
+        }
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.playTrack', (nodeOrArg) => {
+        let section = null;
+        let instrument = null;
+        if (nodeOrArg && typeof nodeOrArg === 'object') {
+            section = nodeOrArg.sectionName;
+            instrument = nodeOrArg.instrument;
+        }
+        if (section && instrument) {
+            playMidiWithFilter({ section, instrument });
+        } else if (instrument) {
+            playMidiWithFilter({ instrument });
+        } else {
+            vscode.window.showWarningMessage('No track/instrument specified to play.');
+        }
+    }));
+
+    // Play Section / Track at current cursor position
+    function getCursorContext() {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || editor.document.languageId !== 'tmd') return null;
+        const lineIndex = editor.selection.active.line;
+        const doc = editor.document;
+
+        // Search backward from cursor line to find enclosing paragraph header
+        const headerRegex = /^\s*([a-zA-Z0-9_-]+)\s*:\s*([a-zA-Z0-9_\-+]+)\s*@/i;
+        for (let l = lineIndex; l >= 0; l--) {
+            const text = doc.lineAt(l).text;
+            const match = text.match(headerRegex);
+            if (match) {
+                return { section: match[1], instrument: match[2] };
+            }
+        }
+        return null;
     }
+
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.playCurrentSection', () => {
+        const ctx = getCursorContext();
+        if (ctx && ctx.section) {
+            playMidiWithFilter({ section: ctx.section });
+        } else {
+            vscode.window.showInformationMessage('Cursor is not inside any recognizable TMD section.');
+        }
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.playCurrentTrack', () => {
+        const ctx = getCursorContext();
+        if (ctx && ctx.section && ctx.instrument) {
+            playMidiWithFilter({ section: ctx.section, instrument: ctx.instrument });
+        } else {
+            vscode.window.showInformationMessage('Cursor is not inside any recognizable TMD track.');
+        }
+    }));
+
+    // CodeLens Provider: Add [▶ Play Section] and [▶ Play Track] above each track block
+    context.subscriptions.push(
+        vscode.languages.registerCodeLensProvider('tmd', {
+            provideCodeLenses(document, token) {
+                const lenses = [];
+                const headerRegex = /^\s*([a-zA-Z0-9_-]+)\s*:\s*([a-zA-Z0-9_\-+]+)\s*@/i;
+                const lineCount = document.lineCount;
+
+                for (let i = 0; i < lineCount; i++) {
+                    const line = document.lineAt(i);
+                    const match = line.text.match(headerRegex);
+                    if (match) {
+                        const sectionName = match[1];
+                        const instrument = match[2];
+                        const range = new vscode.Range(i, 0, i, line.text.length);
+
+                        lenses.push(new vscode.CodeLens(range, {
+                            title: `▶ Play Section (${sectionName})`,
+                            command: 'tmd.playSection',
+                            arguments: [sectionName]
+                        }));
+
+                        lenses.push(new vscode.CodeLens(range, {
+                            title: `▶ Play Track (${instrument})`,
+                            command: 'tmd.playTrack',
+                            arguments: [{ sectionName, instrument }]
+                        }));
+                    }
+                }
+                return lenses;
+            }
+        })
+    );
+
+    // Custom TreeDataProvider for TMD Outline in Explorer Sidebar
+    class TMDOutlineTreeDataProvider {
+        constructor() {
+            this._onDidChangeTreeData = new vscode.EventEmitter();
+            this.onDidChangeTreeData = this._onDidChangeTreeData.event;
+        }
+
+        refresh() {
+            this._onDidChangeTreeData.fire();
+        }
+
+        getTreeItem(element) {
+            return element;
+        }
+
+        async getChildren(element) {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor || editor.document.languageId !== 'tmd') {
+                return [];
+            }
+            const doc = editor.document;
+
+            if (!element) {
+                // Root items: fetch outline JSON from CLI
+                const rawNodes = await new Promise((resolve) => {
+                    const tmdBin = getTmdExecutable();
+                    let tempFilePath = null;
+                    let targetPath = doc.fileName;
+
+                    if (doc.isDirty || doc.isUntitled) {
+                        const tempDir = os.tmpdir();
+                        tempFilePath = path.join(tempDir, `tmd_tree_${Date.now()}_${path.basename(doc.fileName || 'untitled.tmd')}`);
+                        try {
+                            fs.writeFileSync(tempFilePath, doc.getText(), 'utf8');
+                            targetPath = tempFilePath;
+                        } catch (err) {
+                            resolve([]);
+                            return;
+                        }
+                    }
+
+                    execFile(tmdBin, ['outline', '--json', targetPath], (error, stdout) => {
+                        if (tempFilePath) {
+                            try { fs.unlinkSync(tempFilePath); } catch (e) {}
+                        }
+                        if (error || !stdout) {
+                            resolve([]);
+                            return;
+                        }
+                        try {
+                            resolve(JSON.parse(stdout));
+                        } catch (_) {
+                            resolve([]);
+                        }
+                    });
+                });
+
+                return rawNodes.map(node => this.buildTreeItem(node, null));
+            } else if (element.rawNode && element.rawNode.children) {
+                return element.rawNode.children.map(child => this.buildTreeItem(child, element));
+            }
+            return [];
+        }
+
+        buildTreeItem(node, parentItem) {
+            const hasChildren = Array.isArray(node.children) && node.children.length > 0;
+            const collapsibleState = hasChildren
+                ? vscode.TreeItemCollapsibleState.Expanded
+                : vscode.TreeItemCollapsibleState.None;
+
+            const item = new vscode.TreeItem(node.name, collapsibleState);
+            item.description = node.detail || '';
+            item.rawNode = node;
+
+            if (node.range) {
+                const line = Math.max(0, (node.range.startLine || 1) - 1);
+                const col = Math.max(0, (node.range.startColumn || 1) - 1);
+                item.command = {
+                    command: 'vscode.open',
+                    title: 'Jump to Symbol',
+                    arguments: [
+                        vscode.window.activeTextEditor.document.uri,
+                        { selection: new vscode.Range(line, col, line, col) }
+                    ]
+                };
+            }
+
+            // Identify section and track nodes to attach contextValue for inline play buttons
+            if (parentItem && parentItem.label === 'Sections') {
+                // This is a section node (e.g. "intro", "verse")
+                item.contextValue = 'sectionNode';
+                item.sectionName = node.name;
+                item.iconPath = new vscode.ThemeIcon('symbol-namespace');
+            } else if (parentItem && parentItem.contextValue === 'sectionNode') {
+                // This is a track node within a section
+                item.contextValue = 'trackNode';
+                item.sectionName = parentItem.sectionName;
+                item.instrument = node.name;
+                item.iconPath = new vscode.ThemeIcon('symbol-field');
+            } else if (node.name.startsWith('Score:')) {
+                item.iconPath = new vscode.ThemeIcon('file-submodule');
+            } else if (node.name === 'Sections') {
+                item.iconPath = new vscode.ThemeIcon('list-tree');
+            } else if (node.name === 'Orders') {
+                item.iconPath = new vscode.ThemeIcon('git-commit');
+            } else {
+                item.iconPath = new vscode.ThemeIcon('symbol-event');
+            }
+
+            return item;
+        }
+    }
+
+    const outlineTreeProvider = new TMDOutlineTreeDataProvider();
+    context.subscriptions.push(
+        vscode.window.registerTreeDataProvider('tmdOutlineView', outlineTreeProvider)
+    );
+
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.refreshOutline', () => {
+        outlineTreeProvider.refresh();
+    }));
+
+    // Update context when active editor changes
+    function updateActiveDocContext(editor) {
+        const isTmd = editor && editor.document.languageId === 'tmd';
+        vscode.commands.executeCommand('setContext', 'tmdHasActiveDocument', !!isTmd);
+        if (isTmd) {
+            outlineTreeProvider.refresh();
+        }
+    }
+
+    context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(updateActiveDocContext));
+    updateActiveDocContext(vscode.window.activeTextEditor);
 }
 
 function deactivate() {}

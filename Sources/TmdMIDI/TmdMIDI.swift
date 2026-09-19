@@ -6,14 +6,37 @@ public struct TMDMIDIGenerator {
     public static let defaultTicksPerQuarterNote: UInt16 = 480
 
     /// Converts a Sheet into Standard MIDI File (SMF Type 1) binary data.
-    public static func generateMIDI(from sheet: Sheet, ticksPerQuarter: UInt16 = defaultTicksPerQuarterNote) -> Data {
-        let distinctInstruments = Array(Set(sheet.paragraphs.map { $0.instrument })).sorted()
-        let timelineInstrument = sheet.paragraphs.first {
+    public static func generateMIDI(
+        from sheet: Sheet,
+        ticksPerQuarter: UInt16 = defaultTicksPerQuarterNote,
+        targetParagraph: String? = nil,
+        targetInstrument: String? = nil
+    ) -> Data {
+        var effectiveSheet = sheet
+        if let targetParagraph {
+            let filteredParagraphs = sheet.paragraphs.filter { $0.name == targetParagraph }
+            effectiveSheet = Sheet(
+                name: sheet.name,
+                speed: sheet.speed,
+                keySignature: sheet.keySignature,
+                beat: sheet.beat,
+                paragraphs: filteredParagraphs,
+                orders: [.name(targetParagraph)],
+                metadata: sheet.metadata
+            )
+        }
+
+        var distinctInstruments = Array(Set(effectiveSheet.paragraphs.map { $0.instrument })).sorted()
+        if let targetInstrument {
+            distinctInstruments = distinctInstruments.filter { $0 == targetInstrument }
+        }
+
+        let timelineInstrument = effectiveSheet.paragraphs.first {
             $0.sections.contains { !$0.directives.isEmpty }
         }?.instrument ?? distinctInstruments.first ?? "Piano"
-        let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: timelineInstrument)
+        let timeline = TMDPlaybackRenderer.render(sheet: effectiveSheet, instrument: timelineInstrument)
         var trackData = [TMDMIDIEncoder.encodeTrack(events: conductorEvents(
-            sheet: sheet, timeline: timeline, ticksPerQuarter: ticksPerQuarter
+            sheet: effectiveSheet, timeline: timeline, ticksPerQuarter: ticksPerQuarter
         ))]
         var melodyChannel = 0
         for (_, instrument) in distinctInstruments.enumerated() {
@@ -26,7 +49,7 @@ public struct TMDMIDIGenerator {
                 channel = UInt8(melodyChannel % 16)
                 melodyChannel += 1
             }
-            let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: instrument)
+            let timeline = TMDPlaybackRenderer.render(sheet: effectiveSheet, instrument: instrument)
             trackData.append(TMDMIDIEncoder.encodeTrack(events: instrumentEvents(
                 timeline: timeline, instrument: instrument, midiInstrument: midiInstrument,
                 channel: channel, ticksPerQuarter: ticksPerQuarter
