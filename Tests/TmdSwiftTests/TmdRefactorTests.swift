@@ -41,6 +41,38 @@ struct TmdRefactorTests {
         #expect(origSheet.orders.count == newSheet.orders.count)
     }
 
+    @Test func testFormatMultiLineBlockCommentsWithConsistentIndentation() throws {
+        let input = """
+        ::SCORE::
+        /*
+         * Header multi-line comment
+         * line 2
+         */
+        ** My Song **
+        != 120
+        ?= C
+        <4/4>
+
+        intro:Piano@|0|{
+        <4*>
+            /*
+             * Section multi-line comment
+             * line 2
+             */
+        1 2 3 4
+        }
+
+        -> intro ->#
+        """
+
+        let formatted = TMDRefactor.format(input)
+        // At root level, comments should not have leading indentation on any line
+        #expect(formatted.contains("/*\n * Header multi-line comment\n * line 2\n */"))
+
+        // Inside paragraph (indentLevel = 1, 4 spaces), every line of comment should be indented with 4 spaces
+        #expect(formatted.contains("    /*\n     * Section multi-line comment\n     * line 2\n     */"))
+    }
+
     @Test func testRenameInstrumentInTMDDocument() throws {
         let input = """
         ::SCORE::

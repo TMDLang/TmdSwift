@@ -37,13 +37,36 @@ public struct TMDRefactorTarget: Sendable {
 
 /// Provides source-preserving formatting and refactoring operations on TMD score documents.
 public struct TMDRefactor {
+    private static func reindentBlockComment(lines: [String], indentPrefix: String) -> [String] {
+        if lines.count <= 1 {
+            return lines.map { indentPrefix + $0.trimmingCharacters(in: .whitespaces) }
+        }
+        let firstLine = lines[0]
+        let baseIndent = firstLine.prefix(while: { $0 == " " || $0 == "\t" }).count
+
+        return lines.enumerated().map { idx, line in
+            if idx == 0 {
+                return indentPrefix + line.trimmingCharacters(in: .whitespaces)
+            }
+            if line.trimmingCharacters(in: .whitespaces).isEmpty {
+                return ""
+            }
+            let lineIndent = line.prefix(while: { $0 == " " || $0 == "\t" }).count
+            let relIndent = max(0, lineIndent - baseIndent)
+            return indentPrefix + String(repeating: " ", count: relIndent) + line.trimmingCharacters(in: .whitespaces)
+        }
+    }
+
     /// Formats a TMD source string preserving comments and line layout while normalizing whitespace and bar tokens.
     public static func format(_ source: String) -> String {
         var resultLines: [String] = []
         let rawLines = source.components(separatedBy: .newlines)
         var inProgramBlock = false
         var indentLevel = 0
-        for line in rawLines {
+        var i = 0
+
+        while i < rawLines.count {
+            let line = rawLines[i]
             let trimmed = line.trimmingCharacters(in: .whitespaces)
 
             if trimmed.contains("\"\"\"") {
@@ -52,29 +75,47 @@ public struct TMDRefactor {
                     inProgramBlock.toggle()
                 }
                 resultLines.append(line)
+                i += 1
                 continue
             }
 
             if inProgramBlock {
                 resultLines.append(line)
+                i += 1
                 continue
             }
 
             if trimmed.isEmpty {
                 resultLines.append("")
+                i += 1
                 continue
             }
 
             if trimmed == "}" {
                 indentLevel = max(0, indentLevel - 1)
                 resultLines.append(formatLine(line, indent: 0))
+                i += 1
                 continue
             }
 
-            // If line is pure block comment
-            if trimmed.hasPrefix("/*") && trimmed.hasSuffix("*/") {
+            // If line starts a block comment
+            if trimmed.hasPrefix("/*") {
+                var commentLines = [line]
+                if !trimmed.contains("*/") || trimmed == "/*" {
+                    var j = i + 1
+                    while j < rawLines.count {
+                        commentLines.append(rawLines[j])
+                        if rawLines[j].contains("*/") {
+                            break
+                        }
+                        j += 1
+                    }
+                    i = j + 1
+                } else {
+                    i += 1
+                }
                 let indent = String(repeating: "    ", count: indentLevel)
-                resultLines.append(indent + trimmed)
+                resultLines.append(contentsOf: reindentBlockComment(lines: commentLines, indentPrefix: indent))
                 continue
             }
 
@@ -84,6 +125,7 @@ public struct TMDRefactor {
             if trimmed.hasSuffix("{") {
                 indentLevel += 1
             }
+            i += 1
         }
 
         // Clean up excessive empty lines (> 2 consecutive empty lines to 1)
