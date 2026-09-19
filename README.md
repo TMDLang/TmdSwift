@@ -12,24 +12,29 @@ Original project: [https://github.com/aguai/TMDLang](https://github.com/aguai/TM
 
 **TMD** (Timebase Mark Down) was originally conceived and designed by the celebrated Taiwanese songwriter, composer, and producer **Chen, Chih-Han / [aguai](https://github.com/aguai) (阿怪, 1974–2019)**, renowned for Mandopop classics such as A-Mei's 《三天三夜》 (*Three Days and Three Nights*).
 
-### Core Philosophy: An Intermediate Representation (IR) for Music
+### The Markdown of Music
 
-Most digital music tools treat music as one of two paradigms:
-1. **An Audio Engineering problem** (DAWs like Logic, Pro Tools, Cubase): Faders, decibel meters, audio tracks, and millisecond waveforms.
-2. **A Desktop Publishing problem** (Engravers like Sibelius, Finale, LilyPond): Stem directions, collision avoidance, beam slants, and printable paper layout.
+Just as **Markdown** freed writers from the tedious tags of HTML, **TMD brings that same simplicity to music**.
 
-**TMD treats music as Source Code.**
+Formats like MusicXML, LilyPond, or multi-track MIDI are like HTML or PostScript: indispensable for web renderers, synthesizers, and print shops, but painful and unnatural for humans to write by hand. Most digital tools push creators into one of two extremes:
+- **An Audio Engineering mindset** (DAWs like Logic, Pro Tools, Cubase): Faders, decibel meters, audio tracks, and millisecond waveforms.
+- **A Desktop Publishing mindset** (Engravers like Sibelius, Finale, LilyPond): Stem directions, collision avoidance, beam slants, and printable paper layout.
 
-TMD is designed as a **music-native Intermediate Representation (IR)**—a format that is **compilable, analyzable, refactorable, and seamlessly understood by both humans and AI**:
-- **Sections are Modules**: `intro`, `verse`, and `chorus` are self-contained, reusable blocks.
-- **Arrangement is Control Flow**: `-> intro -> verse -> chorus -> {?+1} -> chorus ->#` represents the executable flow of the song, complete with dynamic key modulations.
-- **Relative Pitch & Jianpu Thinking**: Melody notes are expressed as movable-do scale degrees (`1`–`7`), octaves (`^`, `_`), and accidentals (`'`, `,`), making transpositions and melodic contours intuitive without staff clutter.
-- **Consistency Check is a Typechecker**: The TMD compiler inspects beat counts against time signatures in each measure like a strict linter.
-- **Song Inspector is a Profiler**: Instead of measuring track volume in decibels, the `tmd inspect` profiler analyzes real songwriting invariants: vocal range and tessitura (lowest/highest note, span in semitones), section duration ratios, harmonic vocabulary, and arrangement density.
+Even traditional plain-text notation like **ABC notation** falls short for modern songs. Designed decades ago for single-melody folk tunes, ABC becomes "rest hell" in multi-instrument arrangements: whenever an instrument rests for an entire section, ABC requires padding dozens of empty-measure rests (`| z4 | z4 | z4 |`) just to keep tracks aligned, cluttering the score and exhausting LLM context windows. Furthermore, because ABC relies on absolute staff pitch rather than movable-do scale degrees, transposing a song or adjusting an arrangement means recalculating every note by hand.
+
+**TMD is the Markdown to their HTML.**
+
+It provides a **music-native Intermediate Representation (IR)**—as natural and clean as a songwriter's lead sheet, yet structured enough to be **compiled, analyzed, refactored, and seamlessly understood by both humans and AI**:
+- **No "Rest Hell" in Multi-Track Arrangements**: Instruments declare their exact entry measure with an offset (e.g. `verse:Guitar@|+4|{ ... }`). Silent measures require zero tokens and zero visual clutter.
+- **Sections are Modular Building Blocks**: `intro`, `verse`, and `chorus` are self-contained blocks defined once and kept compact. Because sections are completely modular, creators can instantly preview individual sections or solo tracks in MIDI/audio without having to listen through the entire score from the beginning.
+- **Arrangement as the Song's Road Map**: The playback order—including dynamic key changes and section repetitions—is declared cleanly at the end (`-> intro -> verse -> chorus -> {?+1} -> chorus ->#`), mirroring how musicians rehearse and structure arrangements in their minds.
+- **Relative Pitch & Movable-Do (Jianpu) Thinking**: Melodies are written in numbered scale degrees (`1`–`7`), octaves (`^`, `_`), and accidentals (`'`, `,`). Transposing a song for a singer's vocal range is as simple as changing `?= C` to `?= Eb`—the melody itself remains untouched.
+- **Measure Consistency as a Helpful Typechecker**: Just as a Markdown linter catches broken links, `tmd check` verifies measure beat counts against time signatures to catch rhythmic typos early.
+- **Song Profile as a Macro Diagnostic**: Instead of measuring track volume in decibels, `tmd inspect` analyzes what songwriters actually care about: vocal range and tessitura (lowest/highest note, span in semitones), section duration ratios, harmonic vocabulary, and arrangement density.
 
 ### Designed for Songwriters, Not Print Shops
 
-TMD was created for people who write, produce, and arrange songs, rather than orchestra sight-readers or sheet music engravers. Yet, because of its semantic purity as an IR, a single `.tmd` score can be compiled and exported into virtually any downstream musical format:
+TMD was built for people who write, produce, and arrange songs, rather than orchestra sight-readers or engravers. Yet, because of its semantic purity as an IR, a single `.tmd` score can be compiled and exported into virtually any downstream musical format:
 - **MIDI (.mid)**: Multi-track SMF Type 1 for importing into any digital audio workstation.
 - **REAPER Project (.rpp)**: Complete with tempo markers, region markers, and multi-track MIDI.
 - **MusicXML (.musicxml)**: W3C MusicXML 4.0 for notation software (MuseScore, Sibelius, Finale, Dorico).
@@ -38,12 +43,24 @@ TMD was created for people who write, produce, and arrange songs, rather than or
 - **Vocal Synthesizers (.vsqx, .vsq, .ust)**: For VOCALOID2/3/4 and UTAU/OpenUtau tuning.
 - **WAV Audio (.wav)**: Built-in synthesis via CoreAudio and SoundFont banks.
 
-### Why TMD Excels in Human-AI Musical Co-Creation
+### Automated Refactoring & Macro Song Inspection
 
-When collaborating with Large Language Models (LLMs) on musical tasks, standard notation formats often introduce friction:
-- **Drastically Reduced Syntax Noise**: Unlike MusicXML's verbose XML tree tags or LilyPond's complex macro typography, TMD uses concise Markdown-like syntax. Even if modern LLMs are capable of generating valid LilyPond code, LilyPond is notorious for being hostile to human reading and editing; using it as an interactive shared medium between human creators and AI becomes agonizing. TMD balances brevity and clarity, minimizing LLM token consumption, preventing syntax hallucinations, and keeping the score immediately readable and editable by humans.
-- **No Multi-Track "Rest Hell" (TMD vs. ABC Notation)**: In ABC notation, arranging multiple parallel instruments across an entire song requires padding inactive instruments with dozens of consecutive measure rests (`| z4 | z4 | z4 |`), which easily desynchronizes LLM context windows. In TMD, instruments specify their exact entry point with an offset (`@|+4|`), and silent measures require zero syntax tokens.
-- **Composable Motifs & Dynamic Key Modulations**: An AI agent can express dynamic modulations (`{?+2}`), melodic continuation, and counterpoint as high-level musical constructs rather than recalculating raw MIDI ticks.
+Beyond AI pair-programming and multi-format exports, TMD empowers songwriters with an entire suite of automated refactoring tools and macro inspection utilities:
+
+- **Song Inspector & Tessitura Profiler (`tmd inspect`)**:
+  - **Vocal Range Verification**: Instantly calculates the exact lowest and highest notes (with absolute MIDI pitch and note names like `C4`, `A#5`), span in semitones, and the specific sections where vocal peaks occur. Songwriters can immediately verify whether a singer can comfortably hit the notes or if a key transposition is needed.
+  - **Song Structure & Timeline Timing**: Calculates precise playback seconds and measure counts for every section (`intro`, `verse`, `chorus`) across the timeline.
+  - **Arrangement Density & Peak Concurrency**: Analyzes orchestration density section by section, identifying the peak concurrent track count and dynamically built-up sections.
+  - **Harmonic Vocabulary & Modulations**: Lists all distinct chords used across the piece and tracks key modulation history.
+  - **Structured JSON Output**: Use `--json` to feed musical profile data into web dashboards, automated tests, or external analytics scripts.
+
+- **Music Score Refactoring Suite (`tmd refactor`)**:
+  - **Resolution Scaling (`double-grid` / `halve-grid`)**: Scale rhythm subdivision grids up (`<4*>` to `<8*>`) by padding units with ties, or halve them down, without breaking measure math.
+  - **Global Renaming (`rename-instrument` / `rename-section`)**: Safely rename an instrument or section across all paragraphs, tracks, and playback order sequences simultaneously.
+  - **Track Extraction (`extract-instrument`)**: Extract all tracks belonging to a specific instrument (e.g. Lead Vocal, Bass) into an isolated TMD document for rehearsal, stems, or solo printing.
+  - **Track Duplication & Octave Doubling (`duplicate-track`)**: Duplicate any existing melody track with optional octave shifts (`--octave 1`) to instantly create doubled leads or sub-bass lines.
+  - **Automatic Diatonic Harmony (`generate-harmony`)**: Generate parallel diatonic harmony tracks (e.g. parallel 3rds up or down) following the score's key signature.
+  - **Inline Playback Orders (`inline-orders`)**: Unroll and inline repeating sections and relative key changes into a linear, single-pass score when preparing final arrangements.
 
 ### The TmdSwift Implementation
 
@@ -51,17 +68,12 @@ When collaborating with Large Language Models (LLMs) on musical tasks, standard 
 - A two-stage Lexer + TokenParser pipeline.
 - Normalized musical AST structures (`Beat`, `Note`, `Unit`, `Section`, `Paragraph`, `Order`, `Sheet`).
 - Formatter to serialize AST back to standard TMD syntax.
-- **Multi-track MIDI (SMF Type 1)** exporter (`TmdMIDI`).
-- **REAPER Project (.rpp)** exporter (`TmdReaper`) with tempo envelopes, section markers, and inline MIDI data.
-- **MusicXML 4.0** notation exporter (`TmdMusicXML`) for MuseScore, Sibelius, and web renderers.
-- **LilyPond** engraver exporter (`TmdLilyPond`) for publication-grade score typesetting and PDF rendering.
-- **ABC Notation** exporter (`TmdABC`) for web sheet rendering (`abcjs`) and text-based score sharing.
-- **Offline WAV Audio** synthesizer (`TmdAudio`) powered by CoreAudio DLS SoundFont.
+- Exporters for MIDI, REAPER, MusicXML, LilyPond, ABC, VOCALOID, UTAU, and WAV audio.
 - A command-line interface (`tmd`) powered by `swift-argument-parser`.
 
 ## Co-Composing with AI Using TMD
 
-Because TMD is a concise, text-based, and human-readable musical notation DSL, it serves as an ideal bridge between human musical ideas and generative AI / Large Language Models (LLMs). Instead of wrestling with opaque binary formats (MIDI) or unstructured audio waveforms, creators and AI agents can pair-program music interactively in TMD.
+Because TMD is concise, human-readable, and free of syntactic noise, it serves as the ideal shared language between creators and Large Language Models (LLMs). While AI can generate valid LilyPond or MusicXML, those formats are hostile to human reading and editing. TMD balances expressive power with human readability, allowing creators and AI agents to pair-program music interactively.
 
 ### Equip Your AI Assistant in One Command
 
@@ -70,8 +82,6 @@ Because TMD is a concise, text-based, and human-readable musical notation DSL, i
 ```bash
 tmd --install-skills
 ```
-
-Once installed, your AI agent will automatically understand how to compose, arrange, debug, and orchestrate music using TMD.
 
 ### What AI Can Help You Achieve
 
@@ -87,7 +97,7 @@ Once installed, your AI agent will automatically understand how to compose, arra
 4. **Macro Song Structuring & Modulations**:
    Compose core song blocks (`intro`, `verse`, `chorus`, `bridge`) and have the AI plan the overarching playback sequence (`-> intro -> A -> B -> {?+1} -> B ->#`), complete with key modulations and emotional dynamics.
 
-5. **Textural Layering & Arrangement Build-Up**:
+5. **Textural Layering & Dynamic Contrast**:
    Use measure entry offsets (`@|0|`, `@|+4|`, `@|-1|`) to guide the AI in orchestrating gradual instrumentation build-ups, pick-up measures (anticipation notes), and dynamic contrast across sections.
 
 6. **Style & Metric Variations**:
