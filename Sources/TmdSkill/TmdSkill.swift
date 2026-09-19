@@ -10,9 +10,9 @@ public enum TmdSkill {
 ---
 name: tmd
 description: >-
-  Comprehensive guide and reference for writing, parsing, and exporting music scores using TMD (Timebase Mark Down).
-  Use this skill whenever you need to create, edit, debug, or generate .tmd music scores, lead sheets, chord progressions,
-  numbered musical notation (jianpu), multi-track arrangements, or compile them with the tmd CLI tool.
+  Comprehensive guide and reference for writing, parsing, checking, and exporting music scores using TMD (Timebase Mark Down).
+  Use this skill whenever you need to create, edit, debug, verify measure consistency, or generate .tmd music scores, lead sheets, chord progressions,
+  numbered musical notation (jianpu), multi-track arrangements, or compile and validate them with the tmd CLI tool and MCP servers.
 ---
 
 # TMD (Timebase Mark Down) Music Score Specification & Guide
@@ -20,7 +20,8 @@ description: >-
 TMD is a plain-text musical notation DSL designed by Taiwanese composer and music producer Chen, Chih-Han / aguai (阿怪, 1974–2019, composer of A-Mei's "Three Days and Three Nights").
 It allows musicians and arrangers to describe multi-track songs, numbered musical notation (jianpu / movable-do solfege), chord progressions, tuplets, and playback arrangements in a concise, human-readable text format.
 
-The `tmd` CLI tool compiles `.tmd` files and can export them to MIDI, MusicXML, LilyPond (.ly / PDF), ABC notation (.abc), or render offline audio to WAV.
+The `tmd` CLI tool compiles `.tmd` files, verifies measure consistency (`tmd check`), and can export them to MIDI, MusicXML, LilyPond (.ly / PDF), ABC notation (.abc), REAPER (.rpp), ChordPro (.cho), or render offline audio to WAV.
+When running under Model Context Protocol (MCP) or Web Studio, AI agents have access to `check_tmd` / `checkTmd` tools to automatically inspect and diagnose measure beat mismatches and execution order issues.
 
 ---
 
@@ -366,10 +367,14 @@ AI agents should assist human composers through these distinct collaborative pat
 - **Pattern C: Re-Harmonization**: Propose alternative chord progressions (e.g., standard pop, secondary dominants, modal mixture, or jazz extensions like `[Cmaj9]`, `[Am7]`, `[6m]`, `[2m7-5]`).
 - **Pattern D: Style Transformation**: Convert a pop/folk lead sheet into multi-part strings, big band brass, or a full symphony orchestra.
 - **Pattern E: Automated Self-Verification & Ear Check Loop**:
-  1. **Measure Consistency Check**: Always run `tmd check <file.tmd>`. If any measure length discrepancy is reported (e.g. `verse:Piano (line 12, measure 3): Expected 4 units, found 3 units (-1 units)`), immediately locate the line and add or remove rhythm units/dashes `-`/rests `0` until all measures pass.
+  1. **Measure Consistency Check**:
+     - **CLI**: Run `tmd check <file.tmd>`.
+     - **MCP Tool**: Call `check_tmd({ text })` or `checkTmd({ text })`.
+     - **Web Studio**: Check the Problems Panel (`#problems-panel`, `#problems-list`).
+     If any measure length discrepancy is reported (e.g. `verse:Piano (line 12, measure 3): Expected 4 units, found 3 units (-1 units)` or undefined section in playback order), immediately inspect the line and adjust rhythm units, ties `-`, or rests `0` until all measures pass.
   2. **Auto-Formatting**: Run `tmd format <file.tmd> -i` to clean up block indentation and spacing.
-  3. **Syntax & Structure Verification**: Run `tmd <file.tmd> -p` to verify execution flow and track summary.
-  4. **Audio Ear Check**: Render audio via `tmd <file.tmd> -w preview.wav` so the human composer can immediately audition counterpoint, voice leading, and rhythmic balance.
+  3. **Syntax & Structure Verification**: Run `tmd <file.tmd> -p` (or MCP `parse_tmd`) to verify execution flow and track summary.
+  4. **Audio Ear Check**: Render audio via `tmd <file.tmd> -w preview.wav` (or Web Studio playback) so the human composer can immediately audition counterpoint, voice leading, and rhythmic balance.
 
 ---
 
@@ -404,6 +409,7 @@ Follow standard classical/baroque fugal exposition principles:
 - **Countersubject**: While Voice 2 plays the Answer, Voice 1 continues with a contrasting counter-melody, maintaining complementary rhythmic motion (e.g., when one voice sustains, the other moves).
 - **Episode**: Modulating passages using fragments of the Subject with motivic sequencing.
 - **Stretto**: In climactic sections, introduce successive voice entries at narrower measure offsets (e.g., `@|+1|` instead of `@|+4|`) before previous statements finish, intensifying dramatic tension.
+
 """
 
     /// Standard installation paths for AI agent skills across the system.
