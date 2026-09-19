@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6] - 2026-09-19
+
+### Added
+- **Song Profile & Inspector (`tmd inspect`)**:
+  - Added `TMDSongInspector` providing song timeline analysis, section durations in seconds and measures, peak track arrangement density, chord vocabulary, and vocal/instrument pitch ranges with exact highest/lowest notes, semitones, and octave spans.
+  - Added `tmd inspect <file> [--json]` command for terminal output and automated JSON pipelines.
+  - Added VS Code extension integration with `tmd.inspectSong`, LM Tool `tmd_inspect`, and `@tmd /inspect` Copilot prompt.
+- **Score Refactoring & Arranging Operations (`tmd refactor`)**:
+  - Added commands for `double-grid`, `halve-grid`, `rename-instrument`, `rename-section`, `duplicate-track`, `generate-harmony`, `extract-instrument`, and `inline-orders`.
+  - Added VS Code refactoring commands with input prompts.
+- **Documentation & Architecture**:
+  - Added `docs/FAQ.md` addressing architectural design choices, comparison with DAW / LilyPond / ABC, and background on creator Chen, Chih-Han (阿怪).
+  - Documented "Divide and Conquer: Composable Music Architecture" and human-AI feedback loops in `README.md`.
+  - Added Hero Image with VS Code extension preview in `README.md`.
+
 ## [0.1.5] - 2026-09-11
 
 ### Added
