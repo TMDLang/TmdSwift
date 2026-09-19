@@ -138,41 +138,85 @@ swift build -c release
 
 ## CLI Usage (`tmd`)
 
-You can run the command line tool directly with `swift run tmd`:
+The `tmd` CLI tool provides comprehensive score compilation, export, verification, inspection, and refactoring commands:
+
+### Compilation, Export & Rendering
 
 ```bash
-# 1. Parse and print score summary
-swift run tmd sample/basic/三天三夜.tmd -p
+# Parse and print score summary
+tmd sample/basic/三天三夜.tmd -p
 
-# 2. Export to Standard MIDI file
-swift run tmd sample/basic/三天三夜.tmd -m score.mid
+# Play score in terminal using macOS default sound bank
+tmd sample/basic/三天三夜.tmd --play
 
-# 3. Export to REAPER project (.rpp) file
-swift run tmd sample/basic/三天三夜.tmd -r score.rpp
+# Export to Standard MIDI file (.mid)
+tmd sample/basic/三天三夜.tmd -m score.mid
 
-# 4. Export to MusicXML (open with MuseScore, Sibelius, Finale, etc.)
-swift run tmd sample/basic/三天三夜.tmd -x score.musicxml
+# Export to REAPER project (.rpp) with tempo and section markers
+tmd sample/basic/三天三夜.tmd -r score.rpp
 
-# 5. Export to LilyPond (.ly) source file
-swift run tmd sample/basic/三天三夜.tmd -l score.ly
+# Export to MusicXML 4.0 (for MuseScore, Sibelius, Finale, Dorico)
+tmd sample/basic/三天三夜.tmd -x score.musicxml
 
-# 6. Render directly to PDF using the local lilypond compiler
-swift run tmd sample/basic/三天三夜.tmd --pdf-output score.pdf
+# Export to LilyPond (.ly) source file or render directly to PDF
+tmd sample/basic/三天三夜.tmd -l score.ly
+tmd sample/basic/三天三夜.tmd --pdf-output score.pdf
 
-# 7. Export to ABC notation file (for abcjs or Markdown web rendering)
-swift run tmd sample/basic/三天三夜.tmd -a score.abc
+# Export to ABC notation (.abc) for web score sharing (abcjs)
+tmd sample/basic/三天三夜.tmd -a score.abc
 
-# 8. Render to WAV audio file (macOS built-in DLS or custom SoundFont)
-swift run tmd sample/basic/三天三夜.tmd -w score.wav
+# Export vocal track to VOCALOID (.vsq, .vsqx) or UTAU (.ust)
+tmd sample/basic/三天三夜.tmd --vsqx-output score.vsqx
+tmd sample/basic/三天三夜.tmd -u score.ust
 
-# 9. Inspect song profile (vocal range, structure, chords, density)
-swift run tmd inspect sample/basic/三天三夜.tmd
+# Render to offline WAV audio file (macOS built-in DLS or custom SoundFont)
+tmd sample/basic/三天三夜.tmd -w score.wav
+tmd sample/basic/三天三夜.tmd -w score.wav --soundfont /path/to/soundfont.sf2
+```
 
-# 10. Inspect song profile in structured JSON format
-swift run tmd inspect sample/basic/三天三夜.tmd --json
+### Inspection, Diagnostics & AI Skills
 
-# 11. Install TMD skill definition for AI agents (Codex, Antigravity, Claude, etc.)
-swift run tmd --install-skills
+```bash
+# Check measure consistency (detect beat count discrepancies between bar lines '|')
+tmd check sample/basic/三天三夜.tmd
+
+# Inspect song profile (vocal tessitura, pitch ranges, duration, chord vocabulary, density)
+tmd inspect sample/basic/三天三夜.tmd
+
+# Inspect song profile in structured JSON format
+tmd inspect sample/basic/三天三夜.tmd --json
+
+# Generate document symbol outline (sections and tracks with line/col offsets)
+tmd outline sample/basic/三天三夜.tmd
+
+# Install TMD skill definition into local AI agent environments (Codex, Antigravity, Claude, etc.)
+tmd --install-skills
+```
+
+### Formatting & Refactoring
+
+```bash
+# Format score with standardized indentation, spacing, and preserved comments
+tmd format sample/basic/三天三夜.tmd -i
+
+# Double grid resolution (<4*> -> <8*>) padding units with ties
+tmd refactor double-grid sample/basic/三天三夜.tmd -i
+
+# Halve grid resolution (<8*> -> <4*>) collapsing ties
+tmd refactor halve-grid sample/basic/三天三夜.tmd -i
+
+# Rename instrument or section globally across paragraphs and orders
+tmd refactor rename-instrument sample/basic/三天三夜.tmd --source "Piano" --target "Keys" -i
+tmd refactor rename-section sample/basic/三天三夜.tmd --source "verse" --target "A" -i
+
+# Duplicate track with optional octave transposition
+tmd refactor duplicate-track sample/basic/三天三夜.tmd --source "Lead" --target "LeadOct" --octave 1 -i
+
+# Generate parallel diatonic harmony for an instrument (e.g. 3rd above: interval 2)
+tmd refactor generate-harmony sample/basic/三天三夜.tmd --source "Vocal" --target "Harmony" --interval 2 -i
+
+# Unroll / inline playback orders into a linear score
+tmd refactor inline-orders sample/basic/三天三夜.tmd -i
 ```
 
 ## Swift Package Usage
