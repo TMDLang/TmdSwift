@@ -14,44 +14,22 @@ Original project: [https://github.com/aguai/TMDLang](https://github.com/aguai/TM
 
 **TMD** (Timebase Mark Down) was originally conceived and designed by the celebrated Taiwanese songwriter, composer, and producer **Chen, Chih-Han / [aguai](https://github.com/aguai) (阿怪, 1974–2019)**, renowned for Mandopop classics such as A-Mei's 《三天三夜》 (*Three Days and Three Nights*).
 
-### The Markdown of Music
+### The Markdown of Music: Designed for Songwriters
 
-Just as **Markdown** freed writers from the tedious tags of HTML, **TMD brings that same simplicity to music**.
+Just as **Markdown** freed writers from the tedious tags of HTML, **TMD (Timebase Mark Down)** brings that same simplicity to music.
 
-Formats like MusicXML, LilyPond, or multi-track MIDI are like HTML or PostScript: indispensable for web renderers, synthesizers, and print shops, but painful and unnatural for humans to write by hand. Most digital tools push creators into one of two extremes:
-- **An Audio Engineering mindset** (DAWs like Logic, Pro Tools, Cubase): Faders, decibel meters, audio tracks, and millisecond waveforms.
-- **A Desktop Publishing mindset** (Engravers like Sibelius, Finale, LilyPond): Stem directions, collision avoidance, beam slants, and printable paper layout.
+Existing musical formats serve other masters: **DAWs** treat music as audio engineering (faders, millisecond waveforms); **Engravers** (LilyPond, Sibelius) focus on printing layout; and **ABC notation** was designed decades ago to archive folk melodies. Their workflow assumes the song is already finished on paper. Furthermore, in multi-instrument arrangements, ABC quickly devolves into "rest hell" (`| z4 | z4 |`), cluttering the page and exhausting LLM context windows.
 
-Even traditional plain-text notation like **ABC notation** falls short for modern songs. Designed decades ago for single-melody folk tunes, ABC becomes "rest hell" in multi-instrument arrangements: whenever an instrument rests for an entire section, ABC requires padding dozens of empty-measure rests (`| z4 | z4 | z4 |`) just to keep tracks aligned, cluttering the score and exhausting LLM context windows. Furthermore, because ABC relies on absolute staff pitch rather than movable-do scale degrees, transposing a song or adjusting an arrangement means recalculating every note by hand.
+**TMD moves the songwriter's creative notebook directly onto the computer—making it effortlessly mutable and AI-ready.**
 
-**TMD is the Markdown to their HTML.**
+Conceived by pop composer **aguai (阿怪)**, TMD reflects how songwriters actually create: humming in movable-do, auditioning chords, testing vocal ranges, and rearranging song blocks on the fly. As a music-native Intermediate Representation (IR), it provides:
 
-It provides a **music-native Intermediate Representation (IR)**—as natural and clean as a songwriter's lead sheet, yet structured enough to be **compiled, analyzed, refactored, and seamlessly understood by both humans and AI**:
-- **No "Rest Hell" in Multi-Track Arrangements**: Instruments declare their exact entry measure with an offset (e.g. `verse:Guitar@|+4|{ ... }`). Silent measures require zero tokens and zero visual clutter.
-- **Sections are Modular Building Blocks**: `intro`, `verse`, and `chorus` are self-contained blocks defined once and kept compact. If an instrument does not play in a section (e.g. Drums entering only in the Chorus), you simply omit that track entirely—no empty measures, zero rest clutter. Because sections are completely modular, creators can instantly preview individual sections or solo tracks in MIDI/audio without having to listen through the entire score from the beginning.
-- **Arrangement as the Song's Road Map**: The playback order—including dynamic key changes and section repetitions—is declared cleanly at the end (`-> intro -> verse -> chorus -> {?+1} -> chorus ->#`), mirroring how musicians rehearse and structure arrangements in their minds.
-- **Relative Pitch & Movable-Do (Jianpu) Thinking**: Melodies are written in numbered scale degrees (`1`–`7`), octaves (`^`, `_`), and accidentals (`'`, `,`). Transposing a song for a singer's vocal range is as simple as changing `?= C` to `?= Eb`—the melody itself remains untouched.
-- **Measure Consistency as a Helpful Typechecker**: Just as a Markdown linter catches broken links, `tmd check` verifies measure beat counts against time signatures to catch rhythmic typos early.
-- **Song Profile as a Macro Diagnostic**: Instead of measuring track volume in decibels, `tmd inspect` analyzes what songwriters actually care about: vocal range and tessitura (lowest/highest note, span in semitones), section duration ratios, harmonic vocabulary, and arrangement density.
+- **Zero "Rest Hell"**: Instruments enter with measure offsets (`verse:Guitar@|+4|{ ... }`). Unused tracks in a section are simply omitted—no filler tokens, no empty measures.
+- **Modular Blocks & Road Maps**: Sections (`intro`, `verse`, `chorus`) are defined once and arranged into a playback execution flow (`-> intro -> verse -> chorus -> {?+1} -> chorus ->#`), enabling instant MIDI/audio preview of isolated sections or solo tracks.
+- **Movable-Do (Jianpu) Thinking**: Melodies use numbered scale degrees (`1`–`7`). Transposing for a singer's vocal range is as simple as changing `?= C` to `?= Eb`—the melody notes never need rewriting.
+- **Built-in Typechecking & Diagnostics**: `tmd check` verifies measure beat math like a compiler linter, while `tmd inspect` acts as a profiler—analyzing vocal tessitura (highest/lowest notes), song timeline ratios, and arrangement density.
 
-### Designed for Songwriters, Not Print Shops nor Archives
-
-Publishing engravers (like LilyPond or Sibelius) and historic tune archives (like ABC notation) are exceptional at what they do—the former excels at publication-grade sheet layout, while the latter is peerless for indexing and archiving world folk melodies.
-
-However, their workflow assumes the composition is already finished: the song was drafted on manuscript paper or scribbled in a notebook, and only entered into the software once finalized.
-
-The iterative creative workflow of a pop songwriter and producer like **aguai (阿怪)** is fundamentally different. Songwriting is an active, messy, living process: humming melodies in movable-do, auditioning chords, testing whether a singer can hit high notes, experimenting with band arrangements, and restructuring song forms on the fly. 
-
-**TMD moves that creative notebook directly onto the computer—and makes it effortlessly mutable.**
-
-Instead of wrestling with mouse clicks in a DAW or fixed notation engravers, songwriters can sketch, mutate, and re-arrange musical ideas in seconds, co-creating interactively alongside AI. Yet, because of its semantic purity as an IR, a single `.tmd` score can be seamlessly compiled and exported into virtually any downstream musical format:
-- **MIDI (.mid)**: Multi-track SMF Type 1 for importing into any digital audio workstation.
-- **REAPER Project (.rpp)**: Complete with tempo markers, region markers, and multi-track MIDI.
-- **MusicXML (.musicxml)**: W3C MusicXML 4.0 for notation software (MuseScore, Sibelius, Finale, Dorico).
-- **LilyPond (.ly & .pdf)**: For publication-grade engraved sheet music.
-- **ABC Notation (.abc)**: For lightweight web score rendering (`abcjs`).
-- **Vocal Synthesizers (.vsqx, .vsq, .ust)**: For VOCALOID2/3/4 and UTAU/OpenUtau tuning.
-- **WAV Audio (.wav)**: Built-in synthesis via CoreAudio and SoundFont banks.
+Yet because of its structural purity, a `.tmd` score compiles cleanly to virtually any downstream format: **MIDI**, **REAPER (.rpp)**, **MusicXML**, **LilyPond (.ly / .pdf)**, **ABC**, **VOCALOID**, **UTAU**, or **WAV audio**.
 
 ### Automated Refactoring & Macro Song Inspection
 
