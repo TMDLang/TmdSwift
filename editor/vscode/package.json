@@ -12,7 +12,7 @@
     "url": "https://github.com/zonble/TmdSwift.git"
   },
   "engines": {
-    "vscode": "^1.74.0"
+    "vscode": "^1.90.0"
   },
   "main": "./extension.js",
   "activationEvents": [
@@ -349,6 +349,81 @@
         }
       ]
     },
+    "chatParticipants": [
+      {
+        "id": "tmd",
+        "name": "tmd",
+        "description": "TMD (Timebase Mark Down) musical composition, arranging, and verification assistant.",
+        "isDefault": false,
+        "commands": [
+          {
+            "name": "check",
+            "description": "Inspect measure consistency, beat calculations, and syntax in TMD score."
+          },
+          {
+            "name": "compose",
+            "description": "Compose, harmonize, or orchestrate TMD musical sections and tracks."
+          },
+          {
+            "name": "fix",
+            "description": "Diagnose and fix measure length discrepancies or syntax issues in TMD score."
+          },
+          {
+            "name": "explain",
+            "description": "Explain score structure, music theory, chord progressions, or Solfege in TMD."
+          }
+        ]
+      }
+    ],
+    "languageModelTools": [
+      {
+        "name": "tmd_check",
+        "toolReferenceName": "tmdCheck",
+        "displayName": "TMD Measure Consistency Checker",
+        "modelDescription": "Validates a TMD score text or file for measure length consistency, beat calculation mismatches, and undefined section references.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "The TMD score source code to validate. If omitted, the active editor's document is checked."
+            },
+            "filePath": {
+              "type": "string",
+              "description": "Optional file path to the .tmd file to check."
+            }
+          }
+        }
+      },
+      {
+        "name": "tmd_format",
+        "toolReferenceName": "tmdFormat",
+        "displayName": "TMD Score Formatter",
+        "modelDescription": "Formats TMD score code with standard indentation, clean spacing, and uniform layout.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "The TMD score source code to format."
+            }
+          },
+          "required": [
+            "text"
+          ]
+        }
+      },
+      {
+        "name": "tmd_get_specification",
+        "toolReferenceName": "tmdSpecification",
+        "displayName": "TMD Notation Specification Guide",
+        "modelDescription": "Returns the authoritative TMD language specification, jianpu scale degree mappings, rhythm grid rules, and human composition principles.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    ],
     "configuration": {
       "title": "TMD",
       "properties": {

@@ -35,7 +35,18 @@ Official Visual Studio Code extension providing language support, syntax highlig
 - **Diagnostics & Formatting**:
   - Automatically checks beat counts in bar lines (`|`) on save and open.
   - Highlights incorrect measures with warning squigglies and details in VS Code's Problems view.
-  - Native document formatter cleans indentation and spacing inside paragraph blocks while preserving all comments and directives.
+- **AI & GitHub Copilot Integration**:
+  - **Copilot Chat Participant (`@tmd`)**:
+    - `@tmd /check`: Inspects measure lengths, beat math, and structural errors.
+    - `@tmd /compose`: Composes melodies, chords, and multi-track counterpoints.
+    - `@tmd /fix`: Diagnoses and automatically fixes measure beat discrepancies.
+    - `@tmd /explain`: Analyzes musical structure, chord progressions, and solfege.
+  - **VS Code Language Model Tools**:
+    - `tmd_check`: Programmatic validation tool for agent workflows.
+    - `tmd_format`: Auto-indents and cleans TMD score layout.
+    - `tmd_get_specification`: Returns complete TMD specification and Jianpu rules.
+  - **Repository Copilot Instructions**:
+    - Includes `.github/copilot-instructions.md` for seamless ambient Copilot code completion and chat guidance.
 - **Language Configuration**:
   - Auto-closing pairs and surrounding brackets for `{}`, `[]`, `()`, `<>`, `/**/`, `****`.
   - Code folding for paragraph blocks `{ ... }`.

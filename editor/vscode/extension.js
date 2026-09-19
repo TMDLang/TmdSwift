@@ -1198,8 +1198,287 @@ function activate(context) {
         }
     }
 
-    context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(updateActiveDocContext));
-    updateActiveDocContext(vscode.window.activeTextEditor);
+    // Helper functions for Language Model Tools & Chat Participant
+    function runTmdCheckBuffer(text) {
+        return new Promise((resolve) => {
+            const tmdBin = getTmdExecutable();
+            const tempDir = os.tmpdir();
+            const tempFilePath = path.join(tempDir, `tmd_chat_check_${Date.now()}.tmd`);
+
+            try {
+                fs.writeFileSync(tempFilePath, text, 'utf8');
+            } catch (err) {
+                resolve({ success: false, error: err.message, output: '' });
+                return;
+            }
+
+            execFile(tmdBin, ['check', tempFilePath], (error, stdout, stderr) => {
+                try { fs.unlinkSync(tempFilePath); } catch (_) {}
+                const output = ((stdout || '') + '\n' + (stderr || '')).trim();
+                const isClean = !error && output.includes('✅ All measures');
+                resolve({
+                    success: isClean,
+                    output: output,
+                    error: error ? (stderr || error.message) : undefined
+                });
+            });
+        });
+    }
+
+    function runTmdFormatBuffer(text) {
+        return new Promise((resolve) => {
+            const tmdBin = getTmdExecutable();
+            const tempDir = os.tmpdir();
+            const tempFilePath = path.join(tempDir, `tmd_chat_format_${Date.now()}.tmd`);
+
+            try {
+                fs.writeFileSync(tempFilePath, text, 'utf8');
+            } catch (err) {
+                resolve({ success: false, error: err.message, formattedText: text });
+                return;
+            }
+
+            execFile(tmdBin, ['format', tempFilePath], (error, stdout, stderr) => {
+                try { fs.unlinkSync(tempFilePath); } catch (_) {}
+                if (error || !stdout || stdout.trim().length === 0) {
+                    resolve({ success: false, error: (stderr || error?.message || 'Format failed'), formattedText: text });
+                } else {
+                    resolve({ success: true, formattedText: stdout });
+                }
+            });
+        });
+    }
+
+    function getTmdSpecificationText() {
+        try {
+            const skillPath = path.join(context.extensionPath, 'skill.md');
+            if (fs.existsSync(skillPath)) {
+                return fs.readFileSync(skillPath, 'utf8');
+            }
+        } catch (_) {}
+        return `TMD (Timebase Mark Down) Musical Notation DSL:
+- Root marker: ::SCORE::
+- Header: ** Title **, != 120 (BPM), ?= C (Key), <4/4> (Meter)
+- Paragraphs: section:instrument@|offset|{ <subdivision*> units... }
+- Jianpu scale degrees: 1 to 7. Accidentals: ' (sharp), , (flat). Octaves: ^ (up), _ (down).
+- Rest: 0. Tie/sustain: -. Chords: [Cmaj7], [1], [6m].
+- Tuplets: (1 2 3)%(--). Directives: {!=140}, {?+2}.
+- Playback order: -> intro -> verse ->#`;
+    }
+
+    // 1. Register VS Code Language Model Tools (if API is available)
+    if (vscode.lm && typeof vscode.lm.registerTool === 'function') {
+        // Tool: tmd_check
+        context.subscriptions.push(
+            vscode.lm.registerTool('tmd_check', {
+                async invoke(options, token) {
+                    const input = options.input || {};
+                    let scoreText = input.text;
+                    if (!scoreText && input.filePath && fs.existsSync(input.filePath)) {
+                        scoreText = fs.readFileSync(input.filePath, 'utf8');
+                    }
+                    if (!scoreText) {
+                        const editor = vscode.window.activeTextEditor;
+                        if (editor && editor.document.languageId === 'tmd') {
+                            scoreText = editor.document.getText();
+                        }
+                    }
+
+                    if (!scoreText) {
+                        return new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart('Error: No TMD score text provided or active TMD document found.')
+                        ]);
+                    }
+
+                    const result = await runTmdCheckBuffer(scoreText);
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart(result.output || (result.success ? '✅ All measures conform to expected time signatures.' : 'Discrepancy detected.'))
+                    ]);
+                }
+            })
+        );
+
+        // Tool: tmd_format
+        context.subscriptions.push(
+            vscode.lm.registerTool('tmd_format', {
+                async invoke(options, token) {
+                    const input = options.input || {};
+                    const scoreText = input.text || '';
+                    const result = await runTmdFormatBuffer(scoreText);
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart(result.formattedText)
+                    ]);
+                }
+            })
+        );
+
+        // Tool: tmd_get_specification
+        context.subscriptions.push(
+            vscode.lm.registerTool('tmd_get_specification', {
+                async invoke(options, token) {
+                    const spec = getTmdSpecificationText();
+                    return new vscode.LanguageModelToolResult([
+                        new vscode.LanguageModelTextPart(spec)
+                    ]);
+                }
+            })
+        );
+    }
+
+    // 2. Register GitHub Copilot Chat Participant @tmd (if API is available)
+    if (vscode.chat && typeof vscode.chat.createChatParticipant === 'function') {
+        const participant = vscode.chat.createChatParticipant('tmd', async (request, chatContext, stream, token) => {
+            const spec = getTmdSpecificationText();
+            const activeEditor = vscode.window.activeTextEditor;
+            const activeCode = (activeEditor && activeEditor.document.languageId === 'tmd')
+                ? activeEditor.document.getText()
+                : '';
+
+            if (request.command === 'check') {
+                stream.progress('Checking TMD measure consistency and syntax...');
+                const textToCheck = request.prompt.trim().length > 0 ? request.prompt : activeCode;
+                if (!textToCheck) {
+                    stream.markdown('Please open a `.tmd` file or provide TMD score text to check.');
+                    return;
+                }
+                const result = await runTmdCheckBuffer(textToCheck);
+                stream.markdown('### TMD Measure Consistency Inspection\n\n');
+                if (result.success) {
+                    stream.markdown('✅ **All measures conform to time signatures with no discrepancies.**\n');
+                } else {
+                    stream.markdown('⚠️ **Issues detected:**\n\n```text\n' + result.output + '\n```\n');
+                    stream.markdown('\n*Tip: Use `@tmd /fix` to automatically repair measure beat counts.*');
+                }
+                return;
+            }
+
+            if (request.command === 'fix') {
+                stream.progress('Analyzing and repairing measure beat discrepancies...');
+                const textToFix = request.prompt.trim().length > 0 ? request.prompt : activeCode;
+                const checkRes = await runTmdCheckBuffer(textToFix);
+
+                const messages = [
+                    vscode.LanguageModelChatMessage.User(
+                        `You are an expert TMD notation arranger and music theorist.
+TMD Specification:
+${spec}
+
+Diagnose and repair the following TMD score. Make sure all measures strictly match their time signature beat counts. Add or remove units, ties (-), or rests (0) where necessary. Output the repaired TMD code inside a \`\`\`tmd code block:
+
+${textToFix}
+
+Compiler diagnostics:
+${checkRes.output}`
+                    )
+                ];
+
+                const [model] = await vscode.lm.selectChatModels({ family: 'gpt-4o' });
+                if (model) {
+                    const response = await model.sendRequest(messages, {}, token);
+                    for await (const fragment of response.text) {
+                        stream.markdown(fragment);
+                    }
+                } else {
+                    stream.markdown('No language model available to repair score. Diagnostic report:\n\n' + checkRes.output);
+                }
+                return;
+            }
+
+            if (request.command === 'compose') {
+                stream.progress('Composing TMD musical score...');
+                const messages = [
+                    vscode.LanguageModelChatMessage.User(
+                        `You are an expert composer proficient in TMD (Timebase Mark Down) musical notation.
+Follow these composition rules:
+1. Always start with ::SCORE::, title, != tempo, ?= key, and <meter>.
+2. Group tracks modularly (e.g. verse:Piano@|0|{ ... }, verse:CHORD@|0|{ ... }, verse:Bass@|0|{ ... }).
+3. In numbered musical notation: 1=Do, 2=Re, 3=Mi, 4=Fa, 5=Sol, 6=La, 7=Ti. Accidentals BEFORE octave (e.g. 1'^, 7,_).
+4. Strict measure math: In <4*> and <4/4>, every bar |...| must have exactly 4 beats.
+5. End with execution flow -> ... ->#.
+
+TMD Reference:
+${spec}
+
+User Request:
+${request.prompt}
+
+Active document context (if relevant):
+${activeCode ? '```tmd\n' + activeCode + '\n```' : 'None'}`
+                    )
+                ];
+
+                const [model] = await vscode.lm.selectChatModels({ family: 'gpt-4o' });
+                if (model) {
+                    const response = await model.sendRequest(messages, {}, token);
+                    for await (const fragment of response.text) {
+                        stream.markdown(fragment);
+                    }
+                } else {
+                    stream.markdown('Unable to connect to Copilot Language Model.');
+                }
+                return;
+            }
+
+            if (request.command === 'explain') {
+                stream.progress('Analyzing TMD score and musical theory...');
+                const textToExplain = request.prompt.trim().length > 0 ? request.prompt : activeCode;
+                const messages = [
+                    vscode.LanguageModelChatMessage.User(
+                        `You are an expert music theorist and TMD notation specialist.
+Explain the structure, melody, chord progression, harmonic functions, and rhythmic devices in the following score:
+
+${textToExplain}`
+                    )
+                ];
+
+                const [model] = await vscode.lm.selectChatModels({ family: 'gpt-4o' });
+                if (model) {
+                    const response = await model.sendRequest(messages, {}, token);
+                    for await (const fragment of response.text) {
+                        stream.markdown(fragment);
+                    }
+                } else {
+                    stream.markdown('Unable to connect to Copilot Language Model.');
+                }
+                return;
+            }
+
+            // Default general conversation
+            stream.progress('Thinking...');
+            const messages = [
+                vscode.LanguageModelChatMessage.User(
+                    `You are the official TMD (Timebase Mark Down) AI assistant, in memory of composer Chen, Chih-Han / aguai (阿怪, 1974–2019).
+You help musicians write, analyze, format, and debug TMD music scores.
+TMD Specification:
+${spec}
+
+Active score in editor (if any):
+${activeCode ? '```tmd\n' + activeCode + '\n```' : 'No active .tmd score'}
+
+User Question:
+${request.prompt}`
+                )
+            ];
+
+            const [model] = await vscode.lm.selectChatModels({ family: 'gpt-4o' });
+            if (model) {
+                const response = await model.sendRequest(messages, {}, token);
+                for await (const fragment of response.text) {
+                    stream.markdown(fragment);
+                }
+            } else {
+                stream.markdown(`### TMD (Timebase Mark Down) Assistant
+I am ready to help you compose, check, or format TMD music scores!
+- Use \`@tmd /check\` to inspect measure lengths and beat consistency.
+- Use \`@tmd /compose\` to generate arrangements and melodies.
+- Use \`@tmd /fix\` to repair measure discrepancies.
+- Use \`@tmd /explain\` to analyze chord progressions and song structure.`);
+            }
+        });
+
+        participant.iconPath = vscode.Uri.joinPath(context.extensionUri, 'media', 'player.svg');
+        context.subscriptions.push(participant);
+    }
 }
 
 function deactivate() {}
