@@ -107,7 +107,9 @@ jobs:
 
       - name: Run Tests
         if: runner.os != 'Windows'
-        run: swift test -v --no-parallel
+        run: |
+          DEBUG_BIN_PATH="$(swift build --show-bin-path)"
+          TMD_BIN_PATH="$DEBUG_BIN_PATH/tmd" swift test -v --no-parallel
 
       - name: Run Tests (Windows)
         if: runner.os == 'Windows'
@@ -125,6 +127,8 @@ jobs:
           $vsInstallPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
           Import-Module "$vsInstallPath\Common7\Tools\Microsoft.VisualStudio.DevShell.dll"
           Enter-VsDevShell -VsInstallPath $vsInstallPath -SkipAutomaticLocation -DevCmdArguments "-arch=x64 -host_arch=x64"
+          $debugBinPath = & "$env:SWIFT_BIN\swift.exe" build --show-bin-path
+          $env:TMD_BIN_PATH = "$debugBinPath\tmd.exe"
           & "$env:SWIFT_BIN\swift.exe" test --no-parallel
 
       - name: Build Package (Release)

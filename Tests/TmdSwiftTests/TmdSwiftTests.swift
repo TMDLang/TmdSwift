@@ -534,15 +534,7 @@ import TmdSkill
     try tmd.write(toFile: tmdPath, atomically: true, encoding: .utf8)
     let midiOutPath = tempDir.appendingPathComponent("intro_piano.mid").path
 
-    var tmdURL = URL(fileURLWithPath: ProcessInfo.processInfo.arguments[0]).deletingLastPathComponent().appendingPathComponent("tmd")
-    if !FileManager.default.isExecutableFile(atPath: tmdURL.path) {
-        let fallbackURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-            .appendingPathComponent(".build/out/Products/Debug/tmd")
-        if FileManager.default.isExecutableFile(atPath: fallbackURL.path) {
-            tmdURL = fallbackURL
-        }
-    }
-    if FileManager.default.isExecutableFile(atPath: tmdURL.path) {
+    if let tmdURL = TmdTestHelper.findTmdExecutable() {
         let process = Process()
         process.executableURL = tmdURL
         process.arguments = [tmdPath, "-m", midiOutPath, "--section", "intro", "--instrument", "Piano"]
@@ -552,6 +544,8 @@ import TmdSkill
         #expect(FileManager.default.fileExists(atPath: midiOutPath))
         let cliData = try Data(contentsOf: URL(fileURLWithPath: midiOutPath))
         #expect(!cliData.isEmpty)
+    } else {
+        Issue.record("tmd binary must be built and available")
     }
 }
 

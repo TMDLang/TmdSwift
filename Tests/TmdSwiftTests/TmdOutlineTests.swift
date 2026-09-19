@@ -114,16 +114,10 @@ import Foundation
     let tmdPath = tempDir.appendingPathComponent("score.tmd").path
     try source.write(toFile: tmdPath, atomically: true, encoding: .utf8)
 
-    var tmdURL = URL(fileURLWithPath: ProcessInfo.processInfo.arguments[0]).deletingLastPathComponent().appendingPathComponent("tmd")
-    if !FileManager.default.isExecutableFile(atPath: tmdURL.path) {
-        let fallbackURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-            .appendingPathComponent(".build/out/Products/Debug/tmd")
-        if FileManager.default.isExecutableFile(atPath: fallbackURL.path) {
-            tmdURL = fallbackURL
-        }
+    guard let tmdURL = TmdTestHelper.findTmdExecutable() else {
+        Issue.record("tmd binary must be built and available")
+        return
     }
-    #expect(FileManager.default.isExecutableFile(atPath: tmdURL.path), "tmd binary must be built and available")
-    guard FileManager.default.isExecutableFile(atPath: tmdURL.path) else { return }
 
     let outlinePipe = Pipe()
     let process = Process()
