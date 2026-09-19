@@ -65,12 +65,12 @@ tmd --install-skills
 
 See [`docs/AI-Co-Composing-With-TMD.md`](docs/AI-Co-Composing-With-TMD.md) for concrete workflows, step-by-step examples, and copy-pasteable prompt templates.
 
-## Automated Refactoring & Macro Song Inspection
+## Automated Arrangement & Macro Song Inspection
 
 Beyond AI pair-programming, TMD provides automated tools tailored for the real-world songwriting and arranging process:
 
 - **Song Inspector (`tmd inspect`)**: Analyzes vocal tessitura (exact highest/lowest notes and semitone span to verify whether a singer can hit the notes), song section timing (seconds and measures), chord vocabulary, and peak arrangement density. Supports `--json` for dashboards and automated pipelines.
-- **Score Refactoring Suite (`tmd refactor`)**: Perform safe, scriptable musical transforms in seconds—scale rhythm grids (`double-grid` / `halve-grid`), rename instruments or sections globally, extract isolated tracks, duplicate melodies with octave shifts, generate parallel diatonic harmonies, or inline repeating orders into a linear score.
+- **Arrangement & Score Operations (`tmd refactor`)**: Perform common arranging chores in seconds—scale rhythm grids (`double-grid` / `halve-grid`), rename instruments or sections globally, extract isolated tracks, duplicate melodies with octave shifts, generate parallel diatonic harmonies, or inline repeating orders into a linear score.
 
 ## Platform Support
 
@@ -170,7 +170,7 @@ tmd outline sample/basic/三天三夜.tmd
 tmd --install-skills
 ```
 
-### Formatting & Refactoring
+### Formatting & Arrangement Operations
 
 ```bash
 # Format score with standardized indentation, spacing, and preserved comments
@@ -271,7 +271,7 @@ The repository includes an official VS Code extension in [`editor/vscode`](edito
 - **CodeLens In-Editor Audition**: Click `▶ Play Section` or `▶ Play Track` directly above paragraph headers to preview individual sections or solo instruments on the fly.
 - **Measure Consistency Diagnostics**: Real-time linter checking beat count math against time signatures on save and as you type, reporting issues in the Problems panel.
 - **Song Inspector**: Run `TMD: Inspect Song Profile` to display vocal tessitura, pitch ranges, duration, chord vocabulary, and arrangement density directly in an Output Channel.
-- **In-Editor Score Refactoring**: Interactive commands to double/halve rhythm resolution, duplicate tracks with octave shifts, generate natural harmonies, rename instruments/sections globally, or inline orders.
+- **In-Editor Arrangement Operations**: Interactive commands to double/halve rhythm resolution, duplicate tracks with octave shifts, generate natural harmonies, rename instruments/sections globally, or inline orders.
 - **GitHub Copilot Chat & LM Tools**: Chat participant `@tmd` (`/check`, `/inspect`, `/compose`, `/fix`, `/explain`) and language model tools (`tmd_check`, `tmd_inspect`, `tmd_format`, `tmd_get_specification`).
 - **Export & Render Commands**: Export to MIDI, REAPER, MusicXML, ABC, LilyPond, PDF, VOCALOID (.vsq, .vsqx), UTAU (.ust), or offline WAV audio.
 
