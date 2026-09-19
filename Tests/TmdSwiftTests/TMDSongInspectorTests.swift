@@ -83,6 +83,7 @@ struct TMDSongInspectorTests {
         #expect(vocalProfile.highestNote.midiPitch == 81) // A5
         #expect(vocalProfile.highestNote.noteName == "A5")
         #expect(vocalProfile.spanSemitones == 21) // 81 - 60 = 21 semitones
+        #expect(abs(vocalProfile.spanOctaves - 1.75) < 0.01)
         #expect(vocalProfile.highestNote.sectionName == "chorus")
 
         // 4. Track Ranges
@@ -111,5 +112,7 @@ struct TMDSongInspectorTests {
         #expect(report.contains("12.0s") || report.contains("12s"))
         #expect(report.contains("C4"))
         #expect(report.contains("A5"))
+        #expect(report.contains("21 semitones"))
+        #expect(report.contains("1.8 octaves"))
     }
 }

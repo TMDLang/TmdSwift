@@ -29,6 +29,9 @@ public struct TMDPitchRangeProfile: Equatable, Sendable, Codable {
     public let lowestNote: TMDNotePitchInfo
     public let highestNote: TMDNotePitchInfo
     public let spanSemitones: Int
+    public var spanOctaves: Double {
+        Double(spanSemitones) / 12.0
+    }
     public let totalNotes: Int
     public let averageMidiPitch: Double
 
@@ -394,7 +397,8 @@ public enum TMDSongInspector {
         lines.append("🎼 Key & Tempo:    \(profile.initialKey) Major, != \(profile.initialTempo) BPM, <\(profile.initialTimeSignature)>")
 
         if let vocal = profile.vocalRange {
-            lines.append("🎤 Vocal Range:    \(vocal.lowestNote.noteName) (MIDI \(vocal.lowestNote.midiPitch)) – \(vocal.highestNote.noteName) (MIDI \(vocal.highestNote.midiPitch)) [Span: \(vocal.spanSemitones) semitones]")
+            let octaves = String(format: "%0.1f", vocal.spanOctaves)
+            lines.append("🎤 Vocal Range:    \(vocal.lowestNote.noteName) (MIDI \(vocal.lowestNote.midiPitch)) – \(vocal.highestNote.noteName) (MIDI \(vocal.highestNote.midiPitch)) [Span: \(vocal.spanSemitones) semitones / \(octaves) octaves]")
             lines.append("   - Lowest Note:  \(vocal.lowestNote.noteName) in [\(vocal.lowestNote.sectionName)]")
             lines.append("   - Highest Note: \(vocal.highestNote.noteName) in [\(vocal.highestNote.sectionName)]")
         }
@@ -409,7 +413,8 @@ public enum TMDSongInspector {
         lines.append("--------------------------------------------------------------------------------")
         lines.append("Instrument Track Ranges:")
         for inst in profile.instrumentRanges {
-            lines.append("  - \(inst.instrument.padding(toLength: 14, withPad: " ", startingAt: 0)): \(inst.lowestNote.noteName) – \(inst.highestNote.noteName) (\(inst.spanSemitones) semitones, \(inst.totalNotes) notes)")
+            let octaves = String(format: "%0.1f", inst.spanOctaves)
+            lines.append("  - \(inst.instrument.padding(toLength: 14, withPad: " ", startingAt: 0)): \(inst.lowestNote.noteName) – \(inst.highestNote.noteName) (\(inst.spanSemitones) semitones / \(octaves) octaves, \(inst.totalNotes) notes)")
         }
         lines.append("================================================================================")
 
