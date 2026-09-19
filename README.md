@@ -8,13 +8,13 @@ In memory of **Chen, Chih-Han / [aguai](https://github.com/aguai)** (阿怪, 197
 
 Original project: [https://github.com/aguai/TMDLang](https://github.com/aguai/TMDLang)
 
-## About TMD
+## The Markdown of Music
 
 ### Origins & Heritage
 
 **TMD** (Timebase Mark Down) was originally conceived and designed by the celebrated Taiwanese songwriter, composer, and producer **Chen, Chih-Han / [aguai](https://github.com/aguai) (阿怪, 1974–2019)**, renowned for Mandopop classics such as A-Mei's 《三天三夜》 (*Three Days and Three Nights*).
 
-### The Markdown of Music: Designed for Songwriters
+### Designed for Songwriters, Not Print Shops nor Archives
 
 Just as **Markdown** freed writers from the tedious tags of HTML, **TMD (Timebase Mark Down)** brings that same simplicity to music.
 
@@ -30,34 +30,6 @@ Conceived by pop composer **aguai (阿怪)**, TMD reflects how songwriters actua
 - **Built-in Typechecking & Diagnostics**: `tmd check` verifies measure beat math like a compiler linter, while `tmd inspect` acts as a profiler—analyzing vocal tessitura (highest/lowest notes), song timeline ratios, and arrangement density.
 
 Yet because of its structural purity, a `.tmd` score compiles cleanly to virtually any downstream format: **MIDI**, **REAPER (.rpp)**, **MusicXML**, **LilyPond (.ly / .pdf)**, **ABC**, **VOCALOID**, **UTAU**, or **WAV audio**.
-
-### Automated Refactoring & Macro Song Inspection
-
-Beyond AI pair-programming and multi-format exports, TMD empowers songwriters with an entire suite of automated refactoring tools and macro inspection utilities:
-
-- **Song Inspector & Tessitura Profiler (`tmd inspect`)**:
-  - **Vocal Range Verification**: Instantly calculates the exact lowest and highest notes (with absolute MIDI pitch and note names like `C4`, `A#5`), span in semitones, and the specific sections where vocal peaks occur. Songwriters can immediately verify whether a singer can comfortably hit the notes or if a key transposition is needed.
-  - **Song Structure & Timeline Timing**: Calculates precise playback seconds and measure counts for every section (`intro`, `verse`, `chorus`) across the timeline.
-  - **Arrangement Density & Peak Concurrency**: Analyzes orchestration density section by section, identifying the peak concurrent track count and dynamically built-up sections.
-  - **Harmonic Vocabulary & Modulations**: Lists all distinct chords used across the piece and tracks key modulation history.
-  - **Structured JSON Output**: Use `--json` to feed musical profile data into web dashboards, automated tests, or external analytics scripts.
-
-- **Music Score Refactoring Suite (`tmd refactor`)**:
-  - **Resolution Scaling (`double-grid` / `halve-grid`)**: Scale rhythm subdivision grids up (`<4*>` to `<8*>`) by padding units with ties, or halve them down, without breaking measure math.
-  - **Global Renaming (`rename-instrument` / `rename-section`)**: Safely rename an instrument or section across all paragraphs, tracks, and playback order sequences simultaneously.
-  - **Track Extraction (`extract-instrument`)**: Extract all tracks belonging to a specific instrument (e.g. Lead Vocal, Bass) into an isolated TMD document for rehearsal, stems, or solo printing.
-  - **Track Duplication & Octave Doubling (`duplicate-track`)**: Duplicate any existing melody track with optional octave shifts (`--octave 1`) to instantly create doubled leads or sub-bass lines.
-  - **Automatic Diatonic Harmony (`generate-harmony`)**: Generate parallel diatonic harmony tracks (e.g. parallel 3rds up or down) following the score's key signature.
-  - **Inline Playback Orders (`inline-orders`)**: Unroll and inline repeating sections and relative key changes into a linear, single-pass score when preparing final arrangements.
-
-### The TmdSwift Implementation
-
-**TmdSwift** re-implements the original parser into a clean, modern Swift architecture featuring:
-- A two-stage Lexer + TokenParser pipeline.
-- Normalized musical AST structures (`Beat`, `Note`, `Unit`, `Section`, `Paragraph`, `Order`, `Sheet`).
-- Formatter to serialize AST back to standard TMD syntax.
-- Exporters for MIDI, REAPER, MusicXML, LilyPond, ABC, VOCALOID, UTAU, and WAV audio.
-- A command-line interface (`tmd`) powered by `swift-argument-parser`.
 
 ## Co-Composing with AI Using TMD
 
@@ -92,6 +64,25 @@ tmd --install-skills
    Prompt the AI to adapt a 4/4 ballad into a 3/4 waltz, re-groove straight rhythms into syncopated Funk/R&B patterns, or add tuplet ornaments `(1 2 3)%(--)`.
 
 See [`docs/AI-Co-Composing-With-TMD.md`](docs/AI-Co-Composing-With-TMD.md) for concrete workflows, step-by-step examples, and copy-pasteable prompt templates.
+
+## Automated Refactoring & Macro Song Inspection
+
+Beyond AI pair-programming and multi-format exports, TMD empowers songwriters with an entire suite of automated refactoring tools and macro inspection utilities:
+
+- **Song Inspector & Tessitura Profiler (`tmd inspect`)**:
+  - **Vocal Range Verification**: Instantly calculates the exact lowest and highest notes (with absolute MIDI pitch and note names like `C4`, `A#5`), span in semitones, and the specific sections where vocal peaks occur. Songwriters can immediately verify whether a singer can comfortably hit the notes or if a key transposition is needed.
+  - **Song Structure & Timeline Timing**: Calculates precise playback seconds and measure counts for every section (`intro`, `verse`, `chorus`) across the timeline.
+  - **Arrangement Density & Peak Concurrency**: Analyzes orchestration density section by section, identifying the peak concurrent track count and dynamically built-up sections.
+  - **Harmonic Vocabulary & Modulations**: Lists all distinct chords used across the piece and tracks key modulation history.
+  - **Structured JSON Output**: Use `--json` to feed musical profile data into web dashboards, automated tests, or external analytics scripts.
+
+- **Music Score Refactoring Suite (`tmd refactor`)**:
+  - **Resolution Scaling (`double-grid` / `halve-grid`)**: Scale rhythm subdivision grids up (`<4*>` to `<8*>`) by padding units with ties, or halve them down, without breaking measure math.
+  - **Global Renaming (`rename-instrument` / `rename-section`)**: Safely rename an instrument or section across all paragraphs, tracks, and playback order sequences simultaneously.
+  - **Track Extraction (`extract-instrument`)**: Extract all tracks belonging to a specific instrument (e.g. Lead Vocal, Bass) into an isolated TMD document for rehearsal, stems, or solo printing.
+  - **Track Duplication & Octave Doubling (`duplicate-track`)**: Duplicate any existing melody track with optional octave shifts (`--octave 1`) to instantly create doubled leads or sub-bass lines.
+  - **Automatic Diatonic Harmony (`generate-harmony`)**: Generate parallel diatonic harmony tracks (e.g. parallel 3rds up or down) following the score's key signature.
+  - **Inline Playback Orders (`inline-orders`)**: Unroll and inline repeating sections and relative key changes into a linear, single-pass score when preparing final arrangements.
 
 ## Platform Support
 
@@ -256,6 +247,15 @@ let lilyPond = TMDLilyPondGenerator.generateLilyPond(from: sheet)
 // Export to ABC notation string
 let abc = TMDABCGenerator.generateABC(from: sheet)
 ```
+
+## The TmdSwift Implementation
+
+**TmdSwift** re-implements the original parser into a clean, modern Swift architecture featuring:
+- A two-stage Lexer + TokenParser pipeline.
+- Normalized musical AST structures (`Beat`, `Note`, `Unit`, `Section`, `Paragraph`, `Order`, `Sheet`).
+- Formatter to serialize AST back to standard TMD syntax.
+- Exporters for MIDI, REAPER, MusicXML, LilyPond, ABC, VOCALOID, UTAU, and WAV audio.
+- A command-line interface (`tmd`) powered by `swift-argument-parser`.
 
 ## Modules
 
