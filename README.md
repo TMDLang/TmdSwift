@@ -298,16 +298,16 @@ You can edit TMD files with syntax highlighting, snippets, and export tools in b
 ### 1. Visual Studio Code
 
 The repository includes an official VS Code extension in [`editor/vscode`](editor/vscode):
+
 - **Syntax Highlighting & Snippets**: Full grammar for TMD metadata, tracks, numbered notation, chords, tuplets, and arrangement flow.
-- **Export & Playback Commands** (via `tmd` CLI):
-  - `TMD: Play Audio Preview in Terminal` (editor top-right title bar & context menu)
-  - `TMD: Export to MIDI (.mid)`
-  - `TMD: Export to MusicXML (.musicxml)`
-  - `TMD: Export to ABC Notation (.abc)`
-  - `TMD: Export to LilyPond (.ly)`
-  - `TMD: Render to PDF via LilyPond (.pdf)`
-  - `TMD: Render to WAV Audio (.wav)`
-  - `TMD: Install AI Agent Skills`
+- **Interactive Web MIDI Player**: Built-in Web MIDI player panel with SoundFont selection, play/stop controls, and position scrub bar.
+- **Outline & Breadcrumb Navigation**: Explorer sidebar tree view displaying all sections, track counts, and execution orders with inline section/track play buttons.
+- **CodeLens In-Editor Audition**: Click `▶ Play Section` or `▶ Play Track` directly above paragraph headers to preview individual sections or solo instruments on the fly.
+- **Measure Consistency Diagnostics**: Real-time linter checking beat count math against time signatures on save and as you type, reporting issues in the Problems panel.
+- **Song Inspector**: Run `TMD: Inspect Song Profile` to display vocal tessitura, pitch ranges, duration, chord vocabulary, and arrangement density directly in an Output Channel.
+- **In-Editor Score Refactoring**: Interactive commands to double/halve rhythm resolution, duplicate tracks with octave shifts, generate natural harmonies, rename instruments/sections globally, or inline orders.
+- **GitHub Copilot Chat & LM Tools**: Chat participant `@tmd` (`/check`, `/inspect`, `/compose`, `/fix`, `/explain`) and language model tools (`tmd_check`, `tmd_inspect`, `tmd_format`, `tmd_get_specification`).
+- **Export & Render Commands**: Export to MIDI, REAPER, MusicXML, ABC, LilyPond, PDF, VOCALOID (.vsq, .vsqx), UTAU (.ust), or offline WAV audio.
 
 To install locally:
 ```bash
