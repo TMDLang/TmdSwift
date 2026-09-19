@@ -2,6 +2,8 @@
 
 A modern Swift implementation of the **TMD** (Timebase Mark Down) markup language parser, toolkit, and music notation exporter.
 
+![TMD in Visual Studio Code](assets/vscode_screenshot.png)
+
 In memory of **Chen, Chih-Han / [aguai](https://github.com/aguai)** (阿怪, 1974–2019).
 
 Original project: [https://github.com/aguai/TMDLang](https://github.com/aguai/TMDLang)
