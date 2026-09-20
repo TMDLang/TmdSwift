@@ -138,8 +138,9 @@
       },
       {
         "command": "tmd.inspectSong",
-        "title": "Inspect Song Profile (Vocal Range & Structure)",
+        "title": "Open Song Inspector (Profile & Vocal Range)",
         "category": "TMD",
+        "icon": "$(pulse)",
         "enablement": "editorLangId == tmd"
       },
       {
@@ -357,6 +358,11 @@
           "command": "tmd.openMidiPlayer",
           "when": "editorLangId == tmd",
           "group": "navigation@1"
+        },
+        {
+          "command": "tmd.inspectSong",
+          "when": "editorLangId == tmd",
+          "group": "navigation@2"
         }
       ]
     },

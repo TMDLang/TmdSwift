@@ -24,7 +24,10 @@ Official Visual Studio Code extension providing language support, syntax highlig
 - **Commands & Export Integrations** (via `tmd` CLI):
   - `TMD: Format Document` (`Shift + Option + F` standard format document provider)
   - `TMD: Check Measure Consistency` (live diagnostics and warnings in Problems panel)
+  - `TMD: Open Song Inspector` (interactive visual dashboard for vocal range, key metrics, timeline, and chords)
   - `TMD: Play Audio Preview in Terminal` (editor top-right title bar & context menu)
+  - `TMD: Open Web MIDI Player` (interactive webview player with piano, chiptune, and system synth)
+  - `TMD: Refactor: Double Grid / Halve Grid / Duplicate Track / Generate Harmony / Rename...`
   - `TMD: Export to MIDI (.mid)`
   - `TMD: Export to MusicXML (.musicxml)`
   - `TMD: Export to ABC Notation (.abc)`

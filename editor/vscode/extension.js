@@ -455,30 +455,215 @@ function activate(context) {
         runMeasureCheck(editor.document, true);
     }));
 
-    // Output channel for Song Inspection
-    let inspectOutputChannel = null;
+    // Visual Song Inspector Webview Panel tracking
+    let currentInspectorPanel = null;
 
-    // Command: Inspect Song Profile
+    function getInspectorWebviewContent(webview, extensionUri) {
+        const inspectorCssUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'inspector.css'));
+        const inspectorJsUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'inspector.js'));
+
+        return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TMD Song Inspector</title>
+  <link rel="stylesheet" href="${inspectorCssUri}">
+</head>
+<body>
+  <div class="inspector-header">
+    <div class="header-title-row">
+      <div class="score-title">
+        <span id="score-title">Song Inspector</span>
+        <span id="status-badge" class="badge-valid">Ready</span>
+      </div>
+      <div id="file-path" class="file-path"></div>
+    </div>
+    <button id="btn-refresh" class="btn-refresh" title="Refresh Profile">Refresh</button>
+  </div>
+
+  <!-- Key Metrics Grid -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Duration</div>
+      <div id="val-duration" class="stat-value">-</div>
+      <div id="sub-duration" class="stat-sub">-</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Initial Key</div>
+      <div id="val-key" class="stat-value">-</div>
+      <div id="sub-key" class="stat-sub">-</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Tempo</div>
+      <div id="val-tempo" class="stat-value">-</div>
+      <div id="sub-tempo" class="stat-sub">-</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Arrangement Density</div>
+      <div id="val-density" class="stat-value">-</div>
+      <div id="sub-density" class="stat-sub">-</div>
+    </div>
+  </div>
+
+  <!-- Vocal & Pitch Tessitura Card -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-card-title">Pitch Range & Tessitura Analysis</div>
+      <select id="track-select" class="track-select"></select>
+    </div>
+    <div id="range-container" class="range-display-container">
+      <div class="stat-sub">Analyzing track notes...</div>
+    </div>
+  </div>
+
+  <!-- Harmony & Modulations Card -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-card-title">Harmonic Vocabulary & Modulations</div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <div>
+        <div class="stat-label" style="margin-bottom: 6px;">Distinct Chords</div>
+        <div id="chords-list" class="tags-list"></div>
+      </div>
+      <div>
+        <div class="stat-label" style="margin-bottom: 6px;">Key Modulations</div>
+        <div id="modulations-list" class="tags-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Musical Structure Timeline -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="section-card-title">Structure & Conductor Timeline</div>
+    </div>
+    <div class="timeline-flow">
+      <div id="timeline-bar-wrapper" class="timeline-bar-wrapper"></div>
+      <div id="timeline-list" class="timeline-list"></div>
+    </div>
+  </div>
+
+  <script src="${inspectorJsUri}"></script>
+</body>
+</html>`;
+    }
+
+    async function updateInspectorPanel(panel, document) {
+        if (!panel || !document) return;
+        const text = document.getText();
+        const baseName = path.basename(document.fileName || 'Untitled.tmd');
+
+        const res = await runTmdInspectBuffer(text, true);
+        if (res.success && res.report) {
+            try {
+                const profile = JSON.parse(res.report);
+                panel.webview.postMessage({
+                    type: 'update',
+                    profile: profile,
+                    fileName: baseName
+                });
+            } catch (err) {
+                panel.webview.postMessage({
+                    type: 'error',
+                    error: `JSON parsing error: ${err.message}`,
+                    fileName: baseName
+                });
+            }
+        } else {
+            panel.webview.postMessage({
+                type: 'error',
+                error: res.error || 'Failed to inspect score',
+                fileName: baseName
+            });
+        }
+    }
+
+    // Command: Inspect Song Profile (Visual Webview Panel)
     context.subscriptions.push(vscode.commands.registerCommand('tmd.inspectSong', async () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor || (editor.document.languageId !== 'tmd' && !editor.document.fileName.endsWith('.tmd'))) {
             vscode.window.showErrorMessage('No active TMD score found. Please open a .tmd file.');
             return;
         }
-        const text = editor.document.getText();
-        const res = await runTmdInspectBuffer(text);
-        if (res.success && res.report) {
-            if (!inspectOutputChannel) {
-                inspectOutputChannel = vscode.window.createOutputChannel('TMD Song Inspector');
-                context.subscriptions.push(inspectOutputChannel);
-            }
-            inspectOutputChannel.clear();
-            inspectOutputChannel.appendLine(res.report);
-            inspectOutputChannel.show(true);
+
+        const column = vscode.ViewColumn.Beside;
+        if (currentInspectorPanel) {
+            currentInspectorPanel.reveal(column);
         } else {
-            vscode.window.showErrorMessage(`TMD Inspect Error: ${res.error || 'Failed to inspect song'}`);
+            currentInspectorPanel = vscode.window.createWebviewPanel(
+                'tmdSongInspector',
+                'TMD Song Inspector',
+                column,
+                {
+                    enableScripts: true,
+                    retainContextWhenHidden: true,
+                    localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'media')]
+                }
+            );
+
+            currentInspectorPanel.iconPath = vscode.Uri.joinPath(context.extensionUri, 'media', 'player.svg');
+            currentInspectorPanel.webview.html = getInspectorWebviewContent(currentInspectorPanel.webview, context.extensionUri);
+
+            currentInspectorPanel.webview.onDidReceiveMessage(message => {
+                const activeEd = vscode.window.activeTextEditor;
+                if (!activeEd) return;
+
+                if (message.type === 'refresh') {
+                    updateInspectorPanel(currentInspectorPanel, activeEd.document);
+                } else if (message.type === 'jumpToSection' && message.sectionName) {
+                    const doc = activeEd.document;
+                    const secRegex = new RegExp(`^\\s*${message.sectionName}\\s*:\\s*[a-zA-Z0-9_\\-+]+`, 'i');
+                    for (let i = 0; i < doc.lineCount; i++) {
+                        if (secRegex.test(doc.lineAt(i).text)) {
+                            const pos = new vscode.Position(i, 0);
+                            activeEd.selection = new vscode.Selection(pos, pos);
+                            activeEd.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+                            break;
+                        }
+                    }
+                } else if (message.type === 'findText' && message.text) {
+                    vscode.commands.executeCommand('actions.find', { searchString: message.text });
+                }
+            }, null, context.subscriptions);
+
+            currentInspectorPanel.onDidDispose(() => {
+                currentInspectorPanel = null;
+            }, null, context.subscriptions);
         }
+
+        await updateInspectorPanel(currentInspectorPanel, editor.document);
     }));
+
+    // Auto-update Inspector on document save or text change
+    context.subscriptions.push(
+        vscode.workspace.onDidSaveTextDocument(doc => {
+            if (currentInspectorPanel && doc.languageId === 'tmd') {
+                updateInspectorPanel(currentInspectorPanel, doc);
+            }
+        })
+    );
+
+    let inspectorDebounce = null;
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeTextDocument(event => {
+            if (currentInspectorPanel && event.document.languageId === 'tmd') {
+                if (inspectorDebounce) clearTimeout(inspectorDebounce);
+                inspectorDebounce = setTimeout(() => {
+                    updateInspectorPanel(currentInspectorPanel, event.document);
+                }, 800);
+            }
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.window.onDidChangeActiveTextEditor(ed => {
+            if (currentInspectorPanel && ed && ed.document.languageId === 'tmd') {
+                updateInspectorPanel(currentInspectorPanel, ed.document);
+            }
+        })
+    );
 
     // Command: Format Document
     context.subscriptions.push(vscode.commands.registerCommand('tmd.formatDocument', () => {
