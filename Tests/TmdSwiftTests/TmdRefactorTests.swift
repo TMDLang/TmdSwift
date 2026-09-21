@@ -281,6 +281,36 @@ struct TmdRefactorTests {
         let extractedContent = try String(contentsOf: extractedOutput, encoding: .utf8)
         #expect(extractedContent.contains("Chorus:Cello@|0|{"))
         #expect(!extractedContent.contains("Fiddle"))
+
+        // 5. Test `tmd refactor transpose -s 2 -k -i`
+        let transposeProc = Process()
+        transposeProc.executableURL = tmdURL
+        transposeProc.arguments = ["refactor", "transpose", sampleTmd.path, "-s", "2", "-k", "-i"]
+        try transposeProc.run()
+        transposeProc.waitUntilExit()
+        #expect(transposeProc.terminationStatus == 0)
+        let transposedContent = try String(contentsOf: sampleTmd, encoding: .utf8)
+        #expect(transposedContent.contains("?= E"))
+        #expect(transposedContent.contains("2 3 4' 5"))
+
+        // 6. Test `tmd refactor double-grid -i` and `optimize-grid -i`
+        let doubleGridProc = Process()
+        doubleGridProc.executableURL = tmdURL
+        doubleGridProc.arguments = ["refactor", "double-grid", sampleTmd.path, "-i"]
+        try doubleGridProc.run()
+        doubleGridProc.waitUntilExit()
+        #expect(doubleGridProc.terminationStatus == 0)
+        let doubledContent = try String(contentsOf: sampleTmd, encoding: .utf8)
+        #expect(doubledContent.contains("<8*>"))
+
+        let optGridProc = Process()
+        optGridProc.executableURL = tmdURL
+        optGridProc.arguments = ["refactor", "optimize-grid", sampleTmd.path, "-i"]
+        try optGridProc.run()
+        optGridProc.waitUntilExit()
+        #expect(optGridProc.terminationStatus == 0)
+        let optContent = try String(contentsOf: sampleTmd, encoding: .utf8)
+        #expect(optContent.contains("<4*>"))
     }
 
     @Test func testDoubleGridAndHalveGridResolution() throws {
@@ -589,4 +619,186 @@ struct TmdRefactorTests {
         #expect(!extracted.contains("/* bass comment */"))
         #expect(extracted.contains("/* order comment */"))
     }
+
+    // MARK: - Optimize Grid Tests
+
+    @Test func testOptimizeGridRepeatedlyUntilMinimalResolution() throws {
+        let input = """
+        ::SCORE::
+        ** Optimize Grid Test **
+        != 120
+        ? = E
+        <4/4>
+
+        b1:Bass@|0| {
+            <4*>
+            | 4__ - - - | 5__ - - - | 3__ - - - | 6__ - - - |
+            | 2__ - - - | 5__ - - - | 1_ - - - | 5__ - - - |
+            | 4__ - - - | 5__ - - - | 3__ - - - | 6__ - - - |
+            | 2__ - - - | 5__ - - - | 6__ - - - | - - - - |
+        }
+
+        -> b1 ->#
+        """
+
+        let optimized = TMDRefactor.optimizeGrid(source: input)
+        #expect(optimized.contains("<1*>"))
+        #expect(optimized.contains("| 4__ | 5__ | 3__ | 6__ |"))
+        #expect(optimized.contains("| 2__ | 5__ | 1_ | 5__ |"))
+        #expect(optimized.contains("| 4__ | 5__ | 3__ | 6__ |"))
+        #expect(optimized.contains("| 2__ | 5__ | 6__ | - |"))
+
+        let issues = TMDMeasureChecker.check(source: optimized)
+        #expect(issues.isEmpty)
+    }
+
+    @Test func testOptimizeGridRestrictedToSectionOrInstrument() throws {
+        let input = """
+        ::SCORE::
+        ** Multi-Track Optimize Test **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Bass@|0|{
+            <4*>
+            | 1_ - - - | 5__ - - - |
+        }
+
+        verse:Lead@|0|{
+            <4*>
+            | 1 2 3 4 | 5 6 7 1^ |
+        }
+
+        -> verse ->#
+        """
+
+        let optBass = TMDRefactor.optimizeGrid(source: input, target: TMDRefactorTarget(instrument: "Bass"))
+        #expect(optBass.contains("<1*>"))
+        #expect(optBass.contains("| 1_ | 5__ |"))
+        #expect(optBass.contains("<4*>"))
+        #expect(optBass.contains("| 1 2 3 4 | 5 6 7 1^ |"))
+        #expect(TMDMeasureChecker.check(source: optBass).isEmpty)
+    }
+
+    @Test func testOptimizeGridGlobalAcrossMultipleParagraphs() throws {
+        let input = """
+        ::SCORE::
+        ** Global Optimize Test **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Bass@|0|{
+            <4*>
+            | 1_ - - - | 5__ - - - |
+        }
+
+        verse:Lead@|0|{
+            <4*>
+            | 1 2 3 4 | 5 6 7 1^ |
+        }
+
+        -> verse ->#
+        """
+
+        let optGlobal = TMDRefactor.optimizeGrid(source: input)
+        #expect(optGlobal.contains("verse:Bass@|0|{"))
+        #expect(optGlobal.contains("<1*>"))
+        #expect(optGlobal.contains("| 1_ | 5__ |"))
+        #expect(optGlobal.contains("verse:Lead@|0|{"))
+        #expect(optGlobal.contains("<4*>"))
+        #expect(optGlobal.contains("| 1 2 3 4 | 5 6 7 1^ |"))
+        #expect(TMDMeasureChecker.check(source: optGlobal).isEmpty)
+    }
+
+    // MARK: - Transpose Tests
+
+    @Test func testTransposeNotesAndChordsUpBySemitones() throws {
+        let input = "| 1 2 3 4 | [C] - [Am] - |"
+        let transposed = TMDRefactor.transpose(source: input, semitones: 2, keySignature: "C")
+        #expect(transposed.contains("| 2 3 4' 5 |"))
+        #expect(transposed.contains("[D] - [Bm] -"))
+    }
+
+    @Test func testTransposeNotesAndChordsDownBySemitones() throws {
+        let input = "| 1 3 5 1^ | [C] - [G7] - |"
+        let transposed = TMDRefactor.transpose(source: input, semitones: -1, keySignature: "C")
+        #expect(transposed.contains("| 7_ 2' 4' 7 |"))
+        #expect(transposed.contains("[B] - [F#7] -"))
+    }
+
+    @Test func testTransposeDiatonically() throws {
+        let input = "| 1 2 3 4 | 5 6 7 1^ | [1] - [4] [5] |"
+        let transposed = TMDRefactor.transpose(source: input, diatonicSteps: 1)
+        #expect(transposed.contains("| 2 3 4 5 | 6 7 1^ 2^ |"))
+        #expect(transposed.contains("[2] - [5] [6]"))
+    }
+
+    @Test func testTransposeCompleteScoreAndUpdateKeySignature() throws {
+        let input = """
+        ::SCORE::
+        /* My intro comment */
+        ** Transpose Song **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Lead@|0|{
+            <4*>
+            | 1 2 3 1 | /* bar comment */
+            | [C] - [G] - |
+        }
+
+        -> verse ->#
+        """
+
+        let transposed = TMDRefactor.transpose(source: input, semitones: 2, updateKeySignature: true)
+        #expect(transposed.contains("?= D"))
+        #expect(transposed.contains("/* My intro comment */"))
+        #expect(transposed.contains("/* bar comment */"))
+        #expect(transposed.contains("verse:Lead@|0|{"))
+        #expect(transposed.contains("-> verse ->#"))
+
+        let issues = TMDMeasureChecker.check(source: transposed)
+        #expect(issues.isEmpty)
+    }
+
+    @Test func testTransposeRestrictedToSectionAndInstrument() throws {
+        let input = """
+        ::SCORE::
+        ** Multi-Track Score **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Lead@|0|{
+            <4*>
+            | 1 2 3 4 |
+        }
+
+        verse:Bass@|0|{
+            <4*>
+            | 1_ - 5_ - |
+        }
+
+        chorus:Lead@|0|{
+            <4*>
+            | 5 6 7 1^ |
+        }
+
+        -> verse -> chorus ->#
+        """
+
+        let transposed = TMDRefactor.transpose(
+            source: input,
+            semitones: 12,
+            target: TMDRefactorTarget(section: "verse", instrument: "Lead")
+        )
+
+        #expect(transposed.contains("verse:Lead@|0|{\n    <4*>\n    | 1^ 2^ 3^ 4^ |"))
+        #expect(transposed.contains("verse:Bass@|0|{\n    <4*>\n    | 1_ - 5_ - |"))
+        #expect(transposed.contains("chorus:Lead@|0|{\n    <4*>\n    | 5 6 7 1^ |"))
+    }
 }
+

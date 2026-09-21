@@ -672,6 +672,136 @@ struct TmdRefactorInlineOrders: ParsableCommand {
     }
 }
 
+struct TmdRefactorOptimizeGrid: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "optimize-grid",
+        abstract: "Automatically simplify grid resolution to the minimal divisible scale without altering rhythm."
+    )
+
+    @Argument(help: "Path to the .tmd file.")
+    var inputPath: String
+
+    @Option(name: .long, help: "Optional section filter.")
+    var section: String?
+
+    @Option(name: .long, help: "Optional instrument filter.")
+    var instrument: String?
+
+    @Flag(name: [.short, .long], help: "Modify the file in-place.")
+    var inPlace: Bool = false
+
+    @Option(name: [.short, .long], help: "Output path for the refactored TMD document.")
+    var output: String?
+
+    func run() throws {
+        let content: String
+        do {
+            content = try String(contentsOfFile: inputPath, encoding: .utf8)
+        } catch {
+            print("Error reading \(inputPath): \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
+        let target = (section != nil || instrument != nil) ? TMDRefactorTarget(section: section, instrument: instrument) : nil
+        let result = TMDRefactor.optimizeGrid(source: content, target: target)
+
+        if inPlace {
+            do {
+                try result.write(toFile: inputPath, atomically: true, encoding: .utf8)
+                print("Optimized grid in \(inputPath) in-place.")
+            } catch {
+                print("Error writing \(inputPath): \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        } else if let outPath = output {
+            do {
+                try result.write(toFile: outPath, atomically: true, encoding: .utf8)
+                print("Refactored score written to \(outPath).")
+            } catch {
+                print("Error writing \(outPath): \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        } else {
+            print(result, terminator: "")
+        }
+    }
+}
+
+struct TmdRefactorTranspose: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "transpose",
+        abstract: "Transpose notes, chords, and key signatures by semitones or diatonic scale steps."
+    )
+
+    @Argument(help: "Path to the .tmd file.")
+    var inputPath: String
+
+    @Option(name: [.short, .customLong("semitones")], help: "Pitch shift in semitones (e.g. +2, -3).")
+    var semitones: Int?
+
+    @Option(name: [.short, .customLong("diatonic")], help: "Diatonic scale step shift (e.g. +2, -1).")
+    var diatonic: Int?
+
+    @Flag(name: [.customShort("k"), .customLong("update-key")], help: "Also update score {!K:...} key signatures when transposing semitones.")
+    var updateKey: Bool = false
+
+    @Option(name: .long, help: "Optional section filter.")
+    var section: String?
+
+    @Option(name: .long, help: "Optional instrument filter.")
+    var instrument: String?
+
+    @Flag(name: [.short, .long], help: "Modify the file in-place.")
+    var inPlace: Bool = false
+
+    @Option(name: [.short, .long], help: "Output path for the refactored TMD document.")
+    var output: String?
+
+    func run() throws {
+        guard semitones != nil || diatonic != nil else {
+            print("Error: Either --semitones (-s) or --diatonic (-d) must be specified.")
+            throw ExitCode.failure
+        }
+
+        let content: String
+        do {
+            content = try String(contentsOfFile: inputPath, encoding: .utf8)
+        } catch {
+            print("Error reading \(inputPath): \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
+        let target = (section != nil || instrument != nil) ? TMDRefactorTarget(section: section, instrument: instrument) : nil
+        let result = TMDRefactor.transpose(
+            source: content,
+            semitones: semitones ?? 0,
+            diatonicSteps: diatonic ?? 0,
+            updateKeySignature: updateKey,
+            target: target
+        )
+
+        if inPlace {
+            do {
+                try result.write(toFile: inputPath, atomically: true, encoding: .utf8)
+                print("Transposed score in \(inputPath) in-place.")
+            } catch {
+                print("Error writing \(inputPath): \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        } else if let outPath = output {
+            do {
+                try result.write(toFile: outPath, atomically: true, encoding: .utf8)
+                print("Refactored score written to \(outPath).")
+            } catch {
+                print("Error writing \(outPath): \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        } else {
+            print(result, terminator: "")
+        }
+    }
+}
+
 struct TmdRefactorCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "refactor",
@@ -682,6 +812,8 @@ struct TmdRefactorCommand: ParsableCommand {
             TmdRefactorExtractInstrument.self,
             TmdRefactorDoubleGrid.self,
             TmdRefactorHalveGrid.self,
+            TmdRefactorOptimizeGrid.self,
+            TmdRefactorTranspose.self,
             TmdRefactorDuplicateTrack.self,
             TmdRefactorGenerateHarmony.self,
             TmdRefactorInlineOrders.self

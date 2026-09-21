@@ -37,6 +37,24 @@ public struct TMDNotePitchInfo: Equatable, Sendable, Codable {
     }
 }
 
+/// Qualitative rating of a vocal/instrument pitch span difficulty.
+public enum TMDPitchRangeDifficulty: String, Equatable, Sendable, Codable {
+    case easy
+    case moderate
+    case challenging
+    case difficult
+}
+
+/// Standard classical/pop vocal voice classifications.
+public enum TMDVocalClassification: String, Equatable, Sendable, Codable, CaseIterable {
+    case soprano
+    case mezzoSoprano = "mezzo-soprano"
+    case contralto
+    case tenor
+    case baritone
+    case bass
+}
+
 /// Vocal or instrument pitch range and tessitura summary.
 public struct TMDPitchRangeProfile: Equatable, Sendable, Codable {
     public let instrument: String
@@ -48,6 +66,8 @@ public struct TMDPitchRangeProfile: Equatable, Sendable, Codable {
     }
     public let totalNotes: Int
     public let averageMidiPitch: Double
+    public let difficulty: TMDPitchRangeDifficulty
+    public let suitableVoiceTypes: [TMDVocalClassification]
 
     public init(
         instrument: String,
@@ -55,7 +75,9 @@ public struct TMDPitchRangeProfile: Equatable, Sendable, Codable {
         highestNote: TMDNotePitchInfo,
         spanSemitones: Int,
         totalNotes: Int,
-        averageMidiPitch: Double
+        averageMidiPitch: Double,
+        difficulty: TMDPitchRangeDifficulty = .easy,
+        suitableVoiceTypes: [TMDVocalClassification] = []
     ) {
         self.instrument = instrument
         self.lowestNote = lowestNote
@@ -63,6 +85,8 @@ public struct TMDPitchRangeProfile: Equatable, Sendable, Codable {
         self.spanSemitones = spanSemitones
         self.totalNotes = totalNotes
         self.averageMidiPitch = averageMidiPitch
+        self.difficulty = difficulty
+        self.suitableVoiceTypes = suitableVoiceTypes
     }
 }
 
@@ -368,6 +392,10 @@ public enum TMDSongInspector {
         let sumPitch = hits.reduce(0) { $0 + $1.midi }
         let avgPitch = Double(sumPitch) / Double(hits.count)
 
+        let spanSemitones = highest.midi - lowest.midi
+        let difficulty = evaluateDifficulty(spanSemitones: spanSemitones)
+        let suitable = evaluateSuitableVoiceTypes(lowestMidi: lowest.midi, highestMidi: highest.midi)
+
         return TMDPitchRangeProfile(
             instrument: instrument,
             lowestNote: TMDNotePitchInfo(
@@ -388,10 +416,55 @@ public enum TMDSongInspector {
                 measure: highest.measure,
                 timeSeconds: highest.timeSeconds
             ),
-            spanSemitones: highest.midi - lowest.midi,
+            spanSemitones: spanSemitones,
             totalNotes: hits.count,
-            averageMidiPitch: avgPitch
+            averageMidiPitch: avgPitch,
+            difficulty: difficulty,
+            suitableVoiceTypes: suitable
         )
+    }
+
+    /// Evaluates pitch span difficulty based on semitones range.
+    public static func evaluateDifficulty(spanSemitones: Int) -> TMDPitchRangeDifficulty {
+        if spanSemitones <= 12 { return .easy }
+        if spanSemitones <= 16 { return .moderate }
+        if spanSemitones <= 20 { return .challenging }
+        return .difficult
+    }
+
+    /// Classical standard vocal ranges with amateur/pop margin and male octave displacement.
+    public static func evaluateSuitableVoiceTypes(lowestMidi: Int, highestMidi: Int) -> [TMDVocalClassification] {
+        let voiceRanges: [(type: TMDVocalClassification, min: Int, max: Int)] = [
+            (.soprano, 57, 86),       // A3 - D6
+            (.mezzoSoprano, 53, 81),  // F3 - A5
+            (.contralto, 50, 77),     // D3 - F5
+            (.tenor, 45, 74),         // A2 - D5
+            (.baritone, 41, 69),      // F2 - A4
+            (.bass, 38, 65)           // D2 - F4
+        ]
+
+        var suitable: [TMDVocalClassification] = []
+
+        // Direct range check
+        for vr in voiceRanges {
+            if lowestMidi >= vr.min && highestMidi <= vr.max {
+                suitable.append(vr.type)
+            }
+        }
+
+        // Check standard male octave transpose (melodies written in treble clef C4-C5 sung C3-C4 by males)
+        let transposedLow = lowestMidi - 12
+        let transposedHigh = highestMidi - 12
+        let maleVoiceTypes: Set<TMDVocalClassification> = [.tenor, .baritone, .bass]
+        for vr in voiceRanges {
+            if maleVoiceTypes.contains(vr.type) && !suitable.contains(vr.type) {
+                if transposedLow >= vr.min && transposedHigh <= vr.max {
+                    suitable.append(vr.type)
+                }
+            }
+        }
+
+        return suitable
     }
 
     private static func buildHarmonyProfile(sheet: Sheet) -> TMDHarmonyProfile {
@@ -480,9 +553,13 @@ public enum TMDSongInspector {
 
         if let vocal = profile.vocalRange {
             let octaves = String(format: "%0.1f", vocal.spanOctaves)
-            lines.append("🎤 Vocal Range:    \(vocal.lowestNote.noteName) (MIDI \(vocal.lowestNote.midiPitch)) – \(vocal.highestNote.noteName) (MIDI \(vocal.highestNote.midiPitch)) [Span: \(vocal.spanSemitones) semitones / \(octaves) octaves]")
+            lines.append("🎤 Vocal Range:    \(vocal.lowestNote.noteName) (MIDI \(vocal.lowestNote.midiPitch)) – \(vocal.highestNote.noteName) (MIDI \(vocal.highestNote.midiPitch)) [Span: \(vocal.spanSemitones) semitones / \(octaves) octaves, Difficulty: \(vocal.difficulty.rawValue)]")
             lines.append("   - Lowest Note:  \(vocal.lowestNote.noteName) in \(formatNoteLocation(vocal.lowestNote))")
             lines.append("   - Highest Note: \(vocal.highestNote.noteName) in \(formatNoteLocation(vocal.highestNote))")
+            if !vocal.suitableVoiceTypes.isEmpty {
+                let voiceNames = vocal.suitableVoiceTypes.map(\.rawValue).joined(separator: ", ")
+                lines.append("   - Suitable For: \(voiceNames)")
+            }
         }
 
         lines.append("🏛  Structure:      " + profile.timing.sections.map { "\($0.name) (\(String(format: "%0.1fs", $0.durationSeconds)))" }.joined(separator: " -> "))

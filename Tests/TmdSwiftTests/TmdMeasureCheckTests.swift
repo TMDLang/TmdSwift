@@ -150,10 +150,10 @@ struct TmdMeasureCheckTests {
         #expect(outputStr.contains("found 3"))
     }
 
-    @Test func testSectionInstrumentLengthMismatchReportsIssue() throws {
+    @Test func testSectionInstrumentLengthAllowsStaggeredEntrancesAndEarlyExits() throws {
         let input = """
         ::SCORE::
-        ** Mismatched Section Length Song **
+        ** Layered Section Song **
         != 120
         ?= C
         <4/4>
@@ -172,23 +172,18 @@ struct TmdMeasureCheckTests {
             | 1 - - - |
         }
 
+        verse:Chorus@|+2|{
+            <4*>
+            | 1 2 3 4 |
+        }
+
         -> verse ->#
         """
 
+        // Bass exits early (2 measures out of 4), Chorus enters at +2 and exits at 3.
+        // In TMD, these are valid staggered entrances / early exits without reporting error.
         let issues = TMDMeasureChecker.check(source: input)
-        // verse:Piano has 4 measures (16 beats).
-        // verse:Bass only has 2 measures (8 beats).
-        // Should report a section length discrepancy issue.
-        let sectionIssues = issues.filter { $0.measureIndex == 0 }
-        #expect(sectionIssues.count == 1)
-        if let issue = sectionIssues.first {
-            #expect(issue.paragraphName == "verse")
-            #expect(issue.instrument == "Bass")
-            #expect(issue.expectedUnits == 4) // Expected measures
-            #expect(issue.actualUnits == 2)   // Actual measures
-            #expect(issue.description.contains("Expected 4 measures"))
-            #expect(issue.description.contains("found 2 measures"))
-        }
+        #expect(issues.isEmpty)
     }
 
     @Test func testSectionInstrumentLengthWithDelayedStartMatches() throws {
@@ -352,6 +347,89 @@ struct TmdMeasureCheckTests {
         #expect(issue.instrument == "Order")
         #expect(issue.description.contains("Playback order must terminate with '#'"))
     }
+
+    @Test func testAccuratelyChecksPipelessMeasuresAndMixedPipeParagraphs() throws {
+        let code = """
+        ::SCORE::
+        ** Pipeless Measure Test **
+        != 120
+        ?= C
+        <4/4>
+
+        intro:CHORD@|0|{
+        <2*>
+        |[1] - | - [7,] |
+        |[1] - | - [7,] |
+        |[1] - | - [7,] |
+        |[1] - | - [7,] |
+
+        <4*>
+        [1]-----[7,]-
+        [1]-----[7,]-
+        }
+
+        -> intro ->#
+        """
+        // intro:CHORD has 8 measures of <2*> (16 half notes = 32 quarter notes = 8 measures)
+        // plus 2 measures of <4*> (8 quarter notes = 2 measures)
+        // total 10 measures. Should have 0 issues.
+        let issues = TMDMeasureChecker.check(source: code)
+        #expect(issues.isEmpty)
+    }
+
+    @Test func testAcceptsLayeredIntroPatternWithoutFalseErrors() throws {
+        let code = """
+        ::SCORE::
+        ** 三天三夜 Intro Test **
+        != 133
+        ?= A'
+        <4/4>
+
+        intro:CHORD@|0|{
+        <2*>
+        |[1] - | - [7,] |
+        |[1] - | - [7,] |
+        |[1] - | - [7,] |
+        |[1] - | - [7,] |
+
+        <4*>
+        [1]-----[7,]-
+        [1]-----[7,]-
+        }
+        intro:Chorus-1@|+4|{
+        <16*>
+        1_- 1_ - 1_ - - 1_ - 1_ - 1_ 1_ - - -
+        1_- 1_ - 1_ - - 1_ - 1_ - 1_ 1_ - - -
+        1_- 1_ - 1_ - - 1_ - 1_ - 1_ 1_ - - -
+        1_- 1_ - 1_ - - 1_ - 1_ - 1_ 1_ - - -
+        }
+
+        intro:Chorus-2@|+6|{
+        <16*>
+        3_- 3_ - 3_ - - 3_ - 3_ - 3_ 3_ - - -
+        3_- 3_ - 3_ - - 3_ - 3_ - 3_ 3_ - - -
+        3_- 3_ - 3_ - - 3_ - 3_ - 3_ 3_ - - -
+        }
+        intro:Chorus-3@|+8|{
+        <16*>
+        5_- 5_ - 5_ - - 5_ - 5_ - 5_ 5_ - - -
+        5_- 5_ - 5_ - - 5_ - 5_ - 5_ 5_ - - -
+        }
+
+        intro:Guitar@{
+        <16*>
+        (7,1)%(--) 1 (7,1)%(--) 1 (7,1)%(--)1 (7,1)%(--) 6 7, 6 7, 6 
+        (7,1)%(--) 1 (7,1)%(--) 1 (7,1)%(--)1 (7,1)%(--) 6 7, 6 7, 6  
+        (7,1)%(--) 1 (7,1)%(--) 1 (7,1)%(--)1 (7,1)%(--) 6 7, 6 7, 6 
+        (7,1)%(--) 1 (7,1)%(--) 1 (7,1)%(--)1 (7,1)%(--) 6 7, 6 7, 6 
+        }
+
+        -> intro ->#
+        """
+        let issues = TMDMeasureChecker.check(source: code)
+        #expect(issues.isEmpty)
+    }
 }
+
 
 

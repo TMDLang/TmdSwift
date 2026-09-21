@@ -367,68 +367,9 @@ public struct TMDMeasureChecker {
             }
         }
 
-        // Section length consistency check
-        // Group paragraphs by paragraphName (section name)
-        var paragraphsBySection: [String: [ParagraphSpanInfo]] = [:]
-        for p in paragraphInfos {
-            paragraphsBySection[p.paragraphName, default: []].append(p)
-        }
-
-        for (sectionName, list) in paragraphsBySection {
-            guard list.count > 1 else { continue }
-            // Determine baseline: find the longest track by endMeasure (and endQuarterNotes)
-            guard let maxTrack = list.max(by: {
-                if $0.endMeasure != $1.endMeasure {
-                    return $0.endMeasure < $1.endMeasure
-                }
-                return $0.endQuarterNotes < $1.endQuarterNotes
-            }) else { continue }
-
-            let expectedMeasures = maxTrack.endMeasure
-            let expectedBeats = maxTrack.endQuarterNotes
-
-            for track in list {
-                // If the track ends at fewer positive measures than expected, report issue
-                if track.endMeasure < expectedMeasures {
-                    let diffBeats = track.endQuarterNotes - expectedBeats
-                    let diffBeatsStr = diffBeats > 0 ? "+\(String(format: "%.1f", diffBeats))" : String(format: "%.1f", diffBeats)
-                    let expectedBeatsStr = String(format: "%.1f", expectedBeats)
-                    let trackBeatsStr = String(format: "%.1f", track.endQuarterNotes)
-
-                    let snippet = "\(expectedBeatsStr) beats based on \(maxTrack.instrument); found \(trackBeatsStr) beats, \(diffBeatsStr) beats"
-                    issues.append(TMDMeasureIssue(
-                        paragraphName: sectionName,
-                        instrument: track.instrument,
-                        lineNumber: track.startLine,
-                        measureIndex: 0,
-                        expectedUnits: expectedMeasures,
-                        actualUnits: track.endMeasure,
-                        noteLength: 4,
-                        beat: beat,
-                        snippet: snippet
-                    ))
-                } else if track.endMeasure == expectedMeasures && track.startOffset >= 0 && maxTrack.startOffset >= 0 && track.endQuarterNotes + 1e-4 < expectedBeats {
-                    // Both are non-pickup tracks with same nominal measure count, but beat durations differ
-                    let diffBeats = track.endQuarterNotes - expectedBeats
-                    let diffBeatsStr = diffBeats > 0 ? "+\(String(format: "%.1f", diffBeats))" : String(format: "%.1f", diffBeats)
-                    let expectedBeatsStr = String(format: "%.1f", expectedBeats)
-                    let trackBeatsStr = String(format: "%.1f", track.endQuarterNotes)
-
-                    let snippet = "\(expectedBeatsStr) beats based on \(maxTrack.instrument); found \(trackBeatsStr) beats, \(diffBeatsStr) beats"
-                    issues.append(TMDMeasureIssue(
-                        paragraphName: sectionName,
-                        instrument: track.instrument,
-                        lineNumber: track.startLine,
-                        measureIndex: 0,
-                        expectedUnits: expectedMeasures,
-                        actualUnits: track.endMeasure,
-                        noteLength: 4,
-                        beat: beat,
-                        snippet: snippet
-                    ))
-                }
-            }
-        }
+        // Note: in TMD, tracks within the same section may enter and exit freely (staggered entrance,
+        // early exit / solos / breakdowns). TMDPlaybackRenderer pads trailing silence up to durationOf(section),
+        // so shorter tracks are considered natural implicit rests rather than errors.
 
         return issues
     }

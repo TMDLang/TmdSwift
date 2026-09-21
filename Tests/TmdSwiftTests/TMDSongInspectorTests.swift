@@ -85,6 +85,8 @@ struct TMDSongInspectorTests {
         #expect(vocalProfile.spanSemitones == 21) // 81 - 60 = 21 semitones
         #expect(abs(vocalProfile.spanOctaves - 1.75) < 0.01)
         #expect(vocalProfile.highestNote.sectionName == "chorus")
+        #expect(vocalProfile.difficulty == .difficult)
+        #expect(vocalProfile.suitableVoiceTypes.contains(.soprano))
 
         // 4. Track Ranges
         #expect(profile.instrumentRanges.count >= 2)
