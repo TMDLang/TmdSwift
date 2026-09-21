@@ -163,6 +163,8 @@ function activate(context) {
         const jzzSmfUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'JZZ.midi.SMF.js'));
         const jzzTinyUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'JZZ.synth.Tiny.js'));
         const soundfontUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'soundfont-player.min.js'));
+        const soundfontMappingUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'soundfont-mapping.js'));
+        const virtualKeyboardHelperUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'virtual-keyboard-helper.js'));
         const playerJsUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'player.js'));
         const playerCssUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'player.css'));
 
@@ -205,6 +207,7 @@ function activate(context) {
       <div class="synth-selector-group">
         <span class="synth-label">Synth:</span>
         <select id="synth-select" class="synth-select">
+          <option value="gm">🎼 General MIDI (FluidR3 Multi-Track)</option>
           <option value="piano">🎹 Grand Piano (FluidR3)</option>
           <option value="tiny">⚡ Tiny Synth (Chiptune)</option>
           <option value="webmidi">🎛 System MIDI Out</option>
@@ -219,6 +222,7 @@ function activate(context) {
   <script src="${jzzSmfUri}"></script>
   <script src="${jzzTinyUri}"></script>
   <script src="${soundfontUri}"></script>
+  <script src="${soundfontMappingUri}"></script>
   <script src="${playerJsUri}"></script>
 </body>
 </html>`;
@@ -249,6 +253,18 @@ function activate(context) {
 
                 currentMidiPanel.iconPath = vscode.Uri.joinPath(context.extensionUri, 'media', 'player.svg');
                 currentMidiPanel.webview.html = getMidiWebviewContent(currentMidiPanel.webview, context.extensionUri);
+
+                currentMidiPanel.webview.onDidReceiveMessage((message) => {
+                    if (message.command === 'insertNote') {
+                        const activeEditor = vscode.window.activeTextEditor;
+                        if (activeEditor) {
+                            const textToInsert = message.note ? `${message.note} ` : '';
+                            activeEditor.edit(editBuilder => {
+                                editBuilder.insert(activeEditor.selection.active, textToInsert);
+                            });
+                        }
+                    }
+                }, null, context.subscriptions);
 
                 currentMidiPanel.onDidDispose(() => {
                     currentMidiPanel = null;
@@ -298,11 +314,21 @@ function activate(context) {
                         displayTitle += ` [Track: ${options.instrument}]`;
                     }
 
+                    // Extract key signature (?= or {!K:...}) if available
+                    let keySignature = 'C';
+                    if (activeDoc) {
+                        const keyMatch = activeDoc.getText().match(/^\s*(?:\?=|key)\s*:\s*([A-Ga-g][#'b,]?)/m);
+                        if (keyMatch) {
+                            keySignature = keyMatch[1];
+                        }
+                    }
+
                     currentMidiPanel.webview.postMessage({
                         command: 'loadMidi',
                         title: displayTitle,
                         sourceFile: scoreBaseName,
                         base64: base64Midi,
+                        keySignature: keySignature,
                         autoPlay: true
                     });
                 } catch (readErr) {
@@ -455,11 +481,126 @@ function activate(context) {
         runMeasureCheck(editor.document, true);
     }));
 
-    // Visual Song Inspector Webview Panel tracking
+    // Helper: get HTML content for dedicated Virtual Keyboard view
+    function getKeyboardViewContent(webview, extensionUri) {
+        const soundfontUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'soundfont-player.min.js'));
+        const virtualKeyboardHelperUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'virtual-keyboard-helper.js'));
+        const keyboardJsUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'keyboard.js'));
+        const keyboardCssUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'keyboard.css'));
+
+        return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TMD Virtual Keyboard</title>
+  <link rel="stylesheet" href="${keyboardCssUri}">
+</head>
+<body>
+  <div id="keyboard-container" class="keyboard-container">
+    <div class="keyboard-toolbar">
+      <div class="toolbar-left">
+        <span class="keyboard-title">🎹 Piano</span>
+        <span id="keyboard-key-badge" class="keyboard-key-badge">Key: C</span>
+      </div>
+      <div class="toolbar-right">
+        <div class="mode-toggle">
+          <button id="btn-mode-audition" class="btn-mode active" title="Audition note">Audition</button>
+          <button id="btn-mode-insert" class="btn-mode" title="Insert TMD note at cursor">Insert</button>
+        </div>
+        <div class="octave-controls">
+          <button id="btn-octave-down" class="btn-icon" title="Octave down">◀</button>
+          <span id="octave-display" class="octave-display">C4-C6</span>
+          <button id="btn-octave-up" class="btn-icon" title="Octave up">▶</button>
+        </div>
+      </div>
+    </div>
+    <div id="keyboard-body" class="keyboard-body">
+      <div id="keyboard-keys-container" class="virtual-keyboard-keys"></div>
+    </div>
+  </div>
+
+  <script src="${soundfontUri}"></script>
+  <script src="${virtualKeyboardHelperUri}"></script>
+  <script src="${keyboardJsUri}"></script>
+</body>
+</html>`;
+    }
+
+    // Extract active score key signature
+    function getActiveKeySignature() {
+        const activeDoc = vscode.window.activeTextEditor?.document;
+        if (activeDoc) {
+            const match = activeDoc.getText().match(/^\s*(?:\?=|key)\s*:\s*([A-Ga-g][#'b,]?)/m);
+            if (match) return match[1];
+        }
+        return 'C';
+    }
+
+    // 1. Virtual Keyboard Panel WebviewViewProvider
+    let keyboardWebviewView = null;
+    const keyboardViewProvider = {
+        resolveWebviewView: (webviewView) => {
+            keyboardWebviewView = webviewView;
+            webviewView.webview.options = {
+                enableScripts: true,
+                localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'media')]
+            };
+            webviewView.webview.html = getKeyboardViewContent(webviewView.webview, context.extensionUri);
+
+            webviewView.webview.onDidReceiveMessage((message) => {
+                if (message.command === 'insertNote') {
+                    const activeEditor = vscode.window.activeTextEditor;
+                    if (activeEditor) {
+                        const textToInsert = message.note ? `${message.note} ` : '';
+                        activeEditor.edit(editBuilder => {
+                            editBuilder.insert(activeEditor.selection.active, textToInsert);
+                        });
+                    }
+                }
+            });
+
+            webviewView.onDidDispose(() => {
+                keyboardWebviewView = null;
+            });
+
+            // Send initial key signature
+            const initialKey = getActiveKeySignature();
+            webviewView.webview.postMessage({
+                command: 'updateKeySignature',
+                keySignature: initialKey
+            });
+        }
+    };
+    context.subscriptions.push(
+        vscode.window.registerWebviewViewProvider('tmdKeyboardView', keyboardViewProvider)
+    );
+
+    // Command: Open Virtual Keyboard Panel
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.openKeyboard', async () => {
+        await vscode.commands.executeCommand('tmdKeyboardView.focus');
+    }));
+
+    // Update keyboard key signature on active editor change or document change
+    context.subscriptions.push(
+        vscode.window.onDidChangeActiveTextEditor(ed => {
+            if (keyboardWebviewView && ed && ed.document.languageId === 'tmd') {
+                const key = getActiveKeySignature();
+                keyboardWebviewView.webview.postMessage({
+                    command: 'updateKeySignature',
+                    keySignature: key
+                });
+            }
+        })
+    );
+
+    // Visual Song Inspector Webview tracking (Panel View & Standalone Tab)
     let currentInspectorPanel = null;
+    let inspectorWebviewView = null;
 
     function getInspectorWebviewContent(webview, extensionUri) {
         const inspectorCssUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'inspector.css'));
+        const virtualKeyboardHelperUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'virtual-keyboard-helper.js'));
         const inspectorJsUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'inspector.js'));
 
         return `<!DOCTYPE html>
@@ -545,13 +686,15 @@ function activate(context) {
     </div>
   </div>
 
+  <script src="${virtualKeyboardHelperUri}"></script>
   <script src="${inspectorJsUri}"></script>
 </body>
 </html>`;
     }
 
-    async function updateInspectorPanel(panel, document) {
-        if (!panel || !document) return;
+    async function updateInspectorTarget(target, document) {
+        if (!target || !document) return;
+        const webview = target.webview || target;
         const text = document.getText();
         const baseName = path.basename(document.fileName || 'Untitled.tmd');
 
@@ -559,20 +702,20 @@ function activate(context) {
         if (res.success && res.report) {
             try {
                 const profile = JSON.parse(res.report);
-                panel.webview.postMessage({
+                webview.postMessage({
                     type: 'update',
                     profile: profile,
                     fileName: baseName
                 });
             } catch (err) {
-                panel.webview.postMessage({
+                webview.postMessage({
                     type: 'error',
                     error: `JSON parsing error: ${err.message}`,
                     fileName: baseName
                 });
             }
         } else {
-            panel.webview.postMessage({
+            webview.postMessage({
                 type: 'error',
                 error: res.error || 'Failed to inspect score',
                 fileName: baseName
@@ -580,67 +723,73 @@ function activate(context) {
         }
     }
 
-    // Command: Inspect Song Profile (Visual Webview Panel)
-    context.subscriptions.push(vscode.commands.registerCommand('tmd.inspectSong', async () => {
-        const editor = vscode.window.activeTextEditor;
-        if (!editor || (editor.document.languageId !== 'tmd' && !editor.document.fileName.endsWith('.tmd'))) {
-            vscode.window.showErrorMessage('No active TMD score found. Please open a .tmd file.');
-            return;
-        }
+    function setupInspectorMessageHandling(webview, onRefresh) {
+        webview.onDidReceiveMessage(message => {
+            const activeEd = vscode.window.activeTextEditor;
+            if (!activeEd) return;
 
-        const column = vscode.ViewColumn.Beside;
-        if (currentInspectorPanel) {
-            currentInspectorPanel.reveal(column);
-        } else {
-            currentInspectorPanel = vscode.window.createWebviewPanel(
-                'tmdSongInspector',
-                'TMD Song Inspector',
-                column,
-                {
-                    enableScripts: true,
-                    retainContextWhenHidden: true,
-                    localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'media')]
-                }
-            );
-
-            currentInspectorPanel.iconPath = vscode.Uri.joinPath(context.extensionUri, 'media', 'player.svg');
-            currentInspectorPanel.webview.html = getInspectorWebviewContent(currentInspectorPanel.webview, context.extensionUri);
-
-            currentInspectorPanel.webview.onDidReceiveMessage(message => {
-                const activeEd = vscode.window.activeTextEditor;
-                if (!activeEd) return;
-
-                if (message.type === 'refresh') {
-                    updateInspectorPanel(currentInspectorPanel, activeEd.document);
-                } else if (message.type === 'jumpToSection' && message.sectionName) {
-                    const doc = activeEd.document;
-                    const secRegex = new RegExp(`^\\s*${message.sectionName}\\s*:\\s*[a-zA-Z0-9_\\-+]+`, 'i');
-                    for (let i = 0; i < doc.lineCount; i++) {
-                        if (secRegex.test(doc.lineAt(i).text)) {
-                            const pos = new vscode.Position(i, 0);
-                            activeEd.selection = new vscode.Selection(pos, pos);
-                            activeEd.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
-                            break;
-                        }
+            if (message.type === 'refresh') {
+                if (onRefresh) onRefresh(activeEd.document);
+            } else if (message.type === 'jumpToSection' && message.sectionName) {
+                const doc = activeEd.document;
+                const secRegex = new RegExp(`^\\s*${message.sectionName}\\s*:\\s*[a-zA-Z0-9_\\-+]+`, 'i');
+                for (let i = 0; i < doc.lineCount; i++) {
+                    if (secRegex.test(doc.lineAt(i).text)) {
+                        const pos = new vscode.Position(i, 0);
+                        activeEd.selection = new vscode.Selection(pos, pos);
+                        activeEd.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+                        break;
                     }
-                } else if (message.type === 'findText' && message.text) {
-                    vscode.commands.executeCommand('actions.find', { searchString: message.text });
                 }
-            }, null, context.subscriptions);
+            } else if (message.type === 'findText' && message.text) {
+                vscode.commands.executeCommand('actions.find', { searchString: message.text });
+            }
+        }, null, context.subscriptions);
+    }
 
-            currentInspectorPanel.onDidDispose(() => {
-                currentInspectorPanel = null;
-            }, null, context.subscriptions);
+    // 2. Song Inspector Panel WebviewViewProvider
+    const inspectorViewProvider = {
+        resolveWebviewView: (webviewView) => {
+            inspectorWebviewView = webviewView;
+            webviewView.webview.options = {
+                enableScripts: true,
+                localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'media')]
+            };
+            webviewView.webview.html = getInspectorWebviewContent(webviewView.webview, context.extensionUri);
+
+            setupInspectorMessageHandling(webviewView.webview, (doc) => {
+                updateInspectorTarget(webviewView, doc);
+            });
+
+            webviewView.onDidDispose(() => {
+                inspectorWebviewView = null;
+            });
+
+            const activeEditor = vscode.window.activeTextEditor;
+            if (activeEditor && (activeEditor.document.languageId === 'tmd' || activeEditor.document.fileName.endsWith('.tmd'))) {
+                updateInspectorTarget(webviewView, activeEditor.document);
+            }
         }
+    };
+    context.subscriptions.push(
+        vscode.window.registerWebviewViewProvider('tmdInspectorView', inspectorViewProvider)
+    );
 
-        await updateInspectorPanel(currentInspectorPanel, editor.document);
+    // Command: Inspect Song Profile (Reveals the Panel View)
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.inspectSong', async () => {
+        await vscode.commands.executeCommand('tmdInspectorView.focus');
+        const editor = vscode.window.activeTextEditor;
+        if (inspectorWebviewView && editor && (editor.document.languageId === 'tmd' || editor.document.fileName.endsWith('.tmd'))) {
+            updateInspectorTarget(inspectorWebviewView, editor.document);
+        }
     }));
 
     // Auto-update Inspector on document save or text change
     context.subscriptions.push(
         vscode.workspace.onDidSaveTextDocument(doc => {
-            if (currentInspectorPanel && doc.languageId === 'tmd') {
-                updateInspectorPanel(currentInspectorPanel, doc);
+            if (doc.languageId === 'tmd') {
+                if (inspectorWebviewView) updateInspectorTarget(inspectorWebviewView, doc);
+                if (currentInspectorPanel) updateInspectorTarget(currentInspectorPanel, doc);
             }
         })
     );
@@ -648,10 +797,11 @@ function activate(context) {
     let inspectorDebounce = null;
     context.subscriptions.push(
         vscode.workspace.onDidChangeTextDocument(event => {
-            if (currentInspectorPanel && event.document.languageId === 'tmd') {
+            if (event.document.languageId === 'tmd') {
                 if (inspectorDebounce) clearTimeout(inspectorDebounce);
                 inspectorDebounce = setTimeout(() => {
-                    updateInspectorPanel(currentInspectorPanel, event.document);
+                    if (inspectorWebviewView) updateInspectorTarget(inspectorWebviewView, event.document);
+                    if (currentInspectorPanel) updateInspectorTarget(currentInspectorPanel, event.document);
                 }, 800);
             }
         })
@@ -659,8 +809,9 @@ function activate(context) {
 
     context.subscriptions.push(
         vscode.window.onDidChangeActiveTextEditor(ed => {
-            if (currentInspectorPanel && ed && ed.document.languageId === 'tmd') {
-                updateInspectorPanel(currentInspectorPanel, ed.document);
+            if (ed && ed.document.languageId === 'tmd') {
+                if (inspectorWebviewView) updateInspectorTarget(inspectorWebviewView, ed.document);
+                if (currentInspectorPanel) updateInspectorTarget(currentInspectorPanel, ed.document);
             }
         })
     );
@@ -670,8 +821,8 @@ function activate(context) {
         return vscode.commands.executeCommand('editor.action.formatDocument');
     }));
 
-    // Helper: Execute in-place TMD refactoring and replace document buffer
-    function runTmdRefactor(args, description) {
+    // Helper: Execute in-place TMD refactoring and replace document buffer or selection range
+    function runTmdRefactor(args, description, targetRange = null) {
         const editor = vscode.window.activeTextEditor;
         if (!editor || (editor.document.languageId !== 'tmd' && !editor.document.fileName.endsWith('.tmd'))) {
             vscode.window.showErrorMessage('TMD refactoring commands require an active .tmd file.');
@@ -683,8 +834,10 @@ function activate(context) {
         const tempDir = os.tmpdir();
         const tempFilePath = path.join(tempDir, `tmd_refactor_${Date.now()}_${path.basename(document.fileName || 'untitled.tmd')}`);
 
+        const textToProcess = targetRange ? document.getText(targetRange) : document.getText();
+
         try {
-            fs.writeFileSync(tempFilePath, document.getText(), 'utf8');
+            fs.writeFileSync(tempFilePath, textToProcess, 'utf8');
         } catch (err) {
             vscode.window.showErrorMessage(`TMD refactor failed to prepare file: ${err.message}`);
             return;
@@ -713,13 +866,13 @@ function activate(context) {
                         return;
                     }
 
-                    const fullRange = new vscode.Range(
+                    const replaceRange = targetRange || new vscode.Range(
                         document.positionAt(0),
                         document.positionAt(document.getText().length)
                     );
 
                     editor.edit(editBuilder => {
-                        editBuilder.replace(fullRange, stdout);
+                        editBuilder.replace(replaceRange, stdout);
                     }).then(success => {
                         if (success) {
                             vscode.window.showInformationMessage(`TMD: ${description} completed successfully.`);
@@ -821,8 +974,15 @@ function activate(context) {
         runTmdRefactor(args, scope.section ? `Optimize Grid (${scope.section})` : 'Optimize Grid Resolution');
     }));
 
-    // 2c. Refactor: Transpose Pitch
-    context.subscriptions.push(vscode.commands.registerCommand('tmd.refactorTranspose', async () => {
+    // 2c. Refactor: Transpose Pitch (Document, Scope, or Selected Text)
+    async function executeTransposeRefactor(forceSelectionOnly = false) {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) return;
+
+        const selection = editor.selection;
+        const hasSelection = selection && !selection.isEmpty;
+        let isSelectionOnly = forceSelectionOnly && hasSelection;
+
         const modeChoice = await vscode.window.showQuickPick([
             {
                 label: 'By Semitones (Chromatic)',
@@ -852,7 +1012,7 @@ function activate(context) {
         const offset = parseInt(valInput, 10);
 
         let updateKey = false;
-        if (modeChoice.mode === 'semitones') {
+        if (modeChoice.mode === 'semitones' && !isSelectionOnly) {
             const updateKeyChoice = await vscode.window.showQuickPick([
                 {
                     label: 'Yes, update ?= Key Signatures',
@@ -875,14 +1035,20 @@ function activate(context) {
         let targetSection = undefined;
         let targetInstrument = undefined;
 
-        if (cursorContext.section || cursorContext.instrument) {
-            const scopeItems = [
-                {
-                    label: 'Entire Score',
-                    description: 'Transpose all sections and all instruments',
-                    scope: 'all'
-                }
-            ];
+        if (!forceSelectionOnly && (hasSelection || cursorContext.section || cursorContext.instrument)) {
+            const scopeItems = [];
+            if (hasSelection) {
+                scopeItems.push({
+                    label: 'Selected text only',
+                    description: 'Transpose only the currently selected note/score snippet',
+                    scope: 'selection'
+                });
+            }
+            scopeItems.push({
+                label: 'Entire Score',
+                description: 'Transpose all sections and all instruments',
+                scope: 'all'
+            });
             if (cursorContext.section) {
                 scopeItems.push({
                     label: `Section '${cursorContext.section}' only`,
@@ -913,31 +1079,47 @@ function activate(context) {
                 placeHolder: 'Select target scope for transposition'
             });
             if (!scopeChoice) return;
-            if (scopeChoice.section) targetSection = scopeChoice.section;
-            if (scopeChoice.instrument) targetInstrument = scopeChoice.instrument;
+            if (scopeChoice.scope === 'selection') {
+                isSelectionOnly = true;
+            } else {
+                isSelectionOnly = false;
+                if (scopeChoice.section) targetSection = scopeChoice.section;
+                if (scopeChoice.instrument) targetInstrument = scopeChoice.instrument;
+            }
         }
 
         const args = ['transpose'];
         if (modeChoice.mode === 'semitones') {
             args.push('--semitones', String(offset));
-            if (updateKey) {
+            if (updateKey && !isSelectionOnly) {
                 args.push('--update-key');
             }
         } else {
             args.push('--diatonic', String(offset));
         }
 
-        if (targetSection) {
-            args.push('--section', targetSection);
-        }
-        if (targetInstrument) {
-            args.push('--instrument', targetInstrument);
+        if (!isSelectionOnly) {
+            if (targetSection) {
+                args.push('--section', targetSection);
+            }
+            if (targetInstrument) {
+                args.push('--instrument', targetInstrument);
+            }
         }
 
         const desc = modeChoice.mode === 'semitones'
-            ? `Transpose ${offset > 0 ? '+' : ''}${offset} Semitones`
-            : `Transpose ${offset > 0 ? '+' : ''}${offset} Diatonic Steps`;
-        runTmdRefactor(args, desc);
+            ? `Transpose ${offset > 0 ? '+' : ''}${offset} Semitones${isSelectionOnly ? ' (Selection)' : ''}`
+            : `Transpose ${offset > 0 ? '+' : ''}${offset} Diatonic Steps${isSelectionOnly ? ' (Selection)' : ''}`;
+
+        runTmdRefactor(args, desc, isSelectionOnly ? selection : null);
+    }
+
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.refactorTranspose', () => {
+        return executeTransposeRefactor(false);
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.refactorTransposeSelection', () => {
+        return executeTransposeRefactor(true);
     }));
 
     // 3. Refactor: Duplicate Track

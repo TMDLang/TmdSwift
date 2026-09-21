@@ -17,7 +17,11 @@
   "main": "./extension.js",
   "activationEvents": [
     "onLanguage:tmd",
-    "onCommand:tmd.openMidiPlayer"
+    "onCommand:tmd.openMidiPlayer",
+    "onCommand:tmd.openKeyboard",
+    "onCommand:tmd.inspectSong",
+    "onView:tmdKeyboardView",
+    "onView:tmdInspectorView"
   ],
   "categories": [
     "Programming Languages",
@@ -168,6 +172,12 @@
         "enablement": "editorLangId == tmd"
       },
       {
+        "command": "tmd.refactorTransposeSelection",
+        "title": "Refactor: Transpose Selection...",
+        "category": "TMD",
+        "enablement": "editorLangId == tmd && editorHasSelection"
+      },
+      {
         "command": "tmd.refactorDuplicateTrack",
         "title": "Refactor: Duplicate Track...",
         "category": "TMD",
@@ -228,18 +238,42 @@
         "enablement": "editorLangId == tmd"
       },
       {
+        "command": "tmd.openKeyboard",
+        "title": "Open Virtual Keyboard",
+        "category": "TMD",
+        "icon": "$(piano)"
+      },
+      {
         "command": "tmd.refreshOutline",
         "title": "Refresh Outline",
         "category": "TMD",
         "icon": "$(refresh)"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "tmdStudio",
+          "title": "TMD Studio",
+          "icon": "./media/player.svg"
+        }
+      ]
+    },
     "views": {
-      "explorer": [
+      "tmdStudio": [
+        {
+          "type": "webview",
+          "id": "tmdKeyboardView",
+          "name": "Virtual Keyboard"
+        },
+        {
+          "type": "webview",
+          "id": "tmdInspectorView",
+          "name": "Song Inspector"
+        },
         {
           "id": "tmdOutlineView",
-          "name": "TMD Outline & Player",
-          "when": "editorLangId == tmd || tmdHasActiveDocument"
+          "name": "Outline & Player"
         }
       ]
     },
@@ -341,7 +375,12 @@
         },
         {
           "command": "tmd.refactorTranspose",
-          "when": "editorLangId == tmd",
+          "when": "editorLangId == tmd && !editorHasSelection",
+          "group": "tmd_refactor@4"
+        },
+        {
+          "command": "tmd.refactorTransposeSelection",
+          "when": "editorLangId == tmd && editorHasSelection",
           "group": "tmd_refactor@4"
         },
         {
@@ -382,9 +421,14 @@
           "group": "navigation@1"
         },
         {
-          "command": "tmd.inspectSong",
+          "command": "tmd.openKeyboard",
           "when": "editorLangId == tmd",
           "group": "navigation@2"
+        },
+        {
+          "command": "tmd.inspectSong",
+          "when": "editorLangId == tmd",
+          "group": "navigation@3"
         }
       ]
     },
