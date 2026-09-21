@@ -6,12 +6,26 @@ public struct TMDNotePitchInfo: Equatable, Sendable, Codable {
     public let noteName: String
     public let sectionName: String
     public let timelinePosition: Double
+    public let sectionOccurrence: Int
+    public let measure: Int
+    public let timeSeconds: Double
 
-    public init(midiPitch: Int, noteName: String, sectionName: String, timelinePosition: Double) {
+    public init(
+        midiPitch: Int,
+        noteName: String,
+        sectionName: String,
+        timelinePosition: Double,
+        sectionOccurrence: Int = 1,
+        measure: Int = 1,
+        timeSeconds: Double = 0.0
+    ) {
         self.midiPitch = midiPitch
         self.noteName = noteName
         self.sectionName = sectionName
         self.timelinePosition = timelinePosition
+        self.sectionOccurrence = sectionOccurrence
+        self.measure = measure
+        self.timeSeconds = timeSeconds
     }
 
     /// Converts MIDI note number (0~127) to standard note name string (e.g. 60 -> "C4", 69 -> "A4").
@@ -56,6 +70,8 @@ public struct TMDPitchRangeProfile: Equatable, Sendable, Codable {
 public struct TMDSectionTimingProfile: Equatable, Sendable, Codable {
     public let name: String
     public let orderIndex: Int
+    public let occurrenceIndex: Int
+    public let startMeasure: Int
     public let startPositionQuarterNotes: Double
     public let durationQuarterNotes: Double
     public let startSeconds: Double
@@ -67,6 +83,8 @@ public struct TMDSectionTimingProfile: Equatable, Sendable, Codable {
     public init(
         name: String,
         orderIndex: Int,
+        occurrenceIndex: Int = 1,
+        startMeasure: Int = 1,
         startPositionQuarterNotes: Double,
         durationQuarterNotes: Double,
         startSeconds: Double,
@@ -77,6 +95,8 @@ public struct TMDSectionTimingProfile: Equatable, Sendable, Codable {
     ) {
         self.name = name
         self.orderIndex = orderIndex
+        self.occurrenceIndex = occurrenceIndex
+        self.startMeasure = startMeasure
         self.startPositionQuarterNotes = startPositionQuarterNotes
         self.durationQuarterNotes = durationQuarterNotes
         self.startSeconds = startSeconds
@@ -231,7 +251,9 @@ public enum TMDSongInspector {
         var sections: [TMDSectionTimingProfile] = []
         var currentQuarterPosition = 0.0
         var currentSeconds = 0.0
+        var currentMeasure = 1
         var totalMeasures = 0
+        var sectionOccurrences: [String: Int] = [:]
 
         for (idx, order) in orders.enumerated() {
             switch order {
@@ -248,9 +270,14 @@ public enum TMDSongInspector {
                 let secMeasures = max(1, Int(round(durQuarterNotes / nominalMeasureDur)))
                 let secDurationSeconds = (durQuarterNotes / (state.tempo / 60.0))
 
+                let occurrence = sectionOccurrences[secName, default: 0] + 1
+                sectionOccurrences[secName] = occurrence
+
                 let secProfile = TMDSectionTimingProfile(
                     name: secName,
                     orderIndex: idx,
+                    occurrenceIndex: occurrence,
+                    startMeasure: currentMeasure,
                     startPositionQuarterNotes: currentQuarterPosition,
                     durationQuarterNotes: durQuarterNotes,
                     startSeconds: currentSeconds,
@@ -263,6 +290,7 @@ public enum TMDSongInspector {
 
                 currentQuarterPosition += durQuarterNotes
                 currentSeconds += secDurationSeconds
+                currentMeasure += secMeasures
                 totalMeasures += secMeasures
             }
         }
@@ -282,6 +310,9 @@ public enum TMDSongInspector {
             let name: String
             let pos: Double
             let sectionName: String
+            let sectionOccurrence: Int
+            let measure: Int
+            let timeSeconds: Double
         }
 
         var hits: [NoteHit] = []
@@ -299,11 +330,35 @@ public enum TMDSongInspector {
             pitch += note.octave * 12
 
             let noteName = TMDNotePitchInfo.name(for: pitch)
-            let sectionName = timingProfile.sections.first {
+            let matchedSection = timingProfile.sections.first {
                 event.position >= $0.startPositionQuarterNotes && event.position < ($0.startPositionQuarterNotes + $0.durationQuarterNotes + 0.001)
-            }?.name ?? ""
+            }
 
-            hits.append(NoteHit(midi: pitch, name: noteName, pos: event.position, sectionName: sectionName))
+            let sectionName = matchedSection?.name ?? ""
+            let sectionOccurrence = matchedSection?.occurrenceIndex ?? 1
+            let nominalMeasureDur = Double(max(1, event.state.timeSignature.count)) * 4.0 / Double(max(1, event.state.timeSignature.noteValue))
+            let measure: Int
+            let timeSeconds: Double
+            if let sec = matchedSection {
+                let offsetInSec = max(0.0, event.position - sec.startPositionQuarterNotes)
+                let measureOffset = Int(floor(offsetInSec / nominalMeasureDur))
+                measure = sec.startMeasure + measureOffset
+                let secTimeOffset = offsetInSec / (sec.tempo / 60.0)
+                timeSeconds = sec.startSeconds + secTimeOffset
+            } else {
+                measure = 1 + Int(floor(event.position / nominalMeasureDur))
+                timeSeconds = event.position / (event.state.tempo / 60.0)
+            }
+
+            hits.append(NoteHit(
+                midi: pitch,
+                name: noteName,
+                pos: event.position,
+                sectionName: sectionName,
+                sectionOccurrence: sectionOccurrence,
+                measure: measure,
+                timeSeconds: timeSeconds
+            ))
         }
 
         guard !hits.isEmpty else { return nil }
@@ -315,8 +370,24 @@ public enum TMDSongInspector {
 
         return TMDPitchRangeProfile(
             instrument: instrument,
-            lowestNote: TMDNotePitchInfo(midiPitch: lowest.midi, noteName: lowest.name, sectionName: lowest.sectionName, timelinePosition: lowest.pos),
-            highestNote: TMDNotePitchInfo(midiPitch: highest.midi, noteName: highest.name, sectionName: highest.sectionName, timelinePosition: highest.pos),
+            lowestNote: TMDNotePitchInfo(
+                midiPitch: lowest.midi,
+                noteName: lowest.name,
+                sectionName: lowest.sectionName,
+                timelinePosition: lowest.pos,
+                sectionOccurrence: lowest.sectionOccurrence,
+                measure: lowest.measure,
+                timeSeconds: lowest.timeSeconds
+            ),
+            highestNote: TMDNotePitchInfo(
+                midiPitch: highest.midi,
+                noteName: highest.name,
+                sectionName: highest.sectionName,
+                timelinePosition: highest.pos,
+                sectionOccurrence: highest.sectionOccurrence,
+                measure: highest.measure,
+                timeSeconds: highest.timeSeconds
+            ),
             spanSemitones: highest.midi - lowest.midi,
             totalNotes: hits.count,
             averageMidiPitch: avgPitch
@@ -383,6 +454,17 @@ public enum TMDSongInspector {
         )
     }
 
+    private static func formatNoteLocation(_ note: TMDNotePitchInfo) -> String {
+        let mins = Int(note.timeSeconds) / 60
+        let secs = Int(note.timeSeconds) % 60
+        let timeStr = String(format: "%d:%02d", mins, secs)
+        if !note.sectionName.isEmpty {
+            return "[\(note.sectionName) #\(note.sectionOccurrence) @ m.\(note.measure), \(timeStr)]"
+        } else {
+            return "[@ m.\(note.measure), \(timeStr)]"
+        }
+    }
+
     /// Generates human-readable plain text / ASCII inspection report.
     public static func generateReport(_ profile: TMDSongProfile) -> String {
         let mins = Int(profile.timing.totalDurationSeconds) / 60
@@ -399,8 +481,8 @@ public enum TMDSongInspector {
         if let vocal = profile.vocalRange {
             let octaves = String(format: "%0.1f", vocal.spanOctaves)
             lines.append("🎤 Vocal Range:    \(vocal.lowestNote.noteName) (MIDI \(vocal.lowestNote.midiPitch)) – \(vocal.highestNote.noteName) (MIDI \(vocal.highestNote.midiPitch)) [Span: \(vocal.spanSemitones) semitones / \(octaves) octaves]")
-            lines.append("   - Lowest Note:  \(vocal.lowestNote.noteName) in [\(vocal.lowestNote.sectionName)]")
-            lines.append("   - Highest Note: \(vocal.highestNote.noteName) in [\(vocal.highestNote.sectionName)]")
+            lines.append("   - Lowest Note:  \(vocal.lowestNote.noteName) in \(formatNoteLocation(vocal.lowestNote))")
+            lines.append("   - Highest Note: \(vocal.highestNote.noteName) in \(formatNoteLocation(vocal.highestNote))")
         }
 
         lines.append("🏛  Structure:      " + profile.timing.sections.map { "\($0.name) (\(String(format: "%0.1fs", $0.durationSeconds)))" }.joined(separator: " -> "))

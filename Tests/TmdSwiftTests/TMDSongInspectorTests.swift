@@ -115,4 +115,56 @@ struct TMDSongInspectorTests {
         #expect(report.contains("21 semitones"))
         #expect(report.contains("1.8 octaves"))
     }
+
+    @Test func testInspectSongRepeatedSectionsMeasureAndTime() throws {
+        let tmd = """
+        ::SCORE::
+        ** Modulation & Repeated Verse Song **
+        != 120.0
+        ?= C
+        <4/4>
+
+        verse:Vocal@|0|{
+            <4*>
+            1 2 3 4
+            [C] - - -
+        }
+
+        chorus:Vocal@|0|{
+            <4*>
+            5 1^ 3^ 5^
+            [G] - - -
+        }
+
+        -> verse -> chorus -> {?+2} -> verse -> chorus ->#
+        """
+
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let profile = TMDSongInspector.inspect(sheet: sheet)
+
+        let vocal = try #require(profile.vocalRange)
+        // In verse #1: 1 2 3 4 in C -> C4 (60), D4 (62), E4 (64), F4 (65)
+        // In chorus #1: 5 1^ 3^ 5^ in C -> G4 (67), C5 (72), E5 (76), G5 (79)
+        // In verse #2 (after ?+2 = D): 1 2 3 4 in D -> D4 (62), E4 (64), F#4 (66), G4 (67)
+        // In chorus #2 (after ?+2 = D): 5 1^ 3^ 5^ in D -> A4 (69), D5 (74), F#5 (78), A5 (81)
+        // Lowest note: C4 (60) in verse #1 at m.1, 0:00 (0.0s)
+        // Highest note: A5 (81) in chorus #2 at m.7, 0:12 (12.0s)
+        #expect(vocal.lowestNote.midiPitch == 60)
+        #expect(vocal.lowestNote.sectionName == "verse")
+        #expect(vocal.lowestNote.sectionOccurrence == 1)
+        #expect(vocal.lowestNote.measure == 1)
+        #expect(abs(vocal.lowestNote.timeSeconds - 0.0) < 0.01)
+
+        #expect(vocal.highestNote.midiPitch == 81)
+        #expect(vocal.highestNote.sectionName == "chorus")
+        #expect(vocal.highestNote.sectionOccurrence == 2)
+        #expect(vocal.highestNote.measure == 7)
+        #expect(abs(vocal.highestNote.timeSeconds - 13.5) < 0.01)
+
+        let report = TMDSongInspector.generateReport(profile)
+        // Check report string formatting for occurrence, measure, and timestamp
+        #expect(report.contains("in [verse #1 @ m.1, 0:00]"))
+        #expect(report.contains("in [chorus #2 @ m.7, 0:13]"))
+    }
 }
+
