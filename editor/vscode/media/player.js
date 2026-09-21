@@ -22,10 +22,11 @@
     }
 
     let audioContext = null;
-    let pianoInstrument = null;
-    let isPianoLoading = false;
+    const loadedInstruments = new Map();
+    const loadingPromises = new Map();
+    const channelPrograms = new Array(16).fill(0);
     let soundfontWidget = null;
-    let activeNotes = new Map();
+    const activeNotes = new Map();
     let webMidiPort = null;
 
     let currentPlayer = null;
@@ -35,6 +36,7 @@
     let currentTitle = 'score.mid';
     let isSeeking = false;
     let durationSec = 0;
+    let currentKeySig = 'C';
 
     // DOM Elements
     const playerIcon = document.getElementById('player-icon');
@@ -69,30 +71,51 @@
         return audioContext;
     }
 
-    async function loadPianoInstrument() {
-        if (pianoInstrument) return pianoInstrument;
-        if (isPianoLoading) return null;
+    async function loadSoundfontInstrument(name) {
+        if (loadedInstruments.has(name)) {
+            return loadedInstruments.get(name);
+        }
+        if (loadingPromises.has(name)) {
+            return loadingPromises.get(name);
+        }
 
         const ctx = getAudioContext();
-        if (!ctx) return null;
+        if (!ctx || typeof Soundfont === 'undefined') return null;
 
-        isPianoLoading = true;
-        setStatus('Loading SoundFont Piano...');
-        try {
-            if (typeof Soundfont !== 'undefined') {
-                pianoInstrument = await Soundfont.instrument(ctx, 'acoustic_grand_piano', {
+        const promise = (async () => {
+            try {
+                const inst = await Soundfont.instrument(ctx, name, {
                     soundfont: 'FluidR3_GM',
                     format: 'mp3'
                 });
-                setStatus('SoundFont Piano loaded.');
+                loadedInstruments.set(name, inst);
+                return inst;
+            } catch (err) {
+                console.warn(`[TMD Player] Failed to load soundfont instrument '${name}':`, err);
+                return null;
+            } finally {
+                loadingPromises.delete(name);
             }
-        } catch (err) {
-            console.warn('[TMD Player] Failed to load SoundFont piano:', err);
-            setStatus('Piano SoundFont unavailable, using TinySynth.');
-        } finally {
-            isPianoLoading = false;
+        })();
+
+        loadingPromises.set(name, promise);
+        return promise;
+    }
+
+    async function loadSoundfontInstruments(names) {
+        const toLoad = names.filter(n => !loadedInstruments.has(n));
+        if (toLoad.length === 0) return true;
+
+        for (let i = 0; i < toLoad.length; i++) {
+            const instName = toLoad[i];
+            setStatus(`Loading SoundFont (${i + 1}/${toLoad.length}): ${instName}...`);
+            await loadSoundfontInstrument(instName);
         }
-        return pianoInstrument;
+
+        if (!loadedInstruments.has('acoustic_grand_piano')) {
+            await loadSoundfontInstrument('acoustic_grand_piano');
+        }
+        return true;
     }
 
     function stopActiveNotes() {
@@ -110,11 +133,20 @@
         if (soundfontWidget) return soundfontWidget;
         soundfontWidget = JZZ.Widget({
             _receive: function (msg) {
-                if (!msg || msg.length < 1 || !pianoInstrument) return;
+                if (!msg || msg.length < 1) return;
                 const status = msg[0] & 0xf0;
                 const channel = msg[0] & 0x0f;
                 const note = msg[1];
                 const velocity = msg[2] || 0;
+
+                // Handle Program Change (0xC0)
+                if (status === 0xc0) {
+                    const program = msg[1];
+                    if (typeof program === 'number') {
+                        channelPrograms[channel] = program;
+                    }
+                    return;
+                }
 
                 if (status === 0x90 && velocity > 0) {
                     const key = (channel << 8) | note;
@@ -122,9 +154,40 @@
                     if (oldNode) {
                         try { oldNode.stop(); } catch (_) {}
                     }
+
+                    const synthMode = synthSelect.value;
+                    let inst = null;
+
+                    if (synthMode === 'piano') {
+                        inst = loadedInstruments.get('acoustic_grand_piano');
+                    } else {
+                        // Multi-Track GM
+                        let instName;
+                        if (channel === 9) {
+                            instName = (typeof getDrumSoundfontName === 'function')
+                                ? getDrumSoundfontName()
+                                : 'synth_drum';
+                        } else {
+                            const prog = channelPrograms[channel] || 0;
+                            instName = (typeof gmProgramToSoundfontName === 'function')
+                                ? gmProgramToSoundfontName(prog)
+                                : 'acoustic_grand_piano';
+                        }
+
+                        inst = loadedInstruments.get(instName);
+                        if (!inst) {
+                            if (!loadingPromises.has(instName)) {
+                                loadSoundfontInstrument(instName).catch(() => {});
+                            }
+                            inst = loadedInstruments.get('acoustic_grand_piano');
+                        }
+                    }
+
+                    if (!inst) return;
+
                     const gain = Math.max(0.1, Math.min(1.0, velocity / 127));
                     try {
-                        const node = pianoInstrument.play(note, undefined, { gain });
+                        const node = inst.play(note, undefined, { gain });
                         if (node) activeNotes.set(key, node);
                     } catch (_) {}
                 } else if (status === 0x80 || (status === 0x90 && velocity === 0)) {
@@ -197,19 +260,32 @@
             currentPlayer = null;
         }
         stopActiveNotes();
+        channelPrograms.fill(0);
 
         try {
             const smfData = new JZZ.MIDI.SMF(currentMidiBytes);
             const player = smfData.player();
             const synthType = synthSelect.value;
 
-            if (synthType === 'piano') {
-                const piano = await loadPianoInstrument();
-                if (piano) {
-                    player.connect(getSoundfontWidget());
-                } else if (tinySynth) {
-                    player.connect(tinySynth);
+            if (synthType === 'gm' || synthType === 'piano') {
+                if (synthType === 'piano') {
+                    if (!loadedInstruments.has('acoustic_grand_piano')) {
+                        setStatus('Loading Grand Piano SoundFont...');
+                        await loadSoundfontInstrument('acoustic_grand_piano');
+                    }
+                } else {
+                    // Preload all instruments used in SMF
+                    let instrumentsToLoad = ['acoustic_grand_piano'];
+                    if (typeof scanMidiProgramsAndDrums === 'function') {
+                        const scan = scanMidiProgramsAndDrums(currentMidiBytes);
+                        if (scan.instrumentNames && scan.instrumentNames.length > 0) {
+                            instrumentsToLoad = scan.instrumentNames;
+                        }
+                    }
+                    await loadSoundfontInstruments(instrumentsToLoad);
                 }
+
+                player.connect(getSoundfontWidget());
             } else if (synthType === 'webmidi') {
                 let connected = false;
                 try {

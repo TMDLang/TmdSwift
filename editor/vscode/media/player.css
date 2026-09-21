@@ -219,3 +219,252 @@ body {
   background: rgba(0, 0, 0, 0.15);
   border-radius: 6px;
 }
+
+/* ==========================================================================
+   Virtual Keyboard
+   ========================================================================== */
+
+.virtual-keyboard {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--secondary-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  max-height: 220px;
+  min-height: 36px;
+  transition: max-height 0.2s ease;
+  overflow: hidden;
+  user-select: none;
+}
+
+.virtual-keyboard.collapsed {
+  max-height: 36px;
+}
+
+.virtual-keyboard.collapsed .virtual-keyboard-body {
+  display: none;
+}
+
+.virtual-keyboard-header {
+  height: 36px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.virtual-keyboard-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-color);
+}
+
+.virtual-keyboard-icon {
+  font-size: 14px;
+}
+
+.virtual-keyboard-key-badge {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-weight: 600;
+  background: rgba(14, 99, 156, 0.25);
+  color: var(--accent-hover);
+  border: 1px solid rgba(14, 99, 156, 0.4);
+}
+
+.virtual-keyboard-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.keyboard-mode-toggle {
+  display: flex;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 4px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.keyboard-mode-toggle .btn {
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 3px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.keyboard-mode-toggle .btn.active {
+  background: var(--accent-color);
+  color: var(--accent-fg);
+  font-weight: 600;
+}
+
+.keyboard-octave-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.keyboard-octave-display {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--vscode-editor-font-family, monospace);
+  min-width: 55px;
+  text-align: center;
+}
+
+.btn-icon-only {
+  background: var(--card-bg);
+  color: var(--fg-color);
+  border: 1px solid var(--card-border);
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-icon-only:hover {
+  background: var(--accent-color);
+  color: var(--accent-fg);
+  border-color: var(--accent-color);
+}
+
+.virtual-keyboard-body {
+  flex: 1;
+  padding: 8px 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.virtual-keyboard-keys {
+  display: flex;
+  justify-content: center;
+  height: 100%;
+}
+
+.piano-keys-wrapper {
+  display: flex;
+  position: relative;
+  height: 120px;
+  padding: 2px 4px 6px 4px;
+}
+
+.piano-key {
+  position: relative;
+  border-radius: 0 0 4px 4px;
+  cursor: pointer;
+  outline: none;
+  box-sizing: border-box;
+  touch-action: manipulation;
+  transition: background-color 0.08s, transform 0.05s;
+}
+
+.piano-key.white-key {
+  width: 36px;
+  height: 110px;
+  background: #f0f2f5;
+  border: 1px solid #9aa0a6;
+  border-top: none;
+  z-index: 1;
+  margin: 0 1px;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.4), inset 0 -2px 0 #cfd4dc;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-bottom: 6px;
+}
+
+.piano-key.white-key:hover {
+  background: #ffffff;
+}
+
+.piano-key.white-key.active,
+.piano-key.white-key:active {
+  background: #b6e3ff !important;
+  transform: translateY(2px);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.5), inset 0 -1px 0 #0969da;
+}
+
+.piano-key.black-key {
+  width: 24px;
+  height: 70px;
+  background: #1f2328;
+  border: 1px solid #000;
+  border-top: none;
+  z-index: 2;
+  margin-left: -13px;
+  margin-right: -13px;
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.8), inset 0 -3px 0 #3b424c;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-bottom: 6px;
+}
+
+.piano-key.black-key:hover {
+  background: #2b3038;
+}
+
+.piano-key.black-key.active,
+.piano-key.black-key:active {
+  background: var(--accent-color, #0969da) !important;
+  transform: translateY(2px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.8), inset 0 -1px 0 #054a99;
+}
+
+.key-labels {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  gap: 2px;
+}
+
+.white-key .key-degree {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0e639c;
+  font-family: var(--vscode-editor-font-family, monospace);
+}
+
+.white-key .key-notename {
+  font-size: 9px;
+  color: #57606a;
+  font-family: var(--vscode-font-family, sans-serif);
+}
+
+.black-key .key-degree {
+  font-size: 11px;
+  font-weight: 700;
+  color: #79c0ff;
+  font-family: var(--vscode-editor-font-family, monospace);
+}
+
+.black-key .key-notename {
+  font-size: 8px;
+  color: #8b949e;
+  font-family: var(--vscode-font-family, sans-serif);
+}
+
