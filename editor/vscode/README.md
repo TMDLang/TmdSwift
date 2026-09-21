@@ -56,12 +56,23 @@ Official Visual Studio Code extension providing language support, syntax highlig
 
 ## Installation
 
-### Local Installation (Symlink into Extensions)
+### Local Direct Installation (No Marketplace Needed)
 
-You can link this folder directly into your VS Code extensions directory:
+You can install or symlink this extension directly into VS Code, VS Code Insiders, Cursor, or VSCodium without going through the official Microsoft Extension Marketplace:
 
 ```bash
-ln -s "$(pwd)/editor/vscode" ~/.vscode/extensions/tmd-vscode
+# Symlink mode (Recommended for active development - changes reflect on reload):
+./scripts/install-vscode-extension.sh
+
+# Copy mode (Standalone offline install without repo dependencies):
+./scripts/install-vscode-extension.sh --copy
+
+# VSIX mode (Pack and install .vsix via CLI):
+./scripts/install-vscode-extension.sh --vsix
+
+# Uninstall:
+./scripts/install-vscode-extension.sh --uninstall
 ```
 
-Then reload VS Code, open any `.tmd` file (such as `sample/basic/三天三夜.tmd`), and enjoy full syntax highlighting!
+After running the script, open VS Code, press `Cmd+Shift+P` (or `Ctrl+Shift+P`), select **Developer: Reload Window**, and open any `.tmd` file (such as `sample/basic/三天三夜.tmd`) to enjoy syntax highlighting, playback, and visual inspectors!
+
