@@ -65,9 +65,12 @@ function renderInspector(profile, fileName) {
 
   if (ranges.length > 0) {
     if (!selectedInstrument || !ranges.some(r => r.instrument === selectedInstrument)) {
-      // Prioritize vocal or default to first
-      const vocalTrack = ranges.find(r => /vocal|voice|vo|歌/i.test(r.instrument));
-      selectedInstrument = vocalTrack ? vocalTrack.instrument : ranges[0].instrument;
+      // Prioritize primary vocal instrument (faithful to TS implementation)
+      const primaryVocal = ranges.find(r => /^(main_?vocal|lead_?vocal|vocal|voice|主唱|人聲|歌|vo)$/i.test(r.instrument))
+        || ranges.find(r => /vocal|voice|miku|utau|teto|sing|melody|lead|主旋律/i.test(r.instrument) && !/backing|harm|choir|guitar|synth|pad|bass|drum|beat/i.test(r.instrument))
+        || (profile.vocalRange ? ranges.find(r => r.instrument === profile.vocalRange.instrument) : null)
+        || ranges[0];
+      selectedInstrument = primaryVocal ? primaryVocal.instrument : ranges[0].instrument;
     }
 
     ranges.forEach(r => {
@@ -127,71 +130,88 @@ function renderSelectedInstrumentRange(instName, ranges) {
   const container = document.getElementById('range-container');
   const target = ranges.find(r => r.instrument === instName);
   if (!target) {
-    container.innerHTML = '<div class="stat-sub">No data for selected instrument.</div>';
+    container.innerHTML = '<div class="stat-sub">No data for selected track.</div>';
     return;
   }
 
   const octaves = (target.spanSemitones / 12.0).toFixed(1);
-  const avgPitch = target.averageMidiPitch.toFixed(1);
+  const diffStr = (target.difficulty || 'easy').toLowerCase();
+  const diffLabels = {
+    'easy': 'Easy',
+    'moderate': 'Moderate',
+    'challenging': 'Challenging',
+    'difficult': 'Difficult'
+  };
+  const diffColors = {
+    'easy': '#3fb950',
+    'moderate': '#58a6ff',
+    'challenging': '#d29922',
+    'difficult': '#f85149'
+  };
+  const diffLabel = diffLabels[diffStr] || target.difficulty;
+  const diffColor = diffColors[diffStr] || '#58a6ff';
 
-  let difficultyHtml = '';
-  if (target.difficulty) {
-    const diffColorMap = {
-      'Easy': '#3fb950',
-      'Moderate': '#58a6ff',
-      'Challenging': '#d29922',
-      'Extreme': '#f85149'
-    };
-    const diffColor = diffColorMap[target.difficulty] || 'var(--accent-color)';
-    difficultyHtml = `
-      <div class="pitch-metric-row">
-        <div>
-          <div class="stat-label">Vocal Difficulty</div>
-          <div style="font-weight: 600; font-size: 13px; color: ${diffColor};">${target.difficulty}</div>
-        </div>
-        <div class="pitch-meta">${target.spanSemitones} semitones span</div>
-      </div>
-    `;
+  const voiceTypeNames = {
+    'soprano': 'Soprano (女高音)',
+    'mezzo-soprano': 'Mezzo-Soprano (女中音)',
+    'contralto': 'Contralto (女低音)',
+    'tenor': 'Tenor (男高音)',
+    'baritone': 'Baritone (男中音)',
+    'bass': 'Bass (男低音)'
+  };
+
+  const suitableVoices = (target.suitableVoiceTypes || []).map(v => voiceTypeNames[v] || v);
+  const voiceStr = suitableVoices.length > 0 ? suitableVoices.join(', ') : 'None';
+
+  // Compute Jianpu degree if virtualKeyboardHelper is available
+  const keySig = (currentProfile && currentProfile.initialKey) ? currentProfile.initialKey : 'C';
+  let lowDegree = '';
+  let highDegree = '';
+  let avgNoteName = '';
+  if (typeof midiToTmdNote === 'function') {
+    lowDegree = ` (${midiToTmdNote(target.lowestNote.midiPitch, keySig)})`;
+    highDegree = ` (${midiToTmdNote(target.highestNote.midiPitch, keySig)})`;
   }
-
-  let voiceTypesHtml = '';
-  if (target.suitableVoiceTypes && target.suitableVoiceTypes.length > 0) {
-    const badges = target.suitableVoiceTypes.map(v => `<span class="span-pill" style="font-size: 11px; margin-right: 4px;">${v}</span>`).join('');
-    voiceTypesHtml = `
-      <div class="pitch-metric-row">
-        <div>
-          <div class="stat-label">Suitable Voice Types</div>
-          <div style="margin-top: 3px;">${badges}</div>
-        </div>
-        <div class="pitch-meta">Based on pitch range</div>
-      </div>
-    `;
+  if (typeof midiToNoteLabel === 'function') {
+    const avgRound = Math.round(target.averageMidiPitch);
+    const avgLabel = midiToNoteLabel(avgRound, keySig);
+    avgNoteName = `${avgLabel.noteName} (${avgLabel.degreeLabel})`;
+  } else {
+    avgNoteName = `${Math.round(target.averageMidiPitch)}`;
   }
 
   container.innerHTML = `
-    <div class="pitch-metric-row">
-      <div>
-        <div class="stat-label">Lowest Pitch</div>
-        <div class="pitch-note-badge">${target.lowestNote.noteName} (MIDI ${target.lowestNote.midiPitch})</div>
+    <div class="vocal-profile-container">
+      <div class="pitch-stats-row">
+        <div class="pitch-stat-box">
+          <span class="stat-label">Vocal Range (音域)</span>
+          <span class="stat-value">${target.lowestNote.noteName}${lowDegree} ～ ${target.highestNote.noteName}${highDegree}</span>
+          <span class="stat-sub">Key: ${keySig} · [${target.lowestNote.sectionName}] ～ [${target.highestNote.sectionName}]</span>
+        </div>
+        <div class="pitch-stat-box">
+          <span class="stat-label">Pitch Span (跨度)</span>
+          <span class="stat-value">${octaves} octaves <span style="font-size: 11px; font-weight: normal; color: var(--muted-color);">(${target.spanSemitones} semitones)</span></span>
+          <span class="stat-sub" style="color: ${diffColor}; font-weight: 600;">Difficulty: ${diffLabel}</span>
+        </div>
       </div>
-      <div class="pitch-meta">in [${target.lowestNote.sectionName}]</div>
-    </div>
-    <div class="pitch-metric-row">
-      <div>
-        <div class="stat-label">Highest Pitch</div>
-        <div class="pitch-note-badge">${target.highestNote.noteName} (MIDI ${target.highestNote.midiPitch})</div>
+
+      <div class="pitch-details-block">
+        <div><strong>Singing Track:</strong> ${target.instrument} (${target.totalNotes} notes total)</div>
+        <div style="margin-top: 4px;"><strong>Lowest Note:</strong> ${target.lowestNote.noteName}${lowDegree} in <em>[${target.lowestNote.sectionName}]</em></div>
+        <div style="margin-top: 2px;"><strong>Highest Note:</strong> ${target.highestNote.noteName}${highDegree} in <em>[${target.highestNote.sectionName}]</em></div>
+        <div class="pitch-details-eval">
+          <span>Recommended Voice Classification:</span> <strong>${voiceStr}</strong>
+        </div>
       </div>
-      <div class="pitch-meta">in [${target.highestNote.sectionName}]</div>
-    </div>
-    <div class="pitch-metric-row">
-      <div>
-        <div class="stat-label">Pitch Span & Tessitura</div>
-        <div class="span-pill">${target.spanSemitones} semitones / ${octaves} octaves</div>
+
+      <div class="pitch-metric-row">
+        <div>
+          <div class="stat-label">Center Tessitura (核心音區)</div>
+          <div class="span-pill">${avgNoteName}</div>
+        </div>
+        <div class="pitch-meta">Average vocal pitch</div>
       </div>
-      <div class="pitch-meta">Avg MIDI: ${avgPitch} · ${target.totalNotes} notes</div>
     </div>
-    ${difficultyHtml}
-    ${voiceTypesHtml}
   `;
 }
 

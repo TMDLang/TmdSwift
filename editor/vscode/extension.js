@@ -600,6 +600,7 @@ function activate(context) {
 
     function getInspectorWebviewContent(webview, extensionUri) {
         const inspectorCssUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'inspector.css'));
+        const virtualKeyboardHelperUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'virtual-keyboard-helper.js'));
         const inspectorJsUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'inspector.js'));
 
         return `<!DOCTYPE html>
@@ -685,6 +686,7 @@ function activate(context) {
     </div>
   </div>
 
+  <script src="${virtualKeyboardHelperUri}"></script>
   <script src="${inspectorJsUri}"></script>
 </body>
 </html>`;
