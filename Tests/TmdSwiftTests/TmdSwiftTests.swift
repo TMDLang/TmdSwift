@@ -178,6 +178,25 @@ import TmdSkill
     }
 }
 
+@Test func testParserRejectsInvalidUnitTokenInParagraph() throws {
+    let tmd = """
+    ::SCORE::
+    ** Invalid Token Test **
+    != 120
+    ?= C
+    <4/4>
+
+    intro:Drums@|0|{
+        <8*>
+        | A - - - A - - - |
+    }
+    -> intro ->#
+    """
+    #expect(throws: TMDParseError.self) {
+        _ = try TmdParser.parseThrowing(string: tmd)
+    }
+}
+
 @Test func testParseSampleFile() throws {
     let sampleURL = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()

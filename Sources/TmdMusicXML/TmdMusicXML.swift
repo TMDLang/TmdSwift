@@ -45,7 +45,7 @@ public struct TMDMusicXMLGenerator {
         }
         xml += "  </part-list>\n"
 
-        let divisions = 16 // 16 divisions per quarter note gives high subdivision precision
+        let divisions = 48 // 48 divisions per quarter note gives high subdivision precision and cleanly divides triplets
 
         // Generate <part> for each instrument
         for (idx, inst) in instruments.enumerated() {
@@ -80,13 +80,27 @@ public struct TMDMusicXMLGenerator {
                 content += generatePlaybackDirectiveXML(directive)
             }
 
-            for event in measure.events {
-                let duration = max(1, Int((event.duration * Double(divisions)).rounded()))
+            let expectedMeasureDuration = max(1, Int((measure.nominalDuration * Double(divisions)).rounded()))
+            var durations: [Int] = measure.events.map { event in
+                max(1, Int((event.duration * Double(divisions)).rounded()))
+            }
+            // Balance durations to conserve measure nominal duration
+            let totalDur = durations.reduce(0, +)
+            let diff = expectedMeasureDuration - totalDur
+            if diff != 0 && !durations.isEmpty {
+                // Adjust the last event or the largest event
+                let lastIdx = durations.count - 1
+                durations[lastIdx] = max(1, durations[lastIdx] + diff)
+            }
+
+            for (idx, event) in measure.events.enumerated() {
+                let duration = durations[idx]
                 switch event.content {
                 case .note(let note):
                     content += generateNoteXML(
                         note: note,
                         duration: duration,
+                        divisions: divisions,
                         keyOffset: event.state.keyOffset,
                         tieStart: event.tieStart,
                         tieStop: event.tieStop
@@ -95,12 +109,13 @@ public struct TMDMusicXMLGenerator {
                     content += generateChordXML(
                         chordName: chord.description,
                         duration: duration,
+                        divisions: divisions,
                         keyOffset: event.state.keyOffset
                     )
                 case .rest:
-                    content += generateRestXML(duration: duration)
+                    content += generateRestXML(duration: duration, divisions: divisions)
                 case .percussion(let pattern):
-                    content += generatePercussionXML(pattern: pattern, duration: duration)
+                    content += generatePercussionXML(pattern: pattern, duration: duration, divisions: divisions)
                 }
             }
             xml += "    <measure number=\"\(measure.index + 1)\">\n\(content)    </measure>\n\n"
@@ -108,14 +123,68 @@ public struct TMDMusicXMLGenerator {
         return xml
     }
 
-    private static func generateRestXML(duration: Int) -> String {
-        """
+    private struct NoteDurationInfo {
+        let type: String
+        let dots: Int
+        let timeModification: (actualNotes: Int, normalNotes: Int)?
+    }
+
+    private static func durationInfo(duration: Int, divisions: Int) -> NoteDurationInfo? {
+        let d = divisions
+        // Standard durations
+        if duration == 4 * d { return NoteDurationInfo(type: "whole", dots: 0, timeModification: nil) }
+        if duration == 3 * d { return NoteDurationInfo(type: "half", dots: 1, timeModification: nil) }
+        if duration == 2 * d { return NoteDurationInfo(type: "half", dots: 0, timeModification: nil) }
+        if duration == d + d / 2 { return NoteDurationInfo(type: "quarter", dots: 1, timeModification: nil) }
+        if duration == d { return NoteDurationInfo(type: "quarter", dots: 0, timeModification: nil) }
+        if duration == d / 2 + d / 4 { return NoteDurationInfo(type: "eighth", dots: 1, timeModification: nil) }
+        if duration == d / 2 { return NoteDurationInfo(type: "eighth", dots: 0, timeModification: nil) }
+        if duration == d / 4 + d / 8 { return NoteDurationInfo(type: "16th", dots: 1, timeModification: nil) }
+        if duration == d / 4 { return NoteDurationInfo(type: "16th", dots: 0, timeModification: nil) }
+        if duration == d / 8 { return NoteDurationInfo(type: "32nd", dots: 0, timeModification: nil) }
+        if duration == d / 16 { return NoteDurationInfo(type: "64th", dots: 0, timeModification: nil) }
+
+        // Triplet (3:2) durations: duration = (normalDur * 2) / 3
+        if duration == (4 * d * 2) / 3 { return NoteDurationInfo(type: "whole", dots: 0, timeModification: (3, 2)) }
+        if duration == (2 * d * 2) / 3 { return NoteDurationInfo(type: "half", dots: 0, timeModification: (3, 2)) }
+        if duration == (d * 2) / 3 { return NoteDurationInfo(type: "quarter", dots: 0, timeModification: (3, 2)) }
+        if duration == (d / 2 * 2) / 3 { return NoteDurationInfo(type: "eighth", dots: 0, timeModification: (3, 2)) }
+        if duration == (d / 4 * 2) / 3 { return NoteDurationInfo(type: "16th", dots: 0, timeModification: (3, 2)) }
+        if duration == (d / 8 * 2) / 3 { return NoteDurationInfo(type: "32nd", dots: 0, timeModification: (3, 2)) }
+
+        return nil
+    }
+
+    private static func generateDurationElementsXML(duration: Int, divisions: Int) -> String {
+        guard let info = durationInfo(duration: duration, divisions: divisions) else {
+            return ""
+        }
+        var xml = "          <type>\(info.type)</type>\n"
+        for _ in 0..<info.dots {
+            xml += "          <dot/>\n"
+        }
+        if let tm = info.timeModification {
+            xml += """
+                      <time-modification>
+                        <actual-notes>\(tm.actualNotes)</actual-notes>
+                        <normal-notes>\(tm.normalNotes)</normal-notes>
+                      </time-modification>
+
+            """
+        }
+        return xml
+    }
+
+    private static func generateRestXML(duration: Int, divisions: Int) -> String {
+        var xml = """
                 <note>
                   <rest/>
                   <duration>\(max(1, duration))</duration>
-                </note>
 
         """
+        xml += generateDurationElementsXML(duration: duration, divisions: divisions)
+        xml += "        </note>\n\n"
+        return xml
     }
 
     private static func generatePlaybackDirectiveXML(_ directive: PlaybackDirectiveEvent) -> String {
@@ -140,7 +209,7 @@ public struct TMDMusicXMLGenerator {
         }
     }
 
-    private static func generatePercussionXML(pattern: String, duration: Int) -> String {
+    private static func generatePercussionXML(pattern: String, duration: Int, divisions: Int) -> String {
         let notes = pattern.compactMap { character -> (String, Int)? in
             switch character {
             case "X", "x": return ("F", 5) // closed hi-hat, MIDI 42
@@ -150,7 +219,7 @@ public struct TMDMusicXMLGenerator {
             }
         }
         if notes.isEmpty {
-            return generateRestXML(duration: duration)
+            return generateRestXML(duration: duration, divisions: divisions)
         }
         let count = notes.count
         let base = duration / count
@@ -165,9 +234,10 @@ public struct TMDMusicXMLGenerator {
                         <display-octave>\(octave)</display-octave>
                       </unpitched>
                       <duration>\(noteDur)</duration>
-                    </note>
 
             """
+            xml += generateDurationElementsXML(duration: noteDur, divisions: divisions)
+            xml += "        </note>\n\n"
         }
         return xml
     }
@@ -204,6 +274,7 @@ public struct TMDMusicXMLGenerator {
     private static func generateNoteXML(
         note: Note,
         duration: Int,
+        divisions: Int,
         keyOffset: Int,
         tieStart: Bool = false,
         tieStop: Bool = false
@@ -230,6 +301,7 @@ public struct TMDMusicXMLGenerator {
         if tieStart {
             xml += "          <tie type=\"start\"/>\n"
         }
+        xml += generateDurationElementsXML(duration: duration, divisions: divisions)
         if tieStart || tieStop {
             xml += "          <notations>\n"
             if tieStop {
@@ -244,21 +316,22 @@ public struct TMDMusicXMLGenerator {
         return xml
     }
 
-    private static func generateChordXML(chordName: String, duration: Int, keyOffset: Int) -> String {
+    private static func generateChordXML(chordName: String, duration: Int, divisions: Int, keyOffset: Int) -> String {
         // Output chord harmony symbol & note representation
-        let xml = """
+        var xml = """
               <harmony>
                 <root>
                   <root-step>\(escapeXML(chordName))</root-step>
                 </root>
-                <kind text="\(escapeXML(chordName))">other</kind>
+                <kind text=\"\(escapeXML(chordName))\">other</kind>
               </harmony>
               <note>
                 <rest/>
                 <duration>\(duration)</duration>
-              </note>
 
         """
+        xml += generateDurationElementsXML(duration: duration, divisions: divisions)
+        xml += "      </note>\n\n"
         return xml
     }
 

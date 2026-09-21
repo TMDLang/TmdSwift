@@ -85,9 +85,24 @@ public struct TMDMeasureChecker {
         while pos < tokensWithRanges.count {
             guard let tok = current() else { break }
 
+            // Score title block: ** Title **
+            if tok.token == .doubleAsterisk {
+                _ = advance()
+                while pos < tokensWithRanges.count && current()?.token != .doubleAsterisk {
+                    _ = advance()
+                }
+                if current()?.token == .doubleAsterisk {
+                    _ = advance()
+                }
+                continue
+            }
+
             // Paragraph header: identifier:identifier@...{
             if case .identifier(let pName) = tok.token,
-               pos + 1 < tokensWithRanges.count, tokensWithRanges[pos + 1].token == .colon {
+               pos + 3 < tokensWithRanges.count,
+               tokensWithRanges[pos + 1].token == .colon,
+               case .identifier = tokensWithRanges[pos + 2].token,
+               tokensWithRanges[pos + 3].token == .at {
                 let paraStartLine = tok.range.start.line
                 _ = advance() // pName
                 _ = advance() // :
@@ -99,33 +114,32 @@ public struct TMDMeasureChecker {
 
                 // Extract start offset from @|start| if present
                 var startOffset = 0
-                while pos < tokensWithRanges.count && current()?.token != .openBrace {
-                    if current()?.token == .at {
+                if current()?.token == .at {
+                    _ = advance()
+                    if current()?.token == .pipe {
                         _ = advance()
-                        if current()?.token == .pipe {
+                        var sign = 1
+                        if current()?.token == .tie {
+                            sign = -1
                             _ = advance()
-                            var sign = 1
-                            if current()?.token == .tie {
-                                sign = -1
+                        }
+                        if let numTok = current() {
+                            if case .number(let n) = numTok.token {
+                                startOffset = sign * n
+                                _ = advance()
+                            } else if case .positiveNumber(let n) = numTok.token {
+                                startOffset = sign * n
+                                _ = advance()
+                            } else if case .note(let note) = numTok.token {
+                                startOffset = sign * note.degree.rawValue
                                 _ = advance()
                             }
-                            if let numTok = current() {
-                                if case .number(let n) = numTok.token {
-                                    startOffset = sign * n
-                                    _ = advance()
-                                } else if case .positiveNumber(let n) = numTok.token {
-                                    startOffset = sign * n
-                                    _ = advance()
-                                } else if case .note(let note) = numTok.token {
-                                    startOffset = sign * note.degree.rawValue
-                                    _ = advance()
-                                }
-                            }
-                            if current()?.token == .pipe { _ = advance() }
                         }
-                        break
+                        if current()?.token == .pipe { _ = advance() }
+                    } else if case .identifier = current()?.token {
+                        // executionTime
+                        _ = advance()
                     }
-                    _ = advance()
                 }
 
                 // Advance until `{`
