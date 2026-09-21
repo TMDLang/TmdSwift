@@ -808,6 +808,138 @@ function activate(context) {
         runTmdRefactor(args, scope.section ? `Halve Grid (${scope.section})` : 'Halve Grid Resolution');
     }));
 
+    // 2b. Refactor: Optimize Grid
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.refactorOptimizeGrid', async () => {
+        const context = detectContextAtCursor();
+        const scope = await promptScopeChoice(context, 'Optimize Grid');
+        if (!scope) return;
+
+        const args = ['optimize-grid'];
+        if (scope.section) {
+            args.push('--section', scope.section);
+        }
+        runTmdRefactor(args, scope.section ? `Optimize Grid (${scope.section})` : 'Optimize Grid Resolution');
+    }));
+
+    // 2c. Refactor: Transpose Pitch
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.refactorTranspose', async () => {
+        const modeChoice = await vscode.window.showQuickPick([
+            {
+                label: 'By Semitones (Chromatic)',
+                description: 'Shift pitch by semitone count (e.g. +2 for one whole tone up, -1 for semitone down)',
+                mode: 'semitones'
+            },
+            {
+                label: 'By Diatonic Steps (Scale Degrees)',
+                description: 'Shift melody notes within current diatonic scale (e.g. +2 for 3rd up, -1 for step down)',
+                mode: 'diatonic'
+            }
+        ], {
+            placeHolder: 'Select transposition mode'
+        });
+        if (!modeChoice) return;
+
+        const valInput = await vscode.window.showInputBox({
+            prompt: modeChoice.mode === 'semitones'
+                ? 'Enter semitone offset (e.g. +2, -3, 1)'
+                : 'Enter diatonic scale steps offset (e.g. +2, -1, 1)',
+            validateInput: v => {
+                const n = parseInt(v, 10);
+                return (!isNaN(n) && n !== 0) ? null : 'Please enter a non-zero integer offset (e.g. +2 or -1)';
+            }
+        });
+        if (!valInput) return;
+        const offset = parseInt(valInput, 10);
+
+        let updateKey = false;
+        if (modeChoice.mode === 'semitones') {
+            const updateKeyChoice = await vscode.window.showQuickPick([
+                {
+                    label: 'Yes, update ?= Key Signatures',
+                    description: 'Automatically adjust {!K:...} / ?= key signature headers in the score',
+                    updateKey: true
+                },
+                {
+                    label: 'No, keep Key Signatures as-is',
+                    description: 'Only transpose notes and chords without altering the score key header',
+                    updateKey: false
+                }
+            ], {
+                placeHolder: 'Also update score key signature (?=)?'
+            });
+            if (!updateKeyChoice) return;
+            updateKey = updateKeyChoice.updateKey;
+        }
+
+        const cursorContext = detectContextAtCursor();
+        let targetSection = undefined;
+        let targetInstrument = undefined;
+
+        if (cursorContext.section || cursorContext.instrument) {
+            const scopeItems = [
+                {
+                    label: 'Entire Score',
+                    description: 'Transpose all sections and all instruments',
+                    scope: 'all'
+                }
+            ];
+            if (cursorContext.section) {
+                scopeItems.push({
+                    label: `Section '${cursorContext.section}' only`,
+                    description: `Transpose only section '${cursorContext.section}'`,
+                    scope: 'section',
+                    section: cursorContext.section
+                });
+            }
+            if (cursorContext.instrument) {
+                scopeItems.push({
+                    label: `Instrument '${cursorContext.instrument}' only`,
+                    description: `Transpose only instrument '${cursorContext.instrument}' across all sections`,
+                    scope: 'instrument',
+                    instrument: cursorContext.instrument
+                });
+            }
+            if (cursorContext.section && cursorContext.instrument) {
+                scopeItems.push({
+                    label: `'${cursorContext.instrument}' in Section '${cursorContext.section}'`,
+                    description: `Transpose only this instrument track in this section`,
+                    scope: 'both',
+                    section: cursorContext.section,
+                    instrument: cursorContext.instrument
+                });
+            }
+
+            const scopeChoice = await vscode.window.showQuickPick(scopeItems, {
+                placeHolder: 'Select target scope for transposition'
+            });
+            if (!scopeChoice) return;
+            if (scopeChoice.section) targetSection = scopeChoice.section;
+            if (scopeChoice.instrument) targetInstrument = scopeChoice.instrument;
+        }
+
+        const args = ['transpose'];
+        if (modeChoice.mode === 'semitones') {
+            args.push('--semitones', String(offset));
+            if (updateKey) {
+                args.push('--update-key');
+            }
+        } else {
+            args.push('--diatonic', String(offset));
+        }
+
+        if (targetSection) {
+            args.push('--section', targetSection);
+        }
+        if (targetInstrument) {
+            args.push('--instrument', targetInstrument);
+        }
+
+        const desc = modeChoice.mode === 'semitones'
+            ? `Transpose ${offset > 0 ? '+' : ''}${offset} Semitones`
+            : `Transpose ${offset > 0 ? '+' : ''}${offset} Diatonic Steps`;
+        runTmdRefactor(args, desc);
+    }));
+
     // 3. Refactor: Duplicate Track
     context.subscriptions.push(vscode.commands.registerCommand('tmd.refactorDuplicateTrack', async () => {
         const cursorContext = detectContextAtCursor();

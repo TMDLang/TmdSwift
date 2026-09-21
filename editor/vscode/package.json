@@ -156,6 +156,18 @@
         "enablement": "editorLangId == tmd"
       },
       {
+        "command": "tmd.refactorOptimizeGrid",
+        "title": "Refactor: Optimize Grid Resolution (Minimal Redundant Grid)",
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
+      },
+      {
+        "command": "tmd.refactorTranspose",
+        "title": "Refactor: Transpose Pitch (Semitones / Diatonic)...",
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
+      },
+      {
         "command": "tmd.refactorDuplicateTrack",
         "title": "Refactor: Duplicate Track...",
         "category": "TMD",
@@ -323,34 +335,44 @@
           "group": "tmd_refactor@2"
         },
         {
-          "command": "tmd.refactorDuplicateTrack",
+          "command": "tmd.refactorOptimizeGrid",
           "when": "editorLangId == tmd",
           "group": "tmd_refactor@3"
         },
         {
-          "command": "tmd.refactorGenerateHarmony",
+          "command": "tmd.refactorTranspose",
           "when": "editorLangId == tmd",
           "group": "tmd_refactor@4"
         },
         {
-          "command": "tmd.refactorInlineOrders",
+          "command": "tmd.refactorDuplicateTrack",
           "when": "editorLangId == tmd",
           "group": "tmd_refactor@5"
         },
         {
-          "command": "tmd.refactorRenameInstrument",
+          "command": "tmd.refactorGenerateHarmony",
           "when": "editorLangId == tmd",
           "group": "tmd_refactor@6"
         },
         {
-          "command": "tmd.refactorRenameSection",
+          "command": "tmd.refactorInlineOrders",
           "when": "editorLangId == tmd",
           "group": "tmd_refactor@7"
         },
         {
-          "command": "tmd.refactorExtractInstrument",
+          "command": "tmd.refactorRenameInstrument",
           "when": "editorLangId == tmd",
           "group": "tmd_refactor@8"
+        },
+        {
+          "command": "tmd.refactorRenameSection",
+          "when": "editorLangId == tmd",
+          "group": "tmd_refactor@9"
+        },
+        {
+          "command": "tmd.refactorExtractInstrument",
+          "when": "editorLangId == tmd",
+          "group": "tmd_refactor@10"
         }
       ],
       "editor/title": [

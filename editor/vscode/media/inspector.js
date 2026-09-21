@@ -134,6 +134,40 @@ function renderSelectedInstrumentRange(instName, ranges) {
   const octaves = (target.spanSemitones / 12.0).toFixed(1);
   const avgPitch = target.averageMidiPitch.toFixed(1);
 
+  let difficultyHtml = '';
+  if (target.difficulty) {
+    const diffColorMap = {
+      'Easy': '#3fb950',
+      'Moderate': '#58a6ff',
+      'Challenging': '#d29922',
+      'Extreme': '#f85149'
+    };
+    const diffColor = diffColorMap[target.difficulty] || 'var(--accent-color)';
+    difficultyHtml = `
+      <div class="pitch-metric-row">
+        <div>
+          <div class="stat-label">Vocal Difficulty</div>
+          <div style="font-weight: 600; font-size: 13px; color: ${diffColor};">${target.difficulty}</div>
+        </div>
+        <div class="pitch-meta">${target.spanSemitones} semitones span</div>
+      </div>
+    `;
+  }
+
+  let voiceTypesHtml = '';
+  if (target.suitableVoiceTypes && target.suitableVoiceTypes.length > 0) {
+    const badges = target.suitableVoiceTypes.map(v => `<span class="span-pill" style="font-size: 11px; margin-right: 4px;">${v}</span>`).join('');
+    voiceTypesHtml = `
+      <div class="pitch-metric-row">
+        <div>
+          <div class="stat-label">Suitable Voice Types</div>
+          <div style="margin-top: 3px;">${badges}</div>
+        </div>
+        <div class="pitch-meta">Based on pitch range</div>
+      </div>
+    `;
+  }
+
   container.innerHTML = `
     <div class="pitch-metric-row">
       <div>
@@ -156,6 +190,8 @@ function renderSelectedInstrumentRange(instName, ranges) {
       </div>
       <div class="pitch-meta">Avg MIDI: ${avgPitch} · ${target.totalNotes} notes</div>
     </div>
+    ${difficultyHtml}
+    ${voiceTypesHtml}
   `;
 }
 
