@@ -581,12 +581,16 @@ struct MacroEvaluatorTests {
 
     @Test("Validates canon_in_d_macro.tmd end-to-end score")
     func testCanonInDMacroSample() throws {
-        let samplePath = "/Users/zonble/Work/TmdSwiftDev/sample/basic/canon_in_d_macro.tmd"
-        let sheet = try TmdParser.parseThrowing(filePathOrURL: samplePath)
+        let sampleURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("sample/basic/canon_in_d_macro.tmd")
+        let sheet = try TmdParser.parseThrowing(url: sampleURL)
         #expect(sheet.name.contains("Canon in D"))
 
         // Measure consistency check: 0 errors
-        let issues = TMDMeasureChecker.check(source: try String(contentsOfFile: samplePath))
+        let issues = TMDMeasureChecker.check(source: try String(contentsOf: sampleURL, encoding: .utf8))
         #expect(issues.isEmpty)
 
         // MIDI export
