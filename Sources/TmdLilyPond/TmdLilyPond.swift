@@ -8,7 +8,8 @@ import TmdSwift
 public struct TMDLilyPondGenerator {
 
     /// Generates LilyPond `.ly` file content from a Sheet.
-    public static func generateLilyPond(from sheet: Sheet) -> String {
+    public static func generateLilyPond(from inputSheet: Sheet) -> String {
+        let sheet = TMDMacroEvaluator.expand(inputSheet)
         let composer = sheet.metadata["composer"] ?? "TMD"
         var ly = """
         \\version "2.24.0"

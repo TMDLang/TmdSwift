@@ -8,7 +8,8 @@ import TmdSwift
 public struct TMDABCGenerator {
 
     /// Generates ABC notation string from a Sheet.
-    public static func generateABC(from sheet: Sheet) -> String {
+    public static func generateABC(from inputSheet: Sheet) -> String {
+        let sheet = TMDMacroEvaluator.expand(inputSheet)
         var abc = ""
 
         // Header fields

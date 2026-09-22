@@ -506,6 +506,24 @@ public struct Paragraph: Equatable {
     }
 }
 
+/// An S-Expression node representing symbols, numbers, and nested lists for macro composition.
+public enum SExpr: Equatable, Hashable, Sendable, CustomStringConvertible {
+    case symbol(String)
+    case number(Int)
+    case list([SExpr])
+
+    public var description: String {
+        switch self {
+        case .symbol(let s):
+            return s
+        case .number(let n):
+            return String(n)
+        case .list(let items):
+            return "(" + items.map(\.description).joined(separator: " ") + ")"
+        }
+    }
+}
+
 /// Playback order and modulation instructions directing song flow.
 ///
 /// Example syntax: `-> intro -> A -> {?-3} -> C ->#`.
@@ -529,6 +547,9 @@ public enum Order: Equatable {
     ///
     /// > Note: Originally named `OrderType::Absolute` in Aguai's C++ code.
     case absolute(String)
+
+    /// An S-Expression macro evaluation directive (e.g. `(canon Theme (V1 V2) 2)`).
+    case macro(SExpr)
 }
 
 /// The complete TMD score sheet.
@@ -605,7 +626,7 @@ public struct Sheet: Equatable {
     /// Returns a sorted list of unique instrument names present across all paragraphs in the sheet.
     /// - Parameter fallbackToDefault: If true and no instruments exist, returns `["Piano"]`.
     public func distinctInstruments(fallbackToDefault: Bool = true) -> [String] {
-        let distinct = Array(Set(paragraphs.map(\.instrument))).sorted()
+        let distinct = Array(Set(paragraphs.map(\.instrument).filter { !$0.isEmpty })).sorted()
         if distinct.isEmpty && fallbackToDefault {
             return ["Piano"]
         }

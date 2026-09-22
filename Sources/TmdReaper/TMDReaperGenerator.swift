@@ -14,7 +14,8 @@ public struct TMDReaperGenerator {
     public static let defaultPPQ: UInt16 = 960
 
     /// Generates REAPER project file content (.rpp) from a Sheet.
-    public static func generateRPP(from sheet: Sheet, ppq: UInt16 = defaultPPQ) -> String {
+    public static func generateRPP(from inputSheet: Sheet, ppq: UInt16 = defaultPPQ) -> String {
+        let sheet = TMDMacroEvaluator.expand(inputSheet)
         let distinctInstruments = sheet.distinctInstruments()
         let timelineInstrument = sheet.paragraphs.first {
             $0.sections.contains { !$0.directives.isEmpty }

@@ -95,6 +95,11 @@ sectionName:instrumentName@{
 sectionName:instrumentName@|startMeasure|{
     section+
 }
+
+/* Abstract Material / Theme Prototype (no instrument binding, referenced by S-expression macros) */
+sectionName{
+    section+
+}
 ```
 
 For example:
@@ -109,19 +114,25 @@ intro:Guitar@|+4|{
     <16*>
     1_ - 1_ -
 }
+
+/* Abstract canon theme prototype */
+Theme{
+    <4*>
+    3^ 2^ 1^ 7 | 6 5 6 7 | 1^ 7 6 5 | 4 3 4 2 |
+}
 ```
 
 The components have the following meanings:
 
 | Field | Meaning |
 | --- | --- |
-| Section Name | e.g. `intro`, `A`, `verse`, `chorus` |
-| Instrument Name | e.g. `Piano`, `Guitar`, `CHORD` |
+| Section Name | e.g. `intro`, `A`, `verse`, `chorus`, `Theme` |
+| Instrument Name | e.g. `Piano`, `Guitar`, `CHORD`; omitted for abstract themes |
 | Start Measure | Expressed as an integer offset; defaults to `0` if omitted |
 
 The start measure can be positive, zero, or negative. A negative offset indicates an upbeat or early entry, such as `@|-1|`.
 
-Multiple instrument paragraphs can share the same section name. Each is stored independently as a `Paragraph` and is not merged at the parser stage.
+Multiple instrument paragraphs can share the same section name. Each is stored independently as a `Paragraph` and is not merged at the parser stage. Paragraphs without an instrument binding are preserved as abstract prototypes (`instrument` is empty) and are instantiated dynamically via S-expression macros in the playback flow.
 
 ## 6. Sections and Basic Rhythm Units
 
@@ -129,53 +140,31 @@ Each section begins with `<n*>`:
 
 ```text
 <4*>
-1 2 3 4
-
 <16*>
-1_ - 1_ -
 ```
 
 `n` is stored as `Section.noteLength`, indicating the base division unit (e.g. `4` for quarter notes, `16` for sixteenth notes) used by musical units in this section. The section continues parsing units until the next `<n*>`, closing brace `}`, or end-of-file is reached.
 
-The barline symbol `|` can be used within sections for visual formatting. It is ignored by the parser:
-
-```text
-| 1 2 | 3 4 |
-```
-
-### 6.1 Section Directives
-
-Directives can be placed among musical units within a section. Their position is recorded as the number of base units preceding them:
-
-```tmd
-<4*>
-1 2 {!=140} 3 4
-{!+10}
-{?+2}
-{?=D}
-{<3/4>}
-```
-
-Supported directive kinds include absolute/relative tempo, absolute/relative key, and local time signature changes. MIDI exports tempo and meter changes into the conductor track; MusicXML, LilyPond, and ABC output corresponding annotations and musical directives.
+The barline symbol `|` can be used within sections for visual formatting. It is ignored by the parser.
 
 ## 7. Musical Units
 
-### 7.1 Movable-Do Numbered Notes (Jianpu)
+### 7.1 Numbered Musical Notation (Jianpu)
 
-Basic scale degrees are digits `1` through `7`:
+Core scale degrees are `1` through `7`:
 
 ```text
 1 2 3 4 5 6 7
 ```
 
-Accidentals must immediately follow the scale degree digit:
+Accidentals immediately follow the degree:
 
 ```text
-1'     /* C# / sharp 1 */
-2,     /* Db / flat 2 */
+1'     /* Sharp 1 (C# in C) */
+2,     /* Flat 2 (Db in C) */
 ```
 
-Octaves are indicated with `^` (higher) or `_` (lower), where each repeated character shifts by one octave:
+Octave displacement uses `^` (higher) or `_` (lower), with multiple characters stacking octaves:
 
 ```text
 1^     /* One octave up */
@@ -185,11 +174,11 @@ Octaves are indicated with `^` (higher) or `_` (lower), where each repeated char
 1'^    /* Sharp 1, one octave up */
 ```
 
-The order of accidentals and octave marks is fixed: accidentals come first, followed by octave marks. If multiple accidentals are specified, the last accidental determines the pitch alteration; octave characters accumulate additively.
+Accidentals strictly precede octave markers.
 
 ### 7.2 Chords
 
-Chords are enclosed in square brackets:
+Chords are delimited by square brackets:
 
 ```text
 [Cmaj7]
@@ -198,52 +187,40 @@ Chords are enclosed in square brackets:
 [6m]
 ```
 
-The parser parses the enclosed content into a `ChordSymbol`. Roots support letter names (C–B) or numbered scale degrees (1–7). Recognized chord qualities include major, minor, seventh, diminished, augmented, suspended, and power chords. Suffixes not in the standard enumeration are preserved as `.custom(String)`, allowing extensions such as `C7#9`. Surrounding whitespace is trimmed, but the parser does not enforce harmonic adherence to the key signature.
+### 7.3 Ties and Sustained Notes
 
-### 7.3 Ties and Sustains
-
-A single `-` is parsed as a tie / sustain:
+A single `-` represents a tie extending duration by one base unit:
 
 ```text
 1 - - -
 [Cmaj7] -
 ```
 
-The actual duration is resolved by exporters based on the adjacent musical units and the section's rhythm division.
+### 7.4 Tuplets and Rhythmic Groupings
 
-### 7.4 Tuplets and Rhythm Groups
-
-Multiple musical units wrapped in parentheses followed by `%(...)` define a rhythm group:
+Parentheses group multiple units into a subdivision, followed by `%(...)` defining the base duration:
 
 ```text
 (1 2 3)%(--)
 (7, 1)%(--)
 ```
 
-In `%(--)`, each `-` represents one base division unit length. In the example above, the `length` of the tuplet group is `2` base units. The parentheses can contain notes, chords, ties, or any other valid units.
+## 8. Playback Flow, Modulation, and S-Expression Macros
 
-When no grouping parentheses are present, an individual musical unit forms a `UnitGroup` with `length = 1`:
-
-```text
-1 2 [C] -
-```
-
-This is equivalent to four distinct `UnitGroup` instances of length 1.
-
-## 8. Playback Order and Modulation
-
-The playback arrangement begins with `->` and concludes with `->#`:
+Playback orders begin with `->` and terminate strictly with `->#`:
 
 ```text
 -> intro -> A -> B ->#
 ```
 
+### 8.1 Section Identifiers
 Section names are stored in `Order.name`:
 
 ```text
 -> intro
 ```
 
+### 8.2 Modulation Directives
 Relative key modulation:
 
 ```text
@@ -251,116 +228,89 @@ Relative key modulation:
 -> {?+3}
 ```
 
-The transposition offset is stored as a string in `Order.relative` (e.g. `"-3"`, `"+3"`). Absolute key changes:
+Absolute key modulation:
 
 ```text
 -> {?=C}
 -> {?=A'}
 ```
 
-The target key is stored as a string in `Order.absolute`.
+### 8.3 S-Expression Macro Directives
+The playback flow natively supports S-expression macros for deterministic multi-track scheduling without manual measure bookkeeping:
 
-`->#` marks the termination of the playback order. When the parser encounters this token, sheet parsing finishes; any content following it is ignored.
+```text
+-> (canon Theme (Violin1 Violin2 Violin3) 2)
+-> (layer (canon Theme (V1 V2) 2) (loop Bass Cello 8))
+```
+
+Supported core operators:
+- `(play <theme> <instrument>)`: Binds an abstract theme prototype to a specific instrument track.
+- `(loop <theme> <instrument> <times>)`: Repeats a theme sequentially (e.g. ground bass / ostinato).
+- `(canon <theme> (<instruments...>) <offset_bars>)`: Staggers theme entries across instruments by `<offset_bars>`.
+- `(layer <expr1> <expr2> ...)`: Plays child expressions concurrently from the same measure timestamp.
+- `(seq <expr1> <expr2> ...)`: Chains child expressions chronologically.
+- `(vary <theme> <modifiers...>)`: Flat motivic transformations, supporting semitone transposition (`+7`, `-5`, `+12`), melodic inversion `flip`, retrograde `reverse`, and modal parallel shifts `minor` / `major`.
+
+`->#` marks the termination of the playback order.
 
 ## 9. AST Mapping
 
-| TMD Concept | Swift Type |
+| TMD Concept | AST Type |
 | --- | --- |
 | Time Signature | `Beat` |
 | Note | `Note` |
-| Chord | `ChordSymbol` (Root: `ChordRoot`, Quality: `ChordQuality`) |
-| Note / Chord / Tie / Rest / Drum | `Unit` |
-| Tuplet / Rhythm Group | `UnitGroup` |
-| `<n*>` Division & Content | `Section` |
-| Section & Instrument Track | `Paragraph` |
-| Playback Order Step | `Order` |
-| Complete Score | `Sheet` |
+| Chord | `ChordSymbol` |
+| Unit / Rest / Drum | `Unit` |
+| Tuplet / Group | `UnitGroup` |
+| `<n*>` Section | `Section` |
+| Paragraph / Track | `Paragraph` (empty `instrument` for abstract prototypes) |
+| Playback Order | `Order` (`name`, `relative`, `absolute`, `macro`) |
+| Score | `Sheet` |
 
-`Unit` supports `.note`, `.chord`, `.tie`, `.rest`, and `.percussion`. Document metadata is stored in `Sheet.metadata`, and section directives in `Section.directives`.
+## 10. Exporter Integration
 
-## 10. Exporter Capability Matrix
+All exporters (MIDI, MusicXML, LilyPond, ABC, WAV, REAPER, ChordPro) automatically desugar S-expression macros via `TMDMacroEvaluator` before generation.
 
-Different export formats have different data models and capabilities. In the table below, "Partial" indicates the exporter reads the syntax but may output partial information or fallback annotations; "Indirect" indicates WAV synthesis is rendered via MIDI and inherits MIDI's behavior.
-
-| Feature / Syntax | MIDI | MusicXML | LilyPond | ABC | WAV |
-| --- | --- | --- | --- | --- | --- |
-| metadata | Partially ignored | Mapped to `creator` | Uses `composer` | Uses `composer` | Indirect (via MIDI) |
-| tempo | Supported | Supported | Supported | Supported | Indirect (via MIDI) |
-| relative tempo | Supported | Accumulated & output | Accumulated & output | Accumulated & output | Indirect (via MIDI) |
-| time signature | Supported | Supported | Supported | Supported | Indirect (via MIDI) |
-| absolute key | Supported | Supported | Supported | Supported | Indirect (via MIDI) |
-| relative key | Transposes pitch | Partial (annotations/local) | Partial (annotations/local) | Partial (annotations/local) | Indirect (via MIDI) |
-| rest | Supported | Supported | Supported | Supported | Indirect (via MIDI) |
-| percussion | Supported | Supported | Supported | Supported | Indirect (via MIDI) |
-| typed chord | Supported | Supported | Supported | Supported | Indirect (via MIDI) |
-| negative start | Timeline offset | Partial / planned | Partial / planned | Partial / planned | Indirect (via MIDI) |
-| show-program | Ignored | Ignored | Ignored | Ignored | Ignored |
-| execution-time | Ignored | Ignored | Ignored | Ignored | Ignored |
-| playback orders | Supported | Supported | Supported | Supported | Indirect (via MIDI) |
-
-Notable differences:
-1. Exporters accumulate `relative tempo` changes via a unified playback timeline; differences lie mainly in target syntax conventions.
-2. Notation exporters do not yet fully align non-measure directive positions.
-3. `relative key` in LilyPond, ABC, and MusicXML is largely treated via local pitch transposition or comment annotations rather than formal key change signatures.
-4. Negative `paragraph.start` offsets are handled in the MIDI timeline.
-5. `show-program` and `execution-time` are currently retained in AST and TMD formatters without mapping to musical notation outputs.
-
-## 11. Show Program
-
-Non-musical stage and execution control scripts can be declared using triple-quoted blocks:
-
-```tmd
-show:Lighting@intro{
-"""
-cue black
-wait 4
-"""
-}
-```
-
-The raw text content is preserved in `Paragraph.showProgram`, and the identifier following `@` is stored in `Paragraph.executionTime`. This specification does not prescribe the syntax of script bodies; hardware runners and executors can build upon this AST field independently.
-
-## 12. Parsing and Encodings
-
-`TmdParser` supports parsing from:
-
-- Swift `String`
-- `Data`
-- Local file `URL`
-- File paths or `file://` URL strings
-
-When parsing from `Data`, the parser automatically detects character encodings, supporting UTF-8, Big5, GB18030, and other common encodings. If parsing fails, the API returns `nil`; structured diagnostics with line and column numbers are planned for future revisions.
-
-## 13. Compatibility and Evolution
-
-This specification version only guarantees syntax currently parsed and stored in the AST by TmdSwift. Future additions should adhere to the following principles:
-
-1. Preserve the musical meaning of existing valid TMD scores.
-2. Clearly document exporter handling whenever new AST types or fields are introduced.
-3. Provide tests covering the parser, formatter, and at least one exporter for each new syntax construct.
-4. Differentiate between original TMDLang syntax and TmdSwift extensions.
-5. Increment the specification version and provide migration documentation when breaking changes are unavoidable.
-
-## 14. Complete Example
+## 11. Complete Example (Canon in D with S-Expression Macros)
 
 ```tmd
 ::SCORE::
-** Sample Song **
-!= 120
-?= C
+** Canon in D **
+~ "composer: Johann Pachelbel"
+~ "arranger: S-Expression Edition"
+!= 56
+?= D
 <4/4>
 
-intro:CHORD@|0|{
+/* Ground Bass Prototype (2 bars) */
+Bass {
     <4*>
-    [Cmaj7] - [Am] -
+    1_ 5__ 6__ 3__ | 4__ 1__ 4__ 5__ |
 }
 
-intro:Piano@|0|{
-    <16*>
-    1 2 3 4 (5 6 7 1^)%(--)
+/* Canon Theme Prototype (4 bars) */
+Theme {
+    <4*>
+    3^ 2^ 1^ 7 | 6 5 6 7 | 1^ 7 6 5 | 4 3 4 2 |
 }
 
--> intro -> {?+3} -> intro ->#
+/* Intro: Cello establishes ground bass */
+intro:Cello@|0|{
+    <4*>
+    1_ 5__ 6__ 3__ | 4__ 1__ 4__ 5__ |
+}
+
+/* Outro: Tutti cadence */
+outro:Violin1@|0|{ <1*> 1^--- | }
+outro:Violin2@|0|{ <1*> 3--- | }
+outro:Violin3@|0|{ <1*> 1--- | }
+outro:Cello@|0|{   <1*> 1_--- | }
+
+/* Playback Flow: Cello loops ground bass 4 times while 3 violins enter staggered by 2 bars */
+-> intro
+-> (layer
+     (canon Theme (Violin1 Violin2 Violin3) 2)
+     (loop Bass Cello 4))
+-> outro
+->#
 ```
-
-This file defines a 4/4 song with two tracks in the `intro` section (chords and melody), a 2-unit tuplet group, and a playback arrangement that repeats the intro after transposing up three semitones.

@@ -8,7 +8,8 @@ import TmdSwift
 public struct TMDMusicXMLGenerator {
 
     /// Generates MusicXML UTF-8 string from a Sheet.
-    public static func generateMusicXML(from sheet: Sheet) -> String {
+    public static func generateMusicXML(from inputSheet: Sheet) -> String {
+        let sheet = TMDMacroEvaluator.expand(inputSheet)
         let metadataCreators = sheet.metadata.sorted { $0.key < $1.key }.map { key, value in
             let type = key.lowercased() == "lyrics" ? "lyricist" : (key.lowercased() == "arranger" ? "arranger" : "composer")
             return "    <creator type=\"\(type)\">\(escapeXML(value))</creator>"

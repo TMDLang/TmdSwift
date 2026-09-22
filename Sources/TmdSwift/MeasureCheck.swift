@@ -320,6 +320,22 @@ public struct TMDMeasureChecker {
                         }
                         orderSections.append((name: orderSecName, line: lastOrderTokenLine))
                         _ = advance()
+                    } else if nextTok.token == .openParen {
+                        // S-expression macro: skip balanced parens
+                        var parenDepth = 0
+                        while pos < tokensWithRanges.count {
+                            guard let pTok = current() else { break }
+                            if pTok.token == .openParen {
+                                parenDepth += 1
+                            } else if pTok.token == .closeParen {
+                                parenDepth -= 1
+                                if parenDepth == 0 {
+                                    _ = advance()
+                                    break
+                                }
+                            }
+                            _ = advance()
+                        }
                     }
                 }
             } else if tok.token == .arrowEnd {

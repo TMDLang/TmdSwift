@@ -232,6 +232,13 @@ Rules:
   - `{?+3}`: Modulate up 3 semitones.
   - `{?-2}`: Modulate down 2 semitones.
   - `{?=G}`: Modulate to absolute key G.
+- Supports S-Expression macro combinators:
+  - `(play <Theme> <Instrument>)`: Bind abstract theme to an instrument track.
+  - `(loop <Theme> <Instrument> <times>)`: Repeat theme sequentially.
+  - `(canon <Theme> (<Inst1> <Inst2> ...) <bar_offset>)`: Auto-stagger voices in strict canon.
+  - `(layer <expr1> <expr2> ...)`: Concurrently play multiple voices/sections.
+  - `(seq <expr1> <expr2> ...)`: Sequentially chain multiple expressions.
+  - `(vary <Theme> <modifiers...>)`: Transform motives with pitch transposition (`+7`), inversion (`flip`), retrograde (`reverse`), or modal shift (`minor`/`major`).
 - Ends with `->#` (terminator).
 
 ---

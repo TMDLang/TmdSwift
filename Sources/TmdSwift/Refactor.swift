@@ -820,6 +820,14 @@ public struct TMDRefactor {
             }
         }
 
+        // Abstract prototype header line: e.g. Theme {
+        if !trimmed.contains(":") && !trimmed.contains("@") && trimmed.hasSuffix("{") && !trimmed.hasPrefix("->") {
+            let pName = trimmed.dropLast().trimmingCharacters(in: .whitespaces)
+            if !pName.isEmpty && !pName.contains(" ") && !pName.contains("\t") {
+                return "\(pName) {" + commentSuffix
+            }
+        }
+
         // Section header line: <4*> or <16*>
         if trimmed.hasPrefix("<") && trimmed.hasSuffix("*>") {
             return indentPrefix + trimmed + commentSuffix

@@ -7,11 +7,12 @@ public struct TMDMIDIGenerator {
 
     /// Converts a Sheet into Standard MIDI File (SMF Type 1) binary data.
     public static func generateMIDI(
-        from sheet: Sheet,
+        from inputSheet: Sheet,
         ticksPerQuarter: UInt16 = defaultTicksPerQuarterNote,
         targetParagraph: String? = nil,
         targetInstrument: String? = nil
     ) -> Data {
+        let sheet = TMDMacroEvaluator.expand(inputSheet)
         var effectiveSheet = sheet
         if let targetParagraph {
             let filteredParagraphs = sheet.paragraphs.filter { $0.name == targetParagraph }

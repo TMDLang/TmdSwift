@@ -25,6 +25,8 @@ extension Sheet {
                 lines.append("  [\(idx + 1)] -> {?\(rel)}")
             case .absolute(let abs):
                 lines.append("  [\(idx + 1)] -> {?=\(abs)}")
+            case .macro(let expr):
+                lines.append("  [\(idx + 1)] -> \(expr)")
             }
         }
         return lines.joined(separator: "\n")
@@ -183,13 +185,18 @@ extension Paragraph {
             let time = executionTime ?? ""
             return "\(name):\(instrument)@\(time){\n\"\"\"\(showProgram)\"\"\"\n}\n\n"
         }
-        var result = "\(name):\(instrument)@|"
-        if start > 0 {
-            result += "+\(start)"
+        var result = ""
+        if instrument.isEmpty {
+            result = "\(name) {\n"
         } else {
-            result += "\(start)"
+            result = "\(name):\(instrument)@|"
+            if start > 0 {
+                result += "+\(start)"
+            } else {
+                result += "\(start)"
+            }
+            result += "|{\n"
         }
-        result += "|{\n"
 
         for section in sections {
             result += section.format()
@@ -209,6 +216,8 @@ extension Order {
             "{?\(rel)}"
         case .absolute(let abs):
             "{?=\(abs)}"
+        case .macro(let expr):
+            expr.description
         }
     }
 }

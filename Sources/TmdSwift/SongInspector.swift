@@ -219,7 +219,8 @@ public struct TMDSongProfile: Equatable, Sendable, Codable {
 public enum TMDSongInspector {
 
     /// Inspects a parsed TMD `Sheet` and produces an in-depth `TMDSongProfile`.
-    public static func inspect(sheet: Sheet) -> TMDSongProfile {
+    public static func inspect(sheet inputSheet: Sheet) -> TMDSongProfile {
+        let sheet = TMDMacroEvaluator.expand(inputSheet)
         let title = sheet.name.isEmpty ? "Untitled" : sheet.name
         let initialTempo = sheet.speed > 0 ? sheet.speed : 120.0
         let initialKey = sheet.keySignature.description
@@ -316,6 +317,9 @@ public enum TMDSongInspector {
                 currentSeconds += secDurationSeconds
                 currentMeasure += secMeasures
                 totalMeasures += secMeasures
+            case .macro:
+                // S-expression macros are desugared by TMDMacroEvaluator before inspection
+                break
             }
         }
 

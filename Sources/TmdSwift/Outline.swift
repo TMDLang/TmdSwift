@@ -151,7 +151,7 @@ public struct TMDOutlineGenerator {
                 }
             }
 
-            // Paragraph header: identifier:identifier@...{ ... }
+            // Paragraph header: identifier:identifier@...{ ... } or abstract prototype: identifier { ... }
             if case .identifier(let secName) = tok.token,
                pos + 1 < tokens.count, tokens[pos + 1].token == .colon {
                 let paraStartTok = tok
@@ -235,6 +235,52 @@ public struct TMDOutlineGenerator {
                 continue
             }
 
+            // Abstract prototype header: identifier { ... }
+            if case .identifier(let secName) = tok.token,
+               pos + 1 < tokens.count, tokens[pos + 1].token == .openBrace {
+                let paraStartTok = tok
+                _ = advance() // secName
+                _ = advance() // {
+
+                var braceCount = 1
+                var paraEndTok = paraStartTok
+                while pos < tokens.count && braceCount > 0 {
+                    guard let bodyTok = advance() else { break }
+                    paraEndTok = bodyTok
+                    if bodyTok.token == .openBrace {
+                        braceCount += 1
+                    } else if bodyTok.token == .closeBrace {
+                        braceCount -= 1
+                        if braceCount == 0 { break }
+                    }
+                }
+
+                let pStart = paraStartTok.range.start
+                let pEnd = SourcePosition(
+                    offset: paraEndTok.range.endOffset,
+                    line: paraEndTok.range.start.line,
+                    column: paraEndTok.range.start.column + paraEndTok.range.length
+                )
+                let range = TMDOutlineRange(start: pStart, end: pEnd)
+                let selectionRange = TMDOutlineRange(
+                    start: paraStartTok.range.start,
+                    end: SourcePosition(
+                        offset: paraStartTok.range.endOffset,
+                        line: paraStartTok.range.start.line,
+                        column: paraStartTok.range.start.column + paraStartTok.range.length
+                    )
+                )
+
+                trackOccurrences.append(TrackOccurrence(
+                    sectionName: secName,
+                    instrument: "",
+                    range: range,
+                    selectionRange: selectionRange,
+                    detail: "Theme"
+                ))
+                continue
+            }
+
             // Order directive: -> section ->#
             if tok.token == .arrow {
                 if orderStartPos == nil {
@@ -286,6 +332,33 @@ public struct TMDOutlineGenerator {
                             }
                         }
                         orderSnippet.append(bracketStr)
+                    } else if next.token == .openParen {
+                        var parenStr = ""
+                        var parenDepth = 0
+                        let startTok = next
+                        while pos < tokens.count {
+                            guard let pTok = advance() else { break }
+                            parenStr += pTok.text
+                            if pTok.token == .openParen {
+                                parenDepth += 1
+                            } else if pTok.token == .closeParen {
+                                parenDepth -= 1
+                                if parenDepth == 0 {
+                                    orderEndPos = SourcePosition(
+                                        offset: pTok.range.endOffset,
+                                        line: pTok.range.start.line,
+                                        column: pTok.range.start.column + pTok.range.length
+                                    )
+                                    break
+                                }
+                            }
+                        }
+                        let mRange = TMDOutlineRange(
+                            start: startTok.range.start,
+                            end: orderEndPos ?? startTok.range.start
+                        )
+                        orderItems.append(OrderItem(name: parenStr, range: mRange))
+                        orderSnippet.append(parenStr)
                     } else {
                         orderSnippet.append(next.text)
                         _ = advance()

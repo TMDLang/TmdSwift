@@ -19,9 +19,10 @@ public struct TMDChordProGenerator: Sendable {
 
     /// Generates a ChordPro string from a parsed TMD `Sheet`.
     public static func generateChordPro(
-        from sheet: Sheet,
+        from inputSheet: Sheet,
         options: ChordProOptions = ChordProOptions()
     ) -> String {
+        let sheet = TMDMacroEvaluator.expand(inputSheet)
         var lines: [String] = []
 
         // Title and Metadata directives

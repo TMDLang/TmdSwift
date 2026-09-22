@@ -775,6 +775,12 @@ private struct TokenParser {
                         break
                     }
                     orders.append(.name(s))
+                case .openParen:
+                    if let expr = parseSExpr() {
+                        orders.append(.macro(expr))
+                    } else {
+                        return nil
+                    }
                 default:
                     advance()
                 }
@@ -784,12 +790,12 @@ private struct TokenParser {
                 break
 
             default:
-                // Paragraph: name:instrument@|start|{ ... }
+                // Paragraph: name:instrument@|start|{ ... } or abstract prototype: Theme { ... }
                 if let paragraph = parseParagraph() {
                     paragraphs.append(paragraph)
                 } else {
                     if failureIndex == nil {
-                        recordFailure(at: pos, expected: [Token.colon.expectedDescription])
+                        recordFailure(at: pos, expected: [Token.colon.expectedDescription, Token.openBrace.expectedDescription])
                     }
                     return nil
                 }
@@ -806,53 +812,60 @@ private struct TokenParser {
             advance()
         }
 
-        guard require(.colon) else {
-            return nil
-        }
-
         var instrument = ""
-        if case .identifier(let s) = current {
-            instrument = s
-            advance()
-        }
-
-        guard require(.at) else {
-            return nil
-        }
-
         var start = 0
         var executionTime: String?
-        if match(.pipe) {
-            if current == .tie {
+
+        if current == .colon {
+            advance()
+            if case .identifier(let s) = current {
+                instrument = s
                 advance()
-                if case .number(let n) = current {
-                    start = -n
+            }
+
+            guard require(.at) else {
+                return nil
+            }
+
+            if match(.pipe) {
+                if current == .tie {
                     advance()
-                } else if case .note(let note) = current {
-                    start = -note.degree.rawValue
+                    if case .number(let n) = current {
+                        start = -n
+                        advance()
+                    } else if case .note(let note) = current {
+                        start = -note.degree.rawValue
+                        advance()
+                    } else if case .positiveNumber(let n) = current {
+                        start = n
+                        advance()
+                    }
+                } else if case .number(let n) = current {
+                    start = n
                     advance()
                 } else if case .positiveNumber(let n) = current {
                     start = n
                     advance()
+                } else if case .note(let note) = current {
+                    start = note.degree.rawValue
+                    advance()
                 }
-            } else if case .number(let n) = current {
-                start = n
-                advance()
-            } else if case .positiveNumber(let n) = current {
-                start = n
-                advance()
-            } else if case .note(let note) = current {
-                start = note.degree.rawValue
+                match(.pipe)
+            } else if case .identifier(let time) = current {
+                executionTime = time
                 advance()
             }
-            match(.pipe)
-        } else if case .identifier(let time) = current {
-            executionTime = time
-            advance()
-        }
 
-        guard require(.openBrace) else {
-            return nil
+            guard require(.openBrace) else {
+                return nil
+            }
+        } else {
+            // Abstract paragraph declaration without instrument binding: Theme { ... }
+            if current != .openBrace {
+                recordFailure(at: pos, expected: [Token.colon.expectedDescription])
+                return nil
+            }
+            advance()
         }
 
         if case .programText(let body) = current {
@@ -1121,4 +1134,63 @@ private struct TokenParser {
         }
         return nil
     }
+
+    private mutating func parseSExpr() -> SExpr? {
+        guard require(.openParen) else { return nil }
+        var items: [SExpr] = []
+        while current != .closeParen && current != .eof {
+            if current == .arrow || current == .arrowEnd {
+                recordFailure(at: pos, expected: .closeParen)
+                return nil
+            }
+            if current == .openParen {
+                guard let sub = parseSExpr() else { return nil }
+                items.append(sub)
+            } else {
+                switch current {
+                case .number(let n):
+                    advance()
+                    items.append(.number(n))
+                case .positiveNumber(let n):
+                    advance()
+                    items.append(.number(n))
+                case .identifier(let s):
+                    advance()
+                    items.append(.symbol(s))
+                case .note(let note):
+                    advance()
+                    if note.accidental == .natural && note.octave == 0 {
+                        items.append(.number(note.degree.rawValue))
+                    } else {
+                        items.append(.symbol(note.format()))
+                    }
+                case .tie:
+                    // Negative number like -12, or standalone symbol
+                    advance()
+                    if case .number(let n) = current {
+                        advance()
+                        items.append(.number(-n))
+                    } else if case .note(let note) = current {
+                        advance()
+                        items.append(.number(-note.degree.rawValue))
+                    } else {
+                        items.append(.symbol("-"))
+                    }
+                case .chord(let chordStr):
+                    advance()
+                    items.append(.symbol(chordStr))
+                case .percussion(let pat):
+                    advance()
+                    items.append(.symbol(pat))
+                default:
+                    let desc = current.expectedDescription
+                    advance()
+                    items.append(.symbol(desc))
+                }
+            }
+        }
+        guard require(.closeParen) else { return nil }
+        return .list(items)
+    }
 }
+

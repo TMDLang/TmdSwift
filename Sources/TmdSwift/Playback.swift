@@ -40,7 +40,8 @@ public struct PlaybackTimeline: Equatable, Sendable {
 /// Expands immutable TMD AST data into a shared playback timeline.
 public enum TMDPlaybackRenderer {
     /// Renders one instrument's playback sequence in quarter-note units.
-    public static func render(sheet: Sheet, instrument: String) -> PlaybackTimeline {
+    public static func render(sheet inputSheet: Sheet, instrument: String) -> PlaybackTimeline {
+        let sheet = TMDMacroEvaluator.expand(inputSheet)
         let paragraphs = sheet.paragraphs.filter { $0.instrument == instrument }
         let orders = sheet.orders.isEmpty
             ? sheet.paragraphs.map(\.name).reduce(into: [String]()) { names, name in
@@ -83,6 +84,9 @@ public enum TMDPlaybackRenderer {
                 directives.append(contentsOf: rendered.directives)
                 state = rendered.state
                 timelinePosition += max(paragraphDuration, rendered.duration)
+            case .macro:
+                // S-expression macros are desugared by TMDMacroEvaluator before rendering
+                break
             }
         }
 

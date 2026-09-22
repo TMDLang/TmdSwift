@@ -106,6 +106,11 @@ WAV 輸出模組使用。
 段落名稱:樂器名稱@|起始小節|{
     section+
 }
+
+/* 抽象段落／主題原型（不綁定樂器，供 S-Expression 巨集引用） */
+段落名稱{
+    section+
+}
 ```
 
 例如：
@@ -120,20 +125,26 @@ intro:Guitar@|+4|{
     <16*>
     1_ - 1_ -
 }
+
+/* 抽象卡農主題原型 */
+Theme{
+    <4*>
+    3^ 2^ 1^ 7 | 6 5 6 7 | 1^ 7 6 5 | 4 3 4 2 |
+}
 ```
 
 欄位意義如下：
 
 | 欄位 | 意義 |
 | --- | --- |
-| 段落名稱 | 例如 `intro`、`A`、`chorus` |
-| 樂器名稱 | 例如 `Piano`、`Guitar`、`CHORD` |
+| 段落名稱 | 例如 `intro`、`A`、`chorus`、`Theme` |
+| 樂器名稱 | 例如 `Piano`、`Guitar`、`CHORD`；若為抽象原型則省略冒號與樂器名稱 |
 | 起始小節 | 以整數表示；省略時為 `0` |
 
 起始位置可以是正數、零或負數；負數表示提前進場，例如 `@|-1|`。
 
 同一個段落名稱可以有多個樂器段落。它們會各自保存為一個 `Paragraph`，
-不會在 parser 層合併。
+不會在 parser 層合併。未指定樂器名稱與起始小節的段落會保存為抽象段落（`instrument` 為空），不直接輸出至時間軸，而是由播放流程中的 S-Expression 巨集引用與實例化。
 
 ## 6. Section 與基本節奏單位
 
@@ -141,10 +152,7 @@ intro:Guitar@|+4|{
 
 ```text
 <4*>
-1 2 3 4
-
 <16*>
-1_ - 1_ -
 ```
 
 `n` 會保存為 `Section.noteLength`，表示此段落使用的基本細分單位。
@@ -249,7 +257,7 @@ power chord；未列入內建集合的 suffix 會以 `.custom(String)` 保存，
 
 等同於四個各含一個 unit 的 `UnitGroup`。
 
-## 8. 播放順序與轉調
+## 8. 播放順序、轉調與 S-Expression 巨集
 
 播放順序由 `->` 開始，以 `->#` 結束：
 
@@ -257,12 +265,14 @@ power chord；未列入內建集合的 suffix 會以 `.custom(String)` 保存，
 -> intro -> A -> B ->#
 ```
 
+### 8.1 靜態段落名稱
 段落名稱會保存為 `Order.name`：
 
 ```text
 -> intro
 ```
 
+### 8.2 轉調指令
 相對轉調使用：
 
 ```text
@@ -279,12 +289,27 @@ power chord；未列入內建集合的 suffix 會以 `.custom(String)` 保存，
 
 內容會保存為 `Order.absolute` 的字串。
 
-`->#` 是播放順序終止標記。parser 目前遇到它就結束整個 Sheet 的解析；
-因此它後面的文字不會被處理。
+### 8.3 S-Expression 巨集指令
+播放流程中支援 S-Expression 巨集，用以精確排程複調多軌結構，避免手動算小節偏移的錯誤：
+
+```text
+-> (canon Theme (Violin1 Violin2 Violin3) 2)
+-> (layer (canon Theme (V1 V2) 2) (loop Bass Cello 8))
+```
+
+核心指令包括：
+- `(play <主題> <樂器>)`：將抽象主題綁定至指定樂器軌道。
+- `(loop <主題> <樂器> <次數>)`：將主題連續重複演奏指定次數（如固定低音 Ground Bass）。
+- `(canon <主題> (<樂器列表...>) <間隔小節數>)`：自動依照間隔小節將主題錯開排入各樂器軌。
+- `(layer <表達式1> <表達式2> ...)`：同時並行播放多組表達式。
+- `(seq <表達式1> <表達式2> ...)`：依序前後串聯播放多組表達式。
+- `(vary <主題> <修飾子...>)`：主題變形，支援簽名半音移調（`+7`、`-5`、`+12`）、旋律反轉倒影 `flip`、逆行 `reverse`、平行大小調轉換 `minor` / `major`。
+
+`->#` 是播放順序終止標記。parser 遇到它就結束整個 Sheet 的解析；其後內容會被忽略。
 
 ## 9. AST 對照
 
-| TMD 概念 | Swift 型別 |
+| TMD 概念 | 型別定義 |
 | --- | --- |
 | 拍號 | `Beat` |
 | 音符 | `Note` |
@@ -292,8 +317,8 @@ power chord；未列入內建集合的 suffix 會以 `.custom(String)` 保存，
 | 音符／和弦／tie | `Unit` |
 | 連音群組 | `UnitGroup` |
 | `<n*>` 與其內容 | `Section` |
-| 段落與樂器軌 | `Paragraph` |
-| 播放順序 | `Order` |
+| 段落與樂器軌 | `Paragraph`（抽象主題時 `instrument` 為空） |
+| 播放順序 | `Order`（支援 `name`、`relative`、`absolute`、`macro`） |
 | 完整歌曲 | `Sheet` |
 
 目前 `Unit` 支援 `.note`、`.chord`、`.tie`、`.rest` 和 `.percussion`；歌曲
@@ -301,50 +326,53 @@ metadata 保存於 `Sheet.metadata`，段落 directive 保存於 `Section.direct
 
 ## 10. Exporter 能力矩陣
 
-不同輸出格式的資料模型與能力不完全相同。下表中的「部分」表示 exporter
-會讀取該語法，但可能只輸出部分資訊或以註記降級處理；「間接」表示 WAV
-輸出透過 MIDI 渲染，因此沿用 MIDI 的行為。
+所有 exporter 在輸出前，皆會透過 `TMDMacroEvaluator` 將 S-Expression 巨集自動展開為具體的時間軸軌道與小節事件，因此所有格式（MIDI、MusicXML、LilyPond、ABC、WAV、REAPER、ChordPro）皆完整支援巨集播放流程。
 
-| 語法能力 | MIDI | MusicXML | LilyPond | ABC | WAV |
-| --- | --- | --- | --- | --- | --- |
-| metadata | 部分忽略 | 映射成 `creator` | 只使用 `composer` | 只使用 `composer` | 間接跟 MIDI |
-| tempo | 支援 | 支援 | 支援 | 支援 | 間接跟 MIDI |
-| relative tempo | 支援計算 | 支援累加後輸出 | 支援累加後輸出 | 支援累加後輸出 | 間接跟 MIDI |
-| time signature | 支援時間軸 | 支援 | 支援 | 支援 | 間接跟 MIDI |
-| absolute key | 支援 | 支援 | 支援 | 支援 | 間接跟 MIDI |
-| relative key | 會影響音高 | 部分，主要為註記／局部處理 | 部分，主要為註記／局部處理 | 部分，主要為註記／局部處理 | 間接跟 MIDI |
-| rest | 支援 | 支援 | 支援 | 支援 | 間接跟 MIDI |
-| percussion | 支援 | 支援 | 支援 | 支援 | 間接跟 MIDI |
-| typed chord | 支援 | 支援 | 支援 | 支援 | 間接跟 MIDI |
-| negative start | 支援時間軸 | 尚未完整處理 | 尚未完整處理 | 尚未完整處理 | 間接跟 MIDI |
-| show-program | 忽略 | 忽略 | 忽略 | 忽略 | 忽略 |
-| execution-time | 忽略 | 忽略 | 忽略 | 忽略 | 忽略 |
-| playback orders | 支援 | 支援 | 支援 | 支援 | 間接跟 MIDI |
-
-目前較重要的差異如下：
-
-1. 各 exporter 已透過共同 playback timeline 累加 `relative tempo`；格式差異只剩輸出語法與無法表達的降級方式。
-2. notation exporter 尚未完整反映 directive 的 `position`。
-3. `relative key` 在 LilyPond、ABC、MusicXML 中多半以註記或局部音高處理呈現，尚未完整輸出真正的轉調語法。
-4. `paragraph.start` 目前主要由 MIDI 時間軸處理。
-5. `show-program` 與 `execution-time` 目前只屬於 AST 與 TMD 格式化能力，尚未對應到輸出格式。
-
-## 11. Show Program
-
-非音樂演出控制內容可以使用三引號區塊：
+## 11. 完整範例（D 大調卡農 S-Expression 巨集）
 
 ```tmd
-show:Lighting@intro{
-"""
-cue black
-wait 4
-"""
+::SCORE::
+** Canon in D **
+~ "composer: Johann Pachelbel"
+~ "arranger: S-Expression Edition"
+!= 56
+?= D
+<4/4>
+
+/* 固定低音原型 (Ground Bass, 2 小節) */
+Bass {
+    <4*>
+    1_ 5__ 6__ 3__ | 4__ 1__ 4__ 5__ |
 }
+
+/* 卡農主題原型 (Theme, 4 小節) */
+Theme {
+    <4*>
+    3^ 2^ 1^ 7 | 6 5 6 7 | 1^ 7 6 5 | 4 3 4 2 |
+}
+
+/* 前奏：大提琴先奏一次固定低音 */
+intro:Cello@|0|{
+    <4*>
+    1_ 5__ 6__ 3__ | 4__ 1__ 4__ 5__ |
+}
+
+/* 尾奏：各部匯流終止 */
+outro:Violin1@|0|{ <1*> 1^--- | }
+outro:Violin2@|0|{ <1*> 3--- | }
+outro:Violin3@|0|{ <1*> 1--- | }
+outro:Cello@|0|{   <1*> 1_--- | }
+
+/* 播放流程：由大提琴反覆低音 4 次，並由三把小提琴各間隔 2 小節嚴格卡農進入 */
+-> intro
+-> (layer
+     (canon Theme (Violin1 Violin2 Violin3) 2)
+     (loop Bass Cello 4))
+-> outro
+->#
 ```
 
-內容原樣保存於 `Paragraph.showProgram`，`@` 後的識別字保存於
-`Paragraph.executionTime`。本版本不解讀 body 內的控制語言，實際設備執行器
-可在 AST 之上另行實作。
+這個範例示範了抽象主題聲明、S-Expression 巨集的平行重疊（`layer`）、卡農錯位延遲（`canon`）與固定低音循環（`loop`），完全由編譯器自動計算小節與軌道對齊。
 
 ## 12. 解析與編碼
 
@@ -369,28 +397,3 @@ wait 4
 3. 為每個新語法加入 parser、formatter 與至少一個 exporter 的測試。
 4. 將原始 TMDLang 語法和 TmdSwift 擴充語法分開標示。
 5. 需要無法相容的變更時，提升規格版本並提供 migration 說明。
-
-## 14. 完整範例
-
-```tmd
-::SCORE::
-** 範例歌曲 **
-!= 120
-?= C
-<4/4>
-
-intro:CHORD@|0|{
-    <4*>
-    [Cmaj7] - [Am] -
-}
-
-intro:Piano@|0|{
-    <16*>
-    1 2 3 4 (5 6 7 1^)%(--)
-}
-
--> intro -> {?+3} -> intro ->#
-```
-
-這個檔案包含一個四四拍歌曲、兩條 `intro` 軌道、一組和弦、一組旋律、
-一個兩基準單位長度的連音群組，以及播放中途上升三個半音的相對轉調指令。
