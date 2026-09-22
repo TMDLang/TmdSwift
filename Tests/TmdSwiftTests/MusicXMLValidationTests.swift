@@ -253,5 +253,92 @@ struct MusicXMLValidationTests {
         #expect(xml.contains("<normal-notes>2</normal-notes>"))
         #endif
     }
+
+    @Test func testMusicXMLPercussionMappingAndClefs() throws {
+        let tmd = """
+        ::SCORE::
+        ** Percussion and Clef Test **
+        != 120
+        ?= C
+        <4/4>
+
+        A:Drums@|0|{
+            <4*>
+            (D S X O) (T C B S) - -
+        }
+        A:Cello@|0|{
+            <4*>
+            1 2 3 4
+        }
+        -> A ->#
+        """
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let xml = TMDMusicXMLGenerator.generateMusicXML(from: sheet)
+
+        // Drum clef
+        #expect(xml.contains("<sign>percussion</sign>"))
+
+        // Cello / Bass clef
+        #expect(xml.contains("<sign>F</sign>"))
+        #expect(xml.contains("<line>4</line>"))
+
+        // Drum notes display steps for kick (F4), snare (D5), hi-hat (F5), open hi-hat (G5), tom (A4), crash (A5)
+        #expect(xml.contains("<display-step>F</display-step>"))
+        #expect(xml.contains("<display-step>D</display-step>"))
+        #expect(xml.contains("<display-step>G</display-step>"))
+        #expect(xml.contains("<display-step>A</display-step>"))
+    }
+
+    @Test func testMusicXMLHarmonyStandardFormattingAndSlashChords() throws {
+        let tmd = """
+        ::SCORE::
+        ** Harmony Test **
+        != 120
+        ?= C
+        <4/4>
+
+        A:CHORD@|0|{
+            <4*>
+            [C] [Am7] [C/E] [1/3]
+        }
+        -> A ->#
+        """
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let xml = TMDMusicXMLGenerator.generateMusicXML(from: sheet)
+
+        // Standard root-step (should be single letter C, A, etc.)
+        #expect(xml.contains("<root-step>C</root-step>"))
+        #expect(xml.contains("<root-step>A</root-step>"))
+
+        // Slash chord bass
+        #expect(xml.contains("<bass-step>E</bass-step>"))
+    }
+
+    @Test func testMusicXMLRelativeKeyDirectiveModulation() throws {
+        let tmd = """
+        ::SCORE::
+        ** Relative Key Test **
+        != 120
+        ?= C
+        <4/4>
+
+        A:Piano@|0|{
+            <4*>
+            1 2 3 4
+            {?+2}
+            1 2 3 4
+        }
+        -> A ->#
+        """
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let xml = TMDMusicXMLGenerator.generateMusicXML(from: sheet)
+
+        // Original key C has fifths = 0
+        #expect(xml.contains("<fifths>0</fifths>"))
+
+        // Modulated key (C + 2 semitones = D major) has fifths = 2
+        #expect(xml.contains("<fifths>2</fifths>"))
+    }
 }
+
 

@@ -75,7 +75,7 @@ public struct TMDMusicXMLGenerator {
         for measure in measures {
             var content = ""
             if measure.index == 0 {
-                content += generateAttributesXML(sheet: sheet, divisions: divisions)
+                content += generateAttributesXML(sheet: sheet, instrument: instrument, divisions: divisions)
             }
             for directive in measure.directives {
                 content += generatePlaybackDirectiveXML(directive)
@@ -108,7 +108,7 @@ public struct TMDMusicXMLGenerator {
                     )
                 case .chord(let chord):
                     content += generateChordXML(
-                        chordName: chord.description,
+                        chord: chord,
                         duration: duration,
                         divisions: divisions,
                         keyOffset: event.state.keyOffset
@@ -188,6 +188,68 @@ public struct TMDMusicXMLGenerator {
         return xml
     }
 
+    private static func isPercussionInstrument(_ instrument: String, sheet: Sheet) -> Bool {
+        let lower = instrument.lowercased()
+        let aliases = ["drum", "drums", "groove", "percussion", "beat", "drumkit", "cajon", "snare", "kick", "hihat"]
+        if aliases.contains(where: { lower.contains($0) }) { return true }
+        return sheet.paragraphs.filter { $0.instrument == instrument }.contains { paragraph in
+            paragraph.sections.contains { section in
+                section.unitGroups.contains { group in
+                    group.units.contains { if case .percussion = $0 { return true }; return false }
+                }
+            }
+        }
+    }
+
+    private static func isBassClefInstrument(_ instrument: String) -> Bool {
+        let lower = instrument.lowercased()
+        let bassKeywords = ["bass", "cello", "tuba", "contrabass", "bassoon", "trombone", "baritone", "timpani"]
+        return bassKeywords.contains { lower.contains($0) }
+    }
+
+    private static func generateClefXML(instrument: String, sheet: Sheet) -> String {
+        if isPercussionInstrument(instrument, sheet: sheet) {
+            return """
+                    <clef>
+                      <sign>percussion</sign>
+                    </clef>
+            """
+        } else if isBassClefInstrument(instrument) {
+            return """
+                    <clef>
+                      <sign>F</sign>
+                      <line>4</line>
+                    </clef>
+            """
+        } else {
+            return """
+                    <clef>
+                      <sign>G</sign>
+                      <line>2</line>
+                    </clef>
+            """
+        }
+    }
+
+    public static func semitoneOffsetToFifths(_ semitoneOffset: Int) -> Int {
+        let normalized = (semitoneOffset % 12 + 12) % 12
+        switch normalized {
+        case 0: return 0    // C
+        case 1: return -5   // Db
+        case 2: return 2    // D
+        case 3: return -3   // Eb
+        case 4: return 4    // E
+        case 5: return -1   // F
+        case 6: return 6    // F# / Gb (-6)
+        case 7: return 1    // G
+        case 8: return -4   // Ab
+        case 9: return 3    // A
+        case 10: return -2  // Bb
+        case 11: return 5   // B
+        default: return 0
+        }
+    }
+
     private static func generatePlaybackDirectiveXML(_ directive: PlaybackDirectiveEvent) -> String {
         switch directive.kind {
         case .tempo, .relativeTempo:
@@ -206,16 +268,20 @@ public struct TMDMusicXMLGenerator {
         case .absoluteKey(let key):
             return "        <attributes><key><fifths>\(keySignatureToFifths(key))</fifths></key></attributes>\n"
         case .relativeKey:
-            return "        <!-- TMD relative key modulation -->\n"
+            let fifths = semitoneOffsetToFifths(directive.state.keyOffset)
+            return "        <attributes><key><fifths>\(fifths)</fifths></key></attributes>\n"
         }
     }
 
     private static func generatePercussionXML(pattern: String, duration: Int, divisions: Int) -> String {
         let notes = pattern.compactMap { character -> (String, Int)? in
             switch character {
-            case "X", "x": return ("F", 5) // closed hi-hat, MIDI 42
-            case "T", "t": return ("A", 4) // low tom, MIDI 45
-            case "S", "s": return ("D", 5) // snare, MIDI 38
+            case "D", "d", "B", "b": return ("F", 4) // Bass Drum 1 (Kick) - F4
+            case "S", "s": return ("D", 5)           // Acoustic Snare - D5
+            case "X", "x": return ("F", 5)           // Closed Hi-Hat - F5
+            case "O", "o": return ("G", 5)           // Open Hi-Hat - G5
+            case "T", "t": return ("A", 4)           // Low-Mid Tom - A4
+            case "C", "c": return ("A", 5)           // Crash Cymbal 1 - A5
             default: return nil
             }
         }
@@ -243,7 +309,7 @@ public struct TMDMusicXMLGenerator {
         return xml
     }
 
-    private static func generateAttributesXML(sheet: Sheet, divisions: Int) -> String {
+    private static func generateAttributesXML(sheet: Sheet, instrument: String, divisions: Int) -> String {
         return """
               <attributes>
                 <divisions>\(divisions)</divisions>
@@ -254,10 +320,7 @@ public struct TMDMusicXMLGenerator {
                   <beats>\(sheet.beat.count)</beats>
                   <beat-type>\(sheet.beat.noteValue)</beat-type>
                 </time>
-                <clef>
-                  <sign>G</sign>
-                  <line>2</line>
-                </clef>
+        \(generateClefXML(instrument: instrument, sheet: sheet))
               </attributes>
               <direction placement="above">
                 <direction-type>
@@ -317,14 +380,88 @@ public struct TMDMusicXMLGenerator {
         return xml
     }
 
-    private static func generateChordXML(chordName: String, duration: Int, divisions: Int, keyOffset: Int) -> String {
+    private static func generateChordXML(chord: ChordSymbol, duration: Int, divisions: Int, keyOffset: Int) -> String {
         // Output chord harmony symbol & note representation
+        let semitone: Int
+        if chord.root.isScaleDegree {
+            semitone = ((keyOffset + chord.root.semitoneOffset) % 12 + 12) % 12
+        } else {
+            semitone = (chord.root.semitoneOffset % 12 + 12) % 12
+        }
+        let rootStep = PitchMapping.musicXMLSteps[semitone]
+        let rootAlter = PitchMapping.musicXMLAlters[semitone]
+
+        let kindText: String
+        let kindValue: String
+        switch chord.quality {
+        case .major:
+            kindValue = "major"
+            kindText = chord.description
+        case .minor:
+            kindValue = "minor"
+            kindText = chord.description
+        case .dominant7:
+            kindValue = "dominant"
+            kindText = chord.description
+        case .major7:
+            kindValue = "major-seventh"
+            kindText = chord.description
+        case .minor7:
+            kindValue = "minor-seventh"
+            kindText = chord.description
+        case .diminished:
+            kindValue = "diminished"
+            kindText = chord.description
+        case .halfDiminished:
+            kindValue = "half-diminished"
+            kindText = chord.description
+        case .augmented:
+            kindValue = "augmented"
+            kindText = chord.description
+        case .suspended:
+            kindValue = "suspended-fourth"
+            kindText = chord.description
+        case .power:
+            kindValue = "power"
+            kindText = chord.description
+        case .custom:
+            kindValue = "other"
+            kindText = chord.description
+        }
+
         var xml = """
               <harmony>
                 <root>
-                  <root-step>\(escapeXML(chordName))</root-step>
-                </root>
-                <kind text=\"\(escapeXML(chordName))\">other</kind>
+                  <root-step>\(escapeXML(rootStep))</root-step>
+
+        """
+        if rootAlter != 0 {
+            xml += "          <root-alter>\(rootAlter)</root-alter>\n"
+        }
+        xml += "        </root>\n"
+        xml += "        <kind text=\"\(escapeXML(kindText))\">\(kindValue)</kind>\n"
+
+        if let bass = chord.bass {
+            let bassSemitone: Int
+            if bass.isScaleDegree {
+                bassSemitone = ((keyOffset + bass.semitoneOffset) % 12 + 12) % 12
+            } else {
+                bassSemitone = (bass.semitoneOffset % 12 + 12) % 12
+            }
+            let bassStep = PitchMapping.musicXMLSteps[bassSemitone]
+            let bassAlter = PitchMapping.musicXMLAlters[bassSemitone]
+            xml += """
+                    <bass>
+                      <bass-step>\(escapeXML(bassStep))</bass-step>
+
+            """
+            if bassAlter != 0 {
+                xml += "          <bass-alter>\(bassAlter)</bass-alter>\n"
+            }
+            xml += "        </bass>\n"
+        }
+
+        xml += """
               </harmony>
               <note>
                 <rest/>

@@ -90,4 +90,40 @@ struct LilyPondValidationTests {
         let barlineCount = ly.components(separatedBy: "|").count - 1
         #expect(barlineCount >= 2, "Expected at least 2 barlines in multi-measure LilyPond score, got \(barlineCount)")
     }
+
+    @Test func testLilyPondPercussionMappingAndRelativeKey() throws {
+        let tmd = """
+        ::SCORE::
+        ** Percussion and Relative Key Test **
+        != 120
+        ?= C
+        <4/4>
+
+        A:Drums@|0|{
+            <4*>
+            | D S X O | T C B S |
+        }
+        A:Piano@|0|{
+            <4*>
+            | 1 2 3 4 |
+            {?+2}
+            | 1 2 3 4 |
+        }
+        -> A ->#
+        """
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let ly = TMDLilyPondGenerator.generateLilyPond(from: sheet)
+
+        // Drum tokens
+        #expect(ly.contains("bd4"))
+        #expect(ly.contains("sn4"))
+        #expect(ly.contains("hh4"))
+        #expect(ly.contains("hho4"))
+        #expect(ly.contains("toml4"))
+        #expect(ly.contains("cymc4"))
+
+        // Relative key: C + 2 semitones = D major -> \key d \major
+        #expect(ly.contains("\\key d \\major"))
+    }
 }
+

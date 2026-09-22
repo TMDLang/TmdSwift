@@ -114,4 +114,27 @@ struct ABCValidationTests {
         #expect(abcBb.contains("b4") || abcBb.contains("B4"))
         #expect(!abcBb.contains("^a4") && !abcBb.contains("^A4"))
     }
+
+    @Test func testABCRelativeKeyModulation() throws {
+        let tmd = """
+        ::SCORE::
+        ** ABC Relative Key **
+        != 120
+        ?= C
+        <4/4>
+
+        A:Piano@|0|{
+            <4*>
+            1 2 3 4
+            {?+2}
+            1 2 3 4
+        }
+        -> A ->#
+        """
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let abc = TMDABCGenerator.generateABC(from: sheet)
+        #expect(abc.contains("K:C"))
+        #expect(abc.contains("K:D"))
+    }
 }
+

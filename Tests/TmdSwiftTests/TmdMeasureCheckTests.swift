@@ -429,7 +429,22 @@ struct TmdMeasureCheckTests {
         let issues = TMDMeasureChecker.check(source: code)
         #expect(issues.isEmpty)
     }
+
+    @Test func testMeasureCheckCountsMultiDigitNumbersAsMultipleUnits() throws {
+        let code = """
+        ::SCORE::
+        ** Multi-digit Jianpu Test **
+        != 120
+        ?= C
+        <4/4>
+
+        intro:Piano@|0|{
+            <4*>
+            | 1234 | 5671 | 0000 | 1020 |
+        }
+        -> intro ->#
+        """
+        let issues = TMDMeasureChecker.check(source: code)
+        #expect(issues.isEmpty)
+    }
 }
-
-
-

@@ -197,7 +197,20 @@ public struct TMDMIDIGenerator {
         } else {
             rootPitch = 48 + chord.root.semitoneOffset
         }
-        return chord.quality.semitoneIntervals.map { rootPitch + $0 }
+        var pitches = chord.quality.semitoneIntervals.map { rootPitch + $0 }
+        if let bass = chord.bass {
+            let bassPitch: Int
+            if bass.isScaleDegree {
+                let note = Note(accidental: bass.accidental, degree: bass.degree, octave: bass.octave)
+                bassPitch = noteToMIDIPitch(note, keyOffset: keyOffset) - 24
+            } else {
+                bassPitch = 36 + bass.semitoneOffset
+            }
+            if !pitches.contains(bassPitch) {
+                pitches.insert(bassPitch, at: 0)
+            }
+        }
+        return pitches
     }
 
     public static func generalMidiProgram(for instrument: String) -> UInt8 {

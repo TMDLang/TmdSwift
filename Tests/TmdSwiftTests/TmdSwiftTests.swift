@@ -653,7 +653,26 @@ import TmdSkill
     let extended = ChordSymbol(string: "C7#9")
     #expect(extended.quality == .custom("7#9"))
     #expect(extended.description == "C7#9")
+
+    let slashLetter: ChordSymbol = "C/E"
+    #expect(slashLetter.root == ChordRoot(degree: .c))
+    #expect(slashLetter.quality == .major)
+    #expect(slashLetter.bass == ChordRoot(degree: .e))
+    #expect(slashLetter.description == "C/E")
+
+    let slashDegree: ChordSymbol = "1/3"
+    #expect(slashDegree.root == ChordRoot(degree: .c, isScaleDegree: true))
+    #expect(slashDegree.quality == .major)
+    #expect(slashDegree.bass == ChordRoot(degree: .e, isScaleDegree: true))
+    #expect(slashDegree.description == "1/3")
+
+    let slashMinorSeventh: ChordSymbol = "Am7/G"
+    #expect(slashMinorSeventh.root == ChordRoot(degree: .a))
+    #expect(slashMinorSeventh.quality == .minor7)
+    #expect(slashMinorSeventh.bass == ChordRoot(degree: .g))
+    #expect(slashMinorSeventh.description == "Am7/G")
 }
+
 
 @Test func testSharedPitchMappings() throws {
     #expect(ScaleDegree.c.semitoneOffset == 0)

@@ -175,19 +175,16 @@ public enum ChordQuality: Equatable, Hashable, Sendable {
 public struct ChordSymbol: Equatable, Hashable, Sendable, ExpressibleByStringLiteral, CustomStringConvertible {
     public let root: ChordRoot
     public let quality: ChordQuality
+    public let bass: ChordRoot?
 
-    public init(root: ChordRoot, quality: ChordQuality = .major) {
+    public init(root: ChordRoot, quality: ChordQuality = .major, bass: ChordRoot? = nil) {
         self.root = root
         self.quality = quality
+        self.bass = bass
     }
 
-    public init(string: String) {
-        let value = string.trimmingCharacters(in: .whitespacesAndNewlines)
-        let chars = Array(value)
-        guard let first = chars.first else {
-            self.init(root: ChordRoot(degree: .c), quality: .custom(""))
-            return
-        }
+    public static func parseRoot(from chars: [Character]) -> (root: ChordRoot, remaining: String)? {
+        guard let first = chars.first else { return nil }
         let isDegree = ("1"..."7").contains(String(first))
         let degree: ScaleDegree
         let rootEnd: Int
@@ -196,8 +193,7 @@ public struct ChordSymbol: Equatable, Hashable, Sendable, ExpressibleByStringLit
             rootEnd = 1
         } else {
             guard let parsed = ScaleDegree(letter: first) else {
-                self.init(root: ChordRoot(degree: .c), quality: .custom(value))
-                return
+                return nil
             }
             degree = parsed
             rootEnd = 1
@@ -217,8 +213,34 @@ public struct ChordSymbol: Equatable, Hashable, Sendable, ExpressibleByStringLit
             }
             suffixStart += 1
         }
-        let suffix = String(chars.dropFirst(suffixStart))
-        self.init(root: ChordRoot(degree: degree, accidental: accidental, octave: octave, isScaleDegree: isDegree), quality: Self.quality(for: suffix))
+        let remaining = String(chars.dropFirst(suffixStart))
+        return (ChordRoot(degree: degree, accidental: accidental, octave: octave, isScaleDegree: isDegree), remaining)
+    }
+
+    public init(string: String) {
+        let value = string.trimmingCharacters(in: .whitespacesAndNewlines)
+        if value.contains("/") {
+            let parts = value.components(separatedBy: "/")
+            let mainPart = parts[0]
+            let bassPart = parts.dropFirst().joined(separator: "/")
+
+            if let parsedMain = Self.parseRoot(from: Array(mainPart)) {
+                let bassRoot = Self.parseRoot(from: Array(bassPart))?.root
+                self.init(
+                    root: parsedMain.root,
+                    quality: Self.quality(for: parsedMain.remaining),
+                    bass: bassRoot
+                )
+                return
+            }
+        }
+
+        if let parsed = Self.parseRoot(from: Array(value)) {
+            self.init(root: parsed.root, quality: Self.quality(for: parsed.remaining))
+            return
+        }
+
+        self.init(root: ChordRoot(degree: .c), quality: .custom(value))
     }
 
     public init(stringLiteral value: String) {
@@ -240,7 +262,8 @@ public struct ChordSymbol: Equatable, Hashable, Sendable, ExpressibleByStringLit
         case .power: "5"
         case .custom(let value): value
         }
-        return rootText + suffix
+        let bassText = bass.map { "/\($0.description)" } ?? ""
+        return rootText + suffix + bassText
     }
 
     private static func quality(for suffix: String) -> ChordQuality {

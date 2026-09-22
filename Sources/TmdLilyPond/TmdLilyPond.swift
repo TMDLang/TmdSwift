@@ -106,10 +106,16 @@ public struct TMDLilyPondGenerator {
 
     private static func formatDirective(_ directive: PlaybackDirectiveEvent) -> String {
         switch directive.kind {
-        case .tempo, .relativeTempo: "\\tempo 4 = \(Int(directive.state.tempo.rounded())) "
-        case .timeSignature(let beat): "\\time \(beat.count)/\(beat.noteValue) "
-        case .absoluteKey(let key): "\\key \(lilyPondKey(key)) "
-        case .relativeKey: "% TMD relative key modulation "
+        case .tempo, .relativeTempo:
+            return "\\tempo 4 = \(Int(directive.state.tempo.rounded())) "
+        case .timeSignature(let beat):
+            return "\\time \(beat.count)/\(beat.noteValue) "
+        case .absoluteKey(let key):
+            return "\\key \(lilyPondKey(key)) "
+        case .relativeKey:
+            let semitone = ((directive.state.keyOffset % 12) + 12) % 12
+            let keyTonic = PitchMapping.lilyPondNames[semitone]
+            return "\\key \(keyTonic) \\major "
         }
     }
 
@@ -142,7 +148,16 @@ public struct TMDLilyPondGenerator {
                 "r\(d.baseDenominator)\(d.isDotted ? "." : "")"
             }.joined(separator: " ")
         case .percussion(let pattern):
-            let names = pattern.compactMap { ["X": "hh", "x": "hh", "T": "toml", "t": "toml", "S": "sn", "s": "sn"][$0] }
+            let percMap = [
+                "X": "hh", "x": "hh",
+                "O": "hho", "o": "hho",
+                "T": "toml", "t": "toml",
+                "S": "sn", "s": "sn",
+                "D": "bd", "d": "bd",
+                "B": "bd", "b": "bd",
+                "C": "cymc", "c": "cymc"
+            ]
+            let names = pattern.compactMap { percMap[String($0)] }
             if names.isEmpty {
                 return decomposed.map { d in "r\(d.baseDenominator)\(d.isDotted ? "." : "")" }.joined(separator: " ")
             }
@@ -195,7 +210,19 @@ public struct TMDLilyPondGenerator {
         } else {
             root = 48 + chord.root.semitoneOffset
         }
-        return chord.quality.semitoneIntervals.map { midiPitchToLilyPond(root + $0) }
+        var pitches: [Int] = chord.quality.semitoneIntervals.map { root + $0 }
+        if let bass = chord.bass {
+            let bassPitch: Int
+            if bass.isScaleDegree {
+                bassPitch = 36 + keyOffset + bass.degree.semitoneOffset + bass.accidental.semitoneOffset + (bass.octave * 12)
+            } else {
+                bassPitch = 36 + bass.semitoneOffset
+            }
+            if !pitches.contains(bassPitch) {
+                pitches.insert(bassPitch, at: 0)
+            }
+        }
+        return pitches.map { midiPitchToLilyPond($0) }
     }
 
     private static func midiPitchToLilyPond(_ pitch: Int) -> String {

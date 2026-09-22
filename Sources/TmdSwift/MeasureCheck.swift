@@ -267,12 +267,13 @@ public struct TMDMeasureChecker {
                             currentMeasureUnits += 1
                             currentMeasureSnippet.append(item.text)
                         }
-                    case .number(let n):
+                    case .number, .positiveNumber:
                         _ = advance()
-                        paragraphQuarterNotes += unitQuarterNotes
+                        let digitCount = max(1, item.text.filter { $0.isNumber }.count)
+                        paragraphQuarterNotes += Double(digitCount) * unitQuarterNotes
                         if insideBar {
-                            currentMeasureUnits += 1
-                            currentMeasureSnippet.append(String(n))
+                            currentMeasureUnits += digitCount
+                            currentMeasureSnippet.append(item.text)
                         }
                     default:
                         _ = advance()

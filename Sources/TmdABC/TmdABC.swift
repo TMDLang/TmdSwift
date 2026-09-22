@@ -70,10 +70,15 @@ public struct TMDABCGenerator {
 
     private static func formatDirective(_ directive: PlaybackDirectiveEvent) -> String {
         switch directive.kind {
-        case .tempo, .relativeTempo: "Q:1/4=\(Int(directive.state.tempo.rounded())) "
-        case .timeSignature(let beat): "M:\(beat.count)/\(beat.noteValue) "
-        case .absoluteKey(let key): "K:\(abcKey(key)) "
-        case .relativeKey: "% TMD relative key modulation "
+        case .tempo, .relativeTempo:
+            return "Q:1/4=\(Int(directive.state.tempo.rounded())) "
+        case .timeSignature(let beat):
+            return "M:\(beat.count)/\(beat.noteValue) "
+        case .absoluteKey(let key):
+            return "K:\(abcKey(key)) "
+        case .relativeKey:
+            let key = keyInfo(for: directive.state.keyOffset).name
+            return "K:\(key) "
         }
     }
 
