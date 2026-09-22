@@ -738,7 +738,7 @@ private struct TokenParser {
                 switch current {
                 case .arrowEnd:
                     advance()
-                    return Sheet(name: name, speed: speed, keySignature: keySignature, beat: beat, paragraphs: paragraphs, orders: orders, metadata: metadata)
+                    break
                 case .relativeOrderPrefix:
                     advance()
                     var name = ""
@@ -771,6 +771,9 @@ private struct TokenParser {
                     orders.append(.absolute(name))
                 case .identifier(let s):
                     advance()
+                    if s == "#" {
+                        break
+                    }
                     orders.append(.name(s))
                 default:
                     advance()
@@ -778,7 +781,7 @@ private struct TokenParser {
 
             case .arrowEnd:
                 advance()
-                return Sheet(name: name, speed: speed, keySignature: keySignature, beat: beat, paragraphs: paragraphs, orders: orders, metadata: metadata)
+                break
 
             default:
                 // Paragraph: name:instrument@|start|{ ... }
@@ -911,7 +914,8 @@ private struct TokenParser {
                             if !units.isEmpty {
                                 groupUnits.append(contentsOf: units)
                             } else {
-                                advance()
+                                recordFailure(at: pos, expected: ["note", "chord", "tie", "rest", "percussion", ")"])
+                                return nil
                             }
                         }
                         match(.closeParen)
@@ -933,7 +937,8 @@ private struct TokenParser {
                                 unitGroups.append(UnitGroup(units: [unit], length: 1))
                             }
                         } else {
-                            advance()
+                            recordFailure(at: pos, expected: ["note", "chord", "tie", "rest", "percussion", "tuplet", "directive", "}"])
+                            return nil
                         }
                     }
                 }
@@ -969,6 +974,34 @@ private struct TokenParser {
                 return units
             }
         }
+        if case .identifier(let value) = current, !value.isEmpty,
+           let firstNonPerc = value.first(where: { !"XxTtSsDdBbOoCc".contains($0) }),
+           firstNonPerc == "-",
+           value.allSatisfy({ "XxTtSsDdBbOoCc-".contains($0) }) {
+            // Identifier like 'x--' or 'X-x-' in percussion: split into percussion and ties
+            advance()
+            var units: [Unit] = []
+            var percBuf = ""
+            for ch in value {
+                if ch == "-" {
+                    if !percBuf.isEmpty {
+                        units.append(.percussion(percBuf))
+                        percBuf = ""
+                    }
+                    units.append(.tie)
+                } else {
+                    percBuf.append(ch)
+                }
+            }
+            if !percBuf.isEmpty {
+                units.append(.percussion(percBuf))
+            }
+            return units
+        }
+        if case .identifier(let value) = current, !value.isEmpty, value.allSatisfy({ $0 == "." }) {
+            advance()
+            return Array(repeating: Unit.tie, count: value.count)
+        }
         if let unit = parseUnit() {
             return [unit]
         }
@@ -985,6 +1018,9 @@ private struct TokenParser {
             advance()
             return .chord(ChordSymbol(string: ch))
         case .tie:
+            advance()
+            return .tie
+        case .identifier(let value) where !value.isEmpty && value.allSatisfy({ $0 == "." }):
             advance()
             return .tie
         case .number(0):

@@ -11,6 +11,7 @@ import TmdReaper
 import TmdSkill
 import TmdVocaloid
 import TmdUTAU
+import TmdUtils
 
 // MARK: - Format Subcommand
 
@@ -898,6 +899,9 @@ struct TmdCLICommand: ParsableCommand {
     @Option(name: .long, help: "Optional instrument filter for MIDI export or playback.")
     var instrument: String?
 
+    @Flag(name: [.short, .long], help: "Force export even if measure discrepancies are detected.")
+    var force: Bool = false
+
     func run() throws {
         if installSkills {
             print("Installing TMD skill for AI agents...")
@@ -921,12 +925,41 @@ struct TmdCLICommand: ParsableCommand {
         }
 
         print("TmdSwift v\(TmdVersion.current) - In memory of Chen, Chih-Han / aguai (阿怪, 1974–2019).")
+
+        let fileContent: String
+        do {
+            fileContent = try String(contentsOfFile: FilePathNormalizer.fileURLToPath(inputPath), encoding: .utf8)
+        } catch {
+            print("Error: Could not read file at \(inputPath): \(error.localizedDescription)")
+            throw ExitCode.failure
+        }
+
         let sheet: Sheet
         do {
-            sheet = try TmdParser.parseThrowing(filePathOrURL: inputPath)
+            sheet = try TmdParser.parseThrowing(string: fileContent)
         } catch {
-            print("Error: Could not read or decode file at \(inputPath): \(error.localizedDescription)")
+            print("Error: Syntax error in \(inputPath): \(error.localizedDescription)")
             throw ExitCode.failure
+        }
+
+        let isExporting = (midiOutput != nil || reaperOutput != nil || musicxmlOutput != nil ||
+                           lilypondOutput != nil || abcOutput != nil || chordproOutput != nil ||
+                           pdfOutput != nil || wavOutput != nil || vsqOutput != nil ||
+                           vsqxOutput != nil || ustOutput != nil)
+
+        if isExporting && !force {
+            let issues = TMDMeasureChecker.check(source: fileContent)
+            if !issues.isEmpty {
+                print("❌ Export aborted: Found \(issues.count) measure discrepancy issue\(issues.count == 1 ? "" : "s") in \(inputPath):")
+                for issue in issues.prefix(10) {
+                    print("  - \(issue)")
+                }
+                if issues.count > 10 {
+                    print("  ... and \(issues.count - 10) more issues. Run `tmd check \(inputPath)` to see all.")
+                }
+                print("\nUse --force (-f) to ignore measure errors and force export.")
+                throw ExitCode.failure
+            }
         }
 
         print("Successfully parsed TMD file: \(inputPath)")
