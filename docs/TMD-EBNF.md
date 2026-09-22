@@ -33,8 +33,10 @@ MetadataDirective       = CreditDirective | NamedMetadataDirective ;
 CreditDirective         = "~" , Whitespace , StringLiteral ;
 NamedMetadataDirective  = "=~:" , [ "__" ] , Identifier , [ "__" ] , "=" , Whitespace , StringLiteral ;
 
-(* --- Paragraphs (Instrument Tracks) --- *)
-Paragraph               = ParagraphHeader , "{" , ParagraphBody , "}" ;
+(* --- Paragraphs (Instrument Tracks & Abstract Material) --- *)
+Paragraph               = ConcreteParagraph | AbstractParagraph ;
+ConcreteParagraph       = ParagraphHeader , "{" , ParagraphBody , "}" ;
+AbstractParagraph       = SectionName , "{" , ParagraphBody , "}" ;
 ParagraphHeader         = SectionName , ":" , InstrumentName , "@" , ParagraphOffset ;
 SectionName             = Identifier ;
 InstrumentName          = Identifier ;
@@ -114,10 +116,18 @@ DrumStroke              = "D" | "d"   (* Bass Drum / Kick: MIDI 36 *)
 PlaybackFlow            = "->" , FlowItem , { "->" , FlowItem } , "->#" ;
 FlowItem                = SectionName
                         | RelativeKeyFlowDirective
-                        | AbsoluteKeyFlowDirective ;
+                        | AbsoluteKeyFlowDirective
+                        | MacroSExpr ;
 
 RelativeKeyFlowDirective = "{?" , [ "+" | "-" ] , Number , "}" ;
 AbsoluteKeyFlowDirective = "{?=" , KeySignature , "}" ;
+
+MacroSExpr              = "(" , MacroOperator , { MacroArgument } , ")" ;
+MacroOperator           = Identifier ;
+MacroArgument           = MacroSExpr | Identifier | Number | SignedNumber | InstrumentList | ThemeList ;
+InstrumentList          = "(" , { Identifier } , ")" ;
+ThemeList               = "(" , { Identifier } , ")" ;
+SignedNumber            = ( "+" | "-" ) , Number ;
 
 (* --- Lexical Tokens & Terminals --- *)
 KeySignature            = PitchLetter , [ "'" | "#" | "," | "b" ] , [ "m" ] ;

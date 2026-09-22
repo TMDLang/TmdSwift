@@ -607,4 +607,68 @@ struct MacroEvaluatorTests {
         #expect(wav.count > 1000)
         #endif
     }
+
+    @Test("Evaluates (layer A (loop B 10)) with concrete paragraphs without requiring explicit instrument arguments")
+    func testLayerWithBareConcreteParagraphsAndTwoArgLoop() throws {
+        let input = """
+        ::SCORE::
+        ** Layer Bare Concrete Paragraph & 2-arg Loop **
+        != 120
+        ?= C
+        <4/4>
+
+        A:Piano@|0|{
+            <4*>
+            1 2 3 4
+        }
+
+        B:Bass@|0|{
+            <4*>
+            1_ - 5_ -
+        }
+
+        -> (layer
+             A
+             (loop B 10)) ->#
+        """
+        let sheet = try #require(TmdParser.parse(string: input))
+        let expanded = try TMDMacroEvaluator.expandThrowing(sheet)
+
+        #expect(expanded.orders.count == 1)
+        if case .name(let orderName) = expanded.orders[0] {
+            #expect(orderName.hasPrefix("__layer_"))
+        } else {
+            Issue.record("Expected Order.name for expanded layer")
+        }
+
+        let piano = TMDPlaybackRenderer.render(sheet: expanded, instrument: "Piano")
+        let bass = TMDPlaybackRenderer.render(sheet: expanded, instrument: "Bass")
+
+        #expect(piano.duration == 40.0)
+        #expect(piano.events.count == 4)
+
+        #expect(bass.duration == 40.0)
+        #expect(bass.events.count == 20)
+    }
+
+    @Test("Throwing parser rejects unclosed S-expression macro parenthesis before arrow")
+    func testThrowingParserRejectsUnclosedMacroParen() throws {
+        let input = """
+        ::SCORE::
+        ** Unclosed Macro Paren **
+        != 120
+        ?= C
+        <4/4>
+
+        Theme {
+            <4*>
+            1 2 3 4
+        }
+
+        -> (play Theme Piano ->#
+        """
+        #expect(throws: TMDParseError.self) {
+            try TmdParser.parseThrowing(string: input)
+        }
+    }
 }
