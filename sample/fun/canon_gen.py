@@ -184,7 +184,7 @@ class CanonGenerator:
     def __init__(
         self,
         title: str = "Canon",
-        tempo: int = 96,
+        tempo: int = 64,
         key: str = "C",
         time_sig: str = "4/4",
         num_voices: int = 3,
@@ -680,9 +680,9 @@ class CanonGenerator:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="TMD Pentatonic Canon Generator (宮商角徵羽)")
-    parser.add_argument("--title", type=str, default="Pentatonic Canon", help="Score title")
-    parser.add_argument("--tempo", type=int, default=96, help="Tempo in BPM")
+    parser = argparse.ArgumentParser(description="TMD Canon Generator (Tonal Functional & Pentatonic Engine)")
+    parser.add_argument("--title", type=str, default="Canon", help="Score title")
+    parser.add_argument("--tempo", type=int, default=64, help="Tempo in BPM (default: 64, classical Andante)")
     parser.add_argument("--key", type=str, default="C", help="Key signature (e.g. C, G, D, Am)")
     parser.add_argument("--voices", type=int, default=3, help="Number of canonic voices (e.g. 3)")
     parser.add_argument("--offset", type=int, default=2, help="Staggered delay offset in bars (e.g. 2)")
