@@ -98,9 +98,92 @@ class CanonGenerator:
         "5__": ["5_", "1", "3", "5"],
     }
 
+    # Diatonic Major scale degrees (1, 2, 3, 4, 5, 6, 7)
+    DIATONIC_MAJOR_SCALE = [
+        "1_", "2_", "3_", "4_", "5_", "6_", "7_",
+        "1", "2", "3", "4", "5", "6", "7",
+        "1^", "2^", "3^", "4^", "5^", "6^", "7^",
+        "1^^"
+    ]
+
+    # Diatonic Minor scale degrees (Natural Minor: 6_ 7_ 1 2 3 4 5)
+    DIATONIC_MINOR_SCALE = [
+        "6__", "7__", "1_", "2_", "3_", "4_", "5_",
+        "6_", "7_", "1", "2", "3", "4", "5",
+        "6", "7", "1^", "2^", "3^", "4^", "5^",
+        "6^"
+    ]
+
+    # Western Tonal Functional Harmony Progressions (Roman Numeral / Ground Bass)
+    TONAL_BASS_PATTERNS = {
+        # Major key: Pachelbel Romanesca (I - V - vi - iii - IV - I - IV - V)
+        "major": [
+            # Pachelbel 8-measure archetype: 1 -> 5_ -> 6_ -> 3_ -> 4_ -> 1_ -> 4_ -> 5_
+            ["1_", "5__", "6__", "3__", "4__", "1__", "4__", "5__"],
+            # Classical 4-measure cycle: I - IV - V - I (1 -> 4_ -> 5_ -> 1)
+            ["1_", "4__", "5__", "1_"],
+            # Circle of fifths / Doo-Wop: I - vi - IV - V (1 -> 6_ -> 4_ -> 5_)
+            ["1_", "6__", "4__", "5__"],
+            # Royal Road: IV - V - iii - vi (4_ -> 5_ -> 3_ -> 6_)
+            ["4__", "5__", "3__", "6__"],
+        ],
+        # Minor key: La Folia / Passacaglia
+        "minor": [
+            # Passacaglia / Folia 8-measure: i - v - VI - III - iv - i - iv - V
+            ["6__", "3__", "4__", "1_", "2__", "6__", "2__", "3__"],
+            # Lament Bass (Andalusian cadence): i - VII - VI - V (6_ -> 5_ -> 4_ -> 3_)
+            ["6__", "5__", "4__", "3__"],
+            # Minor 4-measure cycle: i - iv - V - i (6_ -> 2_ -> 3_ -> 6_)
+            ["6__", "2__", "3__", "6__"],
+        ]
+    }
+
+    # Tonal Functional Chord Tones (Root, 3rd, 5th, octave) for strictly consonant counterpoint
+    TONAL_CHORD_TONES_MAJOR = {
+        # I (Tonic): 1, 3, 5
+        "1_": ["1", "3", "5", "1^"],
+        "1__": ["1_", "3_", "5_", "1"],
+        # V (Dominant): 5, 7, 2
+        "5_": ["5", "7", "2^", "5^"],
+        "5__": ["5_", "7_", "2", "5"],
+        # vi (Submediant): 6, 1, 3
+        "6_": ["6", "1^", "3^", "6^"],
+        "6__": ["6_", "1", "3", "6"],
+        # iii (Mediant): 3, 5, 7
+        "3_": ["3", "5", "7", "3^"],
+        "3__": ["3_", "5_", "7_", "3"],
+        # IV (Subdominant): 4, 6, 1
+        "4_": ["4", "6", "1^", "4^"],
+        "4__": ["4_", "6_", "1", "4"],
+        # ii (Supertonic): 2, 4, 6
+        "2_": ["2", "4", "6", "2^"],
+        "2__": ["2_", "4_", "6_", "2"],
+    }
+
+    TONAL_CHORD_TONES_MINOR = {
+        # i (Tonic): 6, 1, 3
+        "6__": ["6_", "1", "3", "6"],
+        "6_": ["6", "1^", "3^", "6^"],
+        # v / V (Dominant): 3, 5, 7 or 3, #5, 7
+        "3__": ["3_", "5_", "7_", "3"],
+        "3_": ["3", "5", "7", "3^"],
+        # VI (Submediant): 4, 6, 1
+        "4__": ["4_", "6_", "1", "4"],
+        "4_": ["4", "6", "1^", "4^"],
+        # III (Mediant): 1, 3, 5
+        "1_": ["1", "3", "5", "1^"],
+        "1__": ["1_", "3_", "5_", "1"],
+        # iv (Subdominant): 2, 4, 6
+        "2__": ["2_", "4_", "6_", "2"],
+        "2_": ["2", "4", "6", "2^"],
+        # VII (Subtonic): 5, 7, 2
+        "5__": ["5_", "7_", "2", "5"],
+        "5_": ["5", "7", "2^", "5^"],
+    }
+
     def __init__(
         self,
-        title: str = "Pentatonic Canon",
+        title: str = "Canon",
         tempo: int = 96,
         key: str = "C",
         time_sig: str = "4/4",
@@ -108,6 +191,7 @@ class CanonGenerator:
         offset_bars: int = 2,
         num_variations: int = 3,
         canon_type: str = "standard",
+        mode: str = "tonal",
         use_macro: bool = True,
         seed: Optional[int] = None,
     ):
@@ -119,18 +203,26 @@ class CanonGenerator:
         self.offset_bars = offset_bars
         self.num_variations = num_variations
         self.canon_type = canon_type.lower()
+        self.mode = mode.lower()
         self.use_macro = use_macro
 
         if seed is not None:
             random.seed(seed)
 
         self.is_minor = "m" in self.key
-        self.scale = self.MINOR_PENTATONIC_SCALE if self.is_minor else self.MAJOR_PENTATONIC_SCALE
+        if self.mode == "tonal":
+            self.scale = self.DIATONIC_MINOR_SCALE if self.is_minor else self.DIATONIC_MAJOR_SCALE
+        else:
+            self.scale = self.MINOR_PENTATONIC_SCALE if self.is_minor else self.MAJOR_PENTATONIC_SCALE
+
         self.voice_instruments = [f"Violin{i+1}" for i in range(self.num_voices)]
         self.bass_instrument = "Cello"
 
     def generate_header(self) -> str:
-        mode_desc = "羽調式 (Minor Pentatonic)" if self.is_minor else "宮調式 (Major Pentatonic)"
+        if self.mode == "tonal":
+            mode_desc = "自然小調 (Diatonic Minor)" if self.is_minor else "自然大調 (Diatonic Major / Functional Tonal)"
+        else:
+            mode_desc = "羽調式 (Minor Pentatonic)" if self.is_minor else "宮調式 (Major Pentatonic)"
         type_desc = {
             "standard": "Standard Polyphonic Canon (輪唱卡農)",
             "crab": "Crab Canon / Cancrizans (螃蟹卡農 / 逆行卡農)",
@@ -139,7 +231,7 @@ class CanonGenerator:
         }.get(self.canon_type, "Standard Polyphonic Canon")
         return f"""::SCORE::
 ** {self.title} **
-~ "composer: CanonGenerator (Pentatonic Algorithmic Engine)"
+~ "composer: CanonGenerator ({self.mode.capitalize()} Algorithmic Engine)"
 ~ "style: {mode_desc}, Form: {type_desc}"
 != {self.tempo}
 ?= {self.key}
@@ -147,16 +239,20 @@ class CanonGenerator:
 """
 
     def select_or_gen_bass(self) -> List[str]:
-        """Selects a pentatonic ground bass pattern."""
+        """Selects a ground bass pattern according to mode (tonal vs pentatonic)."""
         category = "minor" if self.is_minor else "major"
-        patterns = self.PENTATONIC_BASS_PATTERNS[category]
+        if self.mode == "tonal":
+            patterns = self.TONAL_BASS_PATTERNS[category]
+        else:
+            patterns = self.PENTATONIC_BASS_PATTERNS[category]
         return list(random.choice(patterns))
 
     def format_bass_macro(self, bass_notes: List[str]) -> Tuple[str, int]:
         """Formats the Ground Bass as an abstract macro paragraph."""
         total_measures = len(bass_notes)
+        mode_label = "Tonal Functional" if self.mode == "tonal" else "Pentatonic"
         lines = [
-            "/* Pentatonic Ground Bass Prototype (Basso Ostinato) */",
+            f"/* {mode_label} Ground Bass Prototype (Basso Ostinato) */",
             "Bass {",
             "    <4*>",
         ]
@@ -167,11 +263,15 @@ class CanonGenerator:
         return "\n".join(lines), total_measures
 
     def _get_chord_tones(self, bass_degree: str) -> List[str]:
-        mapping = self.PENTATONIC_CHORD_TONES_MINOR if self.is_minor else self.PENTATONIC_CHORD_TONES_MAJOR
+        if self.mode == "tonal":
+            mapping = self.TONAL_CHORD_TONES_MINOR if self.is_minor else self.TONAL_CHORD_TONES_MAJOR
+        else:
+            mapping = self.PENTATONIC_CHORD_TONES_MINOR if self.is_minor else self.PENTATONIC_CHORD_TONES_MAJOR
+
         if bass_degree in mapping:
             return mapping[bass_degree]
-        # Fallback to general pentatonic scale
-        return self.scale[5:10]
+        # Fallback to general scale
+        return self.scale[7:12] if self.mode == "tonal" else self.scale[5:10]
 
     def _step_in_scale(self, current_tone: str, max_steps: int = 2) -> str:
         """Finds next tone by moving step-wise within the pure pentatonic scale."""
@@ -594,6 +694,13 @@ def main():
         choices=["standard", "crab", "mirror", "table"],
         help="Type of canon: standard (staggered), crab (retrograde), mirror (inversion), table (retrograde-inversion)"
     )
+    parser.add_argument(
+        "--mode",
+        type=str,
+        default="tonal",
+        choices=["tonal", "pentatonic"],
+        help="Musical harmonic framework: tonal (Diatonic Functional Harmony / Pachelbel Romanesca) or pentatonic (宮商角徵羽 modal)"
+    )
     parser.add_argument("--unrolled", action="store_true", help="Output unrolled TMD score without macros (CLI compiler compatible)")
     parser.add_argument("--output", "-o", type=str, default=None, help="Output .tmd file path (default: stdout)")
     parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducible scores")
@@ -608,6 +715,7 @@ def main():
         offset_bars=args.offset,
         num_variations=args.variations,
         canon_type=args.type,
+        mode=args.mode,
         use_macro=not args.unrolled,
         seed=args.seed,
     )
