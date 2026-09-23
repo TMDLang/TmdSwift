@@ -55,7 +55,7 @@ public struct TMDMeasureChecker {
         var beat = Beat(count: 4, noteValue: 4)
         for i in 0..<tokensWithRanges.count {
             if tokensWithRanges[i].token == .openAngle {
-                if i + 3 < tokensWithRanges.count,
+                if i + 4 < tokensWithRanges.count,
                    tokensWithRanges[i + 2].token == .slash,
                    tokensWithRanges[i + 4].token == .closeAngle {
                     let c = intValueOfToken(tokensWithRanges[i + 1].token) ?? 4

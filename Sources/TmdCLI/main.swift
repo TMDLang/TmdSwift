@@ -46,6 +46,37 @@ struct TmdCheckCommand: ParsableCommand {
     }
 }
 
+struct TmdLSPCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "lsp",
+        abstract: "Run the TMD Language Server Protocol (LSP) daemon communicating over standard I/O (JSON-RPC)."
+    )
+
+    func run() throws {
+        let server = TMDLSPServer { responseString in
+            if let data = responseString.data(using: .utf8) {
+                FileHandle.standardOutput.write(data)
+            }
+        }
+
+        var buffer = Data()
+        let stdin = FileHandle.standardInput
+
+        while server.isRunning {
+            let chunk = stdin.availableData
+            if chunk.isEmpty {
+                // EOF reached
+                break
+            }
+            buffer.append(chunk)
+            let frames = TMDJSONRPCCodec.decode(buffer: &buffer)
+            for frame in frames {
+                server.handle(message: frame)
+            }
+        }
+    }
+}
+
 struct TmdOutlineCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "outline",
@@ -1212,8 +1243,10 @@ struct TmdCLICommand: ParsableCommand {
 
 // Route subcommand dispatch manually if first argument matches a subcommand
 let rawArgs = Array(CommandLine.arguments.dropFirst())
-if let first = rawArgs.first, ["check", "inspect", "outline", "format", "refactor"].contains(first) {
-    if first == "check" {
+if let first = rawArgs.first, ["lsp", "check", "inspect", "outline", "format", "refactor"].contains(first) {
+    if first == "lsp" {
+        TmdLSPCommand.main(Array(rawArgs.dropFirst()))
+    } else if first == "check" {
         TmdCheckCommand.main(Array(rawArgs.dropFirst()))
     } else if first == "inspect" {
         TmdInspectCommand.main(Array(rawArgs.dropFirst()))

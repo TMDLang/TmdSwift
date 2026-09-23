@@ -1,5 +1,5 @@
 const vscode = require('vscode');
-const { execFile } = require('child_process');
+const { execFile, spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -2459,9 +2459,288 @@ I am ready to help you compose, check, or format TMD music scores!
         participant.iconPath = vscode.Uri.joinPath(context.extensionUri, 'media', 'player.svg');
         context.subscriptions.push(participant);
     }
+
+    // 3. Start TMD Language Server (LSP) Client over stdio
+    class TMDLanguageClient {
+        constructor() {
+            this.process = null;
+            this.nextId = 1;
+            this.pendingRequests = new Map();
+            this.buffer = Buffer.alloc(0);
+            this.isInitialized = false;
+        }
+
+        start() {
+            const tmdBin = getTmdExecutable();
+            try {
+                this.process = spawn(tmdBin, ['lsp'], {
+                    stdio: ['pipe', 'pipe', 'pipe']
+                });
+            } catch (err) {
+                console.warn('Failed to spawn TMD LSP process:', err.message);
+                return;
+            }
+
+            this.process.stdout.on('data', (chunk) => {
+                this.handleData(chunk);
+            });
+
+            this.process.stderr.on('data', (chunk) => {
+                // Log LSP server warnings/errors to console
+                console.warn('[TMD LSP STDERR]', chunk.toString());
+            });
+
+            this.process.on('error', (err) => {
+                console.warn('TMD LSP process error:', err.message);
+            });
+
+            this.process.on('exit', (code) => {
+                this.process = null;
+                this.isInitialized = false;
+            });
+
+            // Send initialize request
+            this.sendRequest('initialize', {
+                processId: process.pid,
+                rootUri: null,
+                capabilities: {}
+            }).then(() => {
+                this.isInitialized = true;
+                this.sendNotification('initialized', {});
+                // Synchronize open documents
+                for (const doc of vscode.workspace.textDocuments) {
+                    if (doc.languageId === 'tmd') {
+                        this.didOpen(doc);
+                    }
+                }
+            }).catch(err => {
+                console.warn('TMD LSP initialize error:', err);
+            });
+        }
+
+        handleData(chunk) {
+            this.buffer = Buffer.concat([this.buffer, chunk]);
+            while (true) {
+                const headerEnd = this.buffer.indexOf('\r\n\r\n');
+                if (headerEnd === -1) break;
+
+                const headerStr = this.buffer.slice(0, headerEnd).toString('utf8');
+                let contentLength = null;
+                for (const line of headerStr.split('\r\n')) {
+                    const idx = line.indexOf(':');
+                    if (idx !== -1) {
+                        const key = line.slice(0, idx).trim().toLowerCase();
+                        if (key === 'content-length') {
+                            contentLength = parseInt(line.slice(idx + 1).trim(), 10);
+                        }
+                    }
+                }
+
+                if (contentLength === null) break;
+                const bodyStart = headerEnd + 4;
+                const bodyEnd = bodyStart + contentLength;
+                if (this.buffer.length < bodyEnd) break;
+
+                const bodyData = this.buffer.slice(bodyStart, bodyEnd);
+                this.buffer = this.buffer.slice(bodyEnd);
+
+                try {
+                    const msg = JSON.parse(bodyData.toString('utf8'));
+                    this.handleMessage(msg);
+                } catch (e) {
+                    console.error('Failed to parse LSP message JSON:', e);
+                }
+            }
+        }
+
+        handleMessage(msg) {
+            if (msg.id !== undefined && msg.id !== null) {
+                // Response
+                const resolver = this.pendingRequests.get(msg.id);
+                if (resolver) {
+                    this.pendingRequests.delete(msg.id);
+                    if (msg.error) {
+                        resolver.reject(msg.error);
+                    } else {
+                        resolver.resolve(msg.result);
+                    }
+                }
+            } else if (msg.method) {
+                // Notification from server
+                if (msg.method === 'textDocument/publishDiagnostics' && msg.params) {
+                    this.handleDiagnostics(msg.params);
+                }
+            }
+        }
+
+        handleDiagnostics(params) {
+            const uri = vscode.Uri.parse(params.uri);
+            const diagnostics = (params.diagnostics || []).map(d => {
+                const range = new vscode.Range(
+                    d.range.start.line,
+                    d.range.start.character,
+                    d.range.end.line,
+                    d.range.end.character
+                );
+                let severity = vscode.DiagnosticSeverity.Error;
+                if (d.severity === 2) severity = vscode.DiagnosticSeverity.Warning;
+                else if (d.severity === 3) severity = vscode.DiagnosticSeverity.Information;
+                else if (d.severity === 4) severity = vscode.DiagnosticSeverity.Hint;
+
+                const diag = new vscode.Diagnostic(range, d.message, severity);
+                diag.source = d.source || 'tmd';
+                return diag;
+            });
+            diagnosticCollection.set(uri, diagnostics);
+        }
+
+        sendRequest(method, params) {
+            return new Promise((resolve, reject) => {
+                if (!this.process) {
+                    reject(new Error('LSP process not running'));
+                    return;
+                }
+                const id = this.nextId++;
+                this.pendingRequests.set(id, { resolve, reject });
+                const payload = JSON.stringify({ jsonrpc: '2.0', id, method, params });
+                const header = `Content-Length: ${Buffer.byteLength(payload, 'utf8')}\r\n\r\n`;
+                this.process.stdin.write(header + payload);
+            });
+        }
+
+        sendNotification(method, params) {
+            if (!this.process) return;
+            const payload = JSON.stringify({ jsonrpc: '2.0', method, params });
+            const header = `Content-Length: ${Buffer.byteLength(payload, 'utf8')}\r\n\r\n`;
+            this.process.stdin.write(header + payload);
+        }
+
+        didOpen(document) {
+            this.sendNotification('textDocument/didOpen', {
+                textDocument: {
+                    uri: document.uri.toString(),
+                    languageId: 'tmd',
+                    version: document.version,
+                    text: document.getText()
+                }
+            });
+        }
+
+        didChange(document) {
+            this.sendNotification('textDocument/didChange', {
+                textDocument: {
+                    uri: document.uri.toString(),
+                    version: document.version
+                },
+                contentChanges: [{ text: document.getText() }]
+            });
+        }
+
+        didClose(document) {
+            this.sendNotification('textDocument/didClose', {
+                textDocument: {
+                    uri: document.uri.toString()
+                }
+            });
+        }
+
+        async requestCompletion(document, position) {
+            if (!this.isInitialized) return [];
+            try {
+                const res = await this.sendRequest('textDocument/completion', {
+                    textDocument: { uri: document.uri.toString() },
+                    position: { line: position.line, character: position.character }
+                });
+                if (!Array.isArray(res)) return [];
+                return res.map(item => {
+                    const ci = new vscode.CompletionItem(item.label);
+                    if (item.kind) {
+                        switch (item.kind) {
+                            case 1: ci.kind = vscode.CompletionItemKind.Text; break;
+                            case 2: ci.kind = vscode.CompletionItemKind.Method; break;
+                            case 3: ci.kind = vscode.CompletionItemKind.Function; break;
+                            case 4: ci.kind = vscode.CompletionItemKind.Constructor; break;
+                            case 5: ci.kind = vscode.CompletionItemKind.Field; break;
+                            case 6: ci.kind = vscode.CompletionItemKind.Variable; break;
+                            case 7: ci.kind = vscode.CompletionItemKind.Class; break;
+                            case 8: ci.kind = vscode.CompletionItemKind.Interface; break;
+                            case 9: ci.kind = vscode.CompletionItemKind.Module; break;
+                            case 10: ci.kind = vscode.CompletionItemKind.Property; break;
+                            case 11: ci.kind = vscode.CompletionItemKind.Unit; break;
+                            case 12: ci.kind = vscode.CompletionItemKind.Value; break;
+                            case 13: ci.kind = vscode.CompletionItemKind.Enum; break;
+                            case 14: ci.kind = vscode.CompletionItemKind.Keyword; break;
+                            case 15: ci.kind = vscode.CompletionItemKind.Snippet; break;
+                            default: ci.kind = vscode.CompletionItemKind.Value;
+                        }
+                    }
+                    if (item.detail) ci.detail = item.detail;
+                    if (item.documentation) ci.documentation = new vscode.MarkdownString(item.documentation);
+                    if (item.insertText) {
+                        ci.insertText = item.insertTextFormat === 2
+                            ? new vscode.SnippetString(item.insertText)
+                            : item.insertText;
+                    }
+                    return ci;
+                });
+            } catch (err) {
+                return [];
+            }
+        }
+
+        stop() {
+            if (this.process) {
+                try {
+                    this.sendNotification('exit', {});
+                    this.process.kill();
+                } catch (_) {}
+                this.process = null;
+            }
+        }
+    }
+
+    const tmdLspClient = new TMDLanguageClient();
+    tmdLspClient.start();
+
+    // Register LSP completion provider with triggers: '>', '(', ':', '['
+    context.subscriptions.push(
+        vscode.languages.registerCompletionItemProvider('tmd', {
+            provideCompletionItems(document, position) {
+                return tmdLspClient.requestCompletion(document, position);
+            }
+        }, '>', '(', ':', '[')
+    );
+
+    // Synchronize LSP documents
+    context.subscriptions.push(
+        vscode.workspace.onDidOpenTextDocument((doc) => {
+            if (doc.languageId === 'tmd') {
+                tmdLspClient.didOpen(doc);
+            }
+        }),
+        vscode.workspace.onDidChangeTextDocument((event) => {
+            if (event.document.languageId === 'tmd') {
+                tmdLspClient.didChange(event.document);
+            }
+        }),
+        vscode.workspace.onDidCloseTextDocument((doc) => {
+            if (doc.languageId === 'tmd') {
+                tmdLspClient.didClose(doc);
+            }
+        })
+    );
+
+    activeLspClient = tmdLspClient;
 }
 
-function deactivate() {}
+let activeLspClient = null;
+
+function deactivate() {
+    if (activeLspClient) {
+        activeLspClient.stop();
+        activeLspClient = null;
+    }
+}
 
 module.exports = {
     activate,
