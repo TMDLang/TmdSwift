@@ -1693,187 +1693,6 @@ function activate(context) {
         });
     }));
 
-    // Document Formatting Provider
-    context.subscriptions.push(
-        vscode.languages.registerDocumentFormattingEditProvider('tmd', {
-            provideDocumentFormattingEdits(document) {
-                return new Promise((resolve) => {
-                    const tmdBin = getTmdExecutable();
-                    const tempDir = os.tmpdir();
-                    const tempFilePath = path.join(tempDir, `tmd_format_${Date.now()}_${path.basename(document.fileName || 'untitled.tmd')}`);
-
-                    try {
-                        fs.writeFileSync(tempFilePath, document.getText(), 'utf8');
-                    } catch (err) {
-                        vscode.window.showErrorMessage(`TMD Format failed to create temp file: ${err.message}`);
-                        resolve([]);
-                        return;
-                    }
-
-                    execFile(tmdBin, ['format', tempFilePath], (error, stdout, stderr) => {
-                        try {
-                            fs.unlinkSync(tempFilePath);
-                        } catch (e) {}
-
-                        if (error) {
-                            const errMsg = (stderr && stderr.trim().length > 0) ? stderr.trim() : error.message;
-                            vscode.window.showErrorMessage(`TMD Format failed: ${errMsg}`);
-                            resolve([]);
-                            return;
-                        }
-
-                        if (!stdout || stdout.trim().length === 0) {
-                            resolve([]);
-                            return;
-                        }
-
-                        const fullRange = new vscode.Range(
-                            document.positionAt(0),
-                            document.positionAt(document.getText().length)
-                        );
-                        resolve([vscode.TextEdit.replace(fullRange, stdout)]);
-                    });
-                });
-            }
-        })
-    );
-
-    // Document Symbol (Outline) Provider
-    context.subscriptions.push(
-        vscode.languages.registerDocumentSymbolProvider('tmd', {
-            provideDocumentSymbols(document, token) {
-                return new Promise((resolve) => {
-                    const tmdBin = getTmdExecutable();
-                    let tempFilePath = null;
-                    let targetPath = document.fileName;
-
-                    if (document.isDirty || document.isUntitled) {
-                        const tempDir = os.tmpdir();
-                        tempFilePath = path.join(tempDir, `tmd_outline_${Date.now()}_${path.basename(document.fileName || 'untitled.tmd')}`);
-                        try {
-                            fs.writeFileSync(tempFilePath, document.getText(), 'utf8');
-                            targetPath = tempFilePath;
-                        } catch (err) {
-                            resolve([]);
-                            return;
-                        }
-                    }
-
-                    execFile(tmdBin, ['outline', '--json', targetPath], (error, stdout, stderr) => {
-                        if (tempFilePath) {
-                            try { fs.unlinkSync(tempFilePath); } catch (e) {}
-                        }
-
-                        if (error || !stdout || stdout.trim().length === 0) {
-                            resolve([]);
-                            return;
-                        }
-
-                        try {
-                            const rawNodes = JSON.parse(stdout);
-
-                            function mapKind(kindStr) {
-                                switch (kindStr) {
-                                    case 'file': return vscode.SymbolKind.File;
-                                    case 'class': return vscode.SymbolKind.Class;
-                                    case 'namespace': return vscode.SymbolKind.Namespace;
-                                    case 'field': return vscode.SymbolKind.Field;
-                                    case 'method': return vscode.SymbolKind.Method;
-                                    case 'event': return vscode.SymbolKind.Event;
-                                    case 'string': return vscode.SymbolKind.String;
-                                    case 'number': return vscode.SymbolKind.Number;
-                                    default: return vscode.SymbolKind.Object;
-                                }
-                            }
-
-                            function toSymbolRange(r) {
-                                const startLine = Math.max(0, (r.startLine || 1) - 1);
-                                const startCol = Math.max(0, (r.startColumn || 1) - 1);
-                                const endLine = Math.max(startLine, (r.endLine || 1) - 1);
-                                const endCol = Math.max(0, (r.endColumn || 1) - 1);
-                                return new vscode.Range(startLine, startCol, endLine, endCol);
-                            }
-
-                            function convertNode(node) {
-                                const range = toSymbolRange(node.range);
-                                const selRange = node.selectionRange ? toSymbolRange(node.selectionRange) : range;
-                                const symbol = new vscode.DocumentSymbol(
-                                    node.name,
-                                    node.detail || '',
-                                    mapKind(node.kind),
-                                    range,
-                                    selRange
-                                );
-                                if (Array.isArray(node.children) && node.children.length > 0) {
-                                    symbol.children = node.children.map(convertNode);
-                                }
-                                return symbol;
-                            }
-
-                            const symbols = rawNodes.map(convertNode);
-                            resolve(symbols);
-                        } catch (parseErr) {
-                            resolve([]);
-                        }
-                    });
-                });
-            }
-        })
-    );
-
-    // Auto-check on save / open / close / text change / active editor change
-    context.subscriptions.push(
-        vscode.workspace.onDidOpenTextDocument((doc) => {
-            if (doc.languageId === 'tmd') {
-                runMeasureCheck(doc);
-            }
-        })
-    );
-
-    context.subscriptions.push(
-        vscode.workspace.onDidSaveTextDocument((doc) => {
-            if (doc.languageId === 'tmd') {
-                const config = vscode.workspace.getConfiguration('tmd');
-                if (config.get('checkOnSave') !== false) {
-                    runMeasureCheck(doc);
-                }
-            }
-        })
-    );
-
-    // Debounced check while typing
-    let changeDebounceTimer = null;
-    context.subscriptions.push(
-        vscode.workspace.onDidChangeTextDocument((event) => {
-            const doc = event.document;
-            if (doc.languageId === 'tmd') {
-                const config = vscode.workspace.getConfiguration('tmd');
-                if (config.get('checkOnChange') !== false) {
-                    if (changeDebounceTimer) {
-                        clearTimeout(changeDebounceTimer);
-                    }
-                    changeDebounceTimer = setTimeout(() => {
-                        runMeasureCheck(doc);
-                    }, 400);
-                }
-            }
-        })
-    );
-
-    context.subscriptions.push(
-        vscode.window.onDidChangeActiveTextEditor((editor) => {
-            if (editor && editor.document.languageId === 'tmd') {
-                runMeasureCheck(editor.document);
-            }
-        })
-    );
-
-    context.subscriptions.push(
-        vscode.workspace.onDidCloseTextDocument((doc) => {
-            diagnosticCollection.delete(doc.uri);
-        })
-    );
-
     // Outline & Play Commands
     context.subscriptions.push(vscode.commands.registerCommand('tmd.playSection', (nodeOrArg) => {
         let section = null;
@@ -2688,6 +2507,82 @@ I am ready to help you compose, check, or format TMD music scores!
             }
         }
 
+        async requestFormatting(document) {
+            if (!this.isInitialized) return [];
+            try {
+                const res = await this.sendRequest('textDocument/formatting', {
+                    textDocument: { uri: document.uri.toString() },
+                    options: { tabSize: 4, insertSpaces: true }
+                });
+                if (!Array.isArray(res)) return [];
+                return res.map(edit => {
+                    const range = new vscode.Range(
+                        edit.range.start.line,
+                        edit.range.start.character,
+                        edit.range.end.line,
+                        edit.range.end.character
+                    );
+                    return vscode.TextEdit.replace(range, edit.newText);
+                });
+            } catch (err) {
+                return [];
+            }
+        }
+
+        async requestDocumentSymbols(document) {
+            if (!this.isInitialized) return [];
+            try {
+                const res = await this.sendRequest('textDocument/documentSymbol', {
+                    textDocument: { uri: document.uri.toString() }
+                });
+                if (!Array.isArray(res)) return [];
+
+                function mapSymbolKind(k) {
+                    switch (k) {
+                        case 1: return vscode.SymbolKind.File;
+                        case 3: return vscode.SymbolKind.Namespace;
+                        case 5: return vscode.SymbolKind.Class;
+                        case 6: return vscode.SymbolKind.Method;
+                        case 7: return vscode.SymbolKind.Property;
+                        case 8: return vscode.SymbolKind.Field;
+                        case 24: return vscode.SymbolKind.Event;
+                        default: return vscode.SymbolKind.Object;
+                    }
+                }
+
+                function convertSymbol(s) {
+                    const range = new vscode.Range(
+                        s.range.start.line,
+                        s.range.start.character,
+                        s.range.end.line,
+                        s.range.end.character
+                    );
+                    const selRange = s.selectionRange ? new vscode.Range(
+                        s.selectionRange.start.line,
+                        s.selectionRange.start.character,
+                        s.selectionRange.end.line,
+                        s.selectionRange.end.character
+                    ) : range;
+
+                    const docSymbol = new vscode.DocumentSymbol(
+                        s.name,
+                        s.detail || '',
+                        mapSymbolKind(s.kind),
+                        range,
+                        selRange
+                    );
+                    if (Array.isArray(s.children) && s.children.length > 0) {
+                        docSymbol.children = s.children.map(convertSymbol);
+                    }
+                    return docSymbol;
+                }
+
+                return res.map(convertSymbol);
+            } catch (err) {
+                return [];
+            }
+        }
+
         stop() {
             if (this.process) {
                 try {
@@ -2709,6 +2604,24 @@ I am ready to help you compose, check, or format TMD music scores!
                 return tmdLspClient.requestCompletion(document, position);
             }
         }, '>', '(', ':', '[')
+    );
+
+    // Register LSP formatting provider
+    context.subscriptions.push(
+        vscode.languages.registerDocumentFormattingEditProvider('tmd', {
+            provideDocumentFormattingEdits(document) {
+                return tmdLspClient.requestFormatting(document);
+            }
+        })
+    );
+
+    // Register LSP document symbol (outline) provider
+    context.subscriptions.push(
+        vscode.languages.registerDocumentSymbolProvider('tmd', {
+            provideDocumentSymbols(document) {
+                return tmdLspClient.requestDocumentSymbols(document);
+            }
+        })
     );
 
     // Synchronize LSP documents

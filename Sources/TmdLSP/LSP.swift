@@ -44,6 +44,51 @@ public enum TMDLSPCompletionItemKind: Int, Codable, Sendable {
     case reference = 18
 }
 
+public enum TMDLSPSymbolKind: Int, Codable, Sendable {
+    case file = 1
+    case module = 2
+    case namespace = 3
+    case package = 4
+    case `class` = 5
+    case method = 6
+    case property = 7
+    case field = 8
+    case constructor = 9
+    case `enum` = 10
+    case interface = 11
+    case function = 12
+    case variable = 13
+    case constant = 14
+    case string = 15
+    case number = 16
+    case boolean = 17
+    case array = 18
+    case object = 19
+    case key = 20
+    case null = 21
+    case enumMember = 22
+    case structKind = 23
+    case event = 24
+    case `operator` = 25
+    case typeParameter = 26
+
+    public static func from(outlineKind: String) -> TMDLSPSymbolKind {
+        switch outlineKind.lowercased() {
+        case "file": return .file
+        case "namespace": return .namespace
+        case "class": return .class
+        case "method": return .method
+        case "property": return .property
+        case "field": return .field
+        case "event": return .event
+        case "operator": return .operator
+        case "string": return .string
+        case "number": return .number
+        default: return .variable
+        }
+    }
+}
+
 public struct TMDLSPCompletionItem: Codable, Equatable, Sendable {
     public let label: String
     public let kind: TMDLSPCompletionItemKind
@@ -169,17 +214,7 @@ public struct TMDJSONRPCCodec {
         if let error = response.error {
             dict["error"] = error
         }
-
-        var options: JSONSerialization.WritingOptions = []
-        if #available(macOS 10.15, *) {
-            options.insert(.withoutEscapingSlashes)
-        }
-        guard let data = try? JSONSerialization.data(withJSONObject: dict, options: options),
-              let jsonStr = String(data: data, encoding: .utf8) else {
-            return ""
-        }
-        let length = jsonStr.utf8.count
-        return "Content-Length: \(length)\r\n\r\n\(jsonStr)"
+        return encodePayload(dict)
     }
 
     public static func encode(method: String, params: Any) -> String {
@@ -188,6 +223,10 @@ public struct TMDJSONRPCCodec {
             "method": method,
             "params": params
         ]
+        return encodePayload(dict)
+    }
+
+    private static func encodePayload(_ dict: [String: Any]) -> String {
         var options: JSONSerialization.WritingOptions = []
         if #available(macOS 10.15, *) {
             options.insert(.withoutEscapingSlashes)
@@ -257,19 +296,7 @@ public struct TMDLSPCompletionEngine {
 
         // 2. Check for Playback Order section completion: after "-> "
         if prefix.trimmingCharacters(in: .whitespaces).hasSuffix("->") || prefix.trimmingCharacters(in: .whitespaces).contains("->") {
-            let tokens = Lexer(string: source).tokenizeWithRanges()
-            var sectionNames: [String] = []
-            for i in 0..<tokens.count {
-                if case .identifier(let s) = tokens[i].token, s != "SCORE" {
-                    if i + 1 < tokens.count {
-                        if tokens[i + 1].token == .colon || tokens[i + 1].token == .openBrace {
-                            if !sectionNames.contains(s) {
-                                sectionNames.append(s)
-                            }
-                        }
-                    }
-                }
-            }
+            let sectionNames = TMDOutlineGenerator.extractSectionNames(source: source)
             return sectionNames.map {
                 TMDLSPCompletionItem(
                     label: $0,
@@ -557,19 +584,7 @@ public final class TMDLSPServer: @unchecked Sendable {
     }
 
     private func nodeToLSPDocumentSymbol(_ node: TMDOutlineNode) -> [String: Any] {
-        var symbolKind = 13 // Variable default
-        switch node.kind {
-        case "file": symbolKind = 1 // File
-        case "namespace": symbolKind = 3 // Namespace
-        case "class": symbolKind = 5 // Class
-        case "method": symbolKind = 6 // Method
-        case "property": symbolKind = 7 // Property
-        case "field": symbolKind = 8 // Field
-        case "event": symbolKind = 24 // Event
-        case "operator": symbolKind = 25 // Operator
-        default: symbolKind = 13
-        }
-
+        let symbolKind = TMDLSPSymbolKind.from(outlineKind: node.kind).rawValue
         var dict: [String: Any] = [
             "name": node.name,
             "kind": symbolKind,

@@ -497,6 +497,16 @@ public struct TMDOutlineGenerator {
 
         return result
     }
+
+    /// Extracts unique section names defined in the TMD source text.
+    public static func extractSectionNames(source: String) -> [String] {
+        let nodes = generate(source: source)
+        guard let sectionsNode = nodes.first(where: { $0.name == "Sections" }),
+              let children = sectionsNode.children else {
+            return []
+        }
+        return children.map(\.name)
+    }
 }
 
 private extension TMDOutlineRange {
