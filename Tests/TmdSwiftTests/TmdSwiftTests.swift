@@ -1138,3 +1138,50 @@ import TmdSkill
 
     #expect(emptySheet.resolveVocalInstrument() == "Vocal")
 }
+
+@Test func testTMDParseErrorDiagnosticHintsAndCodeFrame() throws {
+    // 1. Fullwidth punctuation typo hint
+    let fullwidthCode = "::SCORE::\n** Song **\nintro:Piano@|0|｛\n<4*>\n1 2 3 4\n}\n-> intro ->#"
+    do {
+        _ = try TmdParser.parseThrowing(string: fullwidthCode)
+        Issue.record("Expected parse error for fullwidth brace")
+    } catch let error as TMDParseError {
+        #expect(error.description.contains("Fullwidth punctuation detected: `｛` -> replace with halfwidth `{`"))
+        let frame = error.formatCodeFrame()
+        #expect(frame.contains("3 | intro:Piano@|0|｛"))
+        #expect(frame.contains("^"))
+    }
+
+    // 2. Accidental typo hint: 1#
+    let accidentalCode = "::SCORE::\n** Song **\nintro:Piano@|0|{\n<4*>\n1# 2 3 4\n}\n-> intro ->#"
+    do {
+        _ = try TmdParser.parseThrowing(string: accidentalCode)
+        Issue.record("Expected parse error for 1#")
+    } catch let error as TMDParseError {
+        #expect(error.description.contains("For sharp/flat accidentals in TMD, use `'` for sharp"))
+    }
+
+    // 3. Missing time grid directive <4*>
+    let missingGridCode = "::SCORE::\n** Song **\nintro:Piano@|0|{\n1 2 3 4\n}\n-> intro ->#"
+    do {
+        _ = try TmdParser.parseThrowing(string: missingGridCode)
+        Issue.record("Expected parse error for missing time grid")
+    } catch let error as TMDParseError {
+        #expect(error.description.contains("Each section inside `{ ... }` must start with a time grid directive like `<4*>` or `<8*>`"))
+    }
+
+    // 4. Code frame formatting explicitly
+    let frameErr = TMDParseError(
+        message: "Unexpected token",
+        token: .identifier("bad"),
+        text: "bad",
+        range: SourceRange(start: SourcePosition(offset: 15, line: 2, column: 5), length: 3),
+        expectedTokens: ["note"],
+        source: "line 1\n1 2 bad 4\nline 3"
+    )
+    let frame = frameErr.formatCodeFrame()
+    #expect(frame.contains("1 | line 1"))
+    #expect(frame.contains("2 | 1 2 bad 4"))
+    #expect(frame.contains("  |     ^^^"))
+    #expect(frame.contains("3 | line 3"))
+}

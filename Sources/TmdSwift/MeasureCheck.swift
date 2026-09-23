@@ -24,6 +24,9 @@ public struct TMDMeasureIssue: Equatable, CustomStringConvertible, Sendable {
                 return "Order (line \(lineNumber)): \(snippet)"
             }
         }
+        if snippet.hasPrefix("Unclosed paragraph") {
+            return "\(paragraphName):\(instrument) (line \(lineNumber)): \(snippet)"
+        }
         let diffStr = deltaUnits > 0 ? "+\(deltaUnits)" : "\(deltaUnits)"
         if measureIndex == 0 {
             // Section-level instrument length mismatch issue
@@ -165,8 +168,20 @@ public struct TMDMeasureChecker {
                     return max(1, numerator / beat.noteValue)
                 }
 
+                var unclosedParagraph = false
                 while pos < tokensWithRanges.count && current()?.token != .closeBrace {
                     guard let item = current() else { break }
+
+                    // If we hit an order arrow (->) or arrowEnd (->#) or another paragraph header,
+                    // the current paragraph was not properly closed with '}'. Break out to avoid swallowing orders!
+                    var isNextParagraphHeader = false
+                    if case .identifier = item.token, pos + 1 < tokensWithRanges.count && tokensWithRanges[pos + 1].token == .colon {
+                        isNextParagraphHeader = true
+                    }
+                    if item.token == .arrow || item.token == .arrowEnd || isNextParagraphHeader {
+                        unclosedParagraph = true
+                        break
+                    }
 
                     // Check for Section subdivision header: < noteLength * >
                     if item.token == .openAngle {
@@ -282,6 +297,22 @@ public struct TMDMeasureChecker {
 
                 if current()?.token == .closeBrace {
                     _ = advance() // }
+                } else {
+                    unclosedParagraph = true
+                }
+
+                if unclosedParagraph {
+                    issues.append(TMDMeasureIssue(
+                        paragraphName: pName,
+                        instrument: instName,
+                        lineNumber: paraStartLine,
+                        measureIndex: 0,
+                        expectedUnits: 0,
+                        actualUnits: 0,
+                        noteLength: noteLength,
+                        beat: beat,
+                        snippet: "Unclosed paragraph '{' for \(pName):\(instName)"
+                    ))
                 }
 
                 // If measureCount was counted via bar lines, use measureCount.

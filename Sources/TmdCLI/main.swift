@@ -116,6 +116,14 @@ struct TmdInspectCommand: ParsableCommand {
         let sheet: Sheet
         do {
             sheet = try TmdParser.parseThrowing(filePathOrURL: inputPath)
+        } catch let parseError as TMDParseError {
+            print("Error: Syntax error in \(inputPath):")
+            print(parseError.description)
+            let codeFrame = parseError.formatCodeFrame()
+            if !codeFrame.isEmpty {
+                print("\n" + codeFrame)
+            }
+            throw ExitCode.failure
         } catch {
             print("Error reading \(inputPath): \(error.localizedDescription)")
             throw ExitCode.failure
@@ -937,6 +945,14 @@ struct TmdCLICommand: ParsableCommand {
         let sheet: Sheet
         do {
             sheet = try TmdParser.parseThrowing(string: fileContent)
+        } catch let parseError as TMDParseError {
+            print("Error: Syntax error in \(inputPath):")
+            print(parseError.description)
+            let codeFrame = parseError.formatCodeFrame()
+            if !codeFrame.isEmpty {
+                print("\n" + codeFrame)
+            }
+            throw ExitCode.failure
         } catch {
             print("Error: Syntax error in \(inputPath): \(error.localizedDescription)")
             throw ExitCode.failure

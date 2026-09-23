@@ -447,4 +447,31 @@ struct TmdMeasureCheckTests {
         let issues = TMDMeasureChecker.check(source: code)
         #expect(issues.isEmpty)
     }
+
+    @Test func testUnclosedParagraphDetectedWhenArrowOrNextParagraphEncountered() throws {
+        let code = """
+        ::SCORE::
+        ** Unclosed Section Song **
+        != 120
+        ?= C
+        <4/4>
+
+        intro:Piano@|0|{
+            <4*>
+            | 1 2 3 4 |
+
+        verse:Piano@|0|{
+            <4*>
+            | 5 6 7 1 |
+        }
+
+        -> intro -> verse ->#
+        """
+        let issues = TMDMeasureChecker.check(source: code)
+        let unclosed = issues.filter { $0.snippet.contains("Unclosed paragraph") }
+        #expect(!unclosed.isEmpty)
+        #expect(unclosed[0].paragraphName == "intro")
+        #expect(unclosed[0].instrument == "Piano")
+        #expect(unclosed[0].description.contains("Unclosed paragraph '{' for intro:Piano"))
+    }
 }
