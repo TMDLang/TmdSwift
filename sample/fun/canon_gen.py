@@ -107,6 +107,7 @@ class CanonGenerator:
         num_voices: int = 3,
         offset_bars: int = 2,
         num_variations: int = 3,
+        canon_type: str = "standard",
         use_macro: bool = True,
         seed: Optional[int] = None,
     ):
@@ -117,6 +118,7 @@ class CanonGenerator:
         self.num_voices = num_voices
         self.offset_bars = offset_bars
         self.num_variations = num_variations
+        self.canon_type = canon_type.lower()
         self.use_macro = use_macro
 
         if seed is not None:
@@ -129,10 +131,16 @@ class CanonGenerator:
 
     def generate_header(self) -> str:
         mode_desc = "羽調式 (Minor Pentatonic)" if self.is_minor else "宮調式 (Major Pentatonic)"
+        type_desc = {
+            "standard": "Standard Polyphonic Canon (輪唱卡農)",
+            "crab": "Crab Canon / Cancrizans (螃蟹卡農 / 逆行卡農)",
+            "mirror": "Mirror Canon / Inversion (倒影卡農 / 鏡像卡農)",
+            "table": "Table Canon / Retrograde Inversion (桌子卡農 / 雙倒影逆行卡農)",
+        }.get(self.canon_type, "Standard Polyphonic Canon")
         return f"""::SCORE::
 ** {self.title} **
 ~ "composer: CanonGenerator (Pentatonic Algorithmic Engine)"
-~ "style: {mode_desc}"
+~ "style: {mode_desc}, Form: {type_desc}"
 != {self.tempo}
 ?= {self.key}
 <{self.time_sig}>
@@ -274,23 +282,79 @@ class CanonGenerator:
         return "\n".join(outro_lines)
 
     def generate_playback_flow_macro(self, var_names: List[str], bass_measures: int) -> str:
-        """Generates S-Expression playback flow."""
+        """Generates S-Expression playback flow supporting standard, crab, mirror, and table canons."""
         theme_sequence = f"({' '.join(var_names)})" if len(var_names) > 1 else var_names[0]
         voice_sequence = f"({' '.join(self.voice_instruments)})"
         total_theme_bars = len(var_names) * bass_measures
-        total_canon_bars = total_theme_bars + (self.num_voices - 1) * self.offset_bars
-        loop_count = (total_canon_bars + bass_measures - 1) // bass_measures
 
-        lines = [
-            "/* S-Expression Playback Flow */",
-            "-> intro",
-            "-> (layer",
-            f"     (canon {theme_sequence} {voice_sequence} {self.offset_bars})",
-            f"     (loop Bass {self.bass_instrument} {loop_count}))",
-            "-> outro",
-            "->#\n",
-        ]
-        return "\n".join(lines)
+        if self.canon_type == "crab":
+            # Crab Canon / Cancrizans:
+            # Voice 1 plays forward, Voice 2 plays backward (retrograde), simultaneously
+            loop_count = len(var_names)
+            v1 = self.voice_instruments[0]
+            v2 = self.voice_instruments[1] if len(self.voice_instruments) > 1 else "Violin2"
+            lines = [
+                "/* S-Expression Playback Flow: Crab Canon (Cancrizans / 螃蟹卡農) */",
+                "-> intro",
+                "-> (layer",
+                f"     (play {theme_sequence} {v1})",
+                f"     (play (reverse {theme_sequence}) {v2})",
+                f"     (loop Bass {self.bass_instrument} {loop_count}))",
+                "-> outro",
+                "->#\n",
+            ]
+            return "\n".join(lines)
+
+        elif self.canon_type == "mirror":
+            # Mirror Canon / Melodic Inversion:
+            # Voice 1 plays original, Voice 2 plays upside-down (flipped around tonic axis)
+            loop_count = len(var_names)
+            v1 = self.voice_instruments[0]
+            v2 = self.voice_instruments[1] if len(self.voice_instruments) > 1 else "Violin2"
+            lines = [
+                "/* S-Expression Playback Flow: Mirror Canon (Inversion / 倒影鏡像卡農) */",
+                "-> intro",
+                "-> (layer",
+                f"     (play {theme_sequence} {v1})",
+                f"     (play (flip {theme_sequence}) {v2})",
+                f"     (loop Bass {self.bass_instrument} {loop_count}))",
+                "-> outro",
+                "->#\n",
+            ]
+            return "\n".join(lines)
+
+        elif self.canon_type == "table":
+            # Table Canon / Tafelkanon:
+            # Retrograde Inversion (upside-down & backward): two players read the same sheet from opposite sides
+            loop_count = len(var_names)
+            v1 = self.voice_instruments[0]
+            v2 = self.voice_instruments[1] if len(self.voice_instruments) > 1 else "Violin2"
+            lines = [
+                "/* S-Expression Playback Flow: Table Canon (Tafelkanon / 雙倒影逆行桌子卡農) */",
+                "-> intro",
+                "-> (layer",
+                f"     (play {theme_sequence} {v1})",
+                f"     (play (flip (reverse {theme_sequence})) {v2})",
+                f"     (loop Bass {self.bass_instrument} {loop_count}))",
+                "-> outro",
+                "->#\n",
+            ]
+            return "\n".join(lines)
+
+        else:
+            # Standard Staggered Polyphonic Canon
+            total_canon_bars = total_theme_bars + (self.num_voices - 1) * self.offset_bars
+            loop_count = (total_canon_bars + bass_measures - 1) // bass_measures
+            lines = [
+                "/* S-Expression Playback Flow: Standard Polyphonic Canon (輪唱卡農) */",
+                "-> intro",
+                "-> (layer",
+                f"     (canon {theme_sequence} {voice_sequence} {self.offset_bars})",
+                f"     (loop Bass {self.bass_instrument} {loop_count}))",
+                "-> outro",
+                "->#\n",
+            ]
+            return "\n".join(lines)
 
     def generate_unrolled_score(self, bass_notes: List[str]) -> str:
         """
@@ -389,6 +453,13 @@ def main():
     parser.add_argument("--voices", type=int, default=3, help="Number of canonic voices (e.g. 3)")
     parser.add_argument("--offset", type=int, default=2, help="Staggered delay offset in bars (e.g. 2)")
     parser.add_argument("--variations", type=int, default=3, help="Number of variation sections")
+    parser.add_argument(
+        "--type",
+        type=str,
+        default="standard",
+        choices=["standard", "crab", "mirror", "table"],
+        help="Type of canon: standard (staggered), crab (retrograde), mirror (inversion), table (retrograde-inversion)"
+    )
     parser.add_argument("--unrolled", action="store_true", help="Output unrolled TMD score without macros (CLI compiler compatible)")
     parser.add_argument("--output", "-o", type=str, default=None, help="Output .tmd file path (default: stdout)")
     parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducible scores")
@@ -402,6 +473,7 @@ def main():
         num_voices=args.voices,
         offset_bars=args.offset,
         num_variations=args.variations,
+        canon_type=args.type,
         use_macro=not args.unrolled,
         seed=args.seed,
     )
