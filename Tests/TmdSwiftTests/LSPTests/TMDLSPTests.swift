@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 @testable import TmdSwift
+@testable import TmdLSP
 
 @Suite("TMD LSP Protocol & Completion Tests")
 struct TMDLSPTests {

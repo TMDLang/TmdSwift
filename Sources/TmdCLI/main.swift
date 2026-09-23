@@ -12,6 +12,7 @@ import TmdSkill
 import TmdVocaloid
 import TmdUTAU
 import TmdUtils
+import TmdLSP
 
 // MARK: - Format Subcommand
 

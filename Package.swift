@@ -55,6 +55,10 @@ let package = Package(
             name: "TmdUTAU",
             targets: ["TmdUTAU"]
         ),
+        .library(
+            name: "TmdLSP",
+            targets: ["TmdLSP"]
+        ),
         .executable(
             name: "tmd",
             targets: ["TmdCLI"]
@@ -112,10 +116,15 @@ let package = Package(
             name: "TmdUTAU",
             dependencies: ["TmdSwift", "TmdMIDI"]
         ),
+        .target(
+            name: "TmdLSP",
+            dependencies: ["TmdSwift"]
+        ),
         .executableTarget(
             name: "TmdCLI",
             dependencies: [
                 "TmdSwift",
+                "TmdLSP",
                 "TmdMIDI",
                 "TmdMusicXML",
                 "TmdLilyPond",
@@ -132,7 +141,7 @@ let package = Package(
         ),
         .testTarget(
             name: "TmdSwiftTests",
-            dependencies: ["TmdSwift", "TmdMIDI", "TmdMusicXML", "TmdLilyPond", "TmdABC", "TmdChordPro", "TmdReaper", "TmdAudio", "TmdSkill", "TmdUtils", "TmdVocaloid", "TmdUTAU"]
+            dependencies: ["TmdSwift", "TmdLSP", "TmdMIDI", "TmdMusicXML", "TmdLilyPond", "TmdABC", "TmdChordPro", "TmdReaper", "TmdAudio", "TmdSkill", "TmdUtils", "TmdVocaloid", "TmdUTAU"]
         ),
     ],
     swiftLanguageModes: [.v6]
