@@ -186,59 +186,193 @@ class CanonGenerator:
 
     def generate_theme_bars(self, bass_notes: List[str], variation_idx: int) -> List[Tuple[str, List[str]]]:
         """
-        Generates measure units for a variation using strictly pentatonic intervals.
-        Avoids all semitone clashes (no 4/Fa or 7/Ti in major; pure pentatonic steps).
+        Generates measure units for a variation with rich rhythmic variety.
+        Mixes long notes, dotted rhythms, running passages, syncopation, and rests
+        so notes have contrasting lengths instead of robotic isochronous grids.
         """
-        style = variation_idx % 4
+        style = variation_idx % 5
         measures = []
 
         if style == 0:
-            # Quarter notes: 4 notes per bar (cantus firmus / lyrical theme)
+            # Style 0: Lyrical Cantabile with Long Notes & Dotted Rhythms (<4*>)
+            # Patterns:
+            # - Half note + two quarter notes: "1 - 2 3"
+            # - Dotted half note + quarter note: "1 - - 2"
+            # - Quarter note + half note + quarter: "1 2 - 3"
+            # - Sustained whole note: "1 - - -"
             for b_note in bass_notes:
                 tones = self._get_chord_tones(b_note)
-                curr = random.choice(tones)
-                bar = [curr]
-                for _ in range(3):
-                    curr = self._step_in_scale(curr, max_steps=2)
-                    bar.append(curr)
-                measures.append(" ".join(bar))
+                pattern_type = random.choice(["half_quarters", "dotted_quarter", "quarter_half", "two_halves"])
+                t1 = random.choice(tones)
+                t2 = self._step_in_scale(t1, max_steps=1)
+                t3 = self._step_in_scale(t2, max_steps=2)
+
+                if pattern_type == "half_quarters":
+                    measures.append(f"{t1} - {t2} {t3}")
+                elif pattern_type == "dotted_quarter":
+                    measures.append(f"{t1} - - {t2}")
+                elif pattern_type == "quarter_half":
+                    measures.append(f"{t1} {t2} - {t3}")
+                else: # two_halves
+                    measures.append(f"{t1} - {t2} -")
             return [("<4*>", measures)]
 
         elif style == 1:
-            # Eighth notes: 8 notes per bar (flowing pentatonic water melody)
+            # Style 1: Flowing Baroque Lilt with Mixed Durations (<8*>)
+            # Mixes quarter notes, dotted eighths, and eighth notes:
+            # - Quarter note followed by running eighths: "1 - 2 3 5 3 2 1"
+            # - Two quarters and four eighths: "1 - 2 - 3 5 3 2"
+            # - Dotted rhythm (long-short): "1 - 1 2 - 2 3 5"
+            # - Resting breath: "1 - 0 2 3 5 3 1"
             for b_note in bass_notes:
                 tones = self._get_chord_tones(b_note)
                 curr = random.choice(tones)
-                bar = []
-                for _ in range(8):
-                    bar.append(curr)
-                    curr = self._step_in_scale(curr, max_steps=1)
-                measures.append(" ".join(bar))
+                pattern_choice = random.choice([1, 2, 3, 4])
+
+                if pattern_choice == 1:
+                    # Quarter note + 6 running eighth notes
+                    run = [f"{curr} -"]
+                    for _ in range(6):
+                        curr = self._step_in_scale(curr, max_steps=1)
+                        run.append(curr)
+                    measures.append(" ".join(run))
+
+                elif pattern_choice == 2:
+                    # Two quarters + 4 eighth notes
+                    t1 = curr
+                    t2 = self._step_in_scale(t1, max_steps=1)
+                    curr = t2
+                    run = [f"{t1} -", f"{t2} -"]
+                    for _ in range(4):
+                        curr = self._step_in_scale(curr, max_steps=1)
+                        run.append(curr)
+                    measures.append(" ".join(run))
+
+                elif pattern_choice == 3:
+                    # Dotted lilt / syncopation: "1 - 2 3 - 5 6 5"
+                    t1 = curr
+                    t2 = self._step_in_scale(t1, max_steps=1)
+                    t3 = self._step_in_scale(t2, max_steps=1)
+                    t4 = self._step_in_scale(t3, max_steps=1)
+                    t5 = self._step_in_scale(t4, max_steps=1)
+                    measures.append(f"{t1} - {t2}  {t3} - {t4}  {t5} {t4}")
+
+                else:
+                    # Baroque breath & entry: "0 1 2 3 5 - 3 2"
+                    t1 = curr
+                    t2 = self._step_in_scale(t1, max_steps=1)
+                    t3 = self._step_in_scale(t2, max_steps=1)
+                    t4 = self._step_in_scale(t3, max_steps=2)
+                    t5 = self._step_in_scale(t4, max_steps=1)
+                    t6 = self._step_in_scale(t5, max_steps=1)
+                    measures.append(f"0 {t1} {t2} {t3}  {t4} - {t5} {t6}")
+
             return [("<8*>", measures)]
 
         elif style == 2:
-            # Sixteenth notes: 16 notes per bar (pentatonic waves & turns)
+            # Style 2: Virtuosic Flourish & Turns with Sustained Pillars (<16*>)
+            # Contrasts rapid 16th-note arabesques with sustained anchor beats:
+            # - Beat 1: Quarter note (sustained anchor) | Beats 2-4: 16th-note runs
+            # - Beat 1-2: 16th-note flourish | Beat 3: Quarter note | Beat 4: 16th flourish
             for b_note in bass_notes:
                 tones = self._get_chord_tones(b_note)
-                groups = []
                 curr = random.choice(tones)
-                for _ in range(4):
-                    g = []
+                flourish_type = random.choice(["head_anchor", "center_anchor", "wave_with_rest"])
+
+                if flourish_type == "head_anchor":
+                    # Beat 1: "1 - - -" (quarter note anchor)
+                    groups = [f"{curr} - - -"]
+                    for _ in range(3):
+                        g = []
+                        for _ in range(4):
+                            curr = self._step_in_scale(curr, max_steps=1)
+                            g.append(curr)
+                        groups.append(" ".join(g))
+                    measures.append("  ".join(groups))
+
+                elif flourish_type == "center_anchor":
+                    # Beat 1: 16th run | Beat 2: Quarter anchor | Beat 3-4: 16th run
+                    g1 = []
                     for _ in range(4):
-                        g.append(curr)
                         curr = self._step_in_scale(curr, max_steps=1)
-                    groups.append(" ".join(g))
-                measures.append("  ".join(groups))
+                        g1.append(curr)
+                    anchor = self._step_in_scale(curr, max_steps=2)
+                    curr = anchor
+                    g3 = []
+                    g4 = []
+                    for _ in range(4):
+                        curr = self._step_in_scale(curr, max_steps=1)
+                        g3.append(curr)
+                    for _ in range(4):
+                        curr = self._step_in_scale(curr, max_steps=1)
+                        g4.append(curr)
+                    groups = [" ".join(g1), f"{anchor} - - -", " ".join(g3), " ".join(g4)]
+                    measures.append("  ".join(groups))
+
+                else:
+                    # Beat 1: 16th run | Beat 2: 16th run | Beat 3: Rest & entry | Beat 4: 16th run
+                    g1 = [curr]
+                    for _ in range(3):
+                        curr = self._step_in_scale(curr, max_steps=1)
+                        g1.append(curr)
+                    g2 = []
+                    for _ in range(4):
+                        curr = self._step_in_scale(curr, max_steps=1)
+                        g2.append(curr)
+                    t_entry = self._step_in_scale(curr, max_steps=1)
+                    curr = t_entry
+                    g4 = []
+                    for _ in range(4):
+                        curr = self._step_in_scale(curr, max_steps=1)
+                        g4.append(curr)
+                    groups = [" ".join(g1), " ".join(g2), f"0 0 {t_entry} {curr}", " ".join(g4)]
+                    measures.append("  ".join(groups))
+
             return [("<16*>", measures)]
 
+        elif style == 3:
+            # Style 3: Staccato Dialogue & Echo Rests (<8*>)
+            # Like Pachelbel Variation 5 ("1^ 0 7 0 6 0 1^ 0") or syncopated echo
+            for b_note in bass_notes:
+                tones = self._get_chord_tones(b_note)
+                curr = random.choice(tones)
+                dialogue_choice = random.choice(["staccato_steps", "offbeat_syncopation", "echo_chords"])
+
+                if dialogue_choice == "staccato_steps":
+                    bar = []
+                    for _ in range(4):
+                        bar.append(f"{curr} 0")
+                        curr = self._step_in_scale(curr, max_steps=2)
+                    measures.append(" ".join(bar))
+
+                elif dialogue_choice == "offbeat_syncopation":
+                    # Offbeat syncopation: "0 1 0 2 0 3 5 -"
+                    t1 = curr
+                    t2 = self._step_in_scale(t1, max_steps=1)
+                    t3 = self._step_in_scale(t2, max_steps=1)
+                    t4 = self._step_in_scale(t3, max_steps=2)
+                    measures.append(f"0 {t1}  0 {t2}  0 {t3}  {t4} -")
+
+                else:
+                    # Echo: "1 - 0 1  2 - 0 2"
+                    t1 = curr
+                    t2 = self._step_in_scale(t1, max_steps=1)
+                    measures.append(f"{t1} - 0 {t1}  {t2} - 0 {t2}")
+
+            return [("<8*>", measures)]
+
         else:
-            # Syncopated & sustained pentatonic line with ties: <8*>
+            # Style 4: Pastoral Sicilienne / Triplet-feel Syncopations (<8*>)
+            # Characterized by lilting dotted rhythms and suspensions:
+            # - "1 - - 2  3 - 2 -" (dotted quarter + eighth + two quarters)
+            # - "1 - 2 3  5 - - -" (quarter + two eighths + half note anchor)
             for b_note in bass_notes:
                 tones = self._get_chord_tones(b_note)
                 t1 = random.choice(tones)
-                t2 = self._step_in_scale(t1, max_steps=2)
-                t3 = random.choice(tones)
-                measures.append(f"{t1}- {t2}- {t1} 0 {t3}-")
+                t2 = self._step_in_scale(t1, max_steps=1)
+                t3 = self._step_in_scale(t2, max_steps=1)
+                t4 = self._step_in_scale(t3, max_steps=2)
+                measures.append(f"{t1} - - {t2}  {t3} - {t4} -")
             return [("<8*>", measures)]
 
     def generate_theme_section_macro(self, bass_notes: List[str], variation_idx: int) -> str:

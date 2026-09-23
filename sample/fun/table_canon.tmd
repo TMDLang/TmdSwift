@@ -2,7 +2,7 @@
 ** Table Canon in G **
 ~ "composer: CanonGenerator (Pentatonic Algorithmic Engine)"
 ~ "style: 宮調式 (Major Pentatonic), Form: Table Canon / Retrograde Inversion (桌子卡農 / 雙倒影逆行卡農)"
-!= 96
+!= 84
 ?= G
 <4/4>
 
