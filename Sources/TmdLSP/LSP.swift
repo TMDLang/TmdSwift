@@ -281,14 +281,18 @@ public struct TMDLSPCompletionEngine {
         let prefix = String(currentLine.prefix(position.character))
 
         // 1. Check for S-Expression macro completion: inside "-> (" or "("
-        if prefix.trimmingCharacters(in: .whitespaces).hasSuffix("-> (") || prefix.trimmingCharacters(in: .whitespaces).hasSuffix("(") {
+        let trimmedPrefix = prefix.trimmingCharacters(in: .whitespaces)
+        if trimmedPrefix.hasSuffix("-> (") || trimmedPrefix.hasSuffix("(") {
             return macroSnippets.map {
-                TMDLSPCompletionItem(
+                let insert = (trimmedPrefix.hasSuffix("(") && $0.insertText.hasPrefix("("))
+                    ? String($0.insertText.dropFirst())
+                    : $0.insertText
+                return TMDLSPCompletionItem(
                     label: $0.label,
                     kind: .snippet,
                     detail: $0.detail,
                     documentation: $0.detail,
-                    insertText: $0.insertText,
+                    insertText: insert,
                     insertTextFormat: 2 // Snippet
                 )
             }

@@ -91,6 +91,11 @@ struct TMDLSPTests {
         #expect(labels.contains("flip"))
         #expect(labels.contains("transpose"))
         #expect(labels.contains("vary"))
+
+        // Assert that the snippet does not contain leading '(' when triggered after '('
+        let canonItem = items.first(where: { $0.label == "canon" })
+        #expect(canonItem?.insertText?.hasPrefix("(") == false)
+        #expect(canonItem?.insertText?.hasPrefix("canon") == true)
     }
 
     @Test("Provides General MIDI 128 instrument names after colon in paragraph header")
