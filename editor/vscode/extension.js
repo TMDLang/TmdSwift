@@ -82,7 +82,392 @@ function runTmdExport(args, successMessage, outputFilePath) {
     });
 }
 
+const TMD_TEMPLATES = [
+    {
+        id: 'starter',
+        label: '$(sparkle) Starter Tutorial (Twinkle Twinkle / 小星星入門範本)',
+        description: 'Lead melody, piano chords, bass, and educational comments',
+        detail: 'Best for beginners learning TMD syntax, chord symbols, and multi-track structure.',
+        defaultFilename: 'starter.tmd',
+        content: `::SCORE::
+** 小星星 (Twinkle Twinkle) **
+!= 100
+?= C
+<4/4>
+
+/*
+ TMD (Timebase Mark Down) 入門範本：
+ - 音符：1 2 3 4 5 6 7 (Do Re Mi Fa Sol La Si)
+ - 高低八度：1^ (高音), 1_ (低音)
+ - 升降記號：1' (升), 7, (降)
+ - 延音線：-
+ - 休止符：. 或 0
+ - 和弦標記：[1], [4], [5] 或 [C], [F], [G]
+ - 段落格式：段落名:樂器名@|小節偏移|{ <時值網格*> ... }
+*/
+
+A:Lead@|0|{
+    <4*>
+    | 1 1 5 5 | 6 6 5 - |
+    | 4 4 3 3 | 2 2 1 - |
+}
+
+A:Piano@|0|{
+    <2*>
+    | [1] [1] | [4] [1] |
+    | [4] [1] | [5] [1] |
+}
+
+A:Bass@|0|{
+    <4*>
+    | 1_ - 1_ - | 4__ - 1_ - |
+    | 4__ - 1_ - | 5__ - 1_ - |
+}
+
+B:Lead@|0|{
+    <4*>
+    | 5 5 4 4 | 3 3 2 - |
+    | 5 5 4 4 | 3 3 2 - |
+}
+
+B:Piano@|0|{
+    <2*>
+    | [1] [4] | [1] [5] |
+    | [1] [4] | [1] [5] |
+}
+
+B:Bass@|0|{
+    <4*>
+    | 1_ - 4__ - | 1_ - 5__ - |
+    | 1_ - 4__ - | 1_ - 5__ - |
+}
+
+/* 播放順序：A 段 -> B 段 -> A 段結尾 */
+-> A -> B -> A ->#
+`
+    },
+    {
+        id: 'blank',
+        label: '$(file-code) Minimal Blank Score (空白標準樂譜骨架)',
+        description: 'Standard boilerplate with score header and piano track',
+        detail: '::SCORE::, title, tempo, key, 4/4 beat, and intro track.',
+        defaultFilename: 'song.tmd',
+        content: `::SCORE::
+** Untitled Song **
+!= 120
+?= C
+<4/4>
+
+intro:Piano@|0|{
+    <4*>
+    | 1 2 3 4 |
+}
+
+-> intro ->#
+`
+    },
+    {
+        id: 'leadsheet',
+        label: '$(music) Pop Lead Sheet (流行歌主旋律與和弦)',
+        description: 'Verse, Chorus, Bridge song form with Lead vocal and Chord tracks',
+        detail: 'Standard commercial pop structure ready for songwriting and harmonization.',
+        defaultFilename: 'leadsheet.tmd',
+        content: `::SCORE::
+** Pop Lead Sheet **
+!= 128
+?= C
+<4/4>
+
+/* Intro */
+intro:Chord@|0|{
+    <2*>
+    | [1] [5] | [6m] [4] |
+    | [1] [5] | [4]  [1] |
+}
+
+intro:Lead@|0|{
+    <4*>
+    | . . . . | . . . . |
+    | 1 2 3 5 | 6 5 3 1 |
+}
+
+/* Verse */
+verse:Chord@|0|{
+    <2*>
+    | [1] [5] | [6m] [4] |
+    | [1] [5] | [4]  [1] |
+}
+
+verse:Lead@|0|{
+    <4*>
+    | 1 2 3 1 | 5 5 3 - |
+    | 6 6 5 3 | 2 - - - |
+    | 1 2 3 1 | 5 5 3 - |
+    | 4 3 2 5 | 1 - - - |
+}
+
+/* Chorus */
+chorus:Chord@|0|{
+    <2*>
+    | [4] [5] | [3m] [6m] |
+    | [2m] [5] | [1]  [1]  |
+}
+
+chorus:Lead@|0|{
+    <4*>
+    | 6 6 7 1^ | 7 5 3 - |
+    | 4 4 3 2  | 5 - - - |
+    | 6 6 7 1^ | 7 5 3 - |
+    | 4 3 2 5  | 1 - - - |
+}
+
+-> intro -> verse -> chorus ->#
+`
+    },
+    {
+        id: 'band',
+        label: '$(organization) Pop/Rock Band (樂團多軌編制：人聲、鍵盤、吉他、貝斯、鼓組)',
+        description: 'Multi-instrument arrangement with Vocal, Keyboard, Guitar, Bass, and Drums',
+        detail: 'Complete rhythm section with drum grooves, bass lines, and chord comping.',
+        defaultFilename: 'band_arrangement.tmd',
+        content: `::SCORE::
+** Band Arrangement **
+!= 120
+?= C
+<4/4>
+
+/* Verse Section */
+verse:Vocal@|0|{
+    <4*>
+    | 1 2 3 5 | 6 5 3 - |
+    | 4 4 3 3 | 2 - - - |
+    | 1 2 3 5 | 6 5 3 - |
+    | 4 3 2 5 | 1 - - - |
+}
+
+verse:Keyboard@|0|{
+    <2*>
+    | [C] [G] | [Am] [F] |
+    | [C] [G] | [F]  [C] |
+    | [C] [G] | [Am] [F] |
+    | [F] [G] | [C]  [C] |
+}
+
+verse:Guitar@|0|{
+    <4*>
+    | [C] - [C] - | [G] - [G] - |
+    | [Am] - [Am] - | [F] - [F] - |
+    | [C] - [C] - | [G] - [G] - |
+    | [F] - [G] - | [C] - - - |
+}
+
+verse:Bass@|0|{
+    <4*>
+    | 1_ - 1_ - | 5__ - 5__ - |
+    | 6__ - 6__ - | 4__ - 4__ - |
+    | 1_ - 1_ - | 5__ - 5__ - |
+    | 4__ - 5__ - | 1_ - - - |
+}
+
+verse:Drums@|0|{
+    <8*>
+    | X-X-X-X- | X-X-X-X- |
+    | X-X-X-X- | X-X-X-X- |
+    | X-X-X-X- | X-X-X-X- |
+    | X-X-X-X- | S-S-C--- |
+}
+
+-> verse ->#
+`
+    },
+    {
+        id: 'canon',
+        label: '$(repo-forked) Polyphonic Canon (對位法與卡農範本)',
+        description: 'Two-part canon with staggered measure entry offsets (@|+2|)',
+        detail: 'Demonstrates contrapuntal imitation, measure offsets, and basso continuo.',
+        defaultFilename: 'canon.tmd',
+        content: `::SCORE::
+** Canon in C **
+!= 108
+?= C
+<4/4>
+
+/*
+ 卡農特色：
+ 第一聲部 (Voice1) 在第 0 小節進入，
+ 第二聲部 (Voice2) 帶有偏移量 @|+2| (延遲 2 小節進入)，完全模仿第一聲部的旋律。
+*/
+
+theme:Voice1@|0|{
+    <4*>
+    | 1 2 3 1 | 1 2 3 1 |
+    | 3 4 5 - | 3 4 5 - |
+}
+
+theme:Voice2@|+2|{
+    <4*>
+    | 1 2 3 1 | 1 2 3 1 |
+    | 3 4 5 - | 3 4 5 - |
+}
+
+theme:Cello@|0|{
+    <2*>
+    | [1] [5] | [6m] [3m] |
+    | [4] [1] | [4]  [5]  |
+    | [1] [5] | [6m] [3m] |
+}
+
+-> theme ->#
+`
+    },
+    {
+        id: 'drums',
+        label: '$(symbol-event) Drum & Percussion Grooves (打擊樂與節奏律動)',
+        description: '8-beat & 16-beat drum patterns (Hi-Hat, Snare, Kick, Toms, Crash)',
+        detail: 'Demonstrates drum notation symbols (X, S, B, T, C, O) and syncopated grooves.',
+        defaultFilename: 'drums.tmd',
+        content: `::SCORE::
+** Drum Grooves **
+!= 120
+?= C
+<4/4>
+
+/*
+ 打擊樂代號：
+ X/x: Hi-Hat (腳踏鈸)
+ S/s: Snare (小鼓)
+ B/b/D/d: Bass Drum (大鼓/底鼓)
+ T/t: Tom (中鼓)
+ C/c: Crash (碎音鈸)
+ O/o: Open Hi-Hat (開鈸)
+*/
+
+beat:Drums@|0|{
+    <8*>
+    /* Measure 1: Rock 8-beat groove */
+    | X-X-X-X- |
+    /* Measure 2: Kick and snare groove */
+    | B-S-B-S- |
+    /* Measure 3: Syncopated kick */
+    | B--BS-B- |
+    /* Measure 4: Snare roll and crash */
+    | SSSSC--- |
+}
+
+beat:Percussion@|0|{
+    <8*>
+    | X-X-X-X- |
+    | X-X-X-X- |
+    | X-X-X-X- |
+    | X-X-X--- |
+}
+
+-> beat ->#
+`
+    },
+    {
+        id: 'program',
+        label: '$(book) Show-Program & Lyrics (配詞與節目導演腳本)',
+        description: 'Score with lyrics, credits (詞/曲/編), and triple-quoted show-program """ block',
+        detail: 'For theater, stage shows, musical plays, and songs with spoken directions.',
+        defaultFilename: 'show_program.tmd',
+        content: `::SCORE::
+** 月光小夜曲 **
+!= 96
+?= G
+<4/4>
+~ "詞：阿怪"
+~ "曲：阿怪"
+~ "編：TMD"
+
+/*
+ [Program / Stage Direction]
+ Scene: A quiet night under the pale moonlight.
+ Lead vocal enters gently with acoustic nylon guitar.
+*/
+
+verse:Vocal@|0|{
+    <4*>
+    | 5_ 1 2 3 | 2 1 2 - |
+    | 3 5 6 5 | 3 - - - |
+    | 6 1^ 6 5 | 3 2 1 - |
+    | 2 3 2 1_ | 1 - - - |
+}
+
+verse:Guitar@|0|{
+    <2*>
+    | [1] [5] | [6m] [3m] |
+    | [4] [1] | [2m] [5]  |
+    | [4] [5] | [3m] [6m] |
+    | [2m] [5] | [1]  [1]  |
+}
+
+verse:Bass@|0|{
+    <4*>
+    | 1_ - 5__ - | 6__ - 3__ - |
+    | 4__ - 1_ - | 2__ - 5__ - |
+    | 4__ - 5__ - | 3__ - 6__ - |
+    | 2__ - 5__ - | 1_ - - - |
+}
+
+-> verse ->#
+`
+    }
+];
+
 function activate(context) {
+    // 0. New TMD Score from Template
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.newFromTemplate', async (uri) => {
+        const items = TMD_TEMPLATES.map(t => ({
+            label: t.label,
+            description: t.description,
+            detail: t.detail,
+            template: t
+        }));
+
+        const picked = await vscode.window.showQuickPick(items, {
+            placeHolder: 'Select a TMD score template to create',
+            matchOnDescription: true,
+            matchOnDetail: true
+        });
+        if (!picked) return;
+
+        const selected = picked.template;
+
+        // If invoked from explorer folder context menu
+        if (uri && uri.fsPath && fs.existsSync(uri.fsPath) && fs.statSync(uri.fsPath).isDirectory()) {
+            const filename = await vscode.window.showInputBox({
+                prompt: 'Enter file name for the new TMD score',
+                value: selected.defaultFilename,
+                validateInput: (val) => {
+                    if (!val || val.trim().length === 0) return 'Filename cannot be empty';
+                    return null;
+                }
+            });
+            if (!filename) return;
+            const cleanName = filename.endsWith('.tmd') ? filename : `${filename}.tmd`;
+            const targetPath = path.join(uri.fsPath, cleanName);
+            if (fs.existsSync(targetPath)) {
+                const overwrite = await vscode.window.showWarningMessage(
+                    `File '${cleanName}' already exists. Overwrite?`,
+                    'Overwrite',
+                    'Cancel'
+                );
+                if (overwrite !== 'Overwrite') return;
+            }
+            fs.writeFileSync(targetPath, selected.content, 'utf8');
+            const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(targetPath));
+            await vscode.window.showTextDocument(doc);
+        } else {
+            // Open as new untitled document with 'tmd' language mode
+            const doc = await vscode.workspace.openTextDocument({
+                language: 'tmd',
+                content: selected.content
+            });
+            await vscode.window.showTextDocument(doc);
+        }
+    }));
+
     // 1. Export to MIDI (.mid)
     context.subscriptions.push(vscode.commands.registerCommand('tmd.exportMIDI', () => {
         const filePath = getActiveTmdFilePath();

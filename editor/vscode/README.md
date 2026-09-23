@@ -22,6 +22,7 @@ Official Visual Studio Code extension providing language support, syntax highlig
   - `tup`: Inserts a tuplet group.
   - `ch`: Inserts a chord symbol.
 - **Commands & Export Integrations** (via `tmd` CLI):
+  - `TMD: New from template` (interactive template picker for Starter, Lead Sheet, Band, Canon, Drums, and Lyrics)
   - `TMD: Format Document` (`Shift + Option + F` standard format document provider)
   - `TMD: Check Measure Consistency` (live diagnostics and warnings in Problems panel)
   - `TMD: Open Song Inspector` (interactive visual dashboard for vocal range, key metrics, timeline, and chords)

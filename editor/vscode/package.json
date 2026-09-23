@@ -20,6 +20,7 @@
     "onCommand:tmd.openMidiPlayer",
     "onCommand:tmd.openKeyboard",
     "onCommand:tmd.inspectSong",
+    "onCommand:tmd.newFromTemplate",
     "onView:tmdKeyboardView",
     "onView:tmdInspectorView"
   ],
@@ -56,6 +57,12 @@
       }
     ],
     "commands": [
+      {
+        "command": "tmd.newFromTemplate",
+        "title": "New from template",
+        "category": "TMD",
+        "icon": "$(file-add)"
+      },
       {
         "command": "tmd.exportMIDI",
         "title": "Export to MIDI (.mid)",
@@ -278,11 +285,28 @@
       ]
     },
     "menus": {
+      "file/newFile": [
+        {
+          "command": "tmd.newFromTemplate"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "tmd.newFromTemplate",
+          "when": "explorerResourceIsFolder",
+          "group": "2_workspace@1"
+        }
+      ],
       "view/title": [
+        {
+          "command": "tmd.newFromTemplate",
+          "when": "view == tmdOutlineView",
+          "group": "navigation@1"
+        },
         {
           "command": "tmd.refreshOutline",
           "when": "view == tmdOutlineView",
-          "group": "navigation"
+          "group": "navigation@2"
         }
       ],
       "view/item/context": [

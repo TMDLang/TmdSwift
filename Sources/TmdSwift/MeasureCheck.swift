@@ -275,11 +275,20 @@ public struct TMDMeasureChecker {
                             currentMeasureUnits += 1
                             currentMeasureSnippet.append(item.text)
                         }
-                    case .identifier(let value) where !value.isEmpty && value.allSatisfy({ "XxTtSsDdBbOoCc".contains($0) }):
+                    case .identifier(let value) where !value.isEmpty && value.allSatisfy({ "XxTtSsDdBbOoCc-".contains($0) }):
                         _ = advance()
-                        paragraphQuarterNotes += unitQuarterNotes
+                        let count = value.count
+                        paragraphQuarterNotes += Double(count) * unitQuarterNotes
                         if insideBar {
-                            currentMeasureUnits += 1
+                            currentMeasureUnits += count
+                            currentMeasureSnippet.append(item.text)
+                        }
+                    case .identifier(let value) where !value.isEmpty && value.allSatisfy({ $0 == "." }):
+                        _ = advance()
+                        let count = value.count
+                        paragraphQuarterNotes += Double(count) * unitQuarterNotes
+                        if insideBar {
+                            currentMeasureUnits += count
                             currentMeasureSnippet.append(item.text)
                         }
                     case .number, .positiveNumber:

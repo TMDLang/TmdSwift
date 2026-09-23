@@ -1185,3 +1185,267 @@ import TmdSkill
     #expect(frame.contains("  |     ^^^"))
     #expect(frame.contains("3 | line 3"))
 }
+
+@Test func testVSCodeScoreTemplatesAreValid() throws {
+    let templates: [(name: String, content: String)] = [
+        ("Starter", """
+        ::SCORE::
+        ** 小星星 (Twinkle Twinkle) **
+        != 100
+        ?= C
+        <4/4>
+
+        A:Lead@|0|{
+            <4*>
+            | 1 1 5 5 | 6 6 5 - |
+            | 4 4 3 3 | 2 2 1 - |
+        }
+
+        A:Piano@|0|{
+            <2*>
+            | [1] [1] | [4] [1] |
+            | [4] [1] | [5] [1] |
+        }
+
+        A:Bass@|0|{
+            <4*>
+            | 1_ - 1_ - | 4__ - 1_ - |
+            | 4__ - 1_ - | 5__ - 1_ - |
+        }
+
+        B:Lead@|0|{
+            <4*>
+            | 5 5 4 4 | 3 3 2 - |
+            | 5 5 4 4 | 3 3 2 - |
+        }
+
+        B:Piano@|0|{
+            <2*>
+            | [1] [4] | [1] [5] |
+            | [1] [4] | [1] [5] |
+        }
+
+        B:Bass@|0|{
+            <4*>
+            | 1_ - 4__ - | 1_ - 5__ - |
+            | 1_ - 4__ - | 1_ - 5__ - |
+        }
+
+        -> A -> B -> A ->#
+        """),
+        ("Blank", """
+        ::SCORE::
+        ** Untitled Song **
+        != 120
+        ?= C
+        <4/4>
+
+        intro:Piano@|0|{
+            <4*>
+            | 1 2 3 4 |
+        }
+
+        -> intro ->#
+        """),
+        ("LeadSheet", """
+        ::SCORE::
+        ** Pop Lead Sheet **
+        != 128
+        ?= C
+        <4/4>
+
+        intro:Chord@|0|{
+            <2*>
+            | [1] [5] | [6m] [4] |
+            | [1] [5] | [4]  [1] |
+        }
+
+        intro:Lead@|0|{
+            <4*>
+            | . . . . | . . . . |
+            | 1 2 3 5 | 6 5 3 1 |
+        }
+
+        verse:Chord@|0|{
+            <2*>
+            | [1] [5] | [6m] [4] |
+            | [1] [5] | [4]  [1] |
+        }
+
+        verse:Lead@|0|{
+            <4*>
+            | 1 2 3 1 | 5 5 3 - |
+            | 6 6 5 3 | 2 - - - |
+            | 1 2 3 1 | 5 5 3 - |
+            | 4 3 2 5 | 1 - - - |
+        }
+
+        chorus:Chord@|0|{
+            <2*>
+            | [4] [5] | [3m] [6m] |
+            | [2m] [5] | [1]  [1]  |
+        }
+
+        chorus:Lead@|0|{
+            <4*>
+            | 6 6 7 1^ | 7 5 3 - |
+            | 4 4 3 2  | 5 - - - |
+            | 6 6 7 1^ | 7 5 3 - |
+            | 4 3 2 5  | 1 - - - |
+        }
+
+        -> intro -> verse -> chorus ->#
+        """),
+        ("Band", """
+        ::SCORE::
+        ** Band Arrangement **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Vocal@|0|{
+            <4*>
+            | 1 2 3 5 | 6 5 3 - |
+            | 4 4 3 3 | 2 - - - |
+            | 1 2 3 5 | 6 5 3 - |
+            | 4 3 2 5 | 1 - - - |
+        }
+
+        verse:Keyboard@|0|{
+            <2*>
+            | [C] [G] | [Am] [F] |
+            | [C] [G] | [F]  [C] |
+            | [C] [G] | [Am] [F] |
+            | [F] [G] | [C]  [C] |
+        }
+
+        verse:Guitar@|0|{
+            <4*>
+            | [C] - [C] - | [G] - [G] - |
+            | [Am] - [Am] - | [F] - [F] - |
+            | [C] - [C] - | [G] - [G] - |
+            | [F] - [G] - | [C] - - - |
+        }
+
+        verse:Bass@|0|{
+            <4*>
+            | 1_ - 1_ - | 5__ - 5__ - |
+            | 6__ - 6__ - | 4__ - 4__ - |
+            | 1_ - 1_ - | 5__ - 5__ - |
+            | 4__ - 5__ - | 1_ - - - |
+        }
+
+        verse:Drums@|0|{
+            <8*>
+            | X-X-X-X- | X-X-X-X- |
+            | X-X-X-X- | X-X-X-X- |
+            | X-X-X-X- | X-X-X-X- |
+            | X-X-X-X- | S-S-C--- |
+        }
+
+        -> verse ->#
+        """),
+        ("Canon", """
+        ::SCORE::
+        ** Canon in C **
+        != 108
+        ?= C
+        <4/4>
+
+        theme:Voice1@|0|{
+            <4*>
+            | 1 2 3 1 | 1 2 3 1 |
+            | 3 4 5 - | 3 4 5 - |
+        }
+
+        theme:Voice2@|+2|{
+            <4*>
+            | 1 2 3 1 | 1 2 3 1 |
+            | 3 4 5 - | 3 4 5 - |
+        }
+
+        theme:Cello@|0|{
+            <2*>
+            | [1] [5] | [6m] [3m] |
+            | [4] [1] | [4]  [5]  |
+            | [1] [5] | [6m] [3m] |
+        }
+
+        -> theme ->#
+        """),
+        ("Drums", """
+        ::SCORE::
+        ** Drum Grooves **
+        != 120
+        ?= C
+        <4/4>
+
+        beat:Drums@|0|{
+            <8*>
+            | X-X-X-X- |
+            | B-S-B-S- |
+            | B--BS-B- |
+            | SSSSC--- |
+        }
+
+        beat:Percussion@|0|{
+            <8*>
+            | X-X-X-X- |
+            | X-X-X-X- |
+            | X-X-X-X- |
+            | X-X-X--- |
+        }
+
+        -> beat ->#
+        """),
+        ("ProgramLyrics", """
+        ::SCORE::
+        ** 月光小夜曲 **
+        != 96
+        ?= G
+        <4/4>
+        ~ "詞：阿怪"
+        ~ "曲：阿怪"
+        ~ "編：TMD"
+
+        /*
+        [Program / Stage Direction]
+        Scene: A quiet night under the pale moonlight.
+        */
+
+        verse:Vocal@|0|{
+            <4*>
+            | 5_ 1 2 3 | 2 1 2 - |
+            | 3 5 6 5 | 3 - - - |
+            | 6 1^ 6 5 | 3 2 1 - |
+            | 2 3 2 1_ | 1 - - - |
+        }
+
+        verse:Guitar@|0|{
+            <2*>
+            | [1] [5] | [6m] [3m] |
+            | [4] [1] | [2m] [5]  |
+            | [4] [5] | [3m] [6m] |
+            | [2m] [5] | [1]  [1]  |
+        }
+
+        verse:Bass@|0|{
+            <4*>
+            | 1_ - 5__ - | 6__ - 3__ - |
+            | 4__ - 1_ - | 2__ - 5__ - |
+            | 4__ - 5__ - | 3__ - 6__ - |
+            | 2__ - 5__ - | 1_ - - - |
+        }
+
+        -> verse ->#
+        """)
+    ]
+
+    for template in templates {
+        let sheet = try TmdParser.parseThrowing(string: template.content)
+        #expect(!sheet.paragraphs.isEmpty, "Template \(template.name) should have paragraphs")
+        #expect(!sheet.orders.isEmpty, "Template \(template.name) should have orders")
+        let issues = TMDMeasureChecker.check(source: template.content)
+        #expect(issues.isEmpty, "Template \(template.name) should not have measure discrepancy issues, found: \(issues)")
+    }
+}
