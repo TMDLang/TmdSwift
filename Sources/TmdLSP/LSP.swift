@@ -280,19 +280,32 @@ public struct TMDLSPCompletionEngine {
         let currentLine = lines[position.line]
         let prefix = String(currentLine.prefix(position.character))
 
-        // 1. Check for S-Expression macro completion: inside "-> (" or "("
+        // 1. Check for S-Expression macro completion: inside "-> (" or "(" or "(<word>"
         let trimmedPrefix = prefix.trimmingCharacters(in: .whitespaces)
-        if trimmedPrefix.hasSuffix("-> (") || trimmedPrefix.hasSuffix("(") {
+        let isInsideMacro: Bool = {
+            if trimmedPrefix.hasSuffix("-> (") || trimmedPrefix.hasSuffix("(") {
+                return true
+            }
+            if let lastParenIndex = prefix.lastIndex(of: "(") {
+                let afterParen = prefix[prefix.index(after: lastParenIndex)...]
+                // If there is no closing parenthesis after the opening paren, and only letters/digits typed so far
+                if !afterParen.contains(")") && !afterParen.contains(" ") && !afterParen.isEmpty {
+                    return true
+                }
+            }
+            return false
+        }()
+
+        if isInsideMacro {
             return macroSnippets.map {
-                let insert = (trimmedPrefix.hasSuffix("(") && $0.insertText.hasPrefix("("))
-                    ? String($0.insertText.dropFirst())
-                    : $0.insertText
+                let rawInsert = $0.insertText
+                let cleanInsert = rawInsert.hasPrefix("(") ? String(rawInsert.dropFirst()) : rawInsert
                 return TMDLSPCompletionItem(
                     label: $0.label,
                     kind: .snippet,
                     detail: $0.detail,
                     documentation: $0.detail,
-                    insertText: insert,
+                    insertText: cleanInsert,
                     insertTextFormat: 2 // Snippet
                 )
             }

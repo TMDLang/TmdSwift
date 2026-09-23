@@ -96,6 +96,30 @@ struct TMDLSPTests {
         let canonItem = items.first(where: { $0.label == "canon" })
         #expect(canonItem?.insertText?.hasPrefix("(") == false)
         #expect(canonItem?.insertText?.hasPrefix("canon") == true)
+
+        // Also test when user typed "(ca"
+        let sourceWithCa = """
+        ::SCORE::
+        ** Test Score **
+        != 120
+        ?= C
+        <4/4>
+
+        Theme {
+            <4*>
+            1 2 3 4
+        }
+
+        -> (ca
+        """
+        let itemsWithCa = TMDLSPCompletionEngine.complete(
+            source: sourceWithCa,
+            position: TMDLSPPosition(line: 11, character: 6)
+        )
+        let canonItemWithCa = itemsWithCa.first(where: { $0.label == "canon" })
+        #expect(canonItemWithCa != nil)
+        #expect(canonItemWithCa?.insertText?.hasPrefix("(") == false)
+        #expect(canonItemWithCa?.insertText?.hasPrefix("canon") == true)
     }
 
     @Test("Provides General MIDI 128 instrument names after colon in paragraph header")
