@@ -1,0 +1,420 @@
+#!/usr/bin/env python3
+"""
+TMD Canon Generator with Pentatonic Scale Engine & Macro / S-Expression Architecture
+Generates musically coherent, harmonious, polyphonic canon scores in TMD format using
+Pentatonic scales (五聲音階 - 宮商角徵羽 / Major & Minor Pentatonic).
+
+Pentatonic guarantees zero minor second / tritone dissonance during canonic overlap,
+making random counterpoint inherently harmonious and melodic.
+"""
+
+import argparse
+import random
+import sys
+from typing import List, Tuple, Optional
+
+
+class CanonGenerator:
+    """
+    Algorithmic generator for TMD Canons based on Pentatonic scales.
+    - Major Pentatonic: 1, 2, 3, 5, 6 (宮 商 角 徵 羽)
+    - Minor Pentatonic: 1, 3, 4, 5, 7, (羽 宮 商 角 徵 in movable-do, or 6, 1, 2, 3, 5)
+    - Harmonic foundation: Pentatonic Ground Bass (Basso Ostinato)
+    - Multi-voice canonic delays (@|+2|, @|+4| or (canon Theme ... 2))
+    - S-Expression Macro & Unrolled CLI output modes
+    """
+
+    # Major Pentatonic scale degrees (宮、商、角、徵、羽)
+    MAJOR_PENTATONIC_SCALE = [
+        "1_", "2_", "3_", "5_", "6_",
+        "1", "2", "3", "5", "6",
+        "1^", "2^", "3^", "5^", "6^",
+        "1^^"
+    ]
+
+    # Minor Pentatonic scale degrees (羽調式 / 6_ 1 2 3 5 or 1 3, 4 5 7,)
+    # If key is Am, notes are A, C, D, E, G -> 6_ 1 2 3 5 (or relative to A: 1 3 4 5 7)
+    # In TMD numbered notation relative to key:
+    # In Minor key (?= Am), 1 is A (tonic), minor pentatonic is typically represented as:
+    # 1, 3 (C), 4 (D), 5 (E), 7, (G) or standard modal degrees.
+    # For universal TMD transposition, standard Major Pentatonic is [1, 2, 3, 5, 6].
+    # Minor Pentatonic in natural degrees: [1, 3, 4, 5, 7] or [6_, 1, 2, 3, 5].
+    MINOR_PENTATONIC_SCALE = [
+        "6__", "1_", "2_", "3_", "5_",
+        "6_", "1", "2", "3", "5",
+        "6", "1^", "2^", "3^", "5^",
+        "6^"
+    ]
+
+    # Pentatonic Ground Bass archetypes (4 to 8 measures)
+    PENTATONIC_BASS_PATTERNS = {
+        # Minor key (羽調式 / Am)
+        "minor": [
+            # 6_ -> 1 -> 2 -> 3 -> 5 -> 3 -> 2 -> 1
+            ["6__", "1_", "2_", "3_", "5_", "3_", "2_", "1_"],
+            # 6_ -> 5_ -> 3_ -> 2_ -> 1_ -> 2_ -> 3_ -> 5_
+            ["6__", "5__", "3__", "2__", "1__", "2__", "3__", "5__"],
+            # 4-measure cycle: 6_ -> 2_ -> 3_ -> 6_
+            ["6__", "2__", "3__", "6__"],
+            # 4-measure cycle: 6_ -> 1_ -> 5_ -> 6_
+            ["6__", "1_", "5__", "6__"],
+        ],
+        # Major key (宮調式 / C or D)
+        "major": [
+            # 1 -> 5_ -> 6_ -> 3_ -> 4(omit/replace with 2_) -> 1 -> 5_ -> 1
+            ["1_", "5__", "6__", "3__", "2__", "1__", "5__", "1_"],
+            # 1 -> 2 -> 3 -> 5 -> 6 -> 5 -> 3 -> 2
+            ["1_", "2_", "3_", "5_", "6_", "5_", "3_", "2_"],
+            # 4-measure cycle: 1 -> 6_ -> 5_ -> 1
+            ["1_", "6__", "5__", "1_"],
+            # 4-measure cycle: 1 -> 3 -> 5 -> 2
+            ["1_", "3_", "5_", "2_"],
+        ]
+    }
+
+    # Pentatonic Chord Pillars (associated consonant tone clusters for each bass note)
+    PENTATONIC_CHORD_TONES_MAJOR = {
+        "1_": ["1", "3", "5", "1^"],
+        "2_": ["2", "5", "6", "2^"],
+        "3_": ["3", "5", "1^", "3^"],
+        "5_": ["5", "2^", "5^", "1^"],
+        "6_": ["6", "1^", "3^", "6^"],
+        "1__": ["1_", "3_", "5_", "1"],
+        "2__": ["2_", "5_", "6_", "2"],
+        "3__": ["3_", "5_", "1", "3"],
+        "5__": ["5_", "2", "5", "1"],
+        "6__": ["6_", "1", "3", "6"],
+    }
+
+    PENTATONIC_CHORD_TONES_MINOR = {
+        "6__": ["6_", "1", "3", "6"],
+        "1_": ["1", "3", "5", "1^"],
+        "2_": ["2", "5", "6", "2^"],
+        "3_": ["3", "5", "1^", "3^"],
+        "5_": ["5", "1^", "3^", "5^"],
+        "1__": ["1_", "3_", "5_", "1"],
+        "2__": ["2_", "5_", "6_", "2"],
+        "3__": ["3_", "5_", "1", "3"],
+        "5__": ["5_", "1", "3", "5"],
+    }
+
+    def __init__(
+        self,
+        title: str = "Pentatonic Canon",
+        tempo: int = 96,
+        key: str = "C",
+        time_sig: str = "4/4",
+        num_voices: int = 3,
+        offset_bars: int = 2,
+        num_variations: int = 3,
+        use_macro: bool = True,
+        seed: Optional[int] = None,
+    ):
+        self.title = title
+        self.tempo = tempo
+        self.key = key
+        self.time_sig = time_sig
+        self.num_voices = num_voices
+        self.offset_bars = offset_bars
+        self.num_variations = num_variations
+        self.use_macro = use_macro
+
+        if seed is not None:
+            random.seed(seed)
+
+        self.is_minor = "m" in self.key
+        self.scale = self.MINOR_PENTATONIC_SCALE if self.is_minor else self.MAJOR_PENTATONIC_SCALE
+        self.voice_instruments = [f"Violin{i+1}" for i in range(self.num_voices)]
+        self.bass_instrument = "Cello"
+
+    def generate_header(self) -> str:
+        mode_desc = "羽調式 (Minor Pentatonic)" if self.is_minor else "宮調式 (Major Pentatonic)"
+        return f"""::SCORE::
+** {self.title} **
+~ "composer: CanonGenerator (Pentatonic Algorithmic Engine)"
+~ "style: {mode_desc}"
+!= {self.tempo}
+?= {self.key}
+<{self.time_sig}>
+"""
+
+    def select_or_gen_bass(self) -> List[str]:
+        """Selects a pentatonic ground bass pattern."""
+        category = "minor" if self.is_minor else "major"
+        patterns = self.PENTATONIC_BASS_PATTERNS[category]
+        return list(random.choice(patterns))
+
+    def format_bass_macro(self, bass_notes: List[str]) -> Tuple[str, int]:
+        """Formats the Ground Bass as an abstract macro paragraph."""
+        total_measures = len(bass_notes)
+        lines = [
+            "/* Pentatonic Ground Bass Prototype (Basso Ostinato) */",
+            "Bass {",
+            "    <4*>",
+        ]
+        bar_chunks = [f"{note} - - -" for note in bass_notes]
+        for i in range(0, len(bar_chunks), 2):
+            lines.append(f"    | {' | '.join(bar_chunks[i:i+2])} |")
+        lines.append("}\n")
+        return "\n".join(lines), total_measures
+
+    def _get_chord_tones(self, bass_degree: str) -> List[str]:
+        mapping = self.PENTATONIC_CHORD_TONES_MINOR if self.is_minor else self.PENTATONIC_CHORD_TONES_MAJOR
+        if bass_degree in mapping:
+            return mapping[bass_degree]
+        # Fallback to general pentatonic scale
+        return self.scale[5:10]
+
+    def _step_in_scale(self, current_tone: str, max_steps: int = 2) -> str:
+        """Finds next tone by moving step-wise within the pure pentatonic scale."""
+        try:
+            idx = self.scale.index(current_tone)
+        except ValueError:
+            idx = len(self.scale) // 2
+
+        step = random.choice([-1, 1, -2, 2, 0])
+        new_idx = max(0, min(len(self.scale) - 1, idx + step))
+        return self.scale[new_idx]
+
+    def generate_theme_bars(self, bass_notes: List[str], variation_idx: int) -> List[Tuple[str, List[str]]]:
+        """
+        Generates measure units for a variation using strictly pentatonic intervals.
+        Avoids all semitone clashes (no 4/Fa or 7/Ti in major; pure pentatonic steps).
+        """
+        style = variation_idx % 4
+        measures = []
+
+        if style == 0:
+            # Quarter notes: 4 notes per bar (cantus firmus / lyrical theme)
+            for b_note in bass_notes:
+                tones = self._get_chord_tones(b_note)
+                curr = random.choice(tones)
+                bar = [curr]
+                for _ in range(3):
+                    curr = self._step_in_scale(curr, max_steps=2)
+                    bar.append(curr)
+                measures.append(" ".join(bar))
+            return [("<4*>", measures)]
+
+        elif style == 1:
+            # Eighth notes: 8 notes per bar (flowing pentatonic water melody)
+            for b_note in bass_notes:
+                tones = self._get_chord_tones(b_note)
+                curr = random.choice(tones)
+                bar = []
+                for _ in range(8):
+                    bar.append(curr)
+                    curr = self._step_in_scale(curr, max_steps=1)
+                measures.append(" ".join(bar))
+            return [("<8*>", measures)]
+
+        elif style == 2:
+            # Sixteenth notes: 16 notes per bar (pentatonic waves & turns)
+            for b_note in bass_notes:
+                tones = self._get_chord_tones(b_note)
+                groups = []
+                curr = random.choice(tones)
+                for _ in range(4):
+                    g = []
+                    for _ in range(4):
+                        g.append(curr)
+                        curr = self._step_in_scale(curr, max_steps=1)
+                    groups.append(" ".join(g))
+                measures.append("  ".join(groups))
+            return [("<16*>", measures)]
+
+        else:
+            # Syncopated & sustained pentatonic line with ties: <8*>
+            for b_note in bass_notes:
+                tones = self._get_chord_tones(b_note)
+                t1 = random.choice(tones)
+                t2 = self._step_in_scale(t1, max_steps=2)
+                t3 = random.choice(tones)
+                measures.append(f"{t1}- {t2}- {t1} 0 {t3}-")
+            return [("<8*>", measures)]
+
+    def generate_theme_section_macro(self, bass_notes: List[str], variation_idx: int) -> str:
+        """Generates one variation section as an abstract macro paragraph."""
+        var_name = "Theme" if variation_idx == 0 else f"Var{variation_idx}"
+        lines = [
+            f"/* Pentatonic Variation {variation_idx} ({var_name}) */",
+            f"{var_name} {{"
+        ]
+        subsections = self.generate_theme_bars(bass_notes, variation_idx)
+        for grid, bars in subsections:
+            lines.append(f"    {grid}")
+            for bar in bars:
+                lines.append(f"    | {bar} |")
+        lines.append("}\n")
+        return "\n".join(lines)
+
+    def generate_concrete_sections(self, bass_notes: List[str]) -> str:
+        """Generates concrete intro and outro sections in pentatonic harmony."""
+        intro_bars = " | ".join([f"{n} - - -" for n in bass_notes[:self.offset_bars]]) + " |"
+        outro_lines = [
+            "/* Concrete Pentatonic Intro & Outro */",
+            f"intro:{self.bass_instrument}@|0|{{",
+            "    <4*>",
+            f"    | {intro_bars}",
+            "}\n",
+        ]
+        
+        # Outro tonic resolution
+        tonic_bass = "6__" if self.is_minor else "1_"
+        tonic_high = "6" if self.is_minor else "1^"
+        tonic_mid = "1" if self.is_minor else "5"
+        tonic_third = "3" if self.is_minor else "3"
+
+        outro_lines.append(f"outro:{self.bass_instrument}@|0|{{ <1*> {tonic_bass}--- | }}")
+        cadence_notes = [tonic_high, tonic_mid, tonic_third]
+        for i, voice in enumerate(self.voice_instruments):
+            note = cadence_notes[i % len(cadence_notes)]
+            outro_lines.append(f"outro:{voice}@|0|{{ <1*> {note}--- | }}")
+        outro_lines.append("")
+        return "\n".join(outro_lines)
+
+    def generate_playback_flow_macro(self, var_names: List[str], bass_measures: int) -> str:
+        """Generates S-Expression playback flow."""
+        theme_sequence = f"({' '.join(var_names)})" if len(var_names) > 1 else var_names[0]
+        voice_sequence = f"({' '.join(self.voice_instruments)})"
+        total_theme_bars = len(var_names) * bass_measures
+        total_canon_bars = total_theme_bars + (self.num_voices - 1) * self.offset_bars
+        loop_count = (total_canon_bars + bass_measures - 1) // bass_measures
+
+        lines = [
+            "/* S-Expression Playback Flow */",
+            "-> intro",
+            "-> (layer",
+            f"     (canon {theme_sequence} {voice_sequence} {self.offset_bars})",
+            f"     (loop Bass {self.bass_instrument} {loop_count}))",
+            "-> outro",
+            "->#\n",
+        ]
+        return "\n".join(lines)
+
+    def generate_unrolled_score(self, bass_notes: List[str]) -> str:
+        """
+        Generates standard TMD score unrolled without macros.
+        Compatible with classical TMD compilers (e.g. TmdSwift / tmd CLI tool).
+        """
+        parts = [self.generate_header()]
+
+        # Generate all variation bars
+        var_data = []
+        for v in range(self.num_variations):
+            var_data.append(self.generate_theme_bars(bass_notes, v))
+
+        bass_measures = len(bass_notes)
+        total_theme_bars = self.num_variations * bass_measures
+        total_canon_bars = total_theme_bars + (self.num_voices - 1) * self.offset_bars
+        loop_count = (total_canon_bars + bass_measures - 1) // bass_measures
+        section_total_measures = loop_count * bass_measures
+
+        # Intro
+        parts.append(self.generate_concrete_sections(bass_notes))
+
+        # Canon section: Cello Ground Bass
+        cello_lines = [
+            f"canon:{self.bass_instrument}@|0|{{",
+            "    <4*>",
+        ]
+        for l in range(loop_count):
+            bar_chunks = [f"{n} - - -" for n in bass_notes]
+            for i in range(0, len(bar_chunks), 2):
+                cello_lines.append(f"    | {' | '.join(bar_chunks[i:i+2])} |")
+        cello_lines.append("}\n")
+        parts.append("\n".join(cello_lines))
+
+        # Canon section: Canonic voices with progressive offsets and trailing rest padding
+        for v_idx, voice in enumerate(self.voice_instruments):
+            offset = v_idx * self.offset_bars
+            voice_lines = [
+                f"canon:{voice}@|+{offset}|{{"
+            ]
+            for v_num, subsections in enumerate(var_data):
+                voice_lines.append(f"    /* Variation {v_num} */")
+                for grid, bars in subsections:
+                    voice_lines.append(f"    {grid}")
+                    for bar in bars:
+                        voice_lines.append(f"    | {bar} |")
+
+            # Trailing rests to pad until section_total_measures
+            played_measures = offset + total_theme_bars
+            remaining_measures = section_total_measures - played_measures
+            if remaining_measures > 0:
+                voice_lines.append("    <4*>")
+                for _ in range(remaining_measures):
+                    voice_lines.append("    | 0 - - - |")
+
+            voice_lines.append("}\n")
+            parts.append("\n".join(voice_lines))
+
+        # Standard Playback Flow
+        parts.append("-> intro -> canon -> outro ->#\n")
+        return "\n".join(parts)
+
+    def generate(self) -> str:
+        """Generates the score according to mode (macro vs unrolled)."""
+        bass_notes = self.select_or_gen_bass()
+        if not self.use_macro:
+            return self.generate_unrolled_score(bass_notes)
+
+        parts = [self.generate_header()]
+
+        # 1. Ground Bass
+        bass_code, bass_measures = self.format_bass_macro(bass_notes)
+        parts.append(bass_code)
+
+        # 2. Themes / Variations
+        var_names = []
+        for v in range(self.num_variations):
+            name = "Theme" if v == 0 else f"Var{v}"
+            var_names.append(name)
+            parts.append(self.generate_theme_section_macro(bass_notes, v))
+
+        # 3. Intro & Outro
+        parts.append(self.generate_concrete_sections(bass_notes))
+
+        # 4. Playback Flow
+        parts.append(self.generate_playback_flow_macro(var_names, bass_measures))
+
+        return "\n".join(parts)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="TMD Pentatonic Canon Generator (宮商角徵羽)")
+    parser.add_argument("--title", type=str, default="Pentatonic Canon", help="Score title")
+    parser.add_argument("--tempo", type=int, default=96, help="Tempo in BPM")
+    parser.add_argument("--key", type=str, default="C", help="Key signature (e.g. C, G, D, Am)")
+    parser.add_argument("--voices", type=int, default=3, help="Number of canonic voices (e.g. 3)")
+    parser.add_argument("--offset", type=int, default=2, help="Staggered delay offset in bars (e.g. 2)")
+    parser.add_argument("--variations", type=int, default=3, help="Number of variation sections")
+    parser.add_argument("--unrolled", action="store_true", help="Output unrolled TMD score without macros (CLI compiler compatible)")
+    parser.add_argument("--output", "-o", type=str, default=None, help="Output .tmd file path (default: stdout)")
+    parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducible scores")
+
+    args = parser.parse_args()
+
+    gen = CanonGenerator(
+        title=args.title,
+        tempo=args.tempo,
+        key=args.key,
+        num_voices=args.voices,
+        offset_bars=args.offset,
+        num_variations=args.variations,
+        use_macro=not args.unrolled,
+        seed=args.seed,
+    )
+
+    tmd_score = gen.generate()
+
+    if args.output:
+        with open(args.output, "w", encoding="utf-8") as f:
+            f.write(tmd_score)
+        print(f"Pentatonic canon score written to {args.output}", file=sys.stderr)
+    else:
+        print(tmd_score)
+
+
+if __name__ == "__main__":
+    main()
