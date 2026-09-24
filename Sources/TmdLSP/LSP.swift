@@ -296,10 +296,16 @@ public struct TMDLSPCompletionEngine {
             return false
         }()
 
+        let remainder = String(currentLine.dropFirst(position.character))
+        let nextChar = remainder.first
+
         if isInsideMacro {
             return macroSnippets.map {
                 let rawInsert = $0.insertText
-                let cleanInsert = rawInsert.hasPrefix("(") ? String(rawInsert.dropFirst()) : rawInsert
+                var cleanInsert = rawInsert.hasPrefix("(") ? String(rawInsert.dropFirst()) : rawInsert
+                if nextChar == ")" && cleanInsert.hasSuffix(")") {
+                    cleanInsert.removeLast()
+                }
                 return TMDLSPCompletionItem(
                     label: $0.label,
                     kind: .snippet,
@@ -342,12 +348,13 @@ public struct TMDLSPCompletionEngine {
             let sheet = TmdParser.parse(string: source)
             let keyStr = sheet?.keySignature.description ?? "C"
             let diatonicChords = getDiatonicChords(for: keyStr)
+            let appendClosingBracket = nextChar != "]"
             return diatonicChords.map {
                 TMDLSPCompletionItem(
                     label: $0,
                     kind: .value,
                     detail: "Diatonic Chord in \(keyStr)",
-                    insertText: "\($0)]"
+                    insertText: appendClosingBracket ? "\($0)]" : $0
                 )
             }
         }

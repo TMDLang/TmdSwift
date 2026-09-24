@@ -97,8 +97,8 @@ struct TMDLSPTests {
         #expect(canonItem?.insertText?.hasPrefix("(") == false)
         #expect(canonItem?.insertText?.hasPrefix("canon") == true)
 
-        // Also test when user typed "(ca"
-        let sourceWithCa = """
+        // Also test when editor auto-closed ')' so line is "-> (|)"
+        let sourceWithAutoClose = """
         ::SCORE::
         ** Test Score **
         != 120
@@ -110,16 +110,14 @@ struct TMDLSPTests {
             1 2 3 4
         }
 
-        -> (ca
+        -> ()
         """
-        let itemsWithCa = TMDLSPCompletionEngine.complete(
-            source: sourceWithCa,
-            position: TMDLSPPosition(line: 11, character: 6)
+        let itemsWithAutoClose = TMDLSPCompletionEngine.complete(
+            source: sourceWithAutoClose,
+            position: TMDLSPPosition(line: 11, character: 4) // cursor between ( and )
         )
-        let canonItemWithCa = itemsWithCa.first(where: { $0.label == "canon" })
-        #expect(canonItemWithCa != nil)
-        #expect(canonItemWithCa?.insertText?.hasPrefix("(") == false)
-        #expect(canonItemWithCa?.insertText?.hasPrefix("canon") == true)
+        let canonAutoClose = itemsWithAutoClose.first(where: { $0.label == "canon" })
+        #expect(canonAutoClose?.insertText?.hasSuffix(")") == false)
     }
 
     @Test("Provides General MIDI 128 instrument names after colon in paragraph header")
