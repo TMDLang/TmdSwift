@@ -67,34 +67,38 @@ public enum TMDPlaybackRenderer {
                 let keyOffset = KeySignature(string: value).semitoneOffset
                 state = PlaybackState(tempo: state.tempo, keyOffset: keyOffset, timeSignature: state.timeSignature)
             case .name(let name):
-                let paragraph = paragraphs.first { $0.name == name }
-                let paragraphDuration = duration(of: name, in: sheet)
-                guard let paragraph else {
+                let matchingParagraphs = paragraphs.filter { $0.name == name }
+                let paragraphDuration = duration(of: name, in: sheet, beat: state.timeSignature)
+                guard !matchingParagraphs.isEmpty else {
                     timelinePosition += paragraphDuration
                     continue
                 }
 
-                let start = timelinePosition + Double(paragraph.start) * measureDuration(for: state.timeSignature)
-                let rendered = render(
-                    paragraph: paragraph,
-                    start: start,
-                    state: state
-                )
-                events.append(contentsOf: rendered.events)
-                directives.append(contentsOf: rendered.directives)
-                state = rendered.state
-                timelinePosition += max(paragraphDuration, rendered.duration)
+                for paragraph in matchingParagraphs {
+                    let start = timelinePosition + Double(paragraph.start) * measureDuration(for: state.timeSignature)
+                    let rendered = render(
+                        paragraph: paragraph,
+                        start: start,
+                        state: state
+                    )
+                    events.append(contentsOf: rendered.events)
+                    directives.append(contentsOf: rendered.directives)
+                    state = rendered.state
+                }
+                timelinePosition += paragraphDuration
             case .macro:
                 // S-expression macros are desugared by TMDMacroEvaluator before rendering
                 break
             }
         }
 
-        // If any event starts at a negative position (e.g. lead-in measure @|-1| on the first paragraph),
-        // shift the entire timeline forward so that the earliest event starts at exactly position 0.0.
+        // Shift the entire timeline forward so that the earliest event across all instruments in the score
+        // starts at exactly position 0.0, preserving inter-instrument entrance relationships.
+        let globalMin = globalEarliestPosition(in: sheet)
         let minEventPosition = events.map(\.position).min() ?? 0.0
         let minDirectivePosition = directives.map(\.position).min() ?? 0.0
-        let earliestPosition = min(minEventPosition, minDirectivePosition)
+        let localMin = min(minEventPosition, minDirectivePosition)
+        let earliestPosition = min(globalMin, localMin)
         let offset = earliestPosition < 0.0 ? -earliestPosition : 0.0
 
         let adjustedEvents = events.map { event in
@@ -286,22 +290,68 @@ public enum TMDPlaybackRenderer {
         }
     }
 
-    /// Calculates total quarter-note duration of a section/paragraph name in a sheet.
-    public static func duration(of name: String, in sheet: Sheet) -> Double {
-        sheet.paragraphs
-            .filter { $0.name == name }
-            .map { paragraph in
-                Double(max(0, paragraph.start)) * measureDuration(for: sheet.beat)
-                    + paragraph.sections.reduce(0) { total, section in
-                        let unitDuration = 4.0 / Double(max(1, section.noteLength))
-                        return total + section.unitGroups.reduce(0) { $0 + Double(max(0, $1.length)) * unitDuration }
-                    }
+    /// Calculates total quarter-note duration of a section/paragraph name in a sheet,
+    /// measured from the section's downbeat anchor (measure 0) to the latest ending note.
+    public static func duration(of name: String, in sheet: Sheet, beat: Beat? = nil) -> Double {
+        let effectiveBeat = beat ?? sheet.beat
+        let matching = sheet.paragraphs.filter { $0.name == name }
+        guard !matching.isEmpty else { return 0.0 }
+
+        let ends = matching.map { paragraph in
+            let startBeats = Double(paragraph.start) * measureDuration(for: effectiveBeat)
+            let noteDuration = paragraph.sections.reduce(0.0) { total, section in
+                let unitDuration = 4.0 / Double(max(1, section.noteLength))
+                return total + section.unitGroups.reduce(0.0) { $0 + Double(max(0, $1.length)) * unitDuration }
             }
-            .max() ?? 0
+            return startBeats + noteDuration
+        }
+        return max(0.0, ends.max() ?? 0.0)
     }
 
     /// Calculates measure duration in quarter notes for a given beat signature.
     public static func measureDuration(for beat: Beat) -> Double {
         Double(max(1, beat.count)) * 4.0 / Double(max(1, beat.noteValue))
+    }
+
+    /// Calculates the global negative offset across all instruments in the score orders,
+    /// ensuring all tracks share the exact same temporal alignment.
+    public static func globalEarliestPosition(in sheet: Sheet) -> Double {
+        let orders = sheet.orders.isEmpty
+            ? sheet.paragraphs.map(\.name).reduce(into: [String]()) { names, name in
+                if !names.contains(name) { names.append(name) }
+            }.map(Order.name)
+            : sheet.orders
+        var state = PlaybackState(
+            tempo: sheet.speed > 0 ? sheet.speed : 120,
+            keyOffset: sheet.keySignature.semitoneOffset,
+            timeSignature: sheet.beat
+        )
+        var timelinePosition = 0.0
+        var minPosition = 0.0
+
+        for order in orders {
+            switch order {
+            case .relative(let value):
+                if let delta = Int(value.replacingOccurrences(of: "+", with: "")) {
+                    state = PlaybackState(tempo: state.tempo, keyOffset: state.keyOffset + delta, timeSignature: state.timeSignature)
+                }
+            case .absolute(let value):
+                let keyOffset = KeySignature(string: value).semitoneOffset
+                state = PlaybackState(tempo: state.tempo, keyOffset: keyOffset, timeSignature: state.timeSignature)
+            case .name(let name):
+                let matchingParagraphs = sheet.paragraphs.filter { $0.name == name }
+                let paragraphDuration = duration(of: name, in: sheet, beat: state.timeSignature)
+                for paragraph in matchingParagraphs {
+                    let start = timelinePosition + Double(paragraph.start) * measureDuration(for: state.timeSignature)
+                    if start < minPosition {
+                        minPosition = start
+                    }
+                }
+                timelinePosition += paragraphDuration
+            case .macro:
+                break
+            }
+        }
+        return minPosition
     }
 }

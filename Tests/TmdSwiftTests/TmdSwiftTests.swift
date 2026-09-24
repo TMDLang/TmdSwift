@@ -622,6 +622,263 @@ import TmdSkill
     }
 }
 
+@Test func testStaggeredEntranceWithLeadInPickup() throws {
+    let tmd = """
+    ::SCORE::
+    ** Staggered LeadIn **
+    != 120
+    ?= C
+    <4/4>
+
+    A:Vocal@|-1|{
+        <4*>
+        | 0 0 3 1 |
+        | 5 6 5 4 |
+    }
+
+    A:Piano@|-1|{
+        <4*>
+        | 0 0 0 0 |
+        | 1 2 3 4 |
+    }
+
+    A:Violin@|0|{
+        <4*>
+        | 0 0 0 0 |
+        | 5 6 7 1 |
+    }
+
+    -> A ->#
+    """
+    let sheet = try #require(TmdParser.parse(string: tmd))
+
+    // 1. Test section-filtered playback (as used in VS Code Play Section / Preview)
+    let sectionFiltered = Sheet(
+        name: sheet.name,
+        speed: sheet.speed,
+        keySignature: sheet.keySignature,
+        beat: sheet.beat,
+        paragraphs: sheet.paragraphs.filter { $0.name == "A" },
+        orders: [.name("A")],
+        metadata: sheet.metadata
+    )
+
+    let vocalTimeline = TMDPlaybackRenderer.render(sheet: sectionFiltered, instrument: "Vocal")
+    let pianoTimeline = TMDPlaybackRenderer.render(sheet: sectionFiltered, instrument: "Piano")
+    let violinTimeline = TMDPlaybackRenderer.render(sheet: sectionFiltered, instrument: "Violin")
+
+    let vocalNotes = vocalTimeline.events.filter { if case .note = $0.content { return true } else { return false } }
+    let pianoNotes = pianoTimeline.events.filter { if case .note = $0.content { return true } else { return false } }
+    let violinNotes = violinTimeline.events.filter { if case .note = $0.content { return true } else { return false } }
+
+    // Vocal starts pickup at beat 2.0 (Bar -1, beat 3)
+    #expect(vocalNotes.first?.position == 2.0)
+    // Vocal bar 0 note '5' starts at beat 4.0
+    #expect(vocalNotes[2].position == 4.0)
+
+    // Piano starts at beat 4.0 (Bar 0, exactly aligned with Vocal bar 0)
+    #expect(pianoNotes.first?.position == 4.0)
+
+    // Violin was declared at @|0| with 1 bar of rest: its first note must be at beat 8.0 (Bar 1),
+    // NOT at beat 4.0!
+    #expect(violinNotes.first?.position == 8.0, "Violin at @|0| with 1 bar rest must enter at beat 8.0, not be desynced to beat 4.0")
+}
+
+@Test func testMultiSectionWithLeadInPickupOverlap() throws {
+    let tmd = """
+    ::SCORE::
+    ** Overlapping Sections **
+    != 120
+    ?= C
+    <4/4>
+
+    A:Piano@|0|{
+        <4*>
+        | 1 2 3 4 |
+        | 5 6 7 1 |
+    }
+
+    B:Vocal@|-1|{
+        <4*>
+        | 0 0 3 4 |
+        | 5 6 7 1 |
+    }
+
+    B:Piano@|0|{
+        <4*>
+        | 1 2 3 4 |
+    }
+
+    -> A -> B ->#
+    """
+    let sheet = try #require(TmdParser.parse(string: tmd))
+
+    let pianoTimeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+    let vocalTimeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Vocal")
+
+    let pianoNotes = pianoTimeline.events.filter { if case .note = $0.content { return true } else { return false } }
+    let vocalNotes = vocalTimeline.events.filter { if case .note = $0.content { return true } else { return false } }
+
+    // Section A Piano: 8 notes across beats 0.0..<8.0
+    #expect(pianoNotes[0].position == 0.0)
+    #expect(pianoNotes[7].position == 7.0)
+
+    // Section B Piano starts at beat 8.0
+    #expect(pianoNotes[8].position == 8.0)
+
+    // Section B Vocal has pickup at @|-1|: measure starts at beat 4.0, rests at beats 4.0 & 5.0,
+    // so first note '3' starts at beat 6.0 (overlapping Section A's second measure!)
+    #expect(vocalNotes[0].position == 6.0)
+    #expect(vocalNotes[1].position == 7.0)
+    // Section B Vocal measure 0 starts at beat 8.0
+    #expect(vocalNotes[2].position == 8.0)
+}
+
+@Test func testScoreStartingWithNegativePickupShiftedToZero() throws {
+    let tmd = """
+    ::SCORE::
+    ** Score With Initial Pickup **
+    != 120
+    ?= C
+    <4/4>
+
+    Intro:Vocal@|-1|{
+        <4*>
+        | 0 0 3 4 |
+        | 5 6 7 1 |
+    }
+
+    Intro:Piano@|0|{
+        <4*>
+        | 1 2 3 4 |
+    }
+
+    Verse:Piano@|0|{
+        <4*>
+        | 5 6 7 1 |
+    }
+
+    -> Intro -> Verse ->#
+    """
+    let sheet = try #require(TmdParser.parse(string: tmd))
+
+    let vocalTimeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Vocal")
+    let pianoTimeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+
+    let vocalNotes = vocalTimeline.events.filter { if case .note = $0.content { return true } else { return false } }
+    let pianoNotes = pianoTimeline.events.filter { if case .note = $0.content { return true } else { return false } }
+
+    // Global earliest note was at beat -2.0 (Bar -1, beat 2). Entire score is shifted by +4.0 (1 measure):
+    // Bar -1 starts at 0.0, so pickup note '3' starts at beat 2.0.
+    #expect(vocalNotes[0].position == 2.0)
+    #expect(vocalNotes[1].position == 3.0)
+    // Bar 0 starts at beat 4.0
+    #expect(vocalNotes[2].position == 4.0)
+
+    // Intro Piano@|0| starts at beat 4.0
+    #expect(pianoNotes[0].position == 4.0)
+
+    // Intro has 2 measures total from -1 to 1 (Intro ends at bar 1, which is beat 8.0 from pickup, or 4.0 after bar 0).
+    // Verse Piano@|0| starts at beat 8.0
+    #expect(pianoNotes[4].position == 8.0)
+}
+
+@Test func testHuoxiangjiStaggeredEntranceAndSectionPreview() throws {
+    let tmd = """
+    ::SCORE::
+    ** 藿香薊 **
+    != 120
+    ?= E
+    <4/4>
+
+    /* Intro */
+
+    Intro:Violin@|-1| {
+        <4 *>
+        | 0 0 0 5 |
+        | 1^ 5 6 6 | (6 7)%(-) 1^ 7 6 | 5 6 5 (5 5)%(-) | 5 (5 6)%(-) 5 5 |
+        | 1^ 5 6 6 | (6 7)%(-) 1^ 7 6 | 7 1^ 1^ - | - - - - |
+    }
+
+    Intro:Piano@|7| {
+        <4*>
+        | 0 0 1 1 |
+        | (1 2)%(-) 3 3 2 | (2 3)%(-) 2 1 1 | (1 2)%(-) 3 3 2 | (2 7_)%(-) 5_ 1 - |
+        | - - - - |
+    }
+
+    /* A */
+
+    A1:Vocal@|-1| {
+        <4*>
+        | 0 0 3 1 |
+        | 5 6 5 4 | 3 - - - | - - - - | 0 0 1 3 |
+        | 2 (3 2)%(-) 1 2 | 3 - - - | - - - - | 0 0 3 1 |
+        | 5 6 5 4 | 3 - - - | - - - - | 0 0 1 3 |
+        | 3 2 2 1 | 1 - - - | - - - - | 0 5 1^ 5 |
+    }
+
+    A1:Piano@|-1| {
+        <4*>
+        | 0 0 0 0 |
+        | 0 0 0 0 | 0 (3 3 )%(-) 3 (3 3 )%(-) | 3 (3 3 )%(-) 3 2 | 1 - - - |
+        | 0 0 0 0 | 0 (3 3 )%(-) 3 (3 3 )%(-) | 3 (3 3 )%(-) 3 2 | 1 - - - |
+        | 0 0 0 0 | 0 (3 3 )%(-) 3 (3 3 )%(-) | 3 (3 3 )%(-) 3 2 | 1 - - - |
+        | 0 0 0 0 | 0 (3 3 )%(-) 3 (3 3 )%(-) | 3 (3 3 )%(-) 3 2 | 1 - - - |
+    }
+
+    A1:Violin@|0| {
+        <4 *>
+        | 0 0 0 0 |
+    }
+
+    -> Intro -> A1 ->#
+    """
+    let sheet = try #require(TmdParser.parse(string: tmd))
+
+    // 1. Previewing Section A1 (like clicking Play Section on A1 in VS Code)
+    let a1FilteredSheet = Sheet(
+        name: sheet.name,
+        speed: sheet.speed,
+        keySignature: sheet.keySignature,
+        beat: sheet.beat,
+        paragraphs: sheet.paragraphs.filter { $0.name == "A1" },
+        orders: [.name("A1")],
+        metadata: sheet.metadata
+    )
+
+    let a1VocalTimeline = TMDPlaybackRenderer.render(sheet: a1FilteredSheet, instrument: "Vocal")
+    let a1PianoTimeline = TMDPlaybackRenderer.render(sheet: a1FilteredSheet, instrument: "Piano")
+    let a1ViolinTimeline = TMDPlaybackRenderer.render(sheet: a1FilteredSheet, instrument: "Violin")
+
+    let a1VocalNotes = a1VocalTimeline.events.filter { if case .note = $0.content { return true } else { return false } }
+    let a1PianoNotes = a1PianoTimeline.events.filter { if case .note = $0.content { return true } else { return false } }
+
+    // Vocal starts pickup at beat 2.0 (Bar -1, beat 2)
+    #expect(a1VocalNotes.first?.position == 2.0)
+    // Vocal bar 0 note '5' starts at beat 4.0
+    #expect(a1VocalNotes[2].position == 4.0)
+
+    // Piano has rest in bar -1 and bar 0, its first note starts at bar 1 (beat 9.0)
+    #expect(a1PianoNotes.first?.position == 9.0)
+
+    // Violin at @|0| with 1 bar rest: its event rests during beats 4.0..<8.0.
+    // Ensure violin timeline starts at beat 4.0 (measure 0), not beat 0.0!
+    #expect(a1ViolinTimeline.events.first?.position == 4.0)
+
+    // 2. Full Song: Intro ends at measure 13 (beat 56.0 with the 1-measure pickup shift).
+    // Section A1 starts at measure 13 (beat 56.0).
+    // A1:Vocal@|-1| starts at measure 12 (beat 52.0), overlapping Intro Piano!
+    let fullVocalTimeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Vocal")
+    let fullVocalNotes = fullVocalTimeline.events.filter { if case .note = $0.content { return true } else { return false } }
+    // Full song shifted by +4.0 (Intro Violin@|-1|).
+    // Intro ends at bar 13 -> beat 4.0 + 13 * 4.0 = 56.0.
+    // A1:Vocal@|-1| starts at 56.0 - 4.0 = 52.0. Pickup notes '3' and '1' are at beat 54.0 and 55.0.
+    #expect(fullVocalNotes.first?.position == 54.0)
+}
+
+
+
 @Test func testLegacySectionMarkerSyntax() throws {
     let tmd = """
     ::SCORE:: ** Legacy ** != 120 ?= C <4/4>
