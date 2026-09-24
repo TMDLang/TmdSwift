@@ -63,11 +63,19 @@ public enum TMDMacroEvaluator {
         return sections.map { section in
             let newGroups = section.unitGroups.map { group in
                 let newUnits = group.units.map { unit -> Unit in
-                    if case .note(let note) = unit {
+                    switch unit {
+                    case .note(let note):
                         let curTotal = noteToTotalSemitones(note)
                         return .note(totalSemitonesToNote(curTotal + semitones))
+                    case .multiNote(let notes):
+                        let newNotes = notes.map { note in
+                            let curTotal = noteToTotalSemitones(note)
+                            return totalSemitonesToNote(curTotal + semitones)
+                        }
+                        return .multiNote(newNotes)
+                    default:
+                        return unit
                     }
-                    return unit
                 }
                 return UnitGroup(units: newUnits, length: group.length)
             }
@@ -100,6 +108,9 @@ public enum TMDMacroEvaluator {
                         if case .note(let note) = u {
                             axis = noteToTotalSemitones(note)
                             break outer
+                        } else if case .multiNote(let notes) = u, let firstNote = notes.first {
+                            axis = noteToTotalSemitones(firstNote)
+                            break outer
                         }
                     }
                 }
@@ -113,13 +124,23 @@ public enum TMDMacroEvaluator {
         return sections.map { s in
             let newGroups = s.unitGroups.map { g in
                 let newUnits = g.units.map { u -> Unit in
-                    if case .note(let note) = u {
+                    switch u {
+                    case .note(let note):
                         let origSemitones = noteToTotalSemitones(note)
                         let diff = origSemitones - axis
                         let invertedSemitones = axis - diff
                         return .note(totalSemitonesToNote(invertedSemitones))
+                    case .multiNote(let notes):
+                        let newNotes = notes.map { note in
+                            let origSemitones = noteToTotalSemitones(note)
+                            let diff = origSemitones - axis
+                            let invertedSemitones = axis - diff
+                            return totalSemitonesToNote(invertedSemitones)
+                        }
+                        return .multiNote(newNotes)
+                    default:
+                        return u
                     }
-                    return u
                 }
                 return UnitGroup(units: newUnits, length: g.length)
             }
@@ -131,12 +152,23 @@ public enum TMDMacroEvaluator {
         sections.map { s in
             let newGroups = s.unitGroups.map { g in
                 let newUnits = g.units.map { u -> Unit in
-                    if case .note(let note) = u {
+                    switch u {
+                    case .note(let note):
                         if (note.degree == .e || note.degree == .a || note.degree == .b) && note.accidental == .natural {
                             return .note(Note(accidental: .flat, degree: note.degree, octave: note.octave))
                         }
+                        return u
+                    case .multiNote(let notes):
+                        let newNotes = notes.map { note in
+                            if (note.degree == .e || note.degree == .a || note.degree == .b) && note.accidental == .natural {
+                                return Note(accidental: .flat, degree: note.degree, octave: note.octave)
+                            }
+                            return note
+                        }
+                        return .multiNote(newNotes)
+                    default:
+                        return u
                     }
-                    return u
                 }
                 return UnitGroup(units: newUnits, length: g.length)
             }
@@ -148,12 +180,23 @@ public enum TMDMacroEvaluator {
         sections.map { s in
             let newGroups = s.unitGroups.map { g in
                 let newUnits = g.units.map { u -> Unit in
-                    if case .note(let note) = u {
+                    switch u {
+                    case .note(let note):
                         if (note.degree == .e || note.degree == .a || note.degree == .b) && note.accidental == .flat {
                             return .note(Note(accidental: .natural, degree: note.degree, octave: note.octave))
                         }
+                        return u
+                    case .multiNote(let notes):
+                        let newNotes = notes.map { note in
+                            if (note.degree == .e || note.degree == .a || note.degree == .b) && note.accidental == .flat {
+                                return Note(accidental: .natural, degree: note.degree, octave: note.octave)
+                            }
+                            return note
+                        }
+                        return .multiNote(newNotes)
+                    default:
+                        return u
                     }
-                    return u
                 }
                 return UnitGroup(units: newUnits, length: g.length)
             }

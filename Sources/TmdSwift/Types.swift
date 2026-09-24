@@ -396,6 +396,9 @@ public enum Unit: Equatable {
 
     /// A percussion pattern using the original TMD character vocabulary.
     case percussion(String)
+
+    /// A multi-note group (dyad, polyphonic cluster, or non-chord simultaneous notes) connected by `+` (e.g. `1+3`).
+    case multiNote([Note])
 }
 
 /// A rhythmic unit group or tuplet grouping.

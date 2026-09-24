@@ -110,6 +110,8 @@ extension Unit {
             "0"
         case .percussion(let pattern):
             pattern
+        case .multiNote(let notes):
+            notes.map { $0.format() }.joined(separator: "+")
         }
     }
 }
@@ -120,7 +122,13 @@ extension UnitGroup {
         if units.count == 1 && length == 1 {
             return units[0].format()
         } else {
-            let unitsStr = units.map { $0.format() }.joined()
+            let hasMultiNoteOrChord = units.contains {
+                if case .multiNote = $0 { return true }
+                if case .chord = $0 { return true }
+                return false
+            }
+            let separator = hasMultiNoteOrChord ? " " : ""
+            let unitsStr = units.map { $0.format() }.joined(separator: separator)
             let lengthStr = String(repeating: "-", count: length)
             return "(\(unitsStr))%(\(lengthStr))"
         }

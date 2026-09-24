@@ -284,14 +284,25 @@ public struct TMDRefactor {
             let clonedSections = orig.sections.map { sec in
                 let clonedGroups = sec.unitGroups.map { g in
                     let clonedUnits = g.units.map { u -> Unit in
-                        if case .note(let note) = u {
+                        switch u {
+                        case .note(let note):
                             return .note(Note(
                                 accidental: note.accidental,
                                 degree: note.degree,
                                 octave: note.octave + octaveShift
                             ))
+                        case .multiNote(let notes):
+                            let newNotes = notes.map { note in
+                                Note(
+                                    accidental: note.accidental,
+                                    degree: note.degree,
+                                    octave: note.octave + octaveShift
+                                )
+                            }
+                            return .multiNote(newNotes)
+                        default:
+                            return u
                         }
-                        return u
                     }
                     return UnitGroup(units: clonedUnits, length: g.length)
                 }
@@ -352,7 +363,8 @@ public struct TMDRefactor {
             let clonedSections = orig.sections.map { sec in
                 let clonedGroups = sec.unitGroups.map { g in
                     let clonedUnits = g.units.map { u -> Unit in
-                        if case .note(let note) = u {
+                        switch u {
+                        case .note(let note):
                             let currentDeg = note.degree.rawValue // 1..7
                             let zeroIndexed = currentDeg - 1 // 0..6
                             let newZero = zeroIndexed + steps
@@ -364,8 +376,24 @@ public struct TMDRefactor {
                                 degree: newDegree,
                                 octave: note.octave + octaveDelta
                             ))
+                        case .multiNote(let notes):
+                            let newNotes = notes.map { note in
+                                let currentDeg = note.degree.rawValue
+                                let zeroIndexed = currentDeg - 1
+                                let newZero = zeroIndexed + steps
+                                let newDegVal = (((newZero % 7) + 7) % 7) + 1
+                                let octaveDelta = Int(floor(Double(newZero) / 7.0))
+                                let newDegree = ScaleDegree(rawValue: newDegVal) ?? note.degree
+                                return Note(
+                                    accidental: note.accidental,
+                                    degree: newDegree,
+                                    octave: note.octave + octaveDelta
+                                )
+                            }
+                            return .multiNote(newNotes)
+                        default:
+                            return u
                         }
-                        return u
                     }
                     return UnitGroup(units: clonedUnits, length: g.length)
                 }

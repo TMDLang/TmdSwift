@@ -1490,3 +1490,116 @@ import TmdSkill
         #expect(issues.isEmpty, "Template \(template.name) should not have measure discrepancy issues, found: \(issues)")
     }
 }
+
+@Test("Test multi-note dyad syntax 1+3 2+4 parsing and formatting")
+func testMultiNoteParsingAndFormatting() throws {
+    let source = """
+    ::SCORE::
+    ** MultiNote **
+    != 120
+    ?= C
+    <4/4>
+
+    main:Piano@|0|{
+        <4*>
+        | 1+3 2+4 3+5 1^+3 |
+    }
+
+    -> main ->#
+    """
+    let sheet = try TmdParser.parseThrowing(string: source)
+    #expect(sheet.paragraphs.count == 1)
+    let section = sheet.paragraphs[0].sections[0]
+    #expect(section.unitGroups.count == 4)
+
+    // Verify first unit group has multiNote with [1, 3]
+    guard case .multiNote(let notes1) = section.unitGroups[0].units[0] else {
+        Issue.record("Expected .multiNote, got \(section.unitGroups[0].units[0])")
+        return
+    }
+    #expect(notes1.count == 2)
+    #expect(notes1[0].degree == .c)
+    #expect(notes1[1].degree == .e)
+
+    // Verify formatting preserves 1+3
+    let formatted = section.unitGroups[0].format()
+    #expect(formatted == "1+3")
+
+    // Check MeasureChecker treats each multi-note as 1 unit in <4*>
+    let issues = TMDMeasureChecker.check(source: source)
+    #expect(issues.isEmpty, "MeasureChecker should treat 1+3 as 1 unit, found issues: \(issues)")
+
+    // Check PlaybackTimeline emits both notes at the same position and duration
+    let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+    let noteEvents = timeline.events.filter { if case .note = $0.content { return true } else { return false } }
+    #expect(noteEvents.count == 8) // 4 beats * 2 notes each = 8 note events
+    #expect(noteEvents[0].position == 0.0)
+    #expect(noteEvents[1].position == 0.0)
+    #expect(noteEvents[0].duration == 1.0)
+    #expect(noteEvents[1].duration == 1.0)
+}
+
+@Test("Test multi-note with tie extension")
+func testMultiNoteTieExtension() throws {
+    let source = """
+    ::SCORE::
+    ** MultiNote Tie **
+    != 120
+    ?= C
+    <4/4>
+
+    main:Piano@|0|{
+        <4*>
+        | 1+5 - - - |
+    }
+
+    -> main ->#
+    """
+    let sheet = try TmdParser.parseThrowing(string: source)
+    let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+    let noteEvents = timeline.events.filter { if case .note = $0.content { return true } else { return false } }
+    #expect(noteEvents.count == 2)
+    #expect(noteEvents[0].position == 0.0)
+    #expect(noteEvents[0].duration == 4.0) // 1 sustained for 4 beats
+    #expect(noteEvents[1].position == 0.0)
+    #expect(noteEvents[1].duration == 4.0) // 5 sustained for 4 beats
+}
+
+@Test("Test multi-note inside tuplet")
+func testMultiNoteInsideTuplet() throws {
+    let source = """
+    ::SCORE::
+    ** MultiNote Tuplet **
+    != 120
+    ?= C
+    <4/4>
+
+    main:Piano@|0|{
+        <4*>
+        | (1+3 2+4)%(--) 5 - |
+    }
+
+    -> main ->#
+    """
+    let sheet = try TmdParser.parseThrowing(string: source)
+    let section = sheet.paragraphs[0].sections[0]
+    #expect(section.unitGroups.count == 3)
+    let tuplet = section.unitGroups[0]
+    #expect(tuplet.length == 2)
+    #expect(tuplet.units.count == 2)
+    if case .multiNote(let notes) = tuplet.units[0] {
+        #expect(notes.count == 2)
+    } else {
+        Issue.record("Expected multiNote in tuplet")
+    }
+
+    let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+    let noteEvents = timeline.events.filter { if case .note = $0.content { return true } else { return false } }
+    // (1+3 2+4)%(--) => 2 notes at 0.0 (dur 1.0), 2 notes at 1.0 (dur 1.0); then 5 - => 1 note at 2.0 (dur 2.0)
+    #expect(noteEvents.count == 5)
+    #expect(noteEvents[0].position == 0.0 && noteEvents[0].duration == 1.0)
+    #expect(noteEvents[1].position == 0.0 && noteEvents[1].duration == 1.0)
+    #expect(noteEvents[2].position == 1.0 && noteEvents[2].duration == 1.0)
+    #expect(noteEvents[3].position == 1.0 && noteEvents[3].duration == 1.0)
+    #expect(noteEvents[4].position == 2.0 && noteEvents[4].duration == 2.0)
+}

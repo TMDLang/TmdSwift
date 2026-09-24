@@ -155,41 +155,56 @@ public enum TMDPlaybackRenderer {
                 if activeUnits.isEmpty {
                     // All units in group are ties
                     if !events.isEmpty {
-                        // Extend the duration of the most recent note or chord
-                        let last = events.removeLast()
-                        events.append(PlaybackEvent(
-                            position: last.position,
-                            duration: last.duration + groupDuration,
-                            content: last.content,
-                            state: last.state
-                        ))
+                        // Extend the duration of the most recent note(s) or chord
+                        // If multiple events occurred at the same position, extend all of them (e.g. multiNote)
+                        let lastPos = events.last!.position
+                        var i = events.count - 1
+                        while i >= 0 && abs(events[i].position - lastPos) < 1e-6 {
+                            let ev = events[i]
+                            events[i] = PlaybackEvent(
+                                position: ev.position,
+                                duration: ev.duration + groupDuration,
+                                content: ev.content,
+                                state: ev.state
+                            )
+                            i -= 1
+                        }
                     } else {
                         // Leading tie with no preceding note acts as rest
                         events.append(PlaybackEvent(position: position, duration: groupDuration, content: .rest, state: state))
                     }
                 } else {
                     let baseSlotDuration = groupDuration / Double(max(1, group.units.count))
-                    var currentEventIndex = -1
+                    var currentEventIndices: [Int] = []
 
                     for (idx, unit) in group.units.enumerated() {
                         if unit == .tie {
-                            if currentEventIndex >= 0 {
-                                let ev = events[currentEventIndex]
-                                events[currentEventIndex] = PlaybackEvent(
-                                    position: ev.position,
-                                    duration: ev.duration + baseSlotDuration,
-                                    content: ev.content,
-                                    state: ev.state
-                                )
+                            if !currentEventIndices.isEmpty {
+                                for evIdx in currentEventIndices {
+                                    let ev = events[evIdx]
+                                    events[evIdx] = PlaybackEvent(
+                                        position: ev.position,
+                                        duration: ev.duration + baseSlotDuration,
+                                        content: ev.content,
+                                        state: ev.state
+                                    )
+                                }
                             } else if !events.isEmpty {
-                                let last = events.removeLast()
-                                events.append(PlaybackEvent(
-                                    position: last.position,
-                                    duration: last.duration + baseSlotDuration,
-                                    content: last.content,
-                                    state: last.state
-                                ))
-                                currentEventIndex = events.count - 1
+                                let lastPos = events.last!.position
+                                var extendedIndices: [Int] = []
+                                var i = events.count - 1
+                                while i >= 0 && abs(events[i].position - lastPos) < 1e-6 {
+                                    let ev = events[i]
+                                    events[i] = PlaybackEvent(
+                                        position: ev.position,
+                                        duration: ev.duration + baseSlotDuration,
+                                        content: ev.content,
+                                        state: ev.state
+                                    )
+                                    extendedIndices.append(i)
+                                    i -= 1
+                                }
+                                currentEventIndices = extendedIndices
                             } else {
                                 events.append(PlaybackEvent(
                                     position: position + Double(idx) * baseSlotDuration,
@@ -197,18 +212,34 @@ public enum TMDPlaybackRenderer {
                                     content: .rest,
                                     state: state
                                 ))
-                                currentEventIndex = events.count - 1
+                                currentEventIndices = [events.count - 1]
                             }
                         } else {
-                            if let content = content(of: unit) {
-                                events.append(PlaybackEvent(
-                                    position: position + Double(idx) * baseSlotDuration,
-                                    duration: baseSlotDuration,
-                                    content: content,
-                                    state: state
-                                ))
-                                currentEventIndex = events.count - 1
+                            let slotPosition = position + Double(idx) * baseSlotDuration
+                            var newIndices: [Int] = []
+                            switch unit {
+                            case .multiNote(let notes):
+                                for note in notes {
+                                    events.append(PlaybackEvent(
+                                        position: slotPosition,
+                                        duration: baseSlotDuration,
+                                        content: .note(note),
+                                        state: state
+                                    ))
+                                    newIndices.append(events.count - 1)
+                                }
+                            default:
+                                if let content = content(of: unit) {
+                                    events.append(PlaybackEvent(
+                                        position: slotPosition,
+                                        duration: baseSlotDuration,
+                                        content: content,
+                                        state: state
+                                    ))
+                                    newIndices.append(events.count - 1)
+                                }
                             }
+                            currentEventIndices = newIndices
                         }
                     }
                 }
@@ -233,6 +264,7 @@ public enum TMDPlaybackRenderer {
         case .chord(let chord): .chord(chord)
         case .rest: .rest
         case .percussion(let pattern): .percussion(pattern)
+        case .multiNote: nil
         case .tie: nil
         }
     }

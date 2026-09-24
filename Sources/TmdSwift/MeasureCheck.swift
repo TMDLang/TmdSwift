@@ -268,7 +268,36 @@ public struct TMDMeasureChecker {
 
                     // Check for standard units: note, chord, tie, percussion, rest, drum identifiers
                     switch item.token {
-                    case .note, .chord, .tie, .percussion:
+                    case .note:
+                        var snippet = item.text
+                        _ = advance()
+                        while pos < tokensWithRanges.count {
+                            if current()?.token == .plus {
+                                if let plusTok = advance() {
+                                    snippet += plusTok.text
+                                }
+                                if let nextTok = current(), case .note = nextTok.token {
+                                    snippet += nextTok.text
+                                    _ = advance()
+                                } else if let nextTok = current(), case .number = nextTok.token {
+                                    snippet += nextTok.text
+                                    _ = advance()
+                                } else {
+                                    break
+                                }
+                            } else if let nextTok = current(), case .positiveNumber = nextTok.token {
+                                snippet += nextTok.text
+                                _ = advance()
+                            } else {
+                                break
+                            }
+                        }
+                        paragraphQuarterNotes += unitQuarterNotes
+                        if insideBar {
+                            currentMeasureUnits += 1
+                            currentMeasureSnippet.append(snippet)
+                        }
+                    case .chord, .tie, .percussion:
                         _ = advance()
                         paragraphQuarterNotes += unitQuarterNotes
                         if insideBar {

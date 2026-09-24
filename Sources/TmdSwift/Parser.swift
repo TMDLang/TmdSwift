@@ -35,6 +35,7 @@ public enum Token: Equatable, Sendable {
     case metadata(String, String)     // metadata key and value
     case programText(String)           // triple-quoted show-program body
     case tie                         // -
+    case plus                        // +
     case identifier(String)          // e.g. Piano, intro, C, A'
     case eof
 
@@ -70,6 +71,7 @@ public enum Token: Equatable, Sendable {
         case .metadata: return "metadata"
         case .programText: return "program block"
         case .tie: return "-"
+        case .plus: return "+"
         case .identifier: return "identifier"
         case .eof: return "end of input"
         }
@@ -502,6 +504,9 @@ public final class Lexer {
         case "-":
             advance()
             return .tie
+        case "+" where !(peek(offset: 1).map { $0 >= "0" && $0 <= "9" } ?? false):
+            advance()
+            return .plus
         case "[":
             // Chord: [Cmaj7]
             advance() // [
@@ -588,7 +593,7 @@ public final class Lexer {
 
         // Identifier or text token (allows hyphens internal to names like Chorus-1)
         var idStr = ""
-        let stops = Set(" \t\r\n:!=?*<>/|{}()[]@#,".unicodeScalars)
+        let stops = Set(" \t\r\n:!=?*<>/|{}()[]@#,+".unicodeScalars)
         while !isAtEnd {
             guard let cur = peek() else { break }
             if stops.contains(cur) {
@@ -1138,6 +1143,33 @@ private struct TokenParser {
         switch current {
         case .note(let n):
             advance()
+            let isNextPositiveNumber: Bool = {
+                if case .positiveNumber = current { return true }
+                return false
+            }()
+            if current == .plus || isNextPositiveNumber {
+                var notes = [n]
+                while true {
+                    if match(.plus) {
+                        skipPipes()
+                        if case .note(let nextNote) = current {
+                            notes.append(nextNote)
+                            advance()
+                        } else if case .number(let num) = current, let degree = ScaleDegree(rawValue: num) {
+                            notes.append(Note(accidental: .natural, degree: degree, octave: 0))
+                            advance()
+                        } else {
+                            break
+                        }
+                    } else if case .positiveNumber(let num) = current, let degree = ScaleDegree(rawValue: num) {
+                        notes.append(Note(accidental: .natural, degree: degree, octave: 0))
+                        advance()
+                    } else {
+                        break
+                    }
+                }
+                return notes.count > 1 ? .multiNote(notes) : .note(n)
+            }
             return .note(n)
         case .chord(let ch):
             advance()
