@@ -891,6 +891,80 @@ import TmdSkill
     #expect(sheet?.paragraphs.first?.sections.first?.noteLength == 1)
 }
 
+@Test func testCrossSectionPickupOverlapsSustainedIntroNote() throws {
+    let tmd = """
+    ::SCORE::
+    ** Cross Section Pickup **
+    != 120
+    ?= C
+    <4/4>
+
+    Intro:Violin@|-1| {
+        <4*>
+        | 0 0 0 5 |
+        | 1^ 5 6 6 | (6 7)%(-) 1^ 7 6 | 5 (5 6)%(-) 5 (5 5)%(-) | 5 (5 6)%(-) 5 5 |
+        | 1^ 5 6 6 | (6 7)%(-) 1^ 7 6 | (7 - - 1^)%(--) 1^ - | - - 1^ - |
+        | - - 1^ - | - - 1^ - | - - - - | - - - - | - - - - | - - - - |
+    }
+
+    Intro:Piano@|6| {
+        <4*>
+        | 0 0 1 1 |
+        | (1 2)%(-) 3 3 2 | (2 3)%(-) 2 1 1 | (1 2)%(-) 3 3 2 | (2 7_)%(-) 5_ 1 - |
+    }
+
+    A1:Vocal@|-1| {
+        <4*>
+        | 0 0 3 1 |
+        | 5 6 5 4 | 3 - - - | - - - - | 0 0 1 3 |
+        | 2 (3 2)%(-) 1 2 | 3 - - - | - - - - | 0 0 3 1 |
+        | 5 6 5 4 | 3 - - - | - - - - | 0 0 1 3 |
+        | 3 2 2 1 | 1 - - - | - - - - | 0 5 1^ 5 |
+    }
+
+    -> Intro -> A1 ->#
+    """
+    let sheet = try #require(TmdParser.parse(string: tmd))
+    let violin = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Violin")
+    let vocal = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Vocal")
+    let violinNotes = violin.events.filter {
+        if case .note = $0.content { return true }
+        return false
+    }
+    let vocalNotes = vocal.events.filter {
+        if case .note = $0.content { return true }
+        return false
+    }
+    let lastIntroNote = try #require(violinNotes.filter { $0.position < 60.0 }.max { $0.position < $1.position })
+    let firstA1Pickup = try #require(vocalNotes.first)
+
+    #expect(lastIntroNote.position + lastIntroNote.duration > firstA1Pickup.position)
+
+    let violinMIDI = TMDMIDIGenerator.instrumentEvents(
+        timeline: violin,
+        instrument: "Violin",
+        midiInstrument: .violin,
+        channel: 1,
+        ticksPerQuarter: TMDMIDIGenerator.defaultTicksPerQuarterNote
+    )
+    let vocalMIDI = TMDMIDIGenerator.instrumentEvents(
+        timeline: vocal,
+        instrument: "Vocal",
+        midiInstrument: .voiceOohs,
+        channel: 2,
+        ticksPerQuarter: TMDMIDIGenerator.defaultTicksPerQuarterNote
+    )
+    let latestIntroViolinOff = try #require(violinMIDI.compactMap { event -> UInt32? in
+        if case .noteOff(channel: 1, note: _) = event.message, event.tick > 0, event.tick <= 60 * 480 { return event.tick }
+        return nil
+    }.max())
+    let firstVocalOn = try #require(vocalMIDI.compactMap { event -> UInt32? in
+        if case .noteOn(channel: 2, note: _, velocity: let velocity) = event.message, velocity > 0 { return event.tick }
+        return nil
+    }.first)
+    #expect(latestIntroViolinOff > firstVocalOn)
+}
+
 @Test func testShowProgramBlock() throws {
     let tmd = #"""
     ::SCORE::
