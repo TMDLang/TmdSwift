@@ -1603,3 +1603,142 @@ func testMultiNoteInsideTuplet() throws {
     #expect(noteEvents[3].position == 1.0 && noteEvents[3].duration == 1.0)
     #expect(noteEvents[4].position == 2.0 && noteEvents[4].duration == 2.0)
 }
+
+@Test("Test invalid multi-note syntax rejects or reports errors")
+func testInvalidMultiNoteSyntax() {
+    let invalidScores: [(name: String, score: String)] = [
+        ("TrailingPlusAtBarEnd", """
+        ::SCORE::
+        ** TrailingPlusAtBarEnd **
+        != 120
+        ?= C
+        <4/4>
+
+        main:Piano@|0|{
+            <4*>
+            | 1 2 3 4+ |
+        }
+
+        -> main ->#
+        """),
+        ("ConsecutivePlus", """
+        ::SCORE::
+        ** ConsecutivePlus **
+        != 120
+        ?= C
+        <4/4>
+
+        main:Piano@|0|{
+            <4*>
+            | 1++3 2 3 4 |
+        }
+
+        -> main ->#
+        """),
+        ("InvalidChordRHS", """
+        ::SCORE::
+        ** InvalidChordRHS **
+        != 120
+        ?= C
+        <4/4>
+
+        main:Piano@|0|{
+            <4*>
+            | 1+[C] 2 3 4 |
+        }
+
+        -> main ->#
+        """),
+        ("InvalidTieRHS", """
+        ::SCORE::
+        ** InvalidTieRHS **
+        != 120
+        ?= C
+        <4/4>
+
+        main:Piano@|0|{
+            <4*>
+            | 1+- 2 3 4 |
+        }
+
+        -> main ->#
+        """),
+        ("StandalonePlus", """
+        ::SCORE::
+        ** StandalonePlus **
+        != 120
+        ?= C
+        <4/4>
+
+        main:Piano@|0|{
+            <4*>
+            | + 1 2 3 |
+        }
+
+        -> main ->#
+        """),
+        ("InvalidScaleDegreeRHS", """
+        ::SCORE::
+        ** InvalidScaleDegreeRHS **
+        != 120
+        ?= C
+        <4/4>
+
+        main:Piano@|0|{
+            <4*>
+            | 1+8 2 3 4 |
+        }
+
+        -> main ->#
+        """),
+        ("TrailingPlusBeforeNextMeasure", """
+        ::SCORE::
+        ** TrailingPlusBeforeNextMeasure **
+        != 120
+        ?= C
+        <4/4>
+
+        main:Piano@|0|{
+            <4*>
+            | 1 2 3 4+ |
+            | 1 2 3 4 |
+        }
+
+        -> main ->#
+        """),
+        ("TrailingPlusBeforeClosingBrace", """
+        ::SCORE::
+        ** TrailingPlusBeforeClosingBrace **
+        != 120
+        ?= C
+        <4/4>
+
+        main:Piano@|0|{
+            <4*>
+            1 2 3 4+
+        }
+
+        -> main ->#
+        """),
+        ("TrailingPlusSingleNoteBar", """
+        ::SCORE::
+        ** TrailingPlusSingleNoteBar **
+        != 120
+        ?= C
+        <4/4>
+
+        main:Piano@|0|{
+            <4*>
+            | 1+ |
+        }
+
+        -> main ->#
+        """)
+    ]
+
+    for (name, score) in invalidScores {
+        #expect(throws: Error.self, "Score '\(name)' with invalid '+' syntax must fail parsing") {
+            try TmdParser.parseThrowing(string: score)
+        }
+    }
+}

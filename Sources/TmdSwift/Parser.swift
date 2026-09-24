@@ -1151,7 +1151,6 @@ private struct TokenParser {
                 var notes = [n]
                 while true {
                     if match(.plus) {
-                        skipPipes()
                         if case .note(let nextNote) = current {
                             notes.append(nextNote)
                             advance()
@@ -1159,11 +1158,17 @@ private struct TokenParser {
                             notes.append(Note(accidental: .natural, degree: degree, octave: 0))
                             advance()
                         } else {
-                            break
+                            recordFailure(at: pos, expected: ["note"])
+                            return nil
                         }
-                    } else if case .positiveNumber(let num) = current, let degree = ScaleDegree(rawValue: num) {
-                        notes.append(Note(accidental: .natural, degree: degree, octave: 0))
-                        advance()
+                    } else if case .positiveNumber(let num) = current {
+                        if let degree = ScaleDegree(rawValue: num) {
+                            notes.append(Note(accidental: .natural, degree: degree, octave: 0))
+                            advance()
+                        } else {
+                            recordFailure(at: pos, expected: ["note"])
+                            return nil
+                        }
                     } else {
                         break
                     }
