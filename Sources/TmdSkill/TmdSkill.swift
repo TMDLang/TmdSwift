@@ -178,16 +178,30 @@ Can be written as:
 - Chords can also take octaves: `[6_m]` (lower octave minor sixth), `[1^]`
 - Chords can be sustained with ties: `[Cmaj7] - - -`
 
-### 5.7 Percussion
-Percussion tracks accept velocity / pitch tokens:
-- `X`, `x`, `T`, `t`, `S`, `s` representing high-to-low / strong-to-weak percussion hits.
+### 5.7 Percussion & Drums (Channel 10)
+Percussion tracks (`Drums`, `Percussion`, `Groove`) send MIDI events to standard General MIDI Channel 10:
+- Standard Drum Hits:
+  - `B` / `D`: Bass Drum (Kick Drum 1, MIDI pitch 36).
+  - `S`: Snare Drum (Acoustic Snare, MIDI pitch 38).
+  - `X`: Closed Hi-Hat (MIDI pitch 42).
+  - `O`: Open Hi-Hat (MIDI pitch 46).
+  - `T`: Low-Mid Tom (MIDI pitch 45).
+  - `C`: Crash Cymbal 1 (MIDI pitch 49).
+- Lowercase letters (`b`, `d`, `s`, `x`, `o`, `t`, `c`) represent lighter velocity / ghost hits.
 Example:
 ```tmd
 intro:Drums@|0|{
     <16*>
-    XsTt x-- XtXs X-x- ts
+    X-X- S-X- X-X- S-X-
+    B-0- 0-0- B-B- 0-0-
 }
 ```
+
+> **Note on Timpani vs. Drum Kit**:
+> Timpani (Program 47) is a **pitched melodic instrument**, NOT General MIDI Channel 10 percussion.
+> - Acoustic Timpani kettle drums operate in the pitch range `D2` to `A3` (MIDI 38–57).
+> - In standard TMD soundfonts (e.g., Apple DLS `gs_instruments.dls`), Timpani produces its deepest, resonant orchestral thunder ("咚！咚！咚！") when written in the lower octave: `2__` (D2, MIDI 38) to `1_` (C3, MIDI 48).
+> - Since Timpani is tuned to specific harmonic fundamental pitches, use `{?= fixed}` inside Timpani sections so global order transpositions (e.g. `-> {?+3} -> C`) do not shift kettle pitches unexpectedly.
 
 ### 5.8 Tuplets and Rhythmic Groupings
 Syntax:
@@ -201,13 +215,15 @@ The number of dashes in `%(...)` defines how many base beats the group occupies:
 
 ---
 
-## 6. Section Directives (Mid-Score Changes)
+## 6. Section Directives (Mid-Score & Local Track Changes)
 
 You can place inline directives anywhere inside a section between notes:
 - `{!= 140}`: Absolute tempo change (BPM).
 - `{!+ 10}`: Relative tempo change (+10 BPM).
 - `{?= D}`: Absolute key change to D.
 - `{?+ 2}`: Relative key transposition up 2 semitones.
+- `{?- 2}`: Relative key transposition down 2 semitones.
+- `{?= fixed}` (or `{? fixed}`): Forces **Fixed Pitch** for this track section (locks `keyOffset = 0`, immune to song-level playback transpositions like `-> {?+3} -> ...`). Ideal for Timpani, Sound FX, or non-transposing tracks.
 - `{<3/4>}`: Time signature change to 3/4.
 
 Example:

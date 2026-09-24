@@ -247,6 +247,8 @@ public enum TMDPlaybackRenderer {
             PlaybackState(tempo: state.tempo, keyOffset: KeySignature(string: value).semitoneOffset, timeSignature: state.timeSignature)
         case .relativeKey(let value):
             PlaybackState(tempo: state.tempo, keyOffset: state.keyOffset + value, timeSignature: state.timeSignature)
+        case .fixedPitch:
+            PlaybackState(tempo: state.tempo, keyOffset: 0, timeSignature: state.timeSignature)
         case .timeSignature(let beat):
             PlaybackState(tempo: state.tempo, keyOffset: state.keyOffset, timeSignature: beat)
         }

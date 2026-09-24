@@ -172,6 +172,8 @@ extension SectionDirective {
             "{?=\(key)}"
         case .relativeKey(let value):
             "{?\(value >= 0 ? "+\(value)" : String(value))}"
+        case .fixedPitch:
+            "{?=fixed}"
         case .timeSignature(let beat):
             "{<\(beat.count)/\(beat.noteValue)>}"
         }

@@ -1210,6 +1210,8 @@ private struct TokenParser {
             }
             if let delta = Int(value) {
                 return SectionDirective(position: position, kind: .relativeKey(delta))
+            } else if value.lowercased() == "fixed" {
+                return SectionDirective(position: position, kind: .fixedPitch)
             }
         case .absoluteOrderPrefix:
             advance()
@@ -1223,12 +1225,18 @@ private struct TokenParser {
                 default: break
                 }
             }
+            if value.lowercased() == "fixed" {
+                return SectionDirective(position: position, kind: .fixedPitch)
+            }
             return SectionDirective(position: position, kind: .absoluteKey(value))
         case .keySignaturePrefix:
             advance()
             var value = ""
             if case .identifier(let s) = current { value = s; advance() }
             else if case .note(let n) = current { value = String(n.degree.rawValue); advance() }
+            if value.lowercased() == "fixed" {
+                return SectionDirective(position: position, kind: .fixedPitch)
+            }
             return SectionDirective(position: position, kind: .absoluteKey(value))
         case .openAngle:
             advance()

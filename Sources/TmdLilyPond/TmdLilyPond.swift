@@ -116,6 +116,8 @@ public struct TMDLilyPondGenerator {
             let semitone = ((directive.state.keyOffset % 12) + 12) % 12
             let keyTonic = PitchMapping.lilyPondNames[semitone]
             return "\\key \(keyTonic) \\major "
+        case .fixedPitch:
+            return "\\key c \\major "
         }
     }
 

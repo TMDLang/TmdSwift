@@ -70,7 +70,7 @@ public struct TMDMIDIGenerator {
             switch directive.kind {
             case .tempo, .relativeTempo: return MIDIEvent(tick: tick, message: .tempo(directive.state.tempo))
             case .timeSignature: return MIDIEvent(tick: tick, message: .timeSignature(directive.state.timeSignature))
-            case .absoluteKey, .relativeKey: return nil
+            case .absoluteKey, .relativeKey, .fixedPitch: return nil
             }
         }
         return initial + directives

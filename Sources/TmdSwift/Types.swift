@@ -440,6 +440,9 @@ public enum SectionDirectiveKind: Equatable, Sendable {
     /// Transposes the current key by the given number of semitones.
     case relativeKey(Int)
 
+    /// Forces fixed pitch (keyOffset = 0, immune to song-level order transpositions).
+    case fixedPitch
+
     /// Changes the time signature, for example from 4/4 to 3/4.
     case timeSignature(Beat)
 }

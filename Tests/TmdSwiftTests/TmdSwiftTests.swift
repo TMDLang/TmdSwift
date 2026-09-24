@@ -449,6 +449,7 @@ import TmdSkill
         {!= 140}
         {!+10}
         {?+2}
+        {?=fixed}
         {<3/4>}
     }
     A:Drums@|0|{
@@ -473,6 +474,7 @@ import TmdSkill
         SectionDirective(position: 7, kind: .tempo(140)),
         SectionDirective(position: 7, kind: .relativeTempo(10)),
         SectionDirective(position: 7, kind: .relativeKey(2)),
+        SectionDirective(position: 7, kind: .fixedPitch),
         SectionDirective(position: 7, kind: .timeSignature(Beat(count: 3, noteValue: 4)))
     ])
 
@@ -500,6 +502,45 @@ import TmdSkill
     #expect(abc.contains("Q:1/4=150"))
     #expect(abc.contains("M:3/4"))
     #expect(abc.contains("%%MIDI channel 10"))
+}
+
+@Test func testFixedPitchSectionDirective() throws {
+    let tmd = """
+    ::SCORE::
+    ** Fixed Pitch Test **
+    != 120
+    ?= G
+    <4/4>
+
+    verse:Timpani@|0|{
+        <4*>
+        {?=fixed}
+        1 2 3 4
+    }
+
+    verse:Piano@|0|{
+        <4*>
+        1 2 3 4
+    }
+
+    -> {?+3} -> verse ->#
+    """
+
+    let sheet = try #require(TmdParser.parse(string: tmd))
+    
+    // In Timpani track, {?=fixed} forces keyOffset = 0 regardless of initial key G or global transposition {?+3}
+    let timpaniTimeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Timpani")
+    #expect(!timpaniTimeline.events.isEmpty)
+    for event in timpaniTimeline.events {
+        #expect(event.state.keyOffset == 0)
+    }
+
+    // In Piano track, without {?=fixed}, key G (offset 7) + transposition {?+3} results in keyOffset = 10
+    let pianoTimeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+    #expect(!pianoTimeline.events.isEmpty)
+    for event in pianoTimeline.events {
+        #expect(event.state.keyOffset == 10)
+    }
 }
 
 @Test func testMIDIGenerationWithTargetSectionAndInstrument() throws {
