@@ -248,11 +248,13 @@ struct TMDSongInspectorTests {
         // 2. Global Fifths Path
         #expect(tonality.circleOfFifthsPath == [0, 2])
 
-        // 3. Human-readable Report
+        // 3. Human-readable Producer Report
         let report = TMDSongInspector.generateReport(profile)
-        #expect(report.contains("🗝  Tonality:"))
-        #expect(report.contains("5ths Steps:"))
+        #expect(report.contains("🗝  調性診斷："))
+        #expect(report.contains("五度圈歷程:"))
         #expect(report.contains("+0 -> +2"))
+        #expect(tonality.modulationStory.contains("轉至 D 大調"))
+        #expect(tonality.moodDescription.contains("大調"))
     }
 
     @Test func testInspectSongChromaticismAndAmbiguousKey() throws {
@@ -284,7 +286,7 @@ struct TMDSongInspectorTests {
         #expect(verseSec.pitchClasses.chromaticRatio > 0.1)
 
         let report = TMDSongInspector.generateReport(profile)
-        #expect(report.contains("Non-diatonic:"))
+        #expect(report.contains("調外音:"))
     }
 
     @Test func testTonalityVisualizerSVGAndHTMLGeneration() throws {

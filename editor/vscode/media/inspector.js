@@ -155,8 +155,14 @@ function renderTonalityProfile(tonality) {
   const candidates = (tonality.globalCorrelation.topCandidateKeys || []).slice(0, 3).map(c => `${c.keyName} (${c.correlation.toFixed(2)})`).join(', ');
   const fifthsPath = (tonality.circleOfFifthsPath || []).map(p => (p >= 0 ? `+${p}` : `${p}`)).join(' → ');
 
-  // 12-Tone Mini Histogram
+  // Pitch Class & Movable-do Scale Degree Mapping
+  // C=0, C#=1, D=2, D#=3, E=4, F=5, F#=6, G=7, G#=8, A=9, A#=10, B=11
   const pitchNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const keyOffsetMap = { 'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3, 'E': 4, 'F': 5, 'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8, 'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11 };
+  const rootName = (tonality.globalCorrelation.declaredKey || 'C').split(' ')[0];
+  const rootOffset = keyOffsetMap[rootName] !== undefined ? keyOffsetMap[rootName] : 0;
+  const solfegeMap = { 0: 'Do', 2: 'Re', 4: 'Mi', 5: 'Fa', 7: 'Sol', 9: 'La', 11: 'Ti' };
+
   const weights = tonality.globalPitchClasses.weights || [];
   const maxW = Math.max(0.001, ...weights);
   const totalW = weights.reduce((a, b) => a + b, 0) || 1;
@@ -166,54 +172,87 @@ function renderTonalityProfile(tonality) {
     const w = weights[i] || 0;
     const barPct = ((w / maxW) * 100).toFixed(1);
     const weightPct = ((w / totalW) * 100).toFixed(0);
+    const degreeOffset = (i - rootOffset + 12) % 12;
+    const solfege = solfegeMap[degreeOffset] || '•';
+    const isDiatonic = solfegeMap[degreeOffset] !== undefined;
+    const solfegeClass = isDiatonic ? 'degree-diatonic' : 'degree-chromatic';
+
     barsHtml += `
-      <div class="pitch-bar-col" title="${pitchNames[i]}: ${weightPct}% (${w.toFixed(1)} beats)">
+      <div class="pitch-bar-col" title="${pitchNames[i]} (${solfege}): ${weightPct}% (${w.toFixed(1)} beats)">
         <div class="pitch-bar-fill-wrap">
-          <div class="pitch-bar-fill" style="height: ${barPct}%;"></div>
+          <div class="pitch-bar-fill ${isDiatonic ? '' : 'fill-chromatic'}" style="height: ${barPct}%;"></div>
         </div>
         <div class="pitch-bar-label">${pitchNames[i]}</div>
+        <div class="pitch-degree-label ${solfegeClass}">${solfege}</div>
       </div>
     `;
   }
 
+  const summary = tonality.summaryText || `${tonality.globalCorrelation.declaredKey} Major`;
+  const mood = tonality.moodDescription || (diatonicPct >= 95 ? '純淨自然大調' : '流行色彩大調');
+  const modStory = tonality.modulationStory || t('None');
+
   container.innerHTML = `
-    <div class="tonality-summary-row">
-      <div class="tonality-stat-box">
-        <span class="stat-label">${t('Declared Key')}</span>
-        <span class="stat-value">${tonality.globalCorrelation.declaredKey}</span>
-        <span class="stat-sub">${t('Correlation: {0}', corr)}</span>
+    <!-- Top-level Producer Diagnosis Headline -->
+    <div class="producer-diagnosis-card">
+      <div class="producer-headline">
+        <span class="producer-icon">🎵</span>
+        <span class="producer-title">${summary}</span>
       </div>
-      <div class="tonality-stat-box">
-        <span class="stat-label">${t('Diatonic Purity')}</span>
-        <span class="stat-value">${diatonicPct}%</span>
-        <span class="stat-sub">${t('Diatonic / Chromatic')}</span>
+      <div class="producer-detail-item">
+        <span class="producer-label">${t('Musical Character & Mood')}:</span>
+        <span class="producer-value">${mood}</span>
+      </div>
+      <div class="producer-detail-item">
+        <span class="producer-label">${t('Modulation Journey')}:</span>
+        <span class="producer-value">${modStory}</span>
       </div>
     </div>
 
-    ${candidates ? `
-      <div class="pitch-metric-row">
-        <div>
-          <div class="stat-label">${t('Best Fit Keys (K-S)')}</div>
-          <div style="font-weight: 500; font-size: 12px; color: var(--accent-color); margin-top: 2px;">${candidates}</div>
-        </div>
-      </div>
-    ` : ''}
-
-    ${fifthsPath ? `
-      <div class="pitch-metric-row">
-        <div>
-          <div class="stat-label">${t('Circle of Fifths Trajectory')}</div>
-          <div style="font-family: var(--font-mono); font-size: 11px; margin-top: 2px; color: var(--muted-color);">${fifthsPath}</div>
-        </div>
-      </div>
-    ` : ''}
-
-    <div style="margin-top: 12px;">
+    <!-- 12-Tone Pitch Histogram with Solfege Degrees -->
+    <div style="margin-top: 14px;">
       <div class="stat-label" style="margin-bottom: 6px;">${t('12-Tone Pitch Class Weight Distribution')}</div>
       <div class="pitch-bar-chart">
         ${barsHtml}
       </div>
     </div>
+
+    <!-- Collapsible Advanced Theoretical Details -->
+    <details class="tonality-advanced-details">
+      <summary class="tonality-advanced-summary">${t('Detailed Theoretical Analysis')}</summary>
+      <div class="tonality-details-content">
+        <div class="tonality-summary-row" style="margin-top: 8px;">
+          <div class="tonality-stat-box">
+            <span class="stat-label">${t('Declared Key')}</span>
+            <span class="stat-value">${tonality.globalCorrelation.declaredKey}</span>
+            <span class="stat-sub">${t('Correlation: {0}', corr)}</span>
+          </div>
+          <div class="tonality-stat-box">
+            <span class="stat-label">${t('Diatonic Purity')}</span>
+            <span class="stat-value">${diatonicPct}%</span>
+            <span class="stat-sub">${t('Diatonic / Chromatic')}</span>
+          </div>
+        </div>
+
+        ${candidates ? `
+          <div class="pitch-metric-row" style="margin-top: 6px;">
+            <div>
+              <div class="stat-label">${t('Best Fit Keys (K-S)')}</div>
+              <div style="font-weight: 500; font-size: 12px; color: var(--accent-color); margin-top: 2px;">${candidates}</div>
+            </div>
+          </div>
+        ` : ''}
+
+        ${fifthsPath ? `
+          <div class="pitch-metric-row" style="margin-top: 6px;">
+            <div>
+              <div class="stat-label">${t('Circle of Fifths Trajectory')}</div>
+              <div style="font-family: var(--font-mono); font-size: 11px; margin-top: 2px; color: var(--muted-color);">${fifthsPath}</div>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    </details>
   `;
 }
 

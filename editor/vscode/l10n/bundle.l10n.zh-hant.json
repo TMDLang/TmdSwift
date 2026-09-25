@@ -108,5 +108,21 @@
   "General MIDI (FluidR3 Multi-Track)": "General MIDI (FluidR3 多軌音源)",
   "Grand Piano (FluidR3)": "平台鋼琴 (FluidR3 Grand Piano)",
   "Tiny Synth (Chiptune)": "Tiny Synth (復古晶片音效)",
-  "System MIDI Out": "系統 MIDI 輸出裝置"
+  "System MIDI Out": "系統 MIDI 輸出裝置",
+  "Tonality & Key Profile Analysis": "調性診斷與風格分析",
+  "Analyzing tonality profile...": "正在分析調性特徵...",
+  "Music Producer Diagnosis": "製作人調性診斷",
+  "Musical Character & Mood": "風格氣質",
+  "Modulation Journey": "轉調歷程",
+  "Detailed Theoretical Analysis": "樂理細節 (Advanced)",
+  "No tonality data available": "無調性資料",
+  "Declared Key": "核心調號",
+  "Diatonic Purity": "自然音純度",
+  "Correlation: {0}": "相關度：{0}",
+  "Diatonic / Chromatic": "自然音 / 調外音",
+  "Best Fit Keys (K-S)": "K-S 候選調性",
+  "Circle of Fifths Trajectory": "五度圈游移軌跡",
+  "12-Tone Pitch Class Weight Distribution": "十二半音累積音高分佈",
+  "High": "極高 (High)",
+  "Ambiguous": "曖昧多元 (Ambiguous)"
 }

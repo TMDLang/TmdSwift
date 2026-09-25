@@ -275,17 +275,29 @@ public struct TMDTonalityProfile: Equatable, Sendable, Codable {
     public let globalCorrelation: TMDKeyCorrelation
     public let circleOfFifthsPath: [Int]
     public let sections: [TMDSectionTonalityProfile]
+    /// Human-friendly one-line producer diagnosis (e.g. "純淨自然大調，未轉調")
+    public let summaryText: String
+    /// Qualitative character/mood description (e.g. "陽光明朗，100% 自然音無調外音")
+    public let moodDescription: String
+    /// Story of key movements (e.g. "全曲維持單一調性" or "主歌 C 大調 ➔ 副歌升 2 半音至 D 大調")
+    public let modulationStory: String
 
     public init(
         globalPitchClasses: TMDPitchClassDistribution,
         globalCorrelation: TMDKeyCorrelation,
         circleOfFifthsPath: [Int],
-        sections: [TMDSectionTonalityProfile]
+        sections: [TMDSectionTonalityProfile],
+        summaryText: String = "",
+        moodDescription: String = "",
+        modulationStory: String = ""
     ) {
         self.globalPitchClasses = globalPitchClasses
         self.globalCorrelation = globalCorrelation
         self.circleOfFifthsPath = circleOfFifthsPath
         self.sections = sections
+        self.summaryText = summaryText
+        self.moodDescription = moodDescription
+        self.modulationStory = modulationStory
     }
 }
 
@@ -750,29 +762,33 @@ public enum TMDSongInspector {
             let corrStr = String(format: "%0.2f", tonality.globalCorrelation.declaredKeyCorrelation)
             let diatonicPct = String(format: "%0.1f%%", tonality.globalPitchClasses.diatonicRatio * 100.0)
             let topPitches = tonality.globalPitchClasses.topPitchClasses.prefix(5).joined(separator: ", ")
-            lines.append("🗝  Tonality:       \(tonality.globalCorrelation.declaredKey) [Correlation: \(corrStr), Stability: \(stabStr), Diatonic: \(diatonicPct)]")
-            lines.append("   - Top Pitches:  \(topPitches)")
+
+            lines.append("🗝  調性診斷：       \(tonality.summaryText)")
+            lines.append("   - 風格氣質：    \(tonality.moodDescription)")
+            lines.append("   - 轉調歷程：    \(tonality.modulationStory)")
+            lines.append("   - 核心骨幹音：  \(topPitches)")
+            lines.append("   - 調性數值：    \(tonality.globalCorrelation.declaredKey) [相關度: \(corrStr), 穩定度: \(stabStr), 自然音純度: \(diatonicPct)]")
 
             let candidateStr = tonality.globalCorrelation.topCandidateKeys.prefix(3).map {
                 "\($0.keyName) (\(String(format: "%0.2f", $0.correlation)))"
             }.joined(separator: ", ")
             if !candidateStr.isEmpty {
-                lines.append("   - Best Fit Keys: \(candidateStr)")
+                lines.append("   - 候選調性 (K-S): \(candidateStr)")
             }
 
             let pathStr = tonality.circleOfFifthsPath.map { "\($0 >= 0 ? "+" : "")\($0)" }.joined(separator: " -> ")
             if !pathStr.isEmpty {
-                lines.append("   - 5ths Steps:   \(pathStr)")
+                lines.append("   - 五度圈歷程:   \(pathStr)")
             }
 
             if !tonality.sections.isEmpty {
-                lines.append("   - Sections:")
+                lines.append("   - 各段落調性細節:")
                 for sec in tonality.sections {
                     let secCorr = String(format: "%0.2f", sec.correlation.declaredKeyCorrelation)
                     let secDiatonic = String(format: "%0.1f%%", sec.pitchClasses.diatonicRatio * 100.0)
-                    var secLine = "     • [\(sec.sectionName) #\(sec.occurrenceIndex)]: \(sec.declaredKey) (r: \(secCorr), Diatonic: \(secDiatonic)"
+                    var secLine = "     • [\(sec.sectionName) #\(sec.occurrenceIndex)]: \(sec.declaredKey) (r: \(secCorr), 自然音: \(secDiatonic)"
                     if !sec.nonDiatonicNotes.isEmpty {
-                        secLine += ", Non-diatonic: \(sec.nonDiatonicNotes.joined(separator: ", "))"
+                        secLine += ", 調外音: \(sec.nonDiatonicNotes.joined(separator: ", "))"
                     }
                     secLine += ")"
                     lines.append(secLine)
@@ -896,11 +912,55 @@ public enum TMDSongInspector {
             ))
         }
 
+        // Human-friendly producer narrative synthesis
+        let diatonicRatio = globalDist.diatonicRatio
+        let moodDescription: String
+        if diatonicRatio >= 0.95 {
+            moodDescription = "純淨自然大調（陽光明朗、易唱易記，無明顯調外色彩）"
+        } else if diatonicRatio >= 0.80 {
+            moodDescription = "流行大調（略帶和弦色彩音與裝飾副屬和弦）"
+        } else {
+            moodDescription = "調式色彩／藍調前衛（調外音豐富，張力強烈）"
+        }
+
+        // Modulation story
+        var modTransitions: [String] = []
+        var prevKey = baseKey
+        var prevOffset = 0
+        for sec in sectionProfiles {
+            if sec.keyOffset != prevOffset || sec.declaredKey != prevKey {
+                let diff = sec.keyOffset - prevOffset
+                let semitoneDiff = diff >= 0 ? "+\(diff)" : "\(diff)"
+                let stepDiff = sec.fifthsPosition
+                let stepStr = stepDiff >= 0 ? "+\(stepDiff)" : "\(stepDiff)"
+                modTransitions.append("[\(sec.sectionName)] 轉至 \(sec.declaredKey) 大調 (\(semitoneDiff) 半音 / 五度圈 \(stepStr) 步)")
+                prevKey = sec.declaredKey
+                prevOffset = sec.keyOffset
+            }
+        }
+
+        let modulationStory: String
+        if modTransitions.isEmpty {
+            modulationStory = "全曲維持單一調性（未轉調）"
+        } else {
+            modulationStory = "\(baseKey) 大調起奏 ➔ " + modTransitions.joined(separator: " ➔ ")
+        }
+
+        let summaryText: String
+        if modTransitions.isEmpty {
+            summaryText = "\(baseKey) 大調（\(diatonicRatio >= 0.95 ? "純淨自然大調" : "流行色彩大調")，全曲無轉調）"
+        } else {
+            summaryText = "\(baseKey) 大調（轉調推進情緒，經歷 \(modTransitions.count) 次轉調）"
+        }
+
         return TMDTonalityProfile(
             globalPitchClasses: globalDist,
             globalCorrelation: globalCorr,
             circleOfFifthsPath: circleOfFifthsPath,
-            sections: sectionProfiles
+            sections: sectionProfiles,
+            summaryText: summaryText,
+            moodDescription: moodDescription,
+            modulationStory: modulationStory
         )
     }
 

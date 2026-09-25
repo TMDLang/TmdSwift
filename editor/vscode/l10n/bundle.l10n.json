@@ -108,5 +108,21 @@
   "General MIDI (FluidR3 Multi-Track)": "General MIDI (FluidR3 Multi-Track)",
   "Grand Piano (FluidR3)": "Grand Piano (FluidR3)",
   "Tiny Synth (Chiptune)": "Tiny Synth (Chiptune)",
-  "System MIDI Out": "System MIDI Out"
+  "System MIDI Out": "System MIDI Out",
+  "Tonality & Key Profile Analysis": "Tonality & Key Profile Analysis",
+  "Analyzing tonality profile...": "Analyzing tonality profile...",
+  "Music Producer Diagnosis": "Music Producer Diagnosis",
+  "Musical Character & Mood": "Musical Character & Mood",
+  "Modulation Journey": "Modulation Journey",
+  "Detailed Theoretical Analysis": "Detailed Theoretical Analysis",
+  "No tonality data available": "No tonality data available",
+  "Declared Key": "Declared Key",
+  "Diatonic Purity": "Diatonic Purity",
+  "Correlation: {0}": "Correlation: {0}",
+  "Diatonic / Chromatic": "Diatonic / Chromatic",
+  "Best Fit Keys (K-S)": "Best Fit Keys (K-S)",
+  "Circle of Fifths Trajectory": "Circle of Fifths Trajectory",
+  "12-Tone Pitch Class Weight Distribution": "12-Tone Pitch Class Weight Distribution",
+  "High": "High",
+  "Ambiguous": "Ambiguous"
 }
