@@ -778,6 +778,14 @@ public enum TMDSongInspector {
                     lines.append(secLine)
                 }
             }
+
+            // ASCII Visualizations
+            lines.append("")
+            lines.append("  [ Circle of Fifths Trajectory ]")
+            lines.append(renderAsciiCircleOfFifths(tonality: tonality))
+            lines.append("")
+            lines.append("  [ Pitch Class Weight Distribution ]")
+            lines.append(renderPitchClassHistogram(tonality: tonality))
         }
 
         lines.append("--------------------------------------------------------------------------------")
@@ -1113,5 +1121,75 @@ public enum TMDSongInspector {
 
     private static func measureDuration(for beat: Beat) -> Double {
         Double(max(1, beat.count)) * 4.0 / Double(max(1, beat.noteValue))
+    }
+
+    // MARK: - ASCII / Unicode Tonality Visualizers
+
+    private static func renderAsciiCircleOfFifths(tonality: TMDTonalityProfile) -> String {
+        // Collect active fifths steps from sections
+        var activeSteps = Set<Int>()
+        for sec in tonality.sections {
+            activeSteps.insert(sec.fifthsPosition)
+        }
+
+        func node(_ name: String, _ step: Int) -> String {
+            if activeSteps.contains(step) {
+                return "[\(name.padding(toLength: 2, withPad: " ", startingAt: 0))]*"
+            } else {
+                return " \(name.padding(toLength: 2, withPad: " ", startingAt: 0)) "
+            }
+        }
+
+        // 12-clock positions:
+        //        0: C
+        //  -1: F       +1: G
+        // -2: Bb        +2: D
+        // -3: Eb        +3: A
+        //  -4: Ab      +4: E
+        //   -5: Db    +5: B
+        //       +6: F#
+        let c   = node("C", 0)
+        let g   = node("G", 1)
+        let d   = node("D", 2)
+        let a   = node("A", 3)
+        let e   = node("E", 4)
+        let b   = node("B", 5)
+        let fs  = node("F#", 6)
+        let db  = node("Db", -5)
+        let ab  = node("Ab", -4)
+        let eb  = node("Eb", -3)
+        let bb  = node("Bb", -2)
+        let f   = node("F", -1)
+
+        var lines: [String] = []
+        lines.append("              \(c)")
+        lines.append("        \(f)         \(g)")
+        lines.append("     \(bb)             \(d)")
+        lines.append("     \(eb)             \(a)")
+        lines.append("        \(ab)         \(e)")
+        lines.append("           \(db)     \(b)")
+        lines.append("              \(fs)")
+        lines.append("     (* = active key center)")
+        return lines.joined(separator: "\n")
+    }
+
+    private static func renderPitchClassHistogram(tonality: TMDTonalityProfile) -> String {
+        let pitchClassNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+        let weights = tonality.globalPitchClasses.weights
+        let maxWeight = weights.max() ?? 1.0
+        guard maxWeight > 0.0001 else { return "     (no pitch data)" }
+
+        let barMaxWidth = 24
+        var lines: [String] = []
+        for pc in 0..<12 {
+            let w = weights[pc]
+            let ratio = w / maxWeight
+            let barLen = Int(round(ratio * Double(barMaxWidth)))
+            let bar = String(repeating: "█", count: barLen)
+            let name = pitchClassNames[pc].padding(toLength: 3, withPad: " ", startingAt: 0)
+            let pct = String(format: "%5.1f%%", (w / (weights.reduce(0.0, +) + 1e-9)) * 100.0)
+            lines.append("     \(name): \(bar.padding(toLength: barMaxWidth, withPad: " ", startingAt: 0)) \(pct)")
+        }
+        return lines.joined(separator: "\n")
     }
 }

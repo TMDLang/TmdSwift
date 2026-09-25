@@ -286,5 +286,46 @@ struct TMDSongInspectorTests {
         let report = TMDSongInspector.generateReport(profile)
         #expect(report.contains("Non-diatonic:"))
     }
+
+    @Test func testTonalityVisualizerSVGAndHTMLGeneration() throws {
+        let tmd = """
+        ::SCORE::
+        ** Visualizer Test Song **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Piano@|0|{
+            <4*>
+            1 3 5 1^
+            [C] - [G] -
+        }
+
+        chorus:Piano@|0|{
+            <4*>
+            1 4 5 1^
+            [D] - [A] -
+        }
+
+        -> verse -> {?+2} -> chorus ->#
+        """
+
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let profile = TMDSongInspector.inspect(sheet: sheet)
+
+        // 1. SVG Generation
+        let svg = TMDTonalityVisualizer.generateSVG(profile)
+        #expect(svg.contains("<svg"))
+        #expect(svg.contains("Circle of Fifths Trajectory"))
+        #expect(svg.contains("12-Tone Pitch Class Distribution"))
+        #expect(svg.contains("Timeline Keyscape Ribbon"))
+        #expect(svg.contains("Visualizer Test Song"))
+
+        // 2. HTML Generation
+        let html = TMDTonalityVisualizer.generateHTML(profile)
+        #expect(html.contains("<!DOCTYPE html>"))
+        #expect(html.contains("<svg"))
+        #expect(html.contains("Detailed Text Analysis"))
+    }
 }
 

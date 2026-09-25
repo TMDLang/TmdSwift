@@ -144,6 +144,12 @@ struct TmdInspectCommand: ParsableCommand {
     @Flag(name: [.customLong("json")], help: "Output song profile as JSON.")
     var json: Bool = false
 
+    @Flag(name: [.customLong("svg")], help: "Output tonality visualizer dashboard as SVG.")
+    var svg: Bool = false
+
+    @Flag(name: [.customLong("html")], help: "Output tonality report and dashboard as HTML.")
+    var html: Bool = false
+
     func run() throws {
         let sheet: Sheet
         do {
@@ -171,6 +177,10 @@ struct TmdInspectCommand: ParsableCommand {
             } else {
                 print("{}")
             }
+        } else if svg {
+            print(TMDTonalityVisualizer.generateSVG(profile))
+        } else if html {
+            print(TMDTonalityVisualizer.generateHTML(profile))
         } else {
             print(TMDSongInspector.generateReport(profile))
         }
