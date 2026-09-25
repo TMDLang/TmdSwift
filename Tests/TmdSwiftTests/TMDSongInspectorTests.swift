@@ -251,6 +251,7 @@ struct TMDSongInspectorTests {
         // 3. Human-readable Producer Report
         let report = TMDSongInspector.generateReport(profile)
         #expect(report.contains("🗝  調性診斷："))
+        #expect(report.contains("目前以大調分析為主；建議優先支援大調與小調"))
         #expect(report.contains("五度圈歷程:"))
         #expect(report.contains("+0 -> +2"))
         #expect(tonality.modulationStory.contains("轉至 D 大調"))

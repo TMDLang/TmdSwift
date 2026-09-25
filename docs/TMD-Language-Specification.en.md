@@ -74,6 +74,12 @@ Tempo is stored as a `Double` representing beats per minute (BPM). Both integer 
 
 The key signature is stored as a string without strict validation at the parser level. Thus, `C`, `A'`, `Bb`, or any token readable as an identifier can be accepted. Key modulation such as `{?+5}` represents relative transposition in the playback order rather than this header field.
 
+The Song Inspector currently uses a major-key model as its analysis baseline. As a
+product scope recommendation, major and minor should be supported first, since that
+would cover many common popular songs; other modes such as Dorian and Mixolydian can
+remain future extensions and should not be interpreted as formally identified until
+they are fully supported.
+
 ### 4.4 Time Signature
 
 ```text

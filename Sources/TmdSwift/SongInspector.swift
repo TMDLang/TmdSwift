@@ -737,7 +737,8 @@ public enum TMDSongInspector {
         lines.append("📊 TMD Song Profile: [ \(profile.title) ]")
         lines.append("================================================================================")
         lines.append("⏱  Duration:       \(timeFormatted), \(profile.timing.totalMeasures) measures total")
-        lines.append("🎼 Key & Tempo:    \(profile.initialKey) Major, != \(profile.initialTempo) BPM, <\(profile.initialTimeSignature)>")
+            lines.append("🎼 Key & Tempo:    \(profile.initialKey) Major, != \(profile.initialTempo) BPM, <\(profile.initialTimeSignature)>")
+            lines.append("   - 分析範圍：      目前以大調分析為主；建議優先支援大調與小調，其他調式列為延伸")
 
         if let vocal = profile.vocalRange {
             let octaves = String(format: "%0.1f", vocal.spanOctaves)
