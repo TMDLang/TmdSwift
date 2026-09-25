@@ -136,5 +136,67 @@ struct ABCValidationTests {
         #expect(abc.contains("K:C"))
         #expect(abc.contains("K:D"))
     }
+
+    @Test func testABCTempoBeatUnitBasedOnTimeSignature() throws {
+        // Compound meter: 6/8 -> Q:3/8=80
+        let tmdCompound = """
+        ::SCORE::
+        ** Compound Meter ABC **
+        != 120
+        ?= C
+        <6/8>
+
+        A:Piano@|0|{
+            <8*>
+            1 2 3 4 5 6
+            {!= 150}
+            1 2 3 4 5 6
+        }
+        -> A ->#
+        """
+        let sheetCompound = try TmdParser.parseThrowing(string: tmdCompound)
+        let abcCompound = TMDABCGenerator.generateABC(from: sheetCompound)
+
+        #expect(abcCompound.contains("Q:3/8=80"))
+        #expect(abcCompound.contains("Q:3/8=100"))
+
+        // Cut time: 2/2 -> Q:1/2=60
+        let tmdCutTime = """
+        ::SCORE::
+        ** Cut Time ABC **
+        != 120
+        ?= C
+        <2/2>
+
+        A:Piano@|0|{
+            <2*>
+            1 2
+        }
+        -> A ->#
+        """
+        let sheetCutTime = try TmdParser.parseThrowing(string: tmdCutTime)
+        let abcCutTime = TMDABCGenerator.generateABC(from: sheetCutTime)
+
+        #expect(abcCutTime.contains("Q:1/2=60"))
+
+        // 3/8 -> Q:1/8=240
+        let tmdEighthTime = """
+        ::SCORE::
+        ** Simple Triple Eighth ABC **
+        != 120
+        ?= C
+        <3/8>
+
+        A:Piano@|0|{
+            <8*>
+            1 2 3
+        }
+        -> A ->#
+        """
+        let sheetEighthTime = try TmdParser.parseThrowing(string: tmdEighthTime)
+        let abcEighthTime = TMDABCGenerator.generateABC(from: sheetEighthTime)
+
+        #expect(abcEighthTime.contains("Q:1/8=240"))
+    }
 }
 

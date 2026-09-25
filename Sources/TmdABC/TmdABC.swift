@@ -18,7 +18,9 @@ public struct TMDABCGenerator {
         abc += "C:\(sheet.metadata["composer"] ?? "TMD (Chen, Chih-Han / aguai)")\n"
         abc += "M:\(sheet.beat.count)/\(sheet.beat.noteValue)\n"
         abc += "L:1/16\n" // Base unit length = 16th note for high rhythm precision
-        abc += "Q:1/4=\(Int(sheet.speed > 0 ? sheet.speed : 120))\n"
+        let speed = sheet.speed > 0 ? sheet.speed : 120
+        let tempoField = resolveTempo(beat: sheet.beat, quarterBPM: speed)
+        abc += "\(tempoField)\n"
         abc += "K:\(abcKey(sheet.keySignature.description))\n\n"
 
         let instruments = sheet.distinctInstruments()
@@ -68,10 +70,34 @@ public struct TMDABCGenerator {
         return result.trimmingCharacters(in: .whitespaces) + "\n"
     }
 
+    public static func resolveTempo(beat: Beat, quarterBPM: Double) -> String {
+        // Compound meter: denominator is 8 and numerator is a multiple of 3 (> 3, e.g. 6/8, 9/8, 12/8)
+        if beat.noteValue == 8 && beat.count > 3 && beat.count % 3 == 0 {
+            // Beat unit is a dotted-quarter note (in ABC represented as 3/8)
+            let bpm = Int((quarterBPM / 1.5).rounded())
+            return "Q:3/8=\(bpm)"
+        }
+        switch beat.noteValue {
+        case 2:
+            let bpm = Int((quarterBPM / 2.0).rounded())
+            return "Q:1/2=\(bpm)"
+        case 8:
+            let bpm = Int((quarterBPM * 2.0).rounded())
+            return "Q:1/8=\(bpm)"
+        case 16:
+            let bpm = Int((quarterBPM * 4.0).rounded())
+            return "Q:1/16=\(bpm)"
+        default:
+            let bpm = Int(quarterBPM.rounded())
+            return "Q:1/4=\(bpm)"
+        }
+    }
+
     private static func formatDirective(_ directive: PlaybackDirectiveEvent) -> String {
         switch directive.kind {
         case .tempo, .relativeTempo:
-            return "Q:1/4=\(Int(directive.state.tempo.rounded())) "
+            let cmd = resolveTempo(beat: directive.state.timeSignature, quarterBPM: directive.state.tempo)
+            return "\(cmd) "
         case .timeSignature(let beat):
             return "M:\(beat.count)/\(beat.noteValue) "
         case .absoluteKey(let key):
