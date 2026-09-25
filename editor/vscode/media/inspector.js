@@ -152,12 +152,12 @@ function renderSelectedInstrumentRange(instName, ranges) {
   const diffColor = diffColors[diffStr] || '#58a6ff';
 
   const voiceTypeNames = {
-    'soprano': 'Soprano (女高音)',
-    'mezzo-soprano': 'Mezzo-Soprano (女中音)',
-    'contralto': 'Contralto (女低音)',
-    'tenor': 'Tenor (男高音)',
-    'baritone': 'Baritone (男中音)',
-    'bass': 'Bass (男低音)'
+    'soprano': 'Soprano',
+    'mezzo-soprano': 'Mezzo-Soprano',
+    'contralto': 'Contralto',
+    'tenor': 'Tenor',
+    'baritone': 'Baritone',
+    'bass': 'Bass'
   };
 
   const suitableVoices = (target.suitableVoiceTypes || []).map(v => voiceTypeNames[v] || v);
@@ -190,12 +190,12 @@ function renderSelectedInstrumentRange(instName, ranges) {
     <div class="vocal-profile-container">
       <div class="pitch-stats-row">
         <div class="pitch-stat-box">
-          <span class="stat-label">Pitch Range (音域)</span>
+          <span class="stat-label">Pitch Range</span>
           <span class="stat-value">${target.lowestNote.noteName}${lowDegree} ～ ${target.highestNote.noteName}${highDegree}</span>
           <span class="stat-sub">${sectionSpan}</span>
         </div>
         <div class="pitch-stat-box">
-          <span class="stat-label">Pitch Span (跨度)</span>
+          <span class="stat-label">Pitch Span</span>
           <span class="stat-value">${octaves} octaves <span style="font-size: 11px; font-weight: normal; color: var(--muted-color);">(${target.spanSemitones} semitones)</span></span>
           <span class="stat-sub" style="color: ${diffColor}; font-weight: 600;">Difficulty: ${diffLabel}</span>
         </div>
@@ -203,7 +203,7 @@ function renderSelectedInstrumentRange(instName, ranges) {
 
       <div class="pitch-metric-row">
         <div>
-          <div class="stat-label">Center Tessitura (核心音區)</div>
+          <div class="stat-label">Center Tessitura</div>
           <div class="span-pill">${avgNoteName}</div>
         </div>
         <div class="pitch-meta">Average pitch</div>
@@ -211,7 +211,7 @@ function renderSelectedInstrumentRange(instName, ranges) {
 
       <div class="pitch-metric-row">
         <div>
-          <div class="stat-label">Recommended Voice Classification (適合聲部)</div>
+          <div class="stat-label">Recommended Voice Classification</div>
           <div style="font-weight: 600; color: #58a6ff; margin-top: 3px;">${voiceStr}</div>
         </div>
         <div class="pitch-meta">Based on pitch range</div>
