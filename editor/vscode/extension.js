@@ -1133,6 +1133,17 @@ function activate(context) {
     </div>
   </div>
 
+  <!-- Tonality & Key Profile Analysis Card -->
+  <div class="section-card" id="tonality-card">
+    <div class="section-card-header">
+      <div class="section-card-title">${vscode.l10n.t('Tonality & Key Profile Analysis')}</div>
+      <div id="tonality-stability-badge" class="badge-valid">-</div>
+    </div>
+    <div id="tonality-container" class="tonality-display-container">
+      <div class="stat-sub">${vscode.l10n.t('Analyzing tonality profile...')}</div>
+    </div>
+  </div>
+
   <!-- Musical Structure Timeline -->
   <div class="section-card">
     <div class="section-card-header">

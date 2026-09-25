@@ -127,8 +127,94 @@ function renderInspector(profile, fileName) {
     modContainer.innerHTML = `<span class="stat-sub">${t('None')}</span>`;
   }
 
+  // Tonality Profile & Visualizer
+  renderTonalityProfile(profile.tonality);
+
   // Timeline & Sections
   renderTimeline(profile.timing.sections, profile.timing.totalDurationSeconds);
+}
+
+function renderTonalityProfile(tonality) {
+  const container = document.getElementById('tonality-container');
+  const badge = document.getElementById('tonality-stability-badge');
+  if (!container || !badge) return;
+
+  if (!tonality) {
+    badge.textContent = '-';
+    badge.className = 'badge-valid';
+    container.innerHTML = `<div class="stat-sub">${t('No tonality data available')}</div>`;
+    return;
+  }
+
+  const stab = tonality.globalCorrelation.stability || 'high';
+  badge.textContent = t(stab.charAt(0).toUpperCase() + stab.slice(1));
+  badge.className = stab === 'high' ? 'badge-valid' : (stab === 'moderate' ? 'badge-warn' : 'badge-error');
+
+  const diatonicPct = (tonality.globalPitchClasses.diatonicRatio * 100).toFixed(1);
+  const corr = tonality.globalCorrelation.declaredKeyCorrelation.toFixed(2);
+  const candidates = (tonality.globalCorrelation.topCandidateKeys || []).slice(0, 3).map(c => `${c.keyName} (${c.correlation.toFixed(2)})`).join(', ');
+  const fifthsPath = (tonality.circleOfFifthsPath || []).map(p => (p >= 0 ? `+${p}` : `${p}`)).join(' → ');
+
+  // 12-Tone Mini Histogram
+  const pitchNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const weights = tonality.globalPitchClasses.weights || [];
+  const maxW = Math.max(0.001, ...weights);
+  const totalW = weights.reduce((a, b) => a + b, 0) || 1;
+
+  let barsHtml = '';
+  for (let i = 0; i < 12; i++) {
+    const w = weights[i] || 0;
+    const barPct = ((w / maxW) * 100).toFixed(1);
+    const weightPct = ((w / totalW) * 100).toFixed(0);
+    barsHtml += `
+      <div class="pitch-bar-col" title="${pitchNames[i]}: ${weightPct}% (${w.toFixed(1)} beats)">
+        <div class="pitch-bar-fill-wrap">
+          <div class="pitch-bar-fill" style="height: ${barPct}%;"></div>
+        </div>
+        <div class="pitch-bar-label">${pitchNames[i]}</div>
+      </div>
+    `;
+  }
+
+  container.innerHTML = `
+    <div class="tonality-summary-row">
+      <div class="tonality-stat-box">
+        <span class="stat-label">${t('Declared Key')}</span>
+        <span class="stat-value">${tonality.globalCorrelation.declaredKey}</span>
+        <span class="stat-sub">${t('Correlation: {0}', corr)}</span>
+      </div>
+      <div class="tonality-stat-box">
+        <span class="stat-label">${t('Diatonic Purity')}</span>
+        <span class="stat-value">${diatonicPct}%</span>
+        <span class="stat-sub">${t('Diatonic / Chromatic')}</span>
+      </div>
+    </div>
+
+    ${candidates ? `
+      <div class="pitch-metric-row">
+        <div>
+          <div class="stat-label">${t('Best Fit Keys (K-S)')}</div>
+          <div style="font-weight: 500; font-size: 12px; color: var(--accent-color); margin-top: 2px;">${candidates}</div>
+        </div>
+      </div>
+    ` : ''}
+
+    ${fifthsPath ? `
+      <div class="pitch-metric-row">
+        <div>
+          <div class="stat-label">${t('Circle of Fifths Trajectory')}</div>
+          <div style="font-family: var(--font-mono); font-size: 11px; margin-top: 2px; color: var(--muted-color);">${fifthsPath}</div>
+        </div>
+      </div>
+    ` : ''}
+
+    <div style="margin-top: 12px;">
+      <div class="stat-label" style="margin-bottom: 6px;">${t('12-Tone Pitch Class Weight Distribution')}</div>
+      <div class="pitch-bar-chart">
+        ${barsHtml}
+      </div>
+    </div>
+  `;
 }
 
 function renderSelectedInstrumentRange(instName, ranges) {
