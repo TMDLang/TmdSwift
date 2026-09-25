@@ -180,13 +180,19 @@ function renderSelectedInstrumentRange(instName, ranges) {
     avgNoteName = `${Math.round(target.averageMidiPitch)}`;
   }
 
+  const lowSec = target.lowestNote.sectionName ? `[${target.lowestNote.sectionName}]` : '';
+  const highSec = target.highestNote.sectionName ? `[${target.highestNote.sectionName}]` : '';
+  const sectionSpan = (lowSec && highSec)
+    ? (lowSec === highSec ? `Section ${lowSec}` : `${lowSec} ～ ${highSec}`)
+    : (lowSec || highSec || '');
+
   container.innerHTML = `
     <div class="vocal-profile-container">
       <div class="pitch-stats-row">
         <div class="pitch-stat-box">
-          <span class="stat-label">Vocal Range (音域)</span>
+          <span class="stat-label">Pitch Range (音域)</span>
           <span class="stat-value">${target.lowestNote.noteName}${lowDegree} ～ ${target.highestNote.noteName}${highDegree}</span>
-          <span class="stat-sub">Key: ${keySig} · [${target.lowestNote.sectionName}] ～ [${target.highestNote.sectionName}]</span>
+          <span class="stat-sub">${sectionSpan}</span>
         </div>
         <div class="pitch-stat-box">
           <span class="stat-label">Pitch Span (跨度)</span>
@@ -195,21 +201,20 @@ function renderSelectedInstrumentRange(instName, ranges) {
         </div>
       </div>
 
-      <div class="pitch-details-block">
-        <div><strong>Singing Track:</strong> ${target.instrument} (${target.totalNotes} notes total)</div>
-        <div style="margin-top: 4px;"><strong>Lowest Note:</strong> ${target.lowestNote.noteName}${lowDegree} in <em>[${target.lowestNote.sectionName}]</em></div>
-        <div style="margin-top: 2px;"><strong>Highest Note:</strong> ${target.highestNote.noteName}${highDegree} in <em>[${target.highestNote.sectionName}]</em></div>
-        <div class="pitch-details-eval">
-          <span>Recommended Voice Classification:</span> <strong>${voiceStr}</strong>
-        </div>
-      </div>
-
       <div class="pitch-metric-row">
         <div>
           <div class="stat-label">Center Tessitura (核心音區)</div>
           <div class="span-pill">${avgNoteName}</div>
         </div>
-        <div class="pitch-meta">Average vocal pitch</div>
+        <div class="pitch-meta">Average pitch</div>
+      </div>
+
+      <div class="pitch-metric-row">
+        <div>
+          <div class="stat-label">Recommended Voice Classification (適合聲部)</div>
+          <div style="font-weight: 600; color: #58a6ff; margin-top: 3px;">${voiceStr}</div>
+        </div>
+        <div class="pitch-meta">Based on pitch range</div>
       </div>
     </div>
   `;
