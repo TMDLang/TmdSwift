@@ -847,9 +847,14 @@ public enum TMDSongInspector {
             globalWeights[pc] += dur
 
             for (secIdx, sec) in timingProfile.sections.enumerated() {
-                if event.position >= sec.startPositionQuarterNotes &&
-                   event.position < (sec.startPositionQuarterNotes + sec.durationQuarterNotes + 0.001) {
-                    sectionWeights[secIdx]![pc] += dur
+                let overlap = overlapDuration(
+                    eventPosition: event.position,
+                    eventDuration: dur,
+                    sectionStart: sec.startPositionQuarterNotes,
+                    sectionDuration: sec.durationQuarterNotes
+                )
+                if overlap > 0.0 {
+                    sectionWeights[secIdx]![pc] += overlap
                 }
             }
         }
@@ -863,9 +868,14 @@ public enum TMDSongInspector {
                 let w = dur * weightFactor
                 globalWeights[pc] += w
                 for (secIdx, sec) in timingProfile.sections.enumerated() {
-                    if event.position >= sec.startPositionQuarterNotes &&
-                       event.position < (sec.startPositionQuarterNotes + sec.durationQuarterNotes + 0.001) {
-                        sectionWeights[secIdx]![pc] += w
+                    let overlap = overlapDuration(
+                        eventPosition: event.position,
+                        eventDuration: dur,
+                        sectionStart: sec.startPositionQuarterNotes,
+                        sectionDuration: sec.durationQuarterNotes
+                    )
+                    if overlap > 0.0 {
+                        sectionWeights[secIdx]![pc] += weightFactor * overlap
                     }
                 }
             }
@@ -884,7 +894,10 @@ public enum TMDSongInspector {
 
         for (secIdx, sec) in timingProfile.sections.enumerated() {
             let weights = sectionWeights[secIdx] ?? [Double](repeating: 0.0, count: 12)
-            let secTonicOffset = (sheet.keySignature.semitoneOffset + sec.keyOffset % 12 + 12) % 12
+            // PlaybackState.keyOffset already includes the initial score key.
+            // Adding sheet.keySignature here would apply that key twice for
+            // scores whose initial key is not C.
+            let secTonicOffset = (sec.keyOffset % 12 + 12) % 12
             let secKeyName = keyName(forTonicOffset: secTonicOffset)
             let secDist = makePitchClassDistribution(weights: weights, tonicOffset: secTonicOffset)
             let secCorr = evaluateKeyCorrelation(weights: weights, declaredKeyName: secKeyName, declaredTonicOffset: secTonicOffset)
@@ -926,16 +939,20 @@ public enum TMDSongInspector {
         // Modulation story
         var modTransitions: [String] = []
         var prevKey = baseKey
-        var prevOffset = 0
+        var prevOffset = sheet.keySignature.semitoneOffset
+        var prevFifths = circleOfFifthsStep(tonicOffset: prevOffset)
         for sec in sectionProfiles {
             if sec.keyOffset != prevOffset || sec.declaredKey != prevKey {
                 let diff = sec.keyOffset - prevOffset
                 let semitoneDiff = diff >= 0 ? "+\(diff)" : "\(diff)"
-                let stepDiff = sec.fifthsPosition
+                var stepDiff = sec.fifthsPosition - prevFifths
+                if stepDiff > 6 { stepDiff -= 12 }
+                if stepDiff < -6 { stepDiff += 12 }
                 let stepStr = stepDiff >= 0 ? "+\(stepDiff)" : "\(stepDiff)"
                 modTransitions.append("[\(sec.sectionName)] 轉至 \(sec.declaredKey) 大調 (\(semitoneDiff) 半音 / 五度圈 \(stepStr) 步)")
                 prevKey = sec.declaredKey
                 prevOffset = sec.keyOffset
+                prevFifths = sec.fifthsPosition
             }
         }
 
@@ -962,6 +979,17 @@ public enum TMDSongInspector {
             moodDescription: moodDescription,
             modulationStory: modulationStory
         )
+    }
+
+    private static func overlapDuration(
+        eventPosition: Double,
+        eventDuration: Double,
+        sectionStart: Double,
+        sectionDuration: Double
+    ) -> Double {
+        let eventEnd = eventPosition + max(0.0, eventDuration)
+        let sectionEnd = sectionStart + max(0.0, sectionDuration)
+        return max(0.0, min(eventEnd, sectionEnd) - max(eventPosition, sectionStart))
     }
 
     private static func chordPitchClasses(_ chord: ChordSymbol, keyOffset: Int) -> [(pc: Int, weight: Double)] {

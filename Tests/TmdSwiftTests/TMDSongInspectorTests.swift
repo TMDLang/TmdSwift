@@ -289,6 +289,68 @@ struct TMDSongInspectorTests {
         #expect(report.contains("調外音:"))
     }
 
+    @Test func testTonalityUsesInitialKeyOffsetOnlyOnce() throws {
+        let tmd = """
+        ::SCORE::
+        ** Initial D Tonality **
+        != 120
+        ?= D
+        <4/4>
+
+        verse:Piano@|0|{
+            <4*>
+            1 3 5 1^
+            [D] - [A] -
+        }
+
+        -> verse ->#
+        """
+
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let profile = TMDSongInspector.inspect(sheet: sheet)
+        let tonality = try #require(profile.tonality)
+        let section = try #require(tonality.sections.first)
+
+        #expect(section.declaredKey == "D")
+        #expect(section.keyOffset == 2)
+        #expect(section.fifthsPosition == 2)
+        #expect(section.nonDiatonicNotes.isEmpty)
+        #expect(tonality.modulationStory == "全曲維持單一調性（未轉調）")
+    }
+
+    @Test func testTonalityReportsRelativeModulationFromNonCInitialKey() throws {
+        let tmd = """
+        ::SCORE::
+        ** D To E Tonality **
+        != 120
+        ?= D
+        <4/4>
+
+        verse:Piano@|0|{
+            <4*>
+            1 3 5 1^
+            [D] - [A] -
+        }
+
+        chorus:Piano@|0|{
+            <4*>
+            1 3 5 1^
+            [E] - [B] -
+        }
+
+        -> verse -> {?+2} -> chorus ->#
+        """
+
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let profile = TMDSongInspector.inspect(sheet: sheet)
+        let tonality = try #require(profile.tonality)
+
+        #expect(tonality.sections.map(\.declaredKey) == ["D", "E"])
+        #expect(tonality.sections.map(\.keyOffset) == [2, 4])
+        #expect(tonality.modulationStory.contains("D 大調起奏"))
+        #expect(tonality.modulationStory.contains("轉至 E 大調 (+2 半音"))
+    }
+
     @Test func testTonalityVisualizerSVGAndHTMLGeneration() throws {
         let tmd = """
         ::SCORE::
@@ -330,4 +392,3 @@ struct TMDSongInspectorTests {
         #expect(html.contains("Detailed Text Analysis"))
     }
 }
-
