@@ -17,22 +17,62 @@ function getTmdExecutable() {
 }
 
 /**
+ * Generate client-side localization script for Webviews
+ */
+function getWebviewL10nScript() {
+    const keys = [
+        "Song Inspector", "Valid Score", "Ready", "Error", "Refresh",
+        "Duration", "Initial Key", "Tempo", "Arrangement Density",
+        "Peak concurrency (avg {0})", "Quarter note beat", "Meter <{0}>",
+        "Major", "bars", "tracks", "notes", "notes total",
+        "Pitch Range & Tessitura Analysis", "Analyzing track notes...",
+        "No notes detected.", "No data for selected track.",
+        "Pitch Range", "Pitch Span", "octaves", "semitones",
+        "Difficulty: {0}", "Center Tessitura", "Average pitch",
+        "Recommended Voice Classification", "Based on pitch range",
+        "Harmonic Vocabulary & Modulations", "Distinct Chords",
+        "Key Modulations", "None", "Structure & Conductor Timeline",
+        "Easy", "Moderate", "Challenging", "Difficult",
+        "Soprano", "Mezzo-Soprano", "Contralto", "Tenor", "Baritone", "Bass",
+        "Section {0}", "Piano", "Key: {0}", "Audition", "Audition note",
+        "Insert", "Insert TMD note at cursor", "Octave down", "Octave up",
+        "TMD Web MIDI Player", "Loading...", "Play", "Pause", "Stop", "Synth:",
+        "General MIDI (FluidR3 Multi-Track)", "Grand Piano (FluidR3)",
+        "Tiny Synth (Chiptune)", "System MIDI Out"
+    ];
+    const dict = {};
+    for (const k of keys) {
+        dict[k] = vscode.l10n.t(k);
+    }
+    return `<script>
+  window.__TMD_L10N__ = ${JSON.stringify(dict)};
+  window.__tmd_t = function(key, ...args) {
+    var str = (window.__TMD_L10N__ && window.__TMD_L10N__[key]) || key;
+    for (var i = 0; i < args.length; i++) {
+      str = str.replace('{' + i + '}', args[i]);
+    }
+    return str;
+  };
+</script>`;
+}
+
+/**
  * Get active editor's file path, ensuring it is a .tmd file.
  */
 function getActiveTmdFilePath() {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
-        vscode.window.showErrorMessage('No active editor found. Please open a .tmd file.');
+        vscode.window.showErrorMessage(vscode.l10n.t('No active editor found. Please open a .tmd file.'));
         return null;
     }
     const doc = editor.document;
     if (doc.isUntitled) {
-        vscode.window.showErrorMessage('Please save the file before exporting.');
+        vscode.window.showErrorMessage(vscode.l10n.t('Please save the file before exporting.'));
         return null;
     }
     const ext = path.extname(doc.fileName).toLowerCase();
     if (doc.languageId !== 'tmd' && ext !== '.tmd') {
-        vscode.window.showErrorMessage('TMD export commands can only be used on .tmd files.');
+        vscode.window.showErrorMessage(vscode.l10n.t('TMD export commands can only be used on .tmd files.'));
         return null;
     }
     return doc.fileName;
@@ -51,24 +91,26 @@ function runTmdExport(args, successMessage, outputFilePath) {
     savePromise.then(() => {
         vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
-            title: 'TMD: Exporting...',
+            title: vscode.l10n.t('TMD: Exporting...'),
             cancellable: false
         }, () => {
             return new Promise((resolve) => {
                 execFile(tmdBin, args, (error, stdout, stderr) => {
                     if (error) {
                         const errMsg = (stderr && stderr.trim().length > 0) ? stderr.trim() : error.message;
-                        vscode.window.showErrorMessage(`TMD Export Failed: ${errMsg}`);
+                        vscode.window.showErrorMessage(vscode.l10n.t('TMD Export Failed: {0}', errMsg));
                         resolve();
                         return;
                     }
 
                     if (outputFilePath && fs.existsSync(outputFilePath)) {
-                        vscode.window.showInformationMessage(successMessage, 'Reveal in Finder', 'Open')
+                        const revealBtn = vscode.l10n.t('Reveal in Finder');
+                        const openBtn = vscode.l10n.t('Open');
+                        vscode.window.showInformationMessage(successMessage, revealBtn, openBtn)
                             .then(selection => {
-                                if (selection === 'Reveal in Finder') {
+                                if (selection === revealBtn) {
                                     vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(outputFilePath));
-                                } else if (selection === 'Open') {
+                                } else if (selection === openBtn) {
                                     vscode.commands.executeCommand('vscode.open', vscode.Uri.file(outputFilePath));
                                 }
                             });
@@ -426,7 +468,7 @@ function activate(context) {
         }));
 
         const picked = await vscode.window.showQuickPick(items, {
-            placeHolder: 'Select a TMD score template to create',
+            placeHolder: vscode.l10n.t('Choose a template to quickly scaffold a TMD score'),
             matchOnDescription: true,
             matchOnDetail: true
         });
@@ -437,10 +479,10 @@ function activate(context) {
         // If invoked from explorer folder context menu
         if (uri && uri.fsPath && fs.existsSync(uri.fsPath) && fs.statSync(uri.fsPath).isDirectory()) {
             const filename = await vscode.window.showInputBox({
-                prompt: 'Enter file name for the new TMD score',
+                prompt: vscode.l10n.t('Enter filename for the new TMD score'),
                 value: selected.defaultFilename,
                 validateInput: (val) => {
-                    if (!val || val.trim().length === 0) return 'Filename cannot be empty';
+                    if (!val || val.trim().length === 0) return vscode.l10n.t('Please provide a valid file name');
                     return null;
                 }
             });
@@ -449,7 +491,7 @@ function activate(context) {
             const targetPath = path.join(uri.fsPath, cleanName);
             if (fs.existsSync(targetPath)) {
                 const overwrite = await vscode.window.showWarningMessage(
-                    `File '${cleanName}' already exists. Overwrite?`,
+                    vscode.l10n.t('A file with this name already exists in the workspace. Please choose a different name.'),
                     'Overwrite',
                     'Cancel'
                 );
@@ -473,7 +515,7 @@ function activate(context) {
         const filePath = getActiveTmdFilePath();
         if (!filePath) return;
         const outputPath = filePath.replace(/\.[^/.]+$/, '') + '.mid';
-        runTmdExport([filePath, '-m', outputPath], `Exported to MIDI: ${path.basename(outputPath)}`, outputPath);
+        runTmdExport([filePath, '-m', outputPath], vscode.l10n.t('MIDI file exported successfully to {0}', path.basename(outputPath)), outputPath);
     }));
 
     // 2. Export to MusicXML (.musicxml)
@@ -481,7 +523,7 @@ function activate(context) {
         const filePath = getActiveTmdFilePath();
         if (!filePath) return;
         const outputPath = filePath.replace(/\.[^/.]+$/, '') + '.musicxml';
-        runTmdExport([filePath, '-x', outputPath], `Exported to MusicXML: ${path.basename(outputPath)}`, outputPath);
+        runTmdExport([filePath, '-x', outputPath], vscode.l10n.t('MusicXML file exported successfully to {0}', path.basename(outputPath)), outputPath);
     }));
 
     // 3. Export to ABC (.abc)
@@ -489,7 +531,7 @@ function activate(context) {
         const filePath = getActiveTmdFilePath();
         if (!filePath) return;
         const outputPath = filePath.replace(/\.[^/.]+$/, '') + '.abc';
-        runTmdExport([filePath, '-a', outputPath], `Exported to ABC notation: ${path.basename(outputPath)}`, outputPath);
+        runTmdExport([filePath, '-a', outputPath], vscode.l10n.t('ABC notation exported successfully to {0}', path.basename(outputPath)), outputPath);
     }));
 
     // 4. Export to LilyPond (.ly)
@@ -497,7 +539,7 @@ function activate(context) {
         const filePath = getActiveTmdFilePath();
         if (!filePath) return;
         const outputPath = filePath.replace(/\.[^/.]+$/, '') + '.ly';
-        runTmdExport([filePath, '-l', outputPath], `Exported to LilyPond: ${path.basename(outputPath)}`, outputPath);
+        runTmdExport([filePath, '-l', outputPath], vscode.l10n.t('LilyPond file exported successfully to {0}', path.basename(outputPath)), outputPath);
     }));
 
     // 5. Render to PDF via LilyPond (.pdf)
@@ -505,7 +547,7 @@ function activate(context) {
         const filePath = getActiveTmdFilePath();
         if (!filePath) return;
         const outputPath = filePath.replace(/\.[^/.]+$/, '') + '.pdf';
-        runTmdExport([filePath, '--pdf-output', outputPath], `Rendered to PDF: ${path.basename(outputPath)}`, outputPath);
+        runTmdExport([filePath, '--pdf-output', outputPath], vscode.l10n.t('PDF rendered successfully to {0}', path.basename(outputPath)), outputPath);
     }));
 
     // 6. Render to WAV Audio (.wav)
@@ -513,7 +555,7 @@ function activate(context) {
         const filePath = getActiveTmdFilePath();
         if (!filePath) return;
         const outputPath = filePath.replace(/\.[^/.]+$/, '') + '.wav';
-        runTmdExport([filePath, '-w', outputPath], `Rendered to WAV Audio: ${path.basename(outputPath)}`, outputPath);
+        runTmdExport([filePath, '-w', outputPath], vscode.l10n.t('WAV rendered successfully to {0}', path.basename(outputPath)), outputPath);
     }));
 
     // 6.1. Export to VOCALOID3/4 (.vsqx)
@@ -521,7 +563,7 @@ function activate(context) {
         const filePath = getActiveTmdFilePath();
         if (!filePath) return;
         const outputPath = filePath.replace(/\.[^/.]+$/, '') + '.vsqx';
-        runTmdExport([filePath, '--vsqx-output', outputPath], `Exported to VOCALOID3/4: ${path.basename(outputPath)}`, outputPath);
+        runTmdExport([filePath, '--vsqx-output', outputPath], vscode.l10n.t('VOCALOID3/4 (.vsqx) exported successfully to {0}', path.basename(outputPath)), outputPath);
     }));
 
     // 6.2. Export to VOCALOID2 (.vsq)
@@ -529,7 +571,7 @@ function activate(context) {
         const filePath = getActiveTmdFilePath();
         if (!filePath) return;
         const outputPath = filePath.replace(/\.[^/.]+$/, '') + '.vsq';
-        runTmdExport([filePath, '--vsq-output', outputPath], `Exported to VOCALOID2: ${path.basename(outputPath)}`, outputPath);
+        runTmdExport([filePath, '--vsq-output', outputPath], vscode.l10n.t('VOCALOID2 (.vsq) exported successfully to {0}', path.basename(outputPath)), outputPath);
     }));
 
     // 6.3. Export to UTAU (.ust)
@@ -537,7 +579,7 @@ function activate(context) {
         const filePath = getActiveTmdFilePath();
         if (!filePath) return;
         const outputPath = filePath.replace(/\.[^/.]+$/, '') + '.ust';
-        runTmdExport([filePath, '--ust-output', outputPath], `Exported to UTAU: ${path.basename(outputPath)}`, outputPath);
+        runTmdExport([filePath, '--ust-output', outputPath], vscode.l10n.t('UTAU (.ust) exported successfully to {0}', path.basename(outputPath)), outputPath);
     }));
 
     // Webview MIDI Player Panel tracking
@@ -554,20 +596,21 @@ function activate(context) {
         const playerCssUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'player.css'));
 
         return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${vscode.env.language || 'en'}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TMD MIDI Player</title>
+  <title>${vscode.l10n.t('TMD Web MIDI Player')}</title>
   <link rel="stylesheet" href="${playerCssUri}">
+  ${getWebviewL10nScript()}
 </head>
 <body>
   <div class="player-container">
     <div class="player-header">
       <div id="player-icon" class="player-icon">🎵</div>
       <div class="player-header-info">
-        <div id="score-title" class="score-title">TMD Web MIDI Player</div>
-        <div id="score-subtitle" class="score-subtitle">Loading...</div>
+        <div id="score-title" class="score-title">${vscode.l10n.t('TMD Web MIDI Player')}</div>
+        <div id="score-subtitle" class="score-subtitle">${vscode.l10n.t('Loading...')}</div>
       </div>
     </div>
 
@@ -585,22 +628,22 @@ function activate(context) {
     <!-- Controls -->
     <div class="controls-section">
       <div class="playback-buttons">
-        <button id="btn-play-pause" class="btn-ctrl btn-main" title="Play">▶</button>
-        <button id="btn-stop" class="btn-ctrl" title="Stop">⏹</button>
+        <button id="btn-play-pause" class="btn-ctrl btn-main" title="${vscode.l10n.t('Play')}">▶</button>
+        <button id="btn-stop" class="btn-ctrl" title="${vscode.l10n.t('Stop')}">⏹</button>
       </div>
 
       <div class="synth-selector-group">
-        <span class="synth-label">Synth:</span>
+        <span class="synth-label">${vscode.l10n.t('Synth:')}</span>
         <select id="synth-select" class="synth-select">
-          <option value="gm">🎼 General MIDI (FluidR3 Multi-Track)</option>
-          <option value="piano">🎹 Grand Piano (FluidR3)</option>
-          <option value="tiny">⚡ Tiny Synth (Chiptune)</option>
-          <option value="webmidi">🎛 System MIDI Out</option>
+          <option value="gm">🎼 ${vscode.l10n.t('General MIDI (FluidR3 Multi-Track)')}</option>
+          <option value="piano">🎹 ${vscode.l10n.t('Grand Piano (FluidR3)')}</option>
+          <option value="tiny">⚡ ${vscode.l10n.t('Tiny Synth (Chiptune)')}</option>
+          <option value="webmidi">🎛 ${vscode.l10n.t('System MIDI Out')}</option>
         </select>
       </div>
     </div>
 
-    <div id="status-text" class="status-bar">Ready</div>
+    <div id="status-text" class="status-bar">${vscode.l10n.t('Ready')}</div>
   </div>
 
   <script src="${jzzUri}"></script>
@@ -874,29 +917,30 @@ function activate(context) {
         const keyboardCssUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'keyboard.css'));
 
         return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${vscode.env.language || 'en'}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TMD Virtual Keyboard</title>
   <link rel="stylesheet" href="${keyboardCssUri}">
+  ${getWebviewL10nScript()}
 </head>
 <body>
   <div id="keyboard-container" class="keyboard-container">
     <div class="keyboard-toolbar">
       <div class="toolbar-left">
-        <span class="keyboard-title">🎹 Piano</span>
+        <span class="keyboard-title">🎹 ${vscode.l10n.t('Piano')}</span>
         <span id="keyboard-key-badge" class="keyboard-key-badge">Key: C</span>
       </div>
       <div class="toolbar-right">
         <div class="mode-toggle">
-          <button id="btn-mode-audition" class="btn-mode active" title="Audition note">Audition</button>
-          <button id="btn-mode-insert" class="btn-mode" title="Insert TMD note at cursor">Insert</button>
+          <button id="btn-mode-audition" class="btn-mode active" title="${vscode.l10n.t('Audition note')}">${vscode.l10n.t('Audition')}</button>
+          <button id="btn-mode-insert" class="btn-mode" title="${vscode.l10n.t('Insert TMD note at cursor')}">${vscode.l10n.t('Insert')}</button>
         </div>
         <div class="octave-controls">
-          <button id="btn-octave-down" class="btn-icon" title="Octave down">◀</button>
+          <button id="btn-octave-down" class="btn-icon" title="${vscode.l10n.t('Octave down')}">◀</button>
           <span id="octave-display" class="octave-display">C4-C6</span>
-          <button id="btn-octave-up" class="btn-icon" title="Octave up">▶</button>
+          <button id="btn-octave-up" class="btn-icon" title="${vscode.l10n.t('Octave up')}">▶</button>
         </div>
       </div>
     </div>
@@ -989,44 +1033,45 @@ function activate(context) {
         const inspectorJsUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'inspector.js'));
 
         return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${vscode.env.language || 'en'}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TMD Song Inspector</title>
+  <title>${vscode.l10n.t('Song Inspector')}</title>
   <link rel="stylesheet" href="${inspectorCssUri}">
+  ${getWebviewL10nScript()}
 </head>
 <body>
   <div class="inspector-header">
     <div class="header-title-row">
       <div class="score-title">
-        <span id="score-title">Song Inspector</span>
-        <span id="status-badge" class="badge-valid">Ready</span>
+        <span id="score-title">${vscode.l10n.t('Song Inspector')}</span>
+        <span id="status-badge" class="badge-valid">${vscode.l10n.t('Ready')}</span>
       </div>
       <div id="file-path" class="file-path"></div>
     </div>
-    <button id="btn-refresh" class="btn-refresh" title="Refresh Profile">Refresh</button>
+    <button id="btn-refresh" class="btn-refresh" title="${vscode.l10n.t('Refresh')}">${vscode.l10n.t('Refresh')}</button>
   </div>
 
   <!-- Key Metrics Grid -->
   <div class="stats-grid">
     <div class="stat-card">
-      <div class="stat-label">Duration</div>
+      <div class="stat-label">${vscode.l10n.t('Duration')}</div>
       <div id="val-duration" class="stat-value">-</div>
       <div id="sub-duration" class="stat-sub">-</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Initial Key</div>
+      <div class="stat-label">${vscode.l10n.t('Initial Key')}</div>
       <div id="val-key" class="stat-value">-</div>
       <div id="sub-key" class="stat-sub">-</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Tempo</div>
+      <div class="stat-label">${vscode.l10n.t('Tempo')}</div>
       <div id="val-tempo" class="stat-value">-</div>
       <div id="sub-tempo" class="stat-sub">-</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Arrangement Density</div>
+      <div class="stat-label">${vscode.l10n.t('Arrangement Density')}</div>
       <div id="val-density" class="stat-value">-</div>
       <div id="sub-density" class="stat-sub">-</div>
     </div>
@@ -1035,26 +1080,26 @@ function activate(context) {
   <!-- Vocal & Pitch Tessitura Card -->
   <div class="section-card">
     <div class="section-card-header">
-      <div class="section-card-title">Pitch Range & Tessitura Analysis</div>
+      <div class="section-card-title">${vscode.l10n.t('Pitch Range & Tessitura Analysis')}</div>
       <select id="track-select" class="track-select"></select>
     </div>
     <div id="range-container" class="range-display-container">
-      <div class="stat-sub">Analyzing track notes...</div>
+      <div class="stat-sub">${vscode.l10n.t('Analyzing track notes...')}</div>
     </div>
   </div>
 
   <!-- Harmony & Modulations Card -->
   <div class="section-card">
     <div class="section-card-header">
-      <div class="section-card-title">Harmonic Vocabulary & Modulations</div>
+      <div class="section-card-title">${vscode.l10n.t('Harmonic Vocabulary & Modulations')}</div>
     </div>
     <div style="display: flex; flex-direction: column; gap: 10px;">
       <div>
-        <div class="stat-label" style="margin-bottom: 6px;">Distinct Chords</div>
+        <div class="stat-label" style="margin-bottom: 6px;">${vscode.l10n.t('Distinct Chords')}</div>
         <div id="chords-list" class="tags-list"></div>
       </div>
       <div>
-        <div class="stat-label" style="margin-bottom: 6px;">Key Modulations</div>
+        <div class="stat-label" style="margin-bottom: 6px;">${vscode.l10n.t('Key Modulations')}</div>
         <div id="modulations-list" class="tags-list"></div>
       </div>
     </div>
@@ -1063,7 +1108,7 @@ function activate(context) {
   <!-- Musical Structure Timeline -->
   <div class="section-card">
     <div class="section-card-header">
-      <div class="section-card-title">Structure & Conductor Timeline</div>
+      <div class="section-card-title">${vscode.l10n.t('Structure & Conductor Timeline')}</div>
     </div>
     <div class="timeline-flow">
       <div id="timeline-bar-wrapper" class="timeline-bar-wrapper"></div>

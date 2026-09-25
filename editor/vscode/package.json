@@ -1,7 +1,7 @@
 {
   "name": "tmd-vscode",
-  "displayName": "TMD Language Support",
-  "description": "Syntax highlighting, snippets, and language configuration for TMD (Timebase Mark Down)",
+  "displayName": "%tmd.displayName%",
+  "description": "%tmd.description%",
   "version": "0.1.0",
   "publisher": "zonble",
   "author": "zonble",
@@ -59,200 +59,200 @@
     "commands": [
       {
         "command": "tmd.newFromTemplate",
-        "title": "New from template",
+        "title": "%tmd.commands.newFromTemplate%",
         "category": "TMD",
         "icon": "$(file-add)"
       },
       {
         "command": "tmd.exportMIDI",
-        "title": "Export to MIDI (.mid)",
+        "title": "%tmd.commands.exportMIDI%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.exportMusicXML",
-        "title": "Export to MusicXML (.musicxml)",
+        "title": "%tmd.commands.exportMusicXML%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.exportABC",
-        "title": "Export to ABC Notation (.abc)",
+        "title": "%tmd.commands.exportABC%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.exportLilyPond",
-        "title": "Export to LilyPond (.ly)",
+        "title": "%tmd.commands.exportLilyPond%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.renderPDF",
-        "title": "Render to PDF via LilyPond (.pdf)",
+        "title": "%tmd.commands.renderPDF%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.renderWAV",
-        "title": "Render to WAV Audio (.wav)",
+        "title": "%tmd.commands.renderWAV%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.exportVSQX",
-        "title": "Export to VOCALOID3/4 (.vsqx)",
+        "title": "%tmd.commands.exportVSQX%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.exportVSQ",
-        "title": "Export to VOCALOID2 (.vsq)",
+        "title": "%tmd.commands.exportVSQ%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.exportUST",
-        "title": "Export to UTAU (.ust)",
+        "title": "%tmd.commands.exportUST%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.openMidiPlayer",
-        "title": "Play Score in Web MIDI Player",
+        "title": "%tmd.commands.openMidiPlayer%",
         "category": "TMD",
         "icon": "$(play-circle)",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.playAudio",
-        "title": "Play Audio Preview in Terminal",
+        "title": "%tmd.commands.playAudio%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.installSkills",
-        "title": "Install AI Agent Skills",
+        "title": "%tmd.commands.installSkills%",
         "category": "TMD"
       },
       {
         "command": "tmd.formatDocument",
-        "title": "Format Document",
+        "title": "%tmd.commands.formatDocument%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.checkMeasures",
-        "title": "Check Measure Consistency",
+        "title": "%tmd.commands.checkMeasures%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.inspectSong",
-        "title": "Open Song Inspector (Profile & Vocal Range)",
+        "title": "%tmd.commands.inspectSong%",
         "category": "TMD",
         "icon": "$(pulse)",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.refactorDoubleGrid",
-        "title": "Refactor: Double Grid Resolution (<4*> -> <8*>)",
+        "title": "%tmd.commands.refactorDoubleGrid%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.refactorHalveGrid",
-        "title": "Refactor: Halve Grid Resolution (<8*> -> <4*>)",
+        "title": "%tmd.commands.refactorHalveGrid%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.refactorOptimizeGrid",
-        "title": "Refactor: Optimize Grid Resolution (Minimal Redundant Grid)",
+        "title": "%tmd.commands.refactorOptimizeGrid%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.refactorTranspose",
-        "title": "Refactor: Transpose Pitch (Semitones / Diatonic)...",
+        "title": "%tmd.commands.refactorTranspose%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.refactorTransposeSelection",
-        "title": "Refactor: Transpose Selection...",
+        "title": "%tmd.commands.refactorTransposeSelection%",
         "category": "TMD",
         "enablement": "editorLangId == tmd && editorHasSelection"
       },
       {
         "command": "tmd.refactorDuplicateTrack",
-        "title": "Refactor: Duplicate Track...",
+        "title": "%tmd.commands.refactorDuplicateTrack%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.refactorGenerateHarmony",
-        "title": "Refactor: Generate Harmony...",
+        "title": "%tmd.commands.refactorGenerateHarmony%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.refactorInlineOrders",
-        "title": "Refactor: Unroll / Inline Orders to Linear Score",
+        "title": "%tmd.commands.refactorInlineOrders%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.refactorRenameInstrument",
-        "title": "Refactor: Rename Instrument...",
+        "title": "%tmd.commands.refactorRenameInstrument%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.refactorRenameSection",
-        "title": "Refactor: Rename Section...",
+        "title": "%tmd.commands.refactorRenameSection%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.refactorExtractInstrument",
-        "title": "Refactor: Extract Instrument Track...",
+        "title": "%tmd.commands.refactorExtractInstrument%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.playSection",
-        "title": "Play Section",
+        "title": "%tmd.commands.playSection%",
         "category": "TMD",
         "icon": "$(play)"
       },
       {
         "command": "tmd.playTrack",
-        "title": "Play Track (Solo)",
+        "title": "%tmd.commands.playTrack%",
         "category": "TMD",
         "icon": "$(play)"
       },
       {
         "command": "tmd.playCurrentSection",
-        "title": "Play Current Section at Cursor",
+        "title": "%tmd.commands.playCurrentSection%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.playCurrentTrack",
-        "title": "Play Current Track at Cursor",
+        "title": "%tmd.commands.playCurrentTrack%",
         "category": "TMD",
         "enablement": "editorLangId == tmd"
       },
       {
         "command": "tmd.openKeyboard",
-        "title": "Open Virtual Keyboard",
+        "title": "%tmd.commands.openKeyboard%",
         "category": "TMD",
         "icon": "$(piano)"
       },
       {
         "command": "tmd.refreshOutline",
-        "title": "Refresh Outline",
+        "title": "%tmd.commands.refreshOutline%",
         "category": "TMD",
         "icon": "$(refresh)"
       }
@@ -261,7 +261,7 @@
       "activitybar": [
         {
           "id": "tmdStudio",
-          "title": "TMD Studio",
+          "title": "%tmd.viewsContainers.tmdStudio%",
           "icon": "./media/player.svg"
         }
       ]
@@ -271,16 +271,16 @@
         {
           "type": "webview",
           "id": "tmdKeyboardView",
-          "name": "Virtual Keyboard"
+          "name": "%tmd.views.tmdKeyboardView%"
         },
         {
           "type": "webview",
           "id": "tmdInspectorView",
-          "name": "Song Inspector"
+          "name": "%tmd.views.tmdInspectorView%"
         },
         {
           "id": "tmdOutlineView",
-          "name": "Outline & Player"
+          "name": "%tmd.views.tmdOutlineView%"
         }
       ]
     },
@@ -460,28 +460,28 @@
       {
         "id": "tmd",
         "name": "tmd",
-        "description": "TMD (Timebase Mark Down) musical composition, arranging, and verification assistant.",
+        "description": "%tmd.chat.description%",
         "isDefault": false,
         "commands": [
           {
             "name": "check",
-            "description": "Inspect measure consistency, beat calculations, and syntax in TMD score."
+            "description": "%tmd.chat.check.description%"
           },
           {
             "name": "inspect",
-            "description": "Inspect song musical profile, vocal tessitura/range, and arrangement density."
+            "description": "%tmd.chat.inspect.description%"
           },
           {
             "name": "compose",
-            "description": "Compose, harmonize, or orchestrate TMD musical sections and tracks."
+            "description": "%tmd.chat.compose.description%"
           },
           {
             "name": "fix",
-            "description": "Diagnose and fix measure length discrepancies or syntax issues in TMD score."
+            "description": "%tmd.chat.fix.description%"
           },
           {
             "name": "explain",
-            "description": "Explain score structure, music theory, chord progressions, or Solfege in TMD."
+            "description": "%tmd.chat.explain.description%"
           }
         ]
       }
@@ -490,8 +490,8 @@
       {
         "name": "tmd_check",
         "toolReferenceName": "tmdCheck",
-        "displayName": "TMD Measure Consistency Checker",
-        "modelDescription": "Validates a TMD score text or file for measure length consistency, beat calculation mismatches, and undefined section references.",
+        "displayName": "%tmd.tools.check.displayName%",
+        "modelDescription": "%tmd.tools.check.modelDescription%",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -509,8 +509,8 @@
       {
         "name": "tmd_inspect",
         "toolReferenceName": "tmdInspect",
-        "displayName": "TMD Song Inspector",
-        "modelDescription": "Inspects and profiles a TMD song: vocal pitch range/tessitura, key modulations, section timing/structure, chord vocabulary, and arrangement density.",
+        "displayName": "%tmd.tools.inspect.displayName%",
+        "modelDescription": "%tmd.tools.inspect.modelDescription%",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -532,8 +532,8 @@
       {
         "name": "tmd_format",
         "toolReferenceName": "tmdFormat",
-        "displayName": "TMD Score Formatter",
-        "modelDescription": "Formats TMD score code with standard indentation, clean spacing, and uniform layout.",
+        "displayName": "%tmd.tools.format.displayName%",
+        "modelDescription": "%tmd.tools.format.modelDescription%",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -550,8 +550,8 @@
       {
         "name": "tmd_get_specification",
         "toolReferenceName": "tmdSpecification",
-        "displayName": "TMD Notation Specification Guide",
-        "modelDescription": "Returns the authoritative TMD language specification, jianpu scale degree mappings, rhythm grid rules, and human composition principles.",
+        "displayName": "%tmd.tools.spec.displayName%",
+        "modelDescription": "%tmd.tools.spec.modelDescription%",
         "inputSchema": {
           "type": "object",
           "properties": {}
@@ -564,17 +564,17 @@
         "tmd.executablePath": {
           "type": "string",
           "default": "",
-          "description": "Custom path to the tmd command line tool. If empty, the extension looks for 'tmd' in the system PATH."
+          "description": "%tmd.config.executablePath%"
         },
         "tmd.checkOnSave": {
           "type": "boolean",
           "default": true,
-          "description": "Automatically check measure consistency on save and display diagnostics in the Problems panel."
+          "description": "%tmd.config.checkOnSave%"
         },
         "tmd.checkOnChange": {
           "type": "boolean",
           "default": true,
-          "description": "Automatically check measure consistency as you type (debounced) and update the Problems panel."
+          "description": "%tmd.config.checkOnChange%"
         }
       }
     }

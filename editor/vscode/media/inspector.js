@@ -1,4 +1,9 @@
 const vscode = acquireVsCodeApi();
+const t = (window.__tmd_t || ((key, ...args) => {
+  let s = (window.__TMD_L10N__ && window.__TMD_L10N__[key]) || key;
+  args.forEach((a, i) => { s = s.replace('{' + i + '}', a); });
+  return s;
+}));
 
 let currentProfile = null;
 let selectedInstrument = null;
@@ -23,7 +28,7 @@ window.addEventListener('message', event => {
 
 function renderError(errorMsg, fileName) {
   document.getElementById('status-badge').className = 'badge-error';
-  document.getElementById('status-badge').textContent = 'Error';
+  document.getElementById('status-badge').textContent = t('Error');
   document.getElementById('score-title').textContent = fileName || 'TMD Score';
   document.getElementById('file-path').textContent = errorMsg;
 }
@@ -33,7 +38,7 @@ function renderInspector(profile, fileName) {
 
   // Header
   document.getElementById('status-badge').className = 'badge-valid';
-  document.getElementById('status-badge').textContent = 'Valid Score';
+  document.getElementById('status-badge').textContent = t('Valid Score');
   document.getElementById('score-title').textContent = profile.title || fileName || 'TMD Score';
   document.getElementById('file-path').textContent = fileName || '';
 
@@ -43,20 +48,20 @@ function renderInspector(profile, fileName) {
   const durationStr = `${mins}:${secs.toString().padStart(2, '0')}`;
   
   document.getElementById('val-duration').textContent = durationStr;
-  document.getElementById('sub-duration').textContent = `${profile.timing.totalDurationSeconds.toFixed(1)}s (${profile.timing.totalMeasures} bars)`;
+  document.getElementById('sub-duration').textContent = `${profile.timing.totalDurationSeconds.toFixed(1)}s (${profile.timing.totalMeasures} ${t('bars')})`;
 
-  document.getElementById('val-key').textContent = `${profile.initialKey} Major`;
-  document.getElementById('sub-key').textContent = `Meter <${profile.initialTimeSignature}>`;
+  document.getElementById('val-key').textContent = `${profile.initialKey} ${t('Major')}`;
+  document.getElementById('sub-key').textContent = t('Meter <{0}>', profile.initialTimeSignature);
 
   document.getElementById('val-tempo').textContent = `${profile.initialTempo} BPM`;
-  document.getElementById('sub-tempo').textContent = 'Quarter note beat';
+  document.getElementById('sub-tempo').textContent = t('Quarter note beat');
 
-  document.getElementById('val-density').textContent = `${profile.density.maxConcurrentTracks} tracks`;
+  document.getElementById('val-density').textContent = `${profile.density.maxConcurrentTracks} ${t('tracks')}`;
   const secCount = profile.density.sectionDensities.length;
   const avgDensity = secCount > 0 
     ? (profile.density.sectionDensities.reduce((acc, s) => acc + s.trackCount, 0) / secCount).toFixed(1)
     : 0;
-  document.getElementById('sub-density').textContent = `Peak concurrency (avg ${avgDensity})`;
+  document.getElementById('sub-density').textContent = t('Peak concurrency (avg {0})', avgDensity);
 
   // Track Selector for Pitch Range
   const ranges = profile.instrumentRanges || [];
@@ -76,7 +81,7 @@ function renderInspector(profile, fileName) {
     ranges.forEach(r => {
       const opt = document.createElement('option');
       opt.value = r.instrument;
-      opt.textContent = `${r.instrument} (${r.totalNotes} notes)`;
+      opt.textContent = `${r.instrument} (${r.totalNotes} ${t('notes')})`;
       if (r.instrument === selectedInstrument) {
         opt.selected = true;
       }
@@ -85,7 +90,7 @@ function renderInspector(profile, fileName) {
 
     renderSelectedInstrumentRange(selectedInstrument, ranges);
   } else {
-    document.getElementById('range-container').innerHTML = '<div class="stat-sub">No notes detected.</div>';
+    document.getElementById('range-container').innerHTML = `<div class="stat-sub">${t('No notes detected.')}</div>`;
   }
 
   // Harmony & Chords
@@ -104,7 +109,7 @@ function renderInspector(profile, fileName) {
       harmonyContainer.appendChild(tag);
     });
   } else {
-    harmonyContainer.innerHTML = '<span class="stat-sub">None</span>';
+    harmonyContainer.innerHTML = `<span class="stat-sub">${t('None')}</span>`;
   }
 
   // Modulations
@@ -119,7 +124,7 @@ function renderInspector(profile, fileName) {
       modContainer.appendChild(tag);
     });
   } else {
-    modContainer.innerHTML = '<span class="stat-sub">None</span>';
+    modContainer.innerHTML = `<span class="stat-sub">${t('None')}</span>`;
   }
 
   // Timeline & Sections
@@ -130,17 +135,17 @@ function renderSelectedInstrumentRange(instName, ranges) {
   const container = document.getElementById('range-container');
   const target = ranges.find(r => r.instrument === instName);
   if (!target) {
-    container.innerHTML = '<div class="stat-sub">No data for selected track.</div>';
+    container.innerHTML = `<div class="stat-sub">${t('No data for selected track.')}</div>`;
     return;
   }
 
   const octaves = (target.spanSemitones / 12.0).toFixed(1);
   const diffStr = (target.difficulty || 'easy').toLowerCase();
   const diffLabels = {
-    'easy': 'Easy',
-    'moderate': 'Moderate',
-    'challenging': 'Challenging',
-    'difficult': 'Difficult'
+    'easy': t('Easy'),
+    'moderate': t('Moderate'),
+    'challenging': t('Challenging'),
+    'difficult': t('Difficult')
   };
   const diffColors = {
     'easy': '#3fb950',
@@ -152,16 +157,16 @@ function renderSelectedInstrumentRange(instName, ranges) {
   const diffColor = diffColors[diffStr] || '#58a6ff';
 
   const voiceTypeNames = {
-    'soprano': 'Soprano',
-    'mezzo-soprano': 'Mezzo-Soprano',
-    'contralto': 'Contralto',
-    'tenor': 'Tenor',
-    'baritone': 'Baritone',
-    'bass': 'Bass'
+    'soprano': t('Soprano'),
+    'mezzo-soprano': t('Mezzo-Soprano'),
+    'contralto': t('Contralto'),
+    'tenor': t('Tenor'),
+    'baritone': t('Baritone'),
+    'bass': t('Bass')
   };
 
   const suitableVoices = (target.suitableVoiceTypes || []).map(v => voiceTypeNames[v] || v);
-  const voiceStr = suitableVoices.length > 0 ? suitableVoices.join(', ') : 'None';
+  const voiceStr = suitableVoices.length > 0 ? suitableVoices.join(', ') : t('None');
 
   // Compute Jianpu degree if virtualKeyboardHelper is available
   const keySig = (currentProfile && currentProfile.initialKey) ? currentProfile.initialKey : 'C';
@@ -183,38 +188,38 @@ function renderSelectedInstrumentRange(instName, ranges) {
   const lowSec = target.lowestNote.sectionName ? `[${target.lowestNote.sectionName}]` : '';
   const highSec = target.highestNote.sectionName ? `[${target.highestNote.sectionName}]` : '';
   const sectionSpan = (lowSec && highSec)
-    ? (lowSec === highSec ? `Section ${lowSec}` : `${lowSec} ～ ${highSec}`)
+    ? (lowSec === highSec ? t('Section {0}', lowSec) : `${lowSec} ～ ${highSec}`)
     : (lowSec || highSec || '');
 
   container.innerHTML = `
     <div class="vocal-profile-container">
       <div class="pitch-stats-row">
         <div class="pitch-stat-box">
-          <span class="stat-label">Pitch Range</span>
+          <span class="stat-label">${t('Pitch Range')}</span>
           <span class="stat-value">${target.lowestNote.noteName}${lowDegree} ～ ${target.highestNote.noteName}${highDegree}</span>
           <span class="stat-sub">${sectionSpan}</span>
         </div>
         <div class="pitch-stat-box">
-          <span class="stat-label">Pitch Span</span>
-          <span class="stat-value">${octaves} octaves <span style="font-size: 11px; font-weight: normal; color: var(--muted-color);">(${target.spanSemitones} semitones)</span></span>
-          <span class="stat-sub" style="color: ${diffColor}; font-weight: 600;">Difficulty: ${diffLabel}</span>
+          <span class="stat-label">${t('Pitch Span')}</span>
+          <span class="stat-value">${octaves} ${t('octaves')} <span style="font-size: 11px; font-weight: normal; color: var(--muted-color);">(${target.spanSemitones} ${t('semitones')})</span></span>
+          <span class="stat-sub" style="color: ${diffColor}; font-weight: 600;">${t('Difficulty: {0}', diffLabel)}</span>
         </div>
       </div>
 
       <div class="pitch-metric-row">
         <div>
-          <div class="stat-label">Center Tessitura</div>
+          <div class="stat-label">${t('Center Tessitura')}</div>
           <div class="span-pill">${avgNoteName}</div>
         </div>
-        <div class="pitch-meta">Average pitch</div>
+        <div class="pitch-meta">${t('Average pitch')}</div>
       </div>
 
       <div class="pitch-metric-row">
         <div>
-          <div class="stat-label">Recommended Voice Classification</div>
+          <div class="stat-label">${t('Recommended Voice Classification')}</div>
           <div style="font-weight: 600; color: #58a6ff; margin-top: 3px;">${voiceStr}</div>
         </div>
-        <div class="pitch-meta">Based on pitch range</div>
+        <div class="pitch-meta">${t('Based on pitch range')}</div>
       </div>
     </div>
   `;
