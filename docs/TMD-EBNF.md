@@ -58,14 +58,16 @@ ParagraphDirective      = DirectiveBrace
                         | TempoChangeDirective
                         | RelativeKeyDirective
                         | AbsoluteKeyDirective
+                        | FixedPitchDirective
                         | InlineTimeSignature ;
 
-DirectiveBrace          = "{" , ( RelativeTempoDirective | TempoChangeDirective | RelativeKeyDirective | AbsoluteKeyDirective | InlineTimeSignature ) , "}" ;
+DirectiveBrace          = "{" , ( RelativeTempoDirective | TempoChangeDirective | RelativeKeyDirective | AbsoluteKeyDirective | FixedPitchDirective | InlineTimeSignature ) , "}" ;
 
 RelativeTempoDirective  = "!+" , Number ;
 TempoChangeDirective    = "!=" , Number ;
 RelativeKeyDirective    = "{?" , [ "+" | "-" ] , Number , "}" ;
 AbsoluteKeyDirective    = "{?=" , KeySignature , "}" ;
+FixedPitchDirective     = "{?=fixed}" | "{?fixed}" ;
 InlineTimeSignature     = "{" , "<" , Number , "/" , Number , ">" , "}" ;
 
 (* --- Tuplets and Groups --- *)
@@ -75,12 +77,14 @@ TupletRatioSpecifier    = "%(" , { "-" } , ")" ;
 
 (* --- Musical Units --- *)
 SingleUnit              = NumberSequenceUnit
+                        | MultiNoteUnit
                         | NoteUnit
                         | ChordUnit
                         | PercussionUnit
                         | RestUnit
                         | TieUnit ;
 
+MultiNoteUnit           = NoteUnit , "+" , NoteUnit , { "+" , NoteUnit } ;
 NumberSequenceUnit      = JianpuDigits ;   (* Consecutive digits e.g. 1234 or 1020 parsed into multiple notes/rests *)
 NoteUnit                = ScaleDegree , { NoteModifier } ;
 ScaleDegree             = "1" | "2" | "3" | "4" | "5" | "6" | "7" ;
@@ -160,6 +164,7 @@ Whitespace              = { " " | "\t" | "\r" | "\n" } ;
 ### 2.2 Paragraphs (Tracks)
 - Format: `section_name:instrument_name@offset{ ... }`
   - `offset`: Entry measure offset inside pipes, e.g., `@|0|`, `@|+4|`, `@|-1|`, or unpiped `@0`.
+  - Negative offsets (e.g. `@|-1|`) indicate upbeat pickup bars (anacrusis) or staggered early entrances.
   - Content can be musical notation blocks or a triple-quoted program block `"""..."""`.
 
 ### 2.3 Notes and Scale Degrees
@@ -170,6 +175,7 @@ Whitespace              = { " " | "\t" | "\r" | "\n" } ;
   - Octaves: `^` raises 1 octave (e.g., `1^`), `_` lowers 1 octave (e.g., `5_`).
   - Accidentals: `'` sharp, `,` flat (e.g., `4'`, `7,`).
 - Compact sequences without spaces like `1234` or `1020` are parsed as individual sequential units.
+- **Multi-Notes / Dyads (`+`)**: Two or more notes connected with `+` denote simultaneous polyphonic notes played on the same beat (e.g. `1+3`, `1+5--`, `1^+3`, `1+3+5`, `(1+3 2+4)%(--)`). In beat calculations and measure checking, each `+`-connected group counts as 1 single base unit.
 
 ### 2.4 Chords
 - Delimited by square brackets `[...]`.
@@ -190,9 +196,19 @@ Strokes can be written individually (`D - S -`), grouped in beats (`(xxxx)`), or
 - Parenthesized groups `( 1 2 3 )` or `(xxxx)` represent sub-divisions of a beat.
 - Tuplet modifier `%(-)` or `%()` specifies custom proportional length.
 
-### 2.7 Playback Order Flow
+### 2.7 Inline Section Directives
+Directives can be placed anywhere between notes inside a section:
+- `{!= 140}`: Absolute tempo change (BPM).
+- `{!+ 10}`: Relative tempo change (+10 BPM).
+- `{?= D}`: Absolute key change to D.
+- `{?+ 2}` / `{?- 2}`: Relative key transposition (+/- semitones).
+- `{?= fixed}` (or `{? fixed}`): Forces **Fixed Pitch** for this track section (`keyOffset = 0`), locking its pitches against global song order transpositions (`-> {?+3} -> ...`). Ideal for Timpani, Sound FX, or non-transposing instruments.
+- `{<3/4>}`: Inline time signature change.
+
+### 2.8 Playback Order Flow
 - Format: `-> intro -> verse -> chorus -> {?+2} -> chorus ->#`
 - Terminated strictly with `->#`.
 - Supports inline transposition directives:
   - `{?+2}`: Transpose up 2 semitones.
   - `{?=D}`: Modulate tonic to D.
+  - S-expression macros: `(repeat 2 (A B))`, `(layer A (loop B 4))`, etc.
