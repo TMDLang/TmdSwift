@@ -250,12 +250,41 @@ public struct TMDMusicXMLGenerator {
         }
     }
 
+    public static func resolveMetronome(beat: Beat, quarterBPM: Double) -> (beatUnit: String, isDotted: Bool, perMinute: Int) {
+        // Compound meter: denominator is 8 and numerator is a multiple of 3 (> 3, e.g. 6/8, 9/8, 12/8)
+        if beat.noteValue == 8 && beat.count > 3 && beat.count % 3 == 0 {
+            // Beat unit is a dotted-quarter note (value = 1.5 quarters)
+            let bpm = quarterBPM / 1.5
+            return ("quarter", true, Int(bpm.rounded()))
+        }
+        // Beat unit based on time signature denominator
+        switch beat.noteValue {
+        case 2:
+            // Half note (value = 2.0 quarters)
+            let bpm = quarterBPM / 2.0
+            return ("half", false, Int(bpm.rounded()))
+        case 8:
+            // Eighth note (value = 0.5 quarters)
+            let bpm = quarterBPM * 2.0
+            return ("eighth", false, Int(bpm.rounded()))
+        case 16:
+            // 16th note (value = 0.25 quarters)
+            let bpm = quarterBPM * 4.0
+            return ("16th", false, Int(bpm.rounded()))
+        default:
+            // Default: quarter note
+            return ("quarter", false, Int(quarterBPM.rounded()))
+        }
+    }
+
     private static func generatePlaybackDirectiveXML(_ directive: PlaybackDirectiveEvent) -> String {
         switch directive.kind {
         case .tempo, .relativeTempo:
+            let metronome = resolveMetronome(beat: directive.state.timeSignature, quarterBPM: directive.state.tempo)
+            let dotTag = metronome.isDotted ? "<beat-unit-dot/>" : ""
             return """
                     <direction placement=\"above\">
-                      <direction-type><metronome><beat-unit>quarter</beat-unit><per-minute>\(Int(directive.state.tempo.rounded()))</per-minute></metronome></direction-type>
+                      <direction-type><metronome><beat-unit>\(metronome.beatUnit)</beat-unit>\(dotTag)<per-minute>\(metronome.perMinute)</per-minute></metronome></direction-type>
                       <sound tempo=\"\(directive.state.tempo)\"/>
                     </direction>
 
@@ -312,6 +341,9 @@ public struct TMDMusicXMLGenerator {
     }
 
     private static func generateAttributesXML(sheet: Sheet, instrument: String, divisions: Int) -> String {
+        let speed = sheet.speed > 0 ? sheet.speed : 120
+        let initialMetronome = resolveMetronome(beat: sheet.beat, quarterBPM: speed)
+        let dotTag = initialMetronome.isDotted ? "\n            <beat-unit-dot/>" : ""
         return """
               <attributes>
                 <divisions>\(divisions)</divisions>
@@ -327,11 +359,11 @@ public struct TMDMusicXMLGenerator {
               <direction placement="above">
                 <direction-type>
                   <metronome>
-                    <beat-unit>quarter</beat-unit>
-                    <per-minute>\(Int(sheet.speed > 0 ? sheet.speed : 120))</per-minute>
+                    <beat-unit>\(initialMetronome.beatUnit)</beat-unit>\(dotTag)
+                    <per-minute>\(initialMetronome.perMinute)</per-minute>
                   </metronome>
                 </direction-type>
-                <sound tempo="\(Int(sheet.speed > 0 ? sheet.speed : 120))"/>
+                <sound tempo="\(Int(speed))"/>
               </direction>
 
         """

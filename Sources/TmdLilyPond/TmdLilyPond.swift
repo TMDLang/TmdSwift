@@ -11,6 +11,7 @@ public struct TMDLilyPondGenerator {
     public static func generateLilyPond(from inputSheet: Sheet) -> String {
         let sheet = TMDMacroEvaluator.expand(inputSheet)
         let composer = sheet.metadata["composer"] ?? "TMD"
+        let initialTempoCommand = resolveTempo(beat: sheet.beat, quarterBPM: sheet.speed > 0 ? sheet.speed : 120)
         var ly = """
         \\version "2.24.0"
 
@@ -27,7 +28,7 @@ public struct TMDLilyPondGenerator {
 
         global = {
           \\time \(sheet.beat.count)/\(sheet.beat.noteValue)
-          \\tempo 4 = \(Int(sheet.speed > 0 ? sheet.speed : 120))
+          \(initialTempoCommand)
           \\key \(lilyPondKey(sheet.keySignature.description))
         }
 
@@ -104,10 +105,34 @@ public struct TMDLilyPondGenerator {
         return result.trimmingCharacters(in: .whitespaces) + "\n"
     }
 
+    public static func resolveTempo(beat: Beat, quarterBPM: Double) -> String {
+        // Compound meter: denominator is 8 and numerator is a multiple of 3 (> 3, e.g. 6/8, 9/8, 12/8)
+        if beat.noteValue == 8 && beat.count > 3 && beat.count % 3 == 0 {
+            // Beat unit is a dotted-quarter note (4.)
+            let bpm = Int((quarterBPM / 1.5).rounded())
+            return "\\tempo 4. = \(bpm)"
+        }
+        switch beat.noteValue {
+        case 2:
+            let bpm = Int((quarterBPM / 2.0).rounded())
+            return "\\tempo 2 = \(bpm)"
+        case 8:
+            let bpm = Int((quarterBPM * 2.0).rounded())
+            return "\\tempo 8 = \(bpm)"
+        case 16:
+            let bpm = Int((quarterBPM * 4.0).rounded())
+            return "\\tempo 16 = \(bpm)"
+        default:
+            let bpm = Int(quarterBPM.rounded())
+            return "\\tempo 4 = \(bpm)"
+        }
+    }
+
     private static func formatDirective(_ directive: PlaybackDirectiveEvent) -> String {
         switch directive.kind {
         case .tempo, .relativeTempo:
-            return "\\tempo 4 = \(Int(directive.state.tempo.rounded())) "
+            let cmd = resolveTempo(beat: directive.state.timeSignature, quarterBPM: directive.state.tempo)
+            return "\(cmd) "
         case .timeSignature(let beat):
             return "\\time \(beat.count)/\(beat.noteValue) "
         case .absoluteKey(let key):

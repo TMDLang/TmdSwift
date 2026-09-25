@@ -125,5 +125,67 @@ struct LilyPondValidationTests {
         // Relative key: C + 2 semitones = D major -> \key d \major
         #expect(ly.contains("\\key d \\major"))
     }
+
+    @Test func testLilyPondTempoBeatUnitBasedOnTimeSignature() throws {
+        // Compound meter: 6/8 -> \tempo 4. = 80
+        let tmdCompound = """
+        ::SCORE::
+        ** Compound Meter LilyPond **
+        != 120
+        ?= C
+        <6/8>
+
+        A:Piano@|0|{
+            <8*>
+            1 2 3 4 5 6
+            {!= 150}
+            1 2 3 4 5 6
+        }
+        -> A ->#
+        """
+        let sheetCompound = try TmdParser.parseThrowing(string: tmdCompound)
+        let lyCompound = TMDLilyPondGenerator.generateLilyPond(from: sheetCompound)
+
+        #expect(lyCompound.contains("\\tempo 4. = 80"))
+        #expect(lyCompound.contains("\\tempo 4. = 100"))
+
+        // Cut time: 2/2 -> \tempo 2 = 60
+        let tmdCutTime = """
+        ::SCORE::
+        ** Cut Time LilyPond **
+        != 120
+        ?= C
+        <2/2>
+
+        A:Piano@|0|{
+            <2*>
+            1 2
+        }
+        -> A ->#
+        """
+        let sheetCutTime = try TmdParser.parseThrowing(string: tmdCutTime)
+        let lyCutTime = TMDLilyPondGenerator.generateLilyPond(from: sheetCutTime)
+
+        #expect(lyCutTime.contains("\\tempo 2 = 60"))
+
+        // 3/8 -> \tempo 8 = 240
+        let tmdEighthTime = """
+        ::SCORE::
+        ** Simple Triple Eighth LilyPond **
+        != 120
+        ?= C
+        <3/8>
+
+        A:Piano@|0|{
+            <8*>
+            1 2 3
+        }
+        -> A ->#
+        """
+        let sheetEighthTime = try TmdParser.parseThrowing(string: tmdEighthTime)
+        let lyEighthTime = TMDLilyPondGenerator.generateLilyPond(from: sheetEighthTime)
+
+        #expect(lyEighthTime.contains("\\tempo 8 = 240"))
+    }
 }
 

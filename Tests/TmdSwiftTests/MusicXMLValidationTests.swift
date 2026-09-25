@@ -339,6 +339,75 @@ struct MusicXMLValidationTests {
         // Modulated key (C + 2 semitones = D major) has fifths = 2
         #expect(xml.contains("<fifths>2</fifths>"))
     }
+
+    @Test func testMusicXMLTempoBeatUnitBasedOnTimeSignature() throws {
+        // Compound meter: 6/8 -> dotted-quarter beat unit
+        let tmdCompound = """
+        ::SCORE::
+        ** Compound Meter Test **
+        != 120
+        ?= C
+        <6/8>
+
+        A:Piano@|0|{
+            <8*>
+            1 2 3 4 5 6
+            {!= 150}
+            1 2 3 4 5 6
+        }
+        -> A ->#
+        """
+        let sheetCompound = try TmdParser.parseThrowing(string: tmdCompound)
+        let xmlCompound = TMDMusicXMLGenerator.generateMusicXML(from: sheetCompound)
+
+        // Initial tempo in 6/8: quarter BPM 120 -> dotted quarter BPM 80
+        #expect(xmlCompound.contains("<beat-unit>quarter</beat-unit>\n            <beat-unit-dot/>\n            <per-minute>80</per-minute>"))
+        // Directive tempo in 6/8: quarter BPM 150 -> dotted quarter BPM 100
+        #expect(xmlCompound.contains("<beat-unit>quarter</beat-unit><beat-unit-dot/><per-minute>100</per-minute>"))
+        // Sound tempo remains in quarter notes per minute for MIDI/playback engine compliance
+        #expect(xmlCompound.contains("<sound tempo=\"120\"/>"))
+        #expect(xmlCompound.contains("<sound tempo=\"150.0\"/>"))
+
+        // Cut time / 2/2 -> half note beat unit
+        let tmdCutTime = """
+        ::SCORE::
+        ** Cut Time Test **
+        != 120
+        ?= C
+        <2/2>
+
+        A:Piano@|0|{
+            <2*>
+            1 2
+        }
+        -> A ->#
+        """
+        let sheetCutTime = try TmdParser.parseThrowing(string: tmdCutTime)
+        let xmlCutTime = TMDMusicXMLGenerator.generateMusicXML(from: sheetCutTime)
+
+        // Half note beat unit: quarter BPM 120 -> half note BPM 60
+        #expect(xmlCutTime.contains("<beat-unit>half</beat-unit>\n            <per-minute>60</per-minute>"))
+
+        // 3/8 -> eighth note beat unit
+        let tmdEighthTime = """
+        ::SCORE::
+        ** Simple Triple Eighth Test **
+        != 120
+        ?= C
+        <3/8>
+
+        A:Piano@|0|{
+            <8*>
+            1 2 3
+        }
+        -> A ->#
+        """
+        let sheetEighthTime = try TmdParser.parseThrowing(string: tmdEighthTime)
+        let xmlEighthTime = TMDMusicXMLGenerator.generateMusicXML(from: sheetEighthTime)
+
+        // Eighth note beat unit: quarter BPM 120 -> eighth note BPM 240
+        #expect(xmlEighthTime.contains("<beat-unit>eighth</beat-unit>\n            <per-minute>240</per-minute>"))
+    }
 }
 
 
