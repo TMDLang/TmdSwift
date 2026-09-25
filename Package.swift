@@ -5,6 +5,7 @@ import PackageDescription
 
 let package = Package(
     name: "TmdSwift",
+    defaultLocalization: "zh-Hant",
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
@@ -78,7 +79,8 @@ let package = Package(
         ),
         .target(
             name: "TmdSwift",
-            dependencies: ["TmdUtils"]
+            dependencies: ["TmdUtils"],
+            resources: [.process("Resources")]
         ),
         .target(
             name: "TmdMIDI",

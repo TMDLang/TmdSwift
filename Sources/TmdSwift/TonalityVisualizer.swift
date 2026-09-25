@@ -7,7 +7,8 @@ public enum TMDTonalityVisualizer {
     /// 1. Circle of Fifths dial with active nodes and curved trajectory paths.
     /// 2. Section Keyscape Timeline ribbon.
     /// 3. 12-Tone Pitch Class Distribution radar chart.
-    public static func generateSVG(_ profile: TMDSongProfile) -> String {
+    public static func generateSVG(_ profile: TMDSongProfile, locale: TMDLocale? = nil) -> String {
+        let localizer = TMDLocalizer(locale: locale ?? profile.locale)
         guard let tonality = profile.tonality else {
             return "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"800\" height=\"200\"><text x=\"20\" y=\"40\" fill=\"#888\">No tonality data available</text></svg>"
         }
@@ -42,13 +43,13 @@ public enum TMDTonalityVisualizer {
         """
 
         // 1. Circle of Fifths (Left, Center (240, 260), Radius 140)
-        svg += renderCircleOfFifthsSVG(tonality: tonality, cx: 220, cy: 260, r: 130)
+        svg += renderCircleOfFifthsSVG(tonality: tonality, localizer: localizer, cx: 220, cy: 260, r: 130)
 
         // 2. Pitch Class Radar Chart (Right, Center (650, 260), Radius 110)
-        svg += renderRadarChartSVG(tonality: tonality, cx: 660, cy: 260, r: 110)
+        svg += renderRadarChartSVG(tonality: tonality, localizer: localizer, cx: 660, cy: 260, r: 110)
 
         // 3. Section Keyscape Ribbon (Bottom, x: 32, y: 460, width: 836, height: 48)
-        svg += renderTimelineRibbonSVG(profile: profile, x: 32, y: 450, width: 836, height: 44)
+        svg += renderTimelineRibbonSVG(profile: profile, localizer: localizer, x: 32, y: 450, width: 836, height: 44)
 
         svg += "\n</svg>"
         return svg
@@ -56,9 +57,10 @@ public enum TMDTonalityVisualizer {
 
     /// Generates a complete, responsive HTML report containing the embedded SVG dashboard,
     /// inspection summary metrics, and section-by-section tonality breakdown.
-    public static func generateHTML(_ profile: TMDSongProfile) -> String {
-        let svg = generateSVG(profile)
-        let textReport = TMDSongInspector.generateReport(profile)
+    public static func generateHTML(_ profile: TMDSongProfile, locale: TMDLocale? = nil) -> String {
+        let localizer = TMDLocalizer(locale: locale ?? profile.locale)
+        let svg = generateSVG(profile, locale: localizer.locale)
+        let textReport = TMDSongInspector.generateReport(profile, locale: localizer.locale)
 
         return """
         <!DOCTYPE html>
@@ -66,7 +68,7 @@ public enum TMDTonalityVisualizer {
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
-          <title>TMD Tonality Report - \(xmlEscape(profile.title))</title>
+          <title>\(xmlEscape(localizer.text(.htmlTitle))) - \(xmlEscape(profile.title))</title>
           <style>
             :root {
               --bg: #090d16;
@@ -127,8 +129,8 @@ public enum TMDTonalityVisualizer {
         <body>
           <div class="container">
             <header>
-              <h1>TMD Song Profile & Tonality Report</h1>
-              <div class="subtitle">Song: <strong>\(xmlEscape(profile.title))</strong> | Tempo: \(profile.initialTempo) BPM | Key: \(profile.initialKey) Major</div>
+              <h1>\(xmlEscape(localizer.text(.htmlTitle)))</h1>
+              <div class="subtitle">\(xmlEscape(localizer.text(.htmlSong))): <strong>\(xmlEscape(profile.title))</strong> | \(xmlEscape(localizer.text(.htmlTempo))): \(profile.initialTempo) BPM | \(xmlEscape(localizer.text(.htmlKey))): \(profile.initialKey) \(xmlEscape(localizer.text(.major)))</div>
             </header>
 
             <div class="card">
@@ -138,7 +140,7 @@ public enum TMDTonalityVisualizer {
             </div>
 
             <div class="card" style="padding: 20px;">
-              <h2 style="font-size: 18px; margin-top:0; color:var(--accent);">Detailed Text Analysis</h2>
+              <h2 style="font-size: 18px; margin-top:0; color:var(--accent);">\(xmlEscape(localizer.text(.htmlDetailedReport)))</h2>
               <pre>\(xmlEscape(textReport))</pre>
             </div>
           </div>
@@ -149,7 +151,7 @@ public enum TMDTonalityVisualizer {
 
     // MARK: - Private SVG Sub-Renderers
 
-    private static func renderCircleOfFifthsSVG(tonality: TMDTonalityProfile, cx: Int, cy: Int, r: Int) -> String {
+    private static func renderCircleOfFifthsSVG(tonality: TMDTonalityProfile, localizer: TMDLocalizer, cx: Int, cy: Int, r: Int) -> String {
         // Circle of Fifths order starting from 12 o'clock (0: C, 1: G, 2: D, ..., 11: F)
         let fifthsCircle: [(name: String, step: Int)] = [
             ("C", 0), ("G", 1), ("D", 2), ("A", 3), ("E", 4), ("B", 5),
@@ -162,7 +164,7 @@ public enum TMDTonalityVisualizer {
         }
 
         var s = "\n  <!-- Circle of Fifths -->\n"
-        s += "  <text x=\"\(cx)\" y=\"\(cy - r - 30)\" fill=\"#e2e8f0\" font-size=\"14\" font-weight=\"600\" text-anchor=\"middle\">Circle of Fifths Trajectory</text>\n"
+        s += "  <text x=\"\(cx)\" y=\"\(cy - r - 30)\" fill=\"#e2e8f0\" font-size=\"14\" font-weight=\"600\" text-anchor=\"middle\">\(xmlEscape(localizer.text(.circleOfFifthsTitle)))</text>\n"
         s += "  <circle cx=\"\(cx)\" cy=\"\(cy)\" r=\"\(r)\" fill=\"none\" stroke=\"#334155\" stroke-width=\"2\" stroke-dasharray=\"4,4\"/>\n"
 
         // Trajectory connector lines
@@ -206,13 +208,13 @@ public enum TMDTonalityVisualizer {
         return s
     }
 
-    private static func renderRadarChartSVG(tonality: TMDTonalityProfile, cx: Int, cy: Int, r: Int) -> String {
+    private static func renderRadarChartSVG(tonality: TMDTonalityProfile, localizer: TMDLocalizer, cx: Int, cy: Int, r: Int) -> String {
         let pitchClassNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
         let weights = tonality.globalPitchClasses.weights
         let maxWeight = max(0.001, weights.max() ?? 1.0)
 
         var s = "\n  <!-- Pitch Class Radar Chart -->\n"
-        s += "  <text x=\"\(cx)\" y=\"\(cy - r - 30)\" fill=\"#e2e8f0\" font-size=\"14\" font-weight=\"600\" text-anchor=\"middle\">12-Tone Pitch Class Distribution</text>\n"
+        s += "  <text x=\"\(cx)\" y=\"\(cy - r - 30)\" fill=\"#e2e8f0\" font-size=\"14\" font-weight=\"600\" text-anchor=\"middle\">\(xmlEscape(localizer.text(.pitchClassDistributionTitle)))</text>\n"
 
         // Concentric web circles
         for step in [0.25, 0.5, 0.75, 1.0] {
@@ -248,12 +250,12 @@ public enum TMDTonalityVisualizer {
         return s
     }
 
-    private static func renderTimelineRibbonSVG(profile: TMDSongProfile, x: Int, y: Int, width: Int, height: Int) -> String {
+    private static func renderTimelineRibbonSVG(profile: TMDSongProfile, localizer: TMDLocalizer, x: Int, y: Int, width: Int, height: Int) -> String {
         let sections = profile.timing.sections
         let totalDuration = max(0.001, profile.timing.totalDurationSeconds)
 
         var s = "\n  <!-- Section Keyscape Timeline Ribbon -->\n"
-        s += "  <text x=\"\(x)\" y=\"\(y - 12)\" fill=\"#e2e8f0\" font-size=\"14\" font-weight=\"600\">Timeline Keyscape Ribbon</text>\n"
+        s += "  <text x=\"\(x)\" y=\"\(y - 12)\" fill=\"#e2e8f0\" font-size=\"14\" font-weight=\"600\">\(xmlEscape(localizer.text(.timelineTitle)))</text>\n"
         s += "  <rect x=\"\(x)\" y=\"\(y)\" width=\"\(width)\" height=\"\(height)\" fill=\"#1e293b\" rx=\"8\"/>\n"
 
         // Color palette for keys based on fifths distance

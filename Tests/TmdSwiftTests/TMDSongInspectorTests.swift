@@ -379,7 +379,7 @@ struct TMDSongInspectorTests {
         let profile = TMDSongInspector.inspect(sheet: sheet)
 
         // 1. SVG Generation
-        let svg = TMDTonalityVisualizer.generateSVG(profile)
+        let svg = TMDTonalityVisualizer.generateSVG(profile, locale: .en)
         #expect(svg.contains("<svg"))
         #expect(svg.contains("Circle of Fifths Trajectory"))
         #expect(svg.contains("12-Tone Pitch Class Distribution"))
@@ -387,9 +387,43 @@ struct TMDSongInspectorTests {
         #expect(svg.contains("Visualizer Test Song"))
 
         // 2. HTML Generation
-        let html = TMDTonalityVisualizer.generateHTML(profile)
+        let html = TMDTonalityVisualizer.generateHTML(profile, locale: .en)
         #expect(html.contains("<!DOCTYPE html>"))
         #expect(html.contains("<svg"))
         #expect(html.contains("Detailed Text Analysis"))
+    }
+
+    @Test func testSongInspectorSupportsEnglishLocale() throws {
+        let tmd = """
+        ::SCORE::
+        ** Localized Inspector **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Piano@|0|{
+            <4*>
+            1 3 5 1^
+        }
+
+        -> verse ->#
+        """
+
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let profile = TMDSongInspector.inspect(sheet: sheet, locale: .en)
+        let report = TMDSongInspector.generateReport(profile)
+
+        #expect(profile.locale == .en)
+        #expect(report.contains("TMD Song Profile"))
+        #expect(report.contains("Analysis scope"))
+        #expect(report.contains("Major and minor are the recommended first scope"))
+        #expect(!report.contains("調性診斷"))
+    }
+
+    @Test func testUnknownLocaleUsesCatalogFallbackWithoutCodeChanges() {
+        let localizer = TMDLocalizer(locale: TMDLocale(rawValue: "ja"), fallbackLocale: .en)
+
+        #expect(localizer.text(.reportTitle) == "TMD Song Profile")
+        #expect(localizer.text(.analysisScope).contains("Major and minor"))
     }
 }

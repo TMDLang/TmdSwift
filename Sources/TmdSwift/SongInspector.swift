@@ -281,6 +281,8 @@ public struct TMDTonalityProfile: Equatable, Sendable, Codable {
     public let moodDescription: String
     /// Story of key movements (e.g. "全曲維持單一調性" or "主歌 C 大調 ➔ 副歌升 2 半音至 D 大調")
     public let modulationStory: String
+    /// Locale used when generating the human-readable narrative fields.
+    public let locale: TMDLocale
 
     public init(
         globalPitchClasses: TMDPitchClassDistribution,
@@ -289,7 +291,8 @@ public struct TMDTonalityProfile: Equatable, Sendable, Codable {
         sections: [TMDSectionTonalityProfile],
         summaryText: String = "",
         moodDescription: String = "",
-        modulationStory: String = ""
+        modulationStory: String = "",
+        locale: TMDLocale = .zhHant
     ) {
         self.globalPitchClasses = globalPitchClasses
         self.globalCorrelation = globalCorrelation
@@ -298,6 +301,26 @@ public struct TMDTonalityProfile: Equatable, Sendable, Codable {
         self.summaryText = summaryText
         self.moodDescription = moodDescription
         self.modulationStory = modulationStory
+        self.locale = locale
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case globalPitchClasses, globalCorrelation, circleOfFifthsPath, sections
+        case summaryText, moodDescription, modulationStory, locale
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            globalPitchClasses: try container.decode(TMDPitchClassDistribution.self, forKey: .globalPitchClasses),
+            globalCorrelation: try container.decode(TMDKeyCorrelation.self, forKey: .globalCorrelation),
+            circleOfFifthsPath: try container.decode([Int].self, forKey: .circleOfFifthsPath),
+            sections: try container.decode([TMDSectionTonalityProfile].self, forKey: .sections),
+            summaryText: try container.decode(String.self, forKey: .summaryText),
+            moodDescription: try container.decode(String.self, forKey: .moodDescription),
+            modulationStory: try container.decode(String.self, forKey: .modulationStory),
+            locale: try container.decodeIfPresent(TMDLocale.self, forKey: .locale) ?? .zhHant
+        )
     }
 }
 
@@ -313,6 +336,8 @@ public struct TMDSongProfile: Equatable, Sendable, Codable {
     public let harmony: TMDHarmonyProfile
     public let density: TMDArrangementDensityProfile
     public let tonality: TMDTonalityProfile?
+    /// Locale used for localized narrative fields in this profile.
+    public let locale: TMDLocale
 
     public init(
         title: String,
@@ -324,7 +349,8 @@ public struct TMDSongProfile: Equatable, Sendable, Codable {
         instrumentRanges: [TMDPitchRangeProfile],
         harmony: TMDHarmonyProfile,
         density: TMDArrangementDensityProfile,
-        tonality: TMDTonalityProfile? = nil
+        tonality: TMDTonalityProfile? = nil,
+        locale: TMDLocale = .zhHant
     ) {
         self.title = title
         self.initialTempo = initialTempo
@@ -336,6 +362,29 @@ public struct TMDSongProfile: Equatable, Sendable, Codable {
         self.harmony = harmony
         self.density = density
         self.tonality = tonality
+        self.locale = locale
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case title, initialTempo, initialKey, initialTimeSignature, timing
+        case vocalRange, instrumentRanges, harmony, density, tonality, locale
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            title: try container.decode(String.self, forKey: .title),
+            initialTempo: try container.decode(Double.self, forKey: .initialTempo),
+            initialKey: try container.decode(String.self, forKey: .initialKey),
+            initialTimeSignature: try container.decode(String.self, forKey: .initialTimeSignature),
+            timing: try container.decode(TMDTimingProfile.self, forKey: .timing),
+            vocalRange: try container.decodeIfPresent(TMDPitchRangeProfile.self, forKey: .vocalRange),
+            instrumentRanges: try container.decode([TMDPitchRangeProfile].self, forKey: .instrumentRanges),
+            harmony: try container.decode(TMDHarmonyProfile.self, forKey: .harmony),
+            density: try container.decode(TMDArrangementDensityProfile.self, forKey: .density),
+            tonality: try container.decodeIfPresent(TMDTonalityProfile.self, forKey: .tonality),
+            locale: try container.decodeIfPresent(TMDLocale.self, forKey: .locale) ?? .zhHant
+        )
     }
 }
 
@@ -343,7 +392,11 @@ public struct TMDSongProfile: Equatable, Sendable, Codable {
 public enum TMDSongInspector {
 
     /// Inspects a parsed TMD `Sheet` and produces an in-depth `TMDSongProfile`.
-    public static func inspect(sheet inputSheet: Sheet, targetInstrument: String? = nil) -> TMDSongProfile {
+    public static func inspect(
+        sheet inputSheet: Sheet,
+        targetInstrument: String? = nil,
+        locale: TMDLocale = .zhHant
+    ) -> TMDSongProfile {
         let sheet = TMDMacroEvaluator.expand(inputSheet)
         let title = sheet.name.isEmpty ? "Untitled" : sheet.name
         let initialTempo = sheet.speed > 0 ? sheet.speed : 120.0
@@ -380,7 +433,7 @@ public enum TMDSongInspector {
         let densityProfile = buildDensityProfile(sheet: sheet)
 
         // 6. Tonality & Pitch-Class Profile
-        let tonalityProfile = buildTonalityProfile(sheet: sheet, timingProfile: timingProfile)
+        let tonalityProfile = buildTonalityProfile(sheet: sheet, timingProfile: timingProfile, locale: locale)
 
         return TMDSongProfile(
             title: title,
@@ -392,7 +445,8 @@ public enum TMDSongInspector {
             instrumentRanges: instrumentRanges,
             harmony: harmonyProfile,
             density: densityProfile,
-            tonality: tonalityProfile
+            tonality: tonalityProfile,
+            locale: locale
         )
     }
 
@@ -727,18 +781,19 @@ public enum TMDSongInspector {
     }
 
     /// Generates human-readable plain text / ASCII inspection report.
-    public static func generateReport(_ profile: TMDSongProfile) -> String {
+    public static func generateReport(_ profile: TMDSongProfile, locale: TMDLocale? = nil) -> String {
+        let strings = TMDReportStrings(localizer: TMDLocalizer(locale: locale ?? profile.locale))
         let mins = Int(profile.timing.totalDurationSeconds) / 60
         let secs = Int(profile.timing.totalDurationSeconds) % 60
         let timeFormatted = String(format: "%d:%02d (%0.1fs)", mins, secs, profile.timing.totalDurationSeconds)
 
         var lines: [String] = []
         lines.append("================================================================================")
-        lines.append("📊 TMD Song Profile: [ \(profile.title) ]")
+        lines.append("📊 \(strings.songProfile): [ \(profile.title) ]")
         lines.append("================================================================================")
-        lines.append("⏱  Duration:       \(timeFormatted), \(profile.timing.totalMeasures) measures total")
-            lines.append("🎼 Key & Tempo:    \(profile.initialKey) Major, != \(profile.initialTempo) BPM, <\(profile.initialTimeSignature)>")
-            lines.append("   - 分析範圍：      目前以大調分析為主；建議優先支援大調與小調，其他調式列為延伸")
+        lines.append("⏱  \(strings.duration):       \(timeFormatted), \(profile.timing.totalMeasures) \(strings.measuresTotal)")
+        lines.append("🎼 \(strings.keyAndTempo):    \(profile.initialKey) \(strings.major), != \(profile.initialTempo) BPM, <\(profile.initialTimeSignature)>")
+        lines.append("   - \(strings.analysisScope)")
 
         if let vocal = profile.vocalRange {
             let octaves = String(format: "%0.1f", vocal.spanOctaves)
@@ -751,11 +806,11 @@ public enum TMDSongInspector {
             }
         }
 
-        lines.append("🏛  Structure:      " + profile.timing.sections.map { "\($0.name) (\(String(format: "%0.1fs", $0.durationSeconds)))" }.joined(separator: " -> "))
-        lines.append("⚡ Density:        Peak \(profile.density.maxConcurrentTracks) tracks concurrently")
+        lines.append("🏛  \(strings.structure):      " + profile.timing.sections.map { "\($0.name) (\(String(format: "%0.1fs", $0.durationSeconds)))" }.joined(separator: " -> "))
+        lines.append("⚡ \(strings.density):        Peak \(profile.density.maxConcurrentTracks) \(strings.tracksConcurrently)")
 
         if !profile.harmony.distinctChords.isEmpty {
-            lines.append("🎹 Harmony:        " + profile.harmony.distinctChords.joined(separator: " "))
+            lines.append("🎹 \(strings.harmony):        " + profile.harmony.distinctChords.joined(separator: " "))
         }
 
         if let tonality = profile.tonality {
@@ -764,32 +819,32 @@ public enum TMDSongInspector {
             let diatonicPct = String(format: "%0.1f%%", tonality.globalPitchClasses.diatonicRatio * 100.0)
             let topPitches = tonality.globalPitchClasses.topPitchClasses.prefix(5).joined(separator: ", ")
 
-            lines.append("🗝  調性診斷：       \(tonality.summaryText)")
-            lines.append("   - 風格氣質：    \(tonality.moodDescription)")
-            lines.append("   - 轉調歷程：    \(tonality.modulationStory)")
-            lines.append("   - 核心骨幹音：  \(topPitches)")
-            lines.append("   - 調性數值：    \(tonality.globalCorrelation.declaredKey) [相關度: \(corrStr), 穩定度: \(stabStr), 自然音純度: \(diatonicPct)]")
+            lines.append("🗝  \(strings.tonalityDiagnosis)       \(tonality.summaryText)")
+            lines.append("   - \(strings.mood):    \(tonality.moodDescription)")
+            lines.append("   - \(strings.modulationJourney):    \(tonality.modulationStory)")
+            lines.append("   - \(strings.tonalCore):  \(topPitches)")
+            lines.append("   - \(strings.tonalMetrics):    \(tonality.globalCorrelation.declaredKey) [\(strings.correlation): \(corrStr), \(strings.stability): \(stabStr), \(strings.diatonicPurity): \(diatonicPct)]")
 
             let candidateStr = tonality.globalCorrelation.topCandidateKeys.prefix(3).map {
                 "\($0.keyName) (\(String(format: "%0.2f", $0.correlation)))"
             }.joined(separator: ", ")
             if !candidateStr.isEmpty {
-                lines.append("   - 候選調性 (K-S): \(candidateStr)")
+                lines.append("   - \(strings.candidateKeys): \(candidateStr)")
             }
 
             let pathStr = tonality.circleOfFifthsPath.map { "\($0 >= 0 ? "+" : "")\($0)" }.joined(separator: " -> ")
             if !pathStr.isEmpty {
-                lines.append("   - 五度圈歷程:   \(pathStr)")
+                lines.append("   - \(strings.circleOfFifths):   \(pathStr)")
             }
 
             if !tonality.sections.isEmpty {
-                lines.append("   - 各段落調性細節:")
+                lines.append("   - \(strings.sectionDetails):")
                 for sec in tonality.sections {
                     let secCorr = String(format: "%0.2f", sec.correlation.declaredKeyCorrelation)
                     let secDiatonic = String(format: "%0.1f%%", sec.pitchClasses.diatonicRatio * 100.0)
-                    var secLine = "     • [\(sec.sectionName) #\(sec.occurrenceIndex)]: \(sec.declaredKey) (r: \(secCorr), 自然音: \(secDiatonic)"
+                    var secLine = "     • [\(sec.sectionName) #\(sec.occurrenceIndex)]: \(sec.declaredKey) (r: \(secCorr), \(strings.diatonicPurity): \(secDiatonic)"
                     if !sec.nonDiatonicNotes.isEmpty {
-                        secLine += ", 調外音: \(sec.nonDiatonicNotes.joined(separator: ", "))"
+                        secLine += ", \(strings.nonDiatonic): \(sec.nonDiatonicNotes.joined(separator: ", "))"
                     }
                     secLine += ")"
                     lines.append(secLine)
@@ -806,7 +861,7 @@ public enum TMDSongInspector {
         }
 
         lines.append("--------------------------------------------------------------------------------")
-        lines.append("Instrument Track Ranges:")
+        lines.append(strings.instrumentRanges)
         for inst in profile.instrumentRanges {
             let octaves = String(format: "%0.1f", inst.spanOctaves)
             lines.append("  - \(inst.instrument.padding(toLength: 14, withPad: " ", startingAt: 0)): \(inst.lowestNote.noteName) – \(inst.highestNote.noteName) (\(inst.spanSemitones) semitones / \(octaves) octaves, \(inst.totalNotes) notes)")
@@ -818,7 +873,12 @@ public enum TMDSongInspector {
 
     // MARK: - Tonality & Key Profile Analysis Engine
 
-    private static func buildTonalityProfile(sheet: Sheet, timingProfile: TMDTimingProfile) -> TMDTonalityProfile {
+    private static func buildTonalityProfile(
+        sheet: Sheet,
+        timingProfile: TMDTimingProfile,
+        locale: TMDLocale
+    ) -> TMDTonalityProfile {
+        let localizer = TMDLocalizer(locale: locale)
         let distinctInsts = sheet.distinctInstruments(fallbackToDefault: true)
         var allEvents: [PlaybackEvent] = []
         for inst in distinctInsts {
@@ -928,14 +988,15 @@ public enum TMDSongInspector {
 
         // Human-friendly producer narrative synthesis
         let diatonicRatio = globalDist.diatonicRatio
-        let moodDescription: String
+        let moodKey: TMDLocalizationKey
         if diatonicRatio >= 0.95 {
-            moodDescription = "純淨自然大調（陽光明朗、易唱易記，無明顯調外色彩）"
+            moodKey = .moodCleanMajor
         } else if diatonicRatio >= 0.80 {
-            moodDescription = "流行大調（略帶和弦色彩音與裝飾副屬和弦）"
+            moodKey = .moodContemporaryMajor
         } else {
-            moodDescription = "調式色彩／藍調前衛（調外音豐富，張力強烈）"
+            moodKey = .moodModal
         }
+        let moodDescription = localizer.text(moodKey)
 
         // Modulation story
         var modTransitions: [String] = []
@@ -950,7 +1011,10 @@ public enum TMDSongInspector {
                 if stepDiff > 6 { stepDiff -= 12 }
                 if stepDiff < -6 { stepDiff += 12 }
                 let stepStr = stepDiff >= 0 ? "+\(stepDiff)" : "\(stepDiff)"
-                modTransitions.append("[\(sec.sectionName)] 轉至 \(sec.declaredKey) 大調 (\(semitoneDiff) 半音 / 五度圈 \(stepStr) 步)")
+                modTransitions.append(localizer.text(
+                    .modulationStep,
+                    arguments: [sec.sectionName, sec.declaredKey, semitoneDiff, stepStr]
+                ))
                 prevKey = sec.declaredKey
                 prevOffset = sec.keyOffset
                 prevFifths = sec.fifthsPosition
@@ -959,16 +1023,19 @@ public enum TMDSongInspector {
 
         let modulationStory: String
         if modTransitions.isEmpty {
-            modulationStory = "全曲維持單一調性（未轉調）"
+            modulationStory = localizer.text(.modulationNone)
         } else {
-            modulationStory = "\(baseKey) 大調起奏 ➔ " + modTransitions.joined(separator: " ➔ ")
+            modulationStory = localizer.text(.modulationStart, arguments: [baseKey]) + " ➔ " + modTransitions.joined(separator: " ➔ ")
         }
 
         let summaryText: String
         if modTransitions.isEmpty {
-            summaryText = "\(baseKey) 大調（\(diatonicRatio >= 0.95 ? "純淨自然大調" : "流行色彩大調")，全曲無轉調）"
+            let moodSummary = diatonicRatio >= 0.95
+                ? localizer.text(.summaryClean)
+                : localizer.text(.summaryColor)
+            summaryText = localizer.text(.summaryStable, arguments: [baseKey, moodSummary])
         } else {
-            summaryText = "\(baseKey) 大調（轉調推進情緒，經歷 \(modTransitions.count) 次轉調）"
+            summaryText = localizer.text(.summaryModulating, arguments: [baseKey, String(modTransitions.count)])
         }
 
         return TMDTonalityProfile(
@@ -978,7 +1045,8 @@ public enum TMDSongInspector {
             sections: sectionProfiles,
             summaryText: summaryText,
             moodDescription: moodDescription,
-            modulationStory: modulationStory
+            modulationStory: modulationStory,
+            locale: locale
         )
     }
 
