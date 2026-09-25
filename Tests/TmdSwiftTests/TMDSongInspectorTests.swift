@@ -195,5 +195,96 @@ struct TMDSongInspectorTests {
         let vocal = try #require(profile.vocalRange)
         #expect(abs(vocal.highestNote.timeSeconds - 5.5) < 0.00001)
     }
+
+    @Test func testInspectSongTonalityAndKeyProfile() throws {
+        let tmd = """
+        ::SCORE::
+        ** Tonality Test Song **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Piano@|0|{
+            <4*>
+            1 3 5 1^
+            [C] - [G] -
+        }
+
+        chorus:Piano@|0|{
+            <4*>
+            1 4 5 1^
+            [D] - [A] -
+        }
+
+        -> verse -> {?+2} -> chorus ->#
+        """
+
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let profile = TMDSongInspector.inspect(sheet: sheet)
+
+        let tonality = try #require(profile.tonality)
+
+        // 1. Sections Tonality
+        #expect(tonality.sections.count == 2)
+
+        let verseSec = tonality.sections[0]
+        #expect(verseSec.sectionName == "verse")
+        #expect(verseSec.declaredKey == "C")
+        #expect(verseSec.keyOffset == 0)
+        #expect(verseSec.fifthsPosition == 0)
+        #expect(verseSec.pitchClasses.diatonicRatio > 0.99)
+        #expect(verseSec.correlation.declaredKeyCorrelation > 0.8)
+        #expect(verseSec.correlation.stability == .high)
+        #expect(verseSec.nonDiatonicNotes.isEmpty)
+
+        let chorusSec = tonality.sections[1]
+        #expect(chorusSec.sectionName == "chorus")
+        #expect(chorusSec.declaredKey == "D")
+        #expect(chorusSec.keyOffset == 2)
+        #expect(chorusSec.fifthsPosition == 2)
+        #expect(chorusSec.pitchClasses.diatonicRatio > 0.99)
+        #expect(chorusSec.correlation.declaredKeyCorrelation > 0.8)
+
+        // 2. Global Fifths Path
+        #expect(tonality.circleOfFifthsPath == [0, 2])
+
+        // 3. Human-readable Report
+        let report = TMDSongInspector.generateReport(profile)
+        #expect(report.contains("🗝  Tonality:"))
+        #expect(report.contains("5ths Steps:"))
+        #expect(report.contains("+0 -> +2"))
+    }
+
+    @Test func testInspectSongChromaticismAndAmbiguousKey() throws {
+        let tmd = """
+        ::SCORE::
+        ** Blues Chromatic Song **
+        != 100
+        ?= C
+        <4/4>
+
+        verse:Vocal@|0|{
+            <4*>
+            1 3, 4 4' 5 7,
+            [C7] - [F7] -
+        }
+
+        -> verse ->#
+        """
+
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let profile = TMDSongInspector.inspect(sheet: sheet)
+
+        let tonality = try #require(profile.tonality)
+        let verseSec = tonality.sections[0]
+
+        // Contains flat-3 (Eb), sharp-4 (F#), flat-7 (Bb)
+        #expect(!verseSec.nonDiatonicNotes.isEmpty)
+        #expect(verseSec.nonDiatonicNotes.contains("D#") || verseSec.nonDiatonicNotes.contains("F#") || verseSec.nonDiatonicNotes.contains("A#"))
+        #expect(verseSec.pitchClasses.chromaticRatio > 0.1)
+
+        let report = TMDSongInspector.generateReport(profile)
+        #expect(report.contains("Non-diatonic:"))
+    }
 }
 
