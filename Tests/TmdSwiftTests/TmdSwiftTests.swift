@@ -1822,6 +1822,52 @@ import TmdSkill
     }
 }
 
+@Test("Verify VS Code Markdown-it TMD Player configuration, command, and preview assets")
+func testVSCodeMarkdownPluginConfigurationAndFilesExist() throws {
+    let repoRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent() // Tests/TmdSwiftTests
+        .deletingLastPathComponent() // Tests
+        .deletingLastPathComponent() // Project Root
+
+    let packageJsonURL = repoRoot.appendingPathComponent("editor/vscode/package.json")
+    let data = try Data(contentsOf: packageJsonURL)
+    guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+          let contributes = json["contributes"] as? [String: Any] else {
+        Issue.record("Failed to parse editor/vscode/package.json contributes")
+        return
+    }
+
+    #expect(contributes["markdown.markdownItPlugins"] as? Bool == true)
+
+    guard let previewScripts = contributes["markdown.previewScripts"] as? [String],
+          let previewStyles = contributes["markdown.previewStyles"] as? [String] else {
+        Issue.record("Missing markdown.previewScripts or markdown.previewStyles in package.json")
+        return
+    }
+
+    #expect(previewScripts.contains("./media/tmd-markdown-bundle.js"))
+    #expect(previewStyles.contains("./media/markdown-tmd-player.css"))
+
+    for script in previewScripts {
+        let cleanPath = script.replacingOccurrences(of: "./", with: "editor/vscode/")
+        let fileURL = repoRoot.appendingPathComponent(cleanPath)
+        #expect(FileManager.default.fileExists(atPath: fileURL.path), "Script asset must exist: \(fileURL.path)")
+    }
+
+    for style in previewStyles {
+        let cleanPath = style.replacingOccurrences(of: "./", with: "editor/vscode/")
+        let fileURL = repoRoot.appendingPathComponent(cleanPath)
+        #expect(FileManager.default.fileExists(atPath: fileURL.path), "Style asset must exist: \(fileURL.path)")
+    }
+
+    if let commands = contributes["commands"] as? [[String: Any]] {
+        let commandNames = commands.compactMap { $0["command"] as? String }
+        #expect(commandNames.contains("tmd.openEmbeddedSnippet"), "Must register tmd.openEmbeddedSnippet command")
+    } else {
+        Issue.record("Missing commands in package.json contributes")
+    }
+}
+
 @Test("Test multi-note dyad syntax 1+3 2+4 parsing and formatting")
 func testMultiNoteParsingAndFormatting() throws {
     let source = """

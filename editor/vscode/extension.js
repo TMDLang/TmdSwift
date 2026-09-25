@@ -1,5 +1,5 @@
 const vscode = require('vscode');
-const { execFile, spawn } = require('child_process');
+const { execFile, spawn, execFileSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -12,6 +12,14 @@ function getTmdExecutable() {
     const customPath = config.get('executablePath');
     if (customPath && customPath.trim().length > 0) {
         return customPath.trim();
+    }
+    const candidates = [
+        '/usr/local/bin/tmd',
+        '/opt/homebrew/bin/tmd',
+        path.join(os.homedir(), '.local/bin/tmd')
+    ];
+    for (const c of candidates) {
+        if (fs.existsSync(c)) return c;
     }
     return 'tmd';
 }
@@ -458,6 +466,26 @@ verse:Bass@|0|{
 ];
 
 function activate(context) {
+    // Open embedded TMD snippet in side editor tab
+    context.subscriptions.push(
+        vscode.commands.registerCommand('tmd.openEmbeddedSnippet', async (arg) => {
+            let text = '';
+            if (typeof arg === 'string') {
+                text = arg;
+            } else if (Array.isArray(arg) && arg.length > 0) {
+                text = arg[0];
+            } else if (arg && arg.text) {
+                text = arg.text;
+            }
+            if (!text || text.trim().length === 0) return;
+            const doc = await vscode.workspace.openTextDocument({
+                content: text,
+                language: 'tmd'
+            });
+            await vscode.window.showTextDocument(doc, vscode.ViewColumn.Beside);
+        })
+    );
+
     // 0. New TMD Score from Template
     context.subscriptions.push(vscode.commands.registerCommand('tmd.newFromTemplate', async (uri) => {
         const items = TMD_TEMPLATES.map(t => ({
@@ -2689,6 +2717,10 @@ I am ready to help you compose, check, or format TMD music scores!
     );
 
     activeLspClient = tmdLspClient;
+
+    return {
+        extendMarkdownIt
+    };
 }
 
 let activeLspClient = null;
@@ -2700,7 +2732,139 @@ function deactivate() {
     }
 }
 
+/**
+ * Escapes HTML characters for safe embedding.
+ */
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;')
+              .replace(/'/g, '&#039;');
+}
+
+/**
+ * Compiles a raw TMD snippet into MIDI (Base64) and renders an interactive Markdown card.
+ */
+function renderTmdMarkdownCard(rawTmd) {
+    const titleMatch = rawTmd.match(/\*\*([^\*]+)\*\*/);
+    const title = titleMatch ? titleMatch[1].trim() : 'TMD Score';
+
+    const tempoMatch = rawTmd.match(/!=\s*([0-9.]+)/);
+    const tempo = tempoMatch ? tempoMatch[1].trim() : '';
+
+    const keyMatch = rawTmd.match(/\?=\s*([A-Ga-g][b#m]*)/);
+    const key = keyMatch ? keyMatch[1].trim() : '';
+
+    const meterMatch = rawTmd.match(/<([0-9]+\/[0-9]+)>/);
+    const meter = meterMatch ? meterMatch[1].trim() : '';
+
+    let midiBase64 = '';
+    try {
+        const tmdBin = getTmdExecutable();
+        const randId = Math.random().toString(36).slice(2);
+        const tempTmd = path.join(os.tmpdir(), `tmd_md_${Date.now()}_${randId}.tmd`);
+        const tempMid = path.join(os.tmpdir(), `tmd_md_${Date.now()}_${randId}.mid`);
+
+        // Prepare compilable TMD score (wrap bare snippet if missing score header or orders)
+        let compilableTmd = rawTmd.trim();
+        if (!compilableTmd.includes('::SCORE::')) {
+            const paragraphNames = [];
+            const pRegex = /([A-Za-z0-9_]+)\s*:/g;
+            let m;
+            while ((m = pRegex.exec(compilableTmd)) !== null) {
+                if (!paragraphNames.includes(m[1])) paragraphNames.push(m[1]);
+            }
+            const orderStr = paragraphNames.length > 0 ? paragraphNames.map(p => `-> ${p}`).join(' ') + ' ->#' : '-> main ->#';
+            compilableTmd = `::SCORE::\n** TMD Snippet **\n!= 120\n?= C\n<4/4>\n\n${compilableTmd}\n\n${orderStr}\n`;
+        } else if (!compilableTmd.includes('->')) {
+            const paragraphNames = [];
+            const pRegex = /([A-Za-z0-9_]+)\s*:/g;
+            let m;
+            while ((m = pRegex.exec(compilableTmd)) !== null) {
+                if (!paragraphNames.includes(m[1])) paragraphNames.push(m[1]);
+            }
+            if (paragraphNames.length > 0) {
+                compilableTmd += '\n' + paragraphNames.map(p => `-> ${p}`).join(' ') + ' ->#\n';
+            }
+        }
+
+        fs.writeFileSync(tempTmd, compilableTmd, 'utf8');
+        execFileSync(tmdBin, ['-f', tempTmd, '-m', tempMid], { timeout: 4000, stdio: ['ignore', 'pipe', 'pipe'] });
+        if (fs.existsSync(tempMid)) {
+            midiBase64 = fs.readFileSync(tempMid).toString('base64');
+            try { fs.unlinkSync(tempMid); } catch (_) {}
+        }
+        try { fs.unlinkSync(tempTmd); } catch (_) {}
+    } catch (err) {
+        console.warn('[TMD Markdown Plugin] MIDI compile warning:', err.message);
+    }
+
+    const encodedTmd = encodeURIComponent(rawTmd);
+
+    return `<div class="tmd-markdown-card" data-midi="${midiBase64}" data-tmd="${encodedTmd}">
+  <div class="tmd-card-header">
+    <div class="tmd-card-title-group">
+      <span class="tmd-card-icon">🎵</span>
+      <span class="tmd-card-title">${escapeHtml(title)}</span>
+    </div>
+    <div class="tmd-card-badges">
+      ${tempo ? `<span class="tmd-badge tempo">♩ ${escapeHtml(tempo)} BPM</span>` : ''}
+      ${key ? `<span class="tmd-badge key">Key: ${escapeHtml(key)}</span>` : ''}
+      ${meter ? `<span class="tmd-badge meter">${escapeHtml(meter)}</span>` : ''}
+    </div>
+  </div>
+  <div class="tmd-card-transport">
+    <button type="button" class="tmd-btn tmd-btn-play" title="Play / Pause">
+      <span class="tmd-btn-icon">▶</span>
+      <span class="tmd-btn-label">Play</span>
+    </button>
+    <button type="button" class="tmd-btn btn-secondary tmd-btn-stop" title="Stop">
+      <span class="tmd-btn-icon">⏹</span>
+    </button>
+    <input type="range" class="tmd-slider" min="0" max="1000" value="0">
+    <span class="tmd-time-display">00:00 / 00:00</span>
+  </div>
+  <div class="tmd-card-actions">
+    <button type="button" class="tmd-btn btn-secondary tmd-btn-open" title="Open score in editor tab beside this document">
+      <span>✏️ Try in Editor (嘗試編輯)</span>
+    </button>
+  </div>
+  <details class="tmd-code-details">
+    <summary>查看 TMD 語法 (View Source)</summary>
+    <pre><code class="language-tmd">${escapeHtml(rawTmd)}</code></pre>
+  </details>
+</div>
+`;
+}
+
+/**
+ * VS Code Markdown-it Extension point.
+ */
+function extendMarkdownIt(md) {
+    const defaultFence = md.renderer.rules.fence || function (tokens, idx, options, env, self) {
+        return self.renderToken(tokens, idx, options);
+    };
+
+    md.renderer.rules.fence = function (tokens, idx, options, env, self) {
+        const token = tokens[idx];
+        const info = token.info ? token.info.trim() : '';
+
+        if (info.toLowerCase() === 'tmd') {
+            const rawTmd = token.content;
+            return renderTmdMarkdownCard(rawTmd);
+        }
+
+        return defaultFence(tokens, idx, options, env, self);
+    };
+
+    return md;
+}
+
 module.exports = {
     activate,
-    deactivate
+    deactivate,
+    extendMarkdownIt
 };
+

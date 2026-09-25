@@ -17,6 +17,7 @@
   "main": "./extension.js",
   "activationEvents": [
     "onLanguage:tmd",
+    "onLanguage:markdown",
     "onCommand:tmd.openMidiPlayer",
     "onCommand:tmd.openKeyboard",
     "onCommand:tmd.inspectSong",
@@ -153,6 +154,11 @@
         "category": "TMD",
         "icon": "$(pulse)",
         "enablement": "editorLangId == tmd"
+      },
+      {
+        "command": "tmd.openEmbeddedSnippet",
+        "title": "Open TMD Snippet in Editor",
+        "category": "TMD"
       },
       {
         "command": "tmd.refactorDoubleGrid",
@@ -577,6 +583,13 @@
           "description": "%tmd.config.checkOnChange%"
         }
       }
-    }
+    },
+    "markdown.markdownItPlugins": true,
+    "markdown.previewScripts": [
+      "./media/tmd-markdown-bundle.js"
+    ],
+    "markdown.previewStyles": [
+      "./media/markdown-tmd-player.css"
+    ]
   }
 }
