@@ -143,7 +143,7 @@ struct TMDLSPTests {
         #expect(labels.contains("Drums"))
     }
 
-    @Test("Provides diatonic chords when opening bracket '[' inside paragraph")
+    @Test("Provides diatonic and scale-degree chords when opening bracket '[' inside paragraph")
     func testCompletionDiatonicChords() throws {
         let source = """
         ::SCORE::
@@ -162,6 +162,21 @@ struct TMDLSPTests {
             position: TMDLSPPosition(line: 8, character: 5)
         )
         let labels = items.map(\.label)
+        // Scale degree chords (1, 4, 5, 3m, 6m, 4maj7, 5/4, etc.)
+        #expect(labels.contains("1"))
+        #expect(labels.contains("2m"))
+        #expect(labels.contains("3m"))
+        #expect(labels.contains("4"))
+        #expect(labels.contains("5"))
+        #expect(labels.contains("6m"))
+        #expect(labels.contains("4maj7"))
+        #expect(labels.contains("57"))
+        #expect(labels.contains("3m7"))
+        #expect(labels.contains("6m7"))
+        #expect(labels.contains("5/4"))
+        #expect(labels.contains("4/5"))
+
+        // Absolute letter diatonic chords
         #expect(labels.contains("C"))
         #expect(labels.contains("Dm"))
         #expect(labels.contains("Em"))
