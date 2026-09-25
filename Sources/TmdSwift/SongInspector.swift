@@ -219,7 +219,7 @@ public struct TMDSongProfile: Equatable, Sendable, Codable {
 public enum TMDSongInspector {
 
     /// Inspects a parsed TMD `Sheet` and produces an in-depth `TMDSongProfile`.
-    public static func inspect(sheet inputSheet: Sheet) -> TMDSongProfile {
+    public static func inspect(sheet inputSheet: Sheet, targetInstrument: String? = nil) -> TMDSongProfile {
         let sheet = TMDMacroEvaluator.expand(inputSheet)
         let title = sheet.name.isEmpty ? "Untitled" : sheet.name
         let initialTempo = sheet.speed > 0 ? sheet.speed : 120.0
@@ -227,20 +227,26 @@ public enum TMDSongInspector {
         let initialMeter = "\(sheet.beat.count)/\(sheet.beat.noteValue)"
 
         // 1. Timing & Structure Profile
-        let timingProfile = buildTimingProfile(sheet: sheet)
+        let timelineDirectives = collectTimelineDirectives(sheet: sheet)
+        let timingProfile = buildTimingProfile(sheet: sheet, timelineDirectives: timelineDirectives)
 
         // 2. Instrument & Pitch Ranges
         let instruments = sheet.distinctInstruments(fallbackToDefault: false)
         var instrumentRanges: [TMDPitchRangeProfile] = []
 
         for inst in instruments {
-            if let profile = buildPitchProfile(for: inst, sheet: sheet, timingProfile: timingProfile) {
+            if let profile = buildPitchProfile(for: inst, sheet: sheet, timingProfile: timingProfile, timelineDirectives: timelineDirectives) {
                 instrumentRanges.append(profile)
             }
         }
 
-        // 3. Vocal Range (picks target vocal instrument)
-        let targetVocalInst = sheet.resolveVocalInstrument()
+        // 3. Vocal Range (picks target vocal instrument or specified target)
+        let targetVocalInst: String
+        if let targetInstrument, instruments.contains(targetInstrument) {
+            targetVocalInst = targetInstrument
+        } else {
+            targetVocalInst = sheet.resolveVocalInstrument()
+        }
         let vocalRange = instrumentRanges.first { $0.instrument == targetVocalInst }
 
         // 4. Harmony & Chord Profile
@@ -262,7 +268,7 @@ public enum TMDSongInspector {
         )
     }
 
-    private static func buildTimingProfile(sheet: Sheet) -> TMDTimingProfile {
+    private static func buildTimingProfile(sheet: Sheet, timelineDirectives: [PlaybackDirectiveEvent]) -> TMDTimingProfile {
         let orders = sheet.orders.isEmpty
             ? sheet.paragraphs.map(\.name).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }.map(Order.name)
             : sheet.orders
@@ -291,9 +297,33 @@ public enum TMDSongInspector {
                 state = PlaybackState(tempo: state.tempo, keyOffset: offset, timeSignature: state.timeSignature)
             case .name(let secName):
                 let durQuarterNotes = TMDPlaybackRenderer.duration(of: secName, in: sheet)
-                let nominalMeasureDur = Double(max(1, state.timeSignature.count)) * 4.0 / Double(max(1, state.timeSignature.noteValue))
-                let secMeasures = max(1, Int(round(durQuarterNotes / nominalMeasureDur)))
-                let secDurationSeconds = (durQuarterNotes / (state.tempo / 60.0))
+                let startPosition = currentQuarterPosition
+                let endPosition = startPosition + durQuarterNotes
+                var cursor = startPosition
+                var tempo = state.tempo
+                var meter = state.timeSignature
+                var secDurationSeconds = 0.0
+                var measureCount = 0.0
+
+                for directive in timelineDirectives {
+                    if directive.position < startPosition || directive.position >= endPosition { continue }
+                    if directive.position > cursor {
+                        let segment = directive.position - cursor
+                        secDurationSeconds += segment * 60.0 / tempo
+                        measureCount += segment / measureDuration(for: meter)
+                        cursor = directive.position
+                    }
+                    tempo = directive.state.tempo
+                    meter = directive.state.timeSignature
+                }
+
+                if endPosition > cursor {
+                    let segment = endPosition - cursor
+                    secDurationSeconds += segment * 60.0 / tempo
+                    measureCount += segment / measureDuration(for: meter)
+                }
+
+                let secMeasures = max(1, Int(round(measureCount)))
 
                 let occurrence = sectionOccurrences[secName, default: 0] + 1
                 sectionOccurrences[secName] = occurrence
@@ -317,6 +347,7 @@ public enum TMDSongInspector {
                 currentSeconds += secDurationSeconds
                 currentMeasure += secMeasures
                 totalMeasures += secMeasures
+                state = PlaybackState(tempo: tempo, keyOffset: state.keyOffset, timeSignature: meter)
             case .macro:
                 // S-expression macros are desugared by TMDMacroEvaluator before inspection
                 break
@@ -330,7 +361,12 @@ public enum TMDSongInspector {
         )
     }
 
-    private static func buildPitchProfile(for instrument: String, sheet: Sheet, timingProfile: TMDTimingProfile) -> TMDPitchRangeProfile? {
+    private static func buildPitchProfile(
+        for instrument: String,
+        sheet: Sheet,
+        timingProfile: TMDTimingProfile,
+        timelineDirectives: [PlaybackDirectiveEvent]
+    ) -> TMDPitchRangeProfile? {
         let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: instrument)
 
         struct NoteHit {
@@ -364,16 +400,36 @@ public enum TMDSongInspector {
 
             let sectionName = matchedSection?.name ?? ""
             let sectionOccurrence = matchedSection?.occurrenceIndex ?? 1
-            let nominalMeasureDur = Double(max(1, event.state.timeSignature.count)) * 4.0 / Double(max(1, event.state.timeSignature.noteValue))
             let measure: Int
             let timeSeconds: Double
             if let sec = matchedSection {
-                let offsetInSec = max(0.0, event.position - sec.startPositionQuarterNotes)
-                let measureOffset = Int(floor(offsetInSec / nominalMeasureDur))
-                measure = sec.startMeasure + measureOffset
-                let secTimeOffset = offsetInSec / (sec.tempo / 60.0)
-                timeSeconds = sec.startSeconds + secTimeOffset
+                let position = max(sec.startPositionQuarterNotes, event.position)
+                var cursor = sec.startPositionQuarterNotes
+                var tempo = sec.tempo
+                var meter = event.state.timeSignature
+                var elapsedSeconds = 0.0
+                var elapsedMeasures = 0.0
+
+                for directive in timelineDirectives {
+                    if directive.position <= cursor || directive.position >= position { continue }
+                    let segment = directive.position - cursor
+                    elapsedSeconds += segment * 60.0 / tempo
+                    elapsedMeasures += segment / measureDuration(for: meter)
+                    cursor = directive.position
+                    tempo = directive.state.tempo
+                    meter = directive.state.timeSignature
+                }
+
+                if position > cursor {
+                    let segment = position - cursor
+                    elapsedSeconds += segment * 60.0 / tempo
+                    elapsedMeasures += segment / measureDuration(for: meter)
+                }
+
+                measure = sec.startMeasure + Int(floor(elapsedMeasures + 1e-9))
+                timeSeconds = sec.startSeconds + elapsedSeconds
             } else {
+                let nominalMeasureDur = measureDuration(for: event.state.timeSignature)
                 measure = 1 + Int(floor(event.position / nominalMeasureDur))
                 timeSeconds = event.position / (event.state.tempo / 60.0)
             }
@@ -582,5 +638,33 @@ public enum TMDSongInspector {
         lines.append("================================================================================")
 
         return lines.joined(separator: "\n")
+    }
+
+    private static func collectTimelineDirectives(sheet: Sheet) -> [PlaybackDirectiveEvent] {
+        let paragraphs = sheet.paragraphs
+        let instruments = Set(paragraphs.map { $0.instrument.isEmpty ? "Piano" : $0.instrument })
+        var directives: [PlaybackDirectiveEvent] = []
+        for instrument in instruments {
+            directives.append(contentsOf: TMDPlaybackRenderer.render(sheet: sheet, instrument: instrument).directives)
+        }
+        directives.sort(by: { $0.position < $1.position })
+
+        var filtered: [PlaybackDirectiveEvent] = []
+        for directive in directives {
+            if let last = filtered.last {
+                if last.position == directive.position
+                    && last.state.tempo == directive.state.tempo
+                    && last.state.timeSignature.count == directive.state.timeSignature.count
+                    && last.state.timeSignature.noteValue == directive.state.timeSignature.noteValue {
+                    continue
+                }
+            }
+            filtered.append(directive)
+        }
+        return filtered
+    }
+
+    private static func measureDuration(for beat: Beat) -> Double {
+        Double(max(1, beat.count)) * 4.0 / Double(max(1, beat.noteValue))
     }
 }

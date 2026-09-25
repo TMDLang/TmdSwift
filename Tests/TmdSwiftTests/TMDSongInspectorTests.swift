@@ -168,5 +168,32 @@ struct TMDSongInspectorTests {
         #expect(report.contains("in [verse #1 @ m.1, 0:00]"))
         #expect(report.contains("in [chorus #2 @ m.7, 0:13]"))
     }
+
+    @Test func testInspectSongDynamicTempoAndMeter() throws {
+        let tmd = """
+        ::SCORE::
+        ** Inspector Tempo **
+        != 60
+        ?= C
+        <4/4>
+
+        A:Vocal@|0|{
+            <4*>
+            1 2 3 4
+            {!=120}
+            5 6 7 1^
+        }
+
+        -> A ->#
+        """
+
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let profile = TMDSongInspector.inspect(sheet: sheet, targetInstrument: "Vocal")
+
+        #expect(abs(profile.timing.totalDurationSeconds - 6.0) < 0.00001)
+        #expect(abs(profile.timing.sections[0].durationSeconds - 6.0) < 0.00001)
+        let vocal = try #require(profile.vocalRange)
+        #expect(abs(vocal.highestNote.timeSeconds - 5.5) < 0.00001)
+    }
 }
 
