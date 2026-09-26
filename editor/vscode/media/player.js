@@ -12,6 +12,10 @@
         }
     }
 
+    if (typeof installSoundfontFetchCache === 'function' && typeof loadAudio !== 'undefined') {
+        installSoundfontFetchCache(loadAudio, { version: '1' });
+    }
+
     let tinySynth = null;
     try {
         if (JZZ && JZZ.synth && JZZ.synth.Tiny) {

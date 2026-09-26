@@ -631,6 +631,7 @@ function activate(context) {
         const jzzUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'JZZ.js'));
         const jzzSmfUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'JZZ.midi.SMF.js'));
         const jzzTinyUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'JZZ.synth.Tiny.js'));
+        const soundfontCacheUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'soundfont-cache.js'));
         const soundfontUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'soundfont-player.min.js'));
         const soundfontMappingUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'soundfont-mapping.js'));
         const virtualKeyboardHelperUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'virtual-keyboard-helper.js'));
@@ -691,6 +692,7 @@ function activate(context) {
   <script src="${jzzUri}"></script>
   <script src="${jzzSmfUri}"></script>
   <script src="${jzzTinyUri}"></script>
+  <script src="${soundfontCacheUri}"></script>
   <script src="${soundfontUri}"></script>
   <script src="${soundfontMappingUri}"></script>
   <script src="${playerJsUri}"></script>
@@ -953,6 +955,7 @@ function activate(context) {
 
     // Helper: get HTML content for dedicated Virtual Keyboard view
     function getKeyboardViewContent(webview, extensionUri) {
+        const soundfontCacheUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'soundfont-cache.js'));
         const soundfontUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'soundfont-player.min.js'));
         const virtualKeyboardHelperUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'virtual-keyboard-helper.js'));
         const keyboardJsUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'keyboard.js'));
@@ -991,6 +994,7 @@ function activate(context) {
     </div>
   </div>
 
+  <script src="${soundfontCacheUri}"></script>
   <script src="${soundfontUri}"></script>
   <script src="${virtualKeyboardHelperUri}"></script>
   <script src="${keyboardJsUri}"></script>
