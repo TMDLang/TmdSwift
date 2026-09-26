@@ -797,6 +797,7 @@ public enum TMDSongInspector {
     private static func buildDensityProfile(sheet: Sheet) -> TMDArrangementDensityProfile {
         var sectionDict: [String: [String]] = [:]
         for p in sheet.paragraphs {
+            guard !p.instrument.isEmpty else { continue }
             sectionDict[p.name, default: []].append(p.instrument)
         }
 
@@ -933,7 +934,7 @@ public enum TMDSongInspector {
         locale: TMDLocale
     ) -> TMDTonalityProfile {
         let localizer = TMDLocalizer(locale: locale)
-        let distinctInsts = sheet.distinctInstruments(fallbackToDefault: true)
+        let distinctInsts = sheet.distinctInstruments(fallbackToDefault: false)
         var allEvents: [PlaybackEvent] = []
         for inst in distinctInsts {
             let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: inst)

@@ -4,6 +4,27 @@ import Foundation
 
 @Suite("TMD Song Profile & Inspector Tests")
 struct TMDSongInspectorTests {
+    @Test func prototypeOnlyScoreDoesNotCreateInspectorPianoTrack() throws {
+        let tmd = """
+        ::SCORE::
+        ** Prototype Only **
+        != 120
+        ?= C
+        <4/4>
+
+        Theme{
+            <4*>
+            1 2 3 4
+        }
+        """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+
+        let profile = TMDSongInspector.inspect(sheet: sheet)
+
+        #expect(profile.instrumentRanges.isEmpty)
+        #expect(profile.density.sectionDensities.allSatisfy { !$0.instruments.contains("") })
+    }
+
 
     @Test func testInspectSongBasicProfile() throws {
         let tmd = """
