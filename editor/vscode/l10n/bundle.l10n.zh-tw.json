@@ -52,7 +52,7 @@
   "Error": "錯誤",
   "Refresh": "重新整理",
   "Duration": "總長度",
-  "Initial Key": "初始調號",
+  "Movable-do base": "首調基準",
   "Tempo": "演奏速度",
   "Arrangement Density": "編曲密度",
   "Peak concurrency (avg {0})": "尖峰軌道數（平均 {0}）",

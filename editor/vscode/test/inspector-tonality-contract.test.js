@@ -15,6 +15,15 @@ test('VSCode inspector consumes the current inferred-tonality contract', () => {
   assert.doesNotMatch(source, /Declared Key/);
 });
 
+test('VSCode top metric labels the movable-do playback base explicitly', () => {
+  const extensionSource = fs.readFileSync(path.join(__dirname, '..', 'extension.js'), 'utf8');
+  const inspectorSource = fs.readFileSync(inspectorPath, 'utf8');
+
+  assert.match(extensionSource, /Movable-do base/);
+  assert.doesNotMatch(extensionSource, /vscode\.l10n\.t\('Initial Key'\)/);
+  assert.match(inspectorSource, /profile\.initialKey/);
+});
+
 test('VSCode inspector keeps structure rendering independent of tonality rendering', () => {
   const source = fs.readFileSync(inspectorPath, 'utf8');
   const tonalityCall = source.indexOf('renderTonalityProfile(profile.tonality)');

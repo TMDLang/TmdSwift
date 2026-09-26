@@ -30,7 +30,7 @@ function getTmdExecutable() {
 function getWebviewL10nScript() {
     const keys = [
         "TMD Score", "Song Inspector", "Valid Score", "Ready", "Error", "Refresh",
-        "Duration", "Initial Key", "Tempo", "Arrangement Density",
+        "Duration", "Movable-do base", "Tempo", "Arrangement Density",
         "Peak concurrency (avg {0})", "Quarter note beat", "Meter <{0}>",
         "Major", "Minor", "Modal", "Insufficient evidence", "Inferred Tonality", "Playback Context", "Best Fit Tonalities (K-S)",
         "bars", "tracks", "notes", "notes total",
@@ -1108,7 +1108,7 @@ function activate(context) {
       <div id="sub-duration" class="stat-sub">-</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">${vscode.l10n.t('Initial Key')}</div>
+      <div class="stat-label">${vscode.l10n.t('Movable-do base')}</div>
       <div id="val-key" class="stat-value">-</div>
       <div id="sub-key" class="stat-sub">-</div>
     </div>
