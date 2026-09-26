@@ -189,6 +189,7 @@ struct TMDLSPTests {
         #expect(labels.contains("Cello"))
         #expect(labels.contains("Bass") || labels.contains("ElectricBassFinger"))
         #expect(labels.contains("Drums"))
+        #expect(items.first(where: { $0.label == "Piano" })?.detail == "General MIDI Assignment: Piano")
     }
 
     @Test("Provides canonical fixed-pitch entry attributes")

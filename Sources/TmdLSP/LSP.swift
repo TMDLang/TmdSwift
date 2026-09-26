@@ -345,7 +345,7 @@ public struct TMDLSPCompletionEngine {
             }
         }
 
-        // 2. Check for Playback Order section completion: after "-> "
+        // 2. Check for playback section completion: after "-> "
         if prefix.trimmingCharacters(in: .whitespaces).hasSuffix("->") || prefix.trimmingCharacters(in: .whitespaces).contains("->") {
             let sectionNames = TMDOutlineGenerator.extractSectionNames(source: source)
             return sectionNames.map {
@@ -358,13 +358,13 @@ public struct TMDLSPCompletionEngine {
             }
         }
 
-        // 3. Check for Instrument completion: after ":"
+        // 3. Check for assignment completion: after ":"
         if prefix.trimmingCharacters(in: .whitespaces).hasSuffix(":") {
             return standardInstruments.map {
                 TMDLSPCompletionItem(
                     label: $0,
                     kind: .keyword,
-                    detail: "General MIDI Instrument: \($0)",
+                    detail: "General MIDI Assignment: \($0)",
                     documentation: "Standard instrument sound assignment"
                 )
             }
