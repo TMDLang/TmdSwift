@@ -158,6 +158,26 @@ struct TMDReaperGeneratorTests {
         #expect(rpp.range(of: #"E \d+ 99 26 [0-9a-f]{2}"#, options: .regularExpression) != nil)
     }
 
+    @Test func testRestOnlyAssignmentsDoNotCreateReaperTracks() throws {
+        let tmd = """
+        ::SCORE::
+        ** Rest Only Reaper **
+        != 120
+        ?= C
+        <4/4>
+
+        A:Piano@|0|{
+            <4*>
+            0 0 0 0
+        }
+        -> A ->#
+        """
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let rpp = TMDReaperGenerator.generateRPP(from: sheet)
+
+        #expect(!rpp.contains("NAME \"Piano\""))
+    }
+
     @Test func testSampleScoreExport() throws {
         let sampleURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
@@ -170,7 +190,7 @@ struct TMDReaperGeneratorTests {
         #expect(rpp.contains("<REAPER_PROJECT"))
         #expect(rpp.contains("<TEMPOENVEX"))
         #expect(rpp.contains("NAME \"Guitar\""))
-        #expect(rpp.contains("NAME \"GROOVE\""))
+        #expect(!rpp.contains("NAME \"GROOVE\""))
         #expect(rpp.contains("<SOURCE MIDI"))
         #expect(rpp.contains("HASDATA 1 960 QN"))
     }
