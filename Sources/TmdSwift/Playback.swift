@@ -156,10 +156,14 @@ public enum TMDPlaybackRenderer {
 
                 for paragraph in matchingParagraphs {
                     let start = timelinePosition + Double(paragraph.start) * measureDuration(for: state.timeSignature)
+                    let paragraphState = paragraph.pitchMode == .fixed
+                        ? PlaybackState(tempo: state.tempo, keyOffset: 0, timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
+                        : state
                     let rendered = render(
                         paragraph: paragraph,
                         start: start,
-                        state: state
+                        state: paragraphState,
+                        fixedPitch: paragraph.pitchMode == .fixed
                     )
                     events.append(contentsOf: rendered.events)
                     directives.append(contentsOf: rendered.directives)
@@ -249,7 +253,8 @@ public enum TMDPlaybackRenderer {
     private static func render(
         paragraph: Paragraph,
         start: Double,
-        state initialState: PlaybackState
+        state initialState: PlaybackState,
+        fixedPitch: Bool
     ) -> (events: [PlaybackEvent], directives: [PlaybackDirectiveEvent], state: PlaybackState, duration: Double) {
         var state = initialState
         var events: [PlaybackEvent] = []
@@ -266,7 +271,7 @@ public enum TMDPlaybackRenderer {
                 while directiveIndex < sortedDirectives.count,
                       sortedDirectives[directiveIndex].position <= sectionPosition {
                     let directive = sortedDirectives[directiveIndex]
-                    state = apply(directive.kind, to: state)
+                    state = apply(directive.kind, to: state, fixedPitch: fixedPitch)
                     directives.append(PlaybackDirectiveEvent(
                         position: position,
                         kind: directive.kind,
@@ -414,6 +419,18 @@ public enum TMDPlaybackRenderer {
         case .timeSignature(let beat):
             PlaybackState(tempo: state.tempo, keyOffset: state.keyOffset, timeSignature: beat, dynamicLevel: state.dynamicLevel)
         }
+    }
+
+    private static func apply(_ kind: SectionDirectiveKind, to state: PlaybackState, fixedPitch: Bool) -> PlaybackState {
+        if fixedPitch {
+            switch kind {
+            case .absoluteKey, .relativeKey, .fixedPitch:
+                return state
+            default:
+                break
+            }
+        }
+        return apply(kind, to: state)
     }
 
     /// Calculates total quarter-note duration of a section/paragraph name in a sheet,

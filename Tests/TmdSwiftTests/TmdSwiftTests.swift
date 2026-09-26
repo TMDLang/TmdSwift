@@ -192,6 +192,21 @@ func testSectionBarlinePositionsRoundTrip() throws {
     #expect(sheet.format().contains("5 6 7 1 |"))
 }
 
+@Test("Fixed-pitch entry ignores playback key modifiers")
+func testFixedPitchEntryIgnoresPlaybackKeyModifiers() throws {
+    let sheet = try #require(TmdParser.parse(string: """
+    ::SCORE::
+    ?= G
+    <4/4>
+    Intro:Timpani[pitchMode=fixed]@|0|{ <4*> 1 2 3 4 }
+    -> {?+3} -> Intro ->#
+    """))
+
+    let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Timpani")
+    #expect(!timeline.events.isEmpty)
+    #expect(timeline.events.allSatisfy { $0.state.keyOffset == 0 })
+}
+
 @Test func testTokenize() throws {
     let text = "::SCORE:: ** Title ** != 120 ?= C <4/4> ->#"
     let tokens = Lexer(string: text).tokenize()
