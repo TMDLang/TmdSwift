@@ -1301,6 +1301,34 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     #expect(violin.events[0].state == PlaybackState(tempo: 120, keyOffset: 0, timeSignature: Beat()))
 }
 
+@Test func testPlaybackAndEntryKeyModifiersUseReadingOrderPerAssignment() throws {
+    let pianoEntry = Section(
+        noteLength: 4,
+        unitGroups: [UnitGroup(units: [.note(Note(degree: .c))], length: 1)],
+        directives: [SectionDirective(position: 0, kind: .absoluteKey("E"))]
+    )
+    let followingEntry = Section(
+        noteLength: 4,
+        unitGroups: [UnitGroup(units: [.note(Note(degree: .e))], length: 1)]
+    )
+    let sheet = Sheet(
+        speed: 120,
+        paragraphs: [
+            Paragraph(name: "A", instrument: "Piano", sections: [pianoEntry]),
+            Paragraph(name: "A", instrument: "Violin", sections: [followingEntry]),
+            Paragraph(name: "B", instrument: "Piano", sections: [followingEntry]),
+            Paragraph(name: "B", instrument: "Violin", sections: [followingEntry])
+        ],
+        orders: [.relative("+3"), .name("A"), .name("B")]
+    )
+
+    let piano = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+    let violin = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Violin")
+
+    #expect(piano.events.map { $0.state.keyOffset } == [4, 4])
+    #expect(violin.events.map { $0.state.keyOffset } == [3, 3])
+}
+
 @Test func testFilePathNormalizerVariants() throws {
     #expect(FilePathNormalizer.isFileURL(" file:///tmp/a%20b "))
     #expect(FilePathNormalizer.isFileURL("<file://localhost/tmp/a>"))
