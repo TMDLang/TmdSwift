@@ -404,7 +404,7 @@ struct TMDSongInspectorTests {
         #expect(svg.contains("<svg"))
         #expect(svg.contains("Circle of Fifths Trajectory"))
         #expect(svg.contains("12-Tone Pitch Class Distribution"))
-        #expect(svg.contains("Timeline Keyscape Ribbon"))
+        #expect(svg.contains("Playback Keyscape Ribbon"))
         #expect(svg.contains("Visualizer Test Song"))
 
         // 2. HTML Generation
