@@ -1270,6 +1270,37 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     #expect(timeline.events[1].state.timeSignature == Beat())
 }
 
+@Test func testTempoAndDynamicsPersistPerAssignmentAcrossEntries() throws {
+    let pianoStateEntry = Section(
+        noteLength: 4,
+        unitGroups: [UnitGroup(units: [.note(Note(degree: .c))], length: 1)],
+        directives: [
+            SectionDirective(position: 0, kind: .tempo(90)),
+            SectionDirective(position: 0, kind: .dynamics(.f))
+        ]
+    )
+    let followingEntry = Section(
+        noteLength: 4,
+        unitGroups: [UnitGroup(units: [.note(Note(degree: .e))], length: 1)]
+    )
+    let sheet = Sheet(
+        speed: 120,
+        paragraphs: [
+            Paragraph(name: "A", instrument: "Piano", sections: [pianoStateEntry]),
+            Paragraph(name: "B", instrument: "Piano", sections: [followingEntry]),
+            Paragraph(name: "A", instrument: "Violin", sections: [followingEntry])
+        ],
+        orders: [.name("A"), .name("B")]
+    )
+
+    let piano = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+    let violin = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Violin")
+
+    #expect(piano.events.map { $0.state.tempo } == [90, 90])
+    #expect(piano.events.map { $0.state.dynamicLevel } == [.f, .f])
+    #expect(violin.events[0].state == PlaybackState(tempo: 120, keyOffset: 0, timeSignature: Beat()))
+}
+
 @Test func testFilePathNormalizerVariants() throws {
     #expect(FilePathNormalizer.isFileURL(" file:///tmp/a%20b "))
     #expect(FilePathNormalizer.isFileURL("<file://localhost/tmp/a>"))
