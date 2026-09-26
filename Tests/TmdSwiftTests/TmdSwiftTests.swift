@@ -1244,6 +1244,32 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     ])
 }
 
+@Test func testMeterModifierIsLocalToContainingEntry() throws {
+    let meterChangedEntry = Section(
+        noteLength: 4,
+        unitGroups: [UnitGroup(units: [.note(Note(degree: .c))], length: 1)],
+        directives: [SectionDirective(position: 0, kind: .timeSignature(Beat(count: 3, noteValue: 4)))]
+    )
+    let followingEntry = Section(
+        noteLength: 4,
+        unitGroups: [UnitGroup(units: [.note(Note(degree: .e))], length: 1)]
+    )
+    let sheet = Sheet(
+        speed: 120,
+        paragraphs: [
+            Paragraph(name: "A", instrument: "Piano", sections: [meterChangedEntry]),
+            Paragraph(name: "B", instrument: "Piano", sections: [followingEntry])
+        ],
+        orders: [.name("A"), .name("B")]
+    )
+
+    let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+
+    #expect(timeline.events.count == 2)
+    #expect(timeline.events[0].state.timeSignature == Beat(count: 3, noteValue: 4))
+    #expect(timeline.events[1].state.timeSignature == Beat())
+}
+
 @Test func testFilePathNormalizerVariants() throws {
     #expect(FilePathNormalizer.isFileURL(" file:///tmp/a%20b "))
     #expect(FilePathNormalizer.isFileURL("<file://localhost/tmp/a>"))

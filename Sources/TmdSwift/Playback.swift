@@ -189,7 +189,12 @@ public enum TMDPlaybackRenderer {
                     )
                     events.append(contentsOf: rendered.events)
                     directives.append(contentsOf: rendered.directives)
-                    state = rendered.state
+                    state = PlaybackState(
+                        tempo: rendered.state.tempo,
+                        keyOffset: paragraph.pitchMode == .fixed ? state.keyOffset : rendered.state.keyOffset,
+                        timeSignature: state.timeSignature,
+                        dynamicLevel: rendered.state.dynamicLevel
+                    )
                 }
                 timelinePosition += paragraphDuration
             case .macro:
