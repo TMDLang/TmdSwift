@@ -636,6 +636,10 @@ public enum Order: Equatable {
     case macro(SExpr)
 }
 
+/// Canonical name for one source playback expression.
+/// `Order` remains available as a source-compatibility name.
+public typealias Playback = Order
+
 /// The complete TMD score sheet.
 ///
 /// Contains song title, tempo, key signature, time signature, instrument
@@ -681,6 +685,9 @@ public struct Sheet: Equatable {
 
     /// Canonical source entries, retained alongside the compatibility field.
     public var entries: [Entry] { paragraphs }
+
+    /// Canonical playback expressions, retained alongside the compatibility field.
+    public var playback: [Playback] { orders }
 
     public init(
         name: String = "",

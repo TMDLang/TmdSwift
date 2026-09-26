@@ -133,6 +133,19 @@ func testCanonicalEntryFormattingRoundTrip() throws {
     #expect(timpani.pitchMode == .fixed)
 }
 
+@Test("Canonical playback view exposes the score playback sequence")
+func testCanonicalPlaybackView() throws {
+    let tmd = """
+    ::SCORE::
+    Intro:Piano@|0|{ <4*> 1 2 3 4 }
+    -> Intro ->#
+    """
+
+    let sheet = try #require(TmdParser.parse(string: tmd))
+    #expect(sheet.playback == sheet.orders)
+    #expect(sheet.playback == [.name("Intro")])
+}
+
 @Test("Assignment identity is case-insensitive")
 func testAssignmentIdentityIsCaseInsensitive() throws {
     let tmd = """
