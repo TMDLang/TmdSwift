@@ -30,7 +30,7 @@ import Foundation
 
     let nodes = TMDOutlineGenerator.generate(source: source)
 
-    // Verify top-level structure: Score node, Sections node, and Orders node
+    // Verify top-level structure: Score node, Sections node, and Playback node
     #expect(nodes.count == 3)
 
     // 1. Score node
@@ -73,12 +73,12 @@ import Foundation
     #expect(verseTracks[0].kind == "field")
     #expect(verseTracks[0].children == nil)
 
-    // 3. Orders node
-    let ordersNode = nodes[2]
-    #expect(ordersNode.name == "Orders")
-    #expect(ordersNode.kind == "event")
-    #expect(ordersNode.detail == "-> intro -> verse ->#")
-    let orderChildren = ordersNode.children ?? []
+    // 3. Playback node
+    let playbackNode = nodes[2]
+    #expect(playbackNode.name == "Playback")
+    #expect(playbackNode.kind == "event")
+    #expect(playbackNode.detail == "-> intro -> verse ->#")
+    let orderChildren = playbackNode.children ?? []
     #expect(orderChildren.count == 2)
     #expect(orderChildren[0].name == "intro")
     #expect(orderChildren[0].kind == "method")
@@ -134,4 +134,3 @@ import Foundation
     #expect(parsedNodes.count == 3)
     #expect(parsedNodes[0].name == "Score: CLI Outline Test")
 }
-

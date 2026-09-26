@@ -468,7 +468,7 @@ public struct TMDOutlineGenerator {
             ))
         }
 
-        // 3. Orders Node
+        // 3. Playback Node
         if !orderItems.isEmpty || orderStartPos != nil {
             let start = orderStartPos ?? SourcePosition(offset: 0, line: 1, column: 1)
             let end = orderEndPos ?? start
@@ -486,7 +486,7 @@ public struct TMDOutlineGenerator {
 
             let fullSnippet = orderSnippet.joined(separator: " ")
             result.append(TMDOutlineNode(
-                name: "Orders",
+                name: "Playback",
                 detail: fullSnippet.isEmpty ? nil : fullSnippet,
                 kind: "event",
                 range: ordersRange,
