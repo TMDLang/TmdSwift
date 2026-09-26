@@ -674,6 +674,9 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     for event in pianoTimeline.events {
         #expect(event.state.keyOffset == 10)
     }
+
+    let xml = TMDMusicXMLGenerator.generateMusicXML(from: sheet)
+    #expect(xml.contains("<step>C</step>"))
 }
 
 @Test func testMIDIGenerationWithTargetSectionAndInstrument() throws {
