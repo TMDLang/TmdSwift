@@ -274,6 +274,25 @@ public struct TMDLSPCompletionEngine {
         ("play", "(play ${1:Theme} ${2:Violin})", "Track Binding: (play <theme> <instrument>)")
     ]
 
+    public static let sectionDirectiveCompletions: [TMDLSPCompletionItem] = [
+        TMDLSPCompletionItem(label: "!= 120", kind: .snippet, detail: "Absolute Tempo (BPM)", insertText: "!= ${1:120}}", insertTextFormat: 2),
+        TMDLSPCompletionItem(label: "!+ 10", kind: .snippet, detail: "Relative Tempo Change (+BPM)", insertText: "!+ ${1:10}}", insertTextFormat: 2),
+        TMDLSPCompletionItem(label: "?= C", kind: .snippet, detail: "Movable-do Base", insertText: "?= ${1:C}}", insertTextFormat: 2),
+        TMDLSPCompletionItem(label: "?+ 2", kind: .snippet, detail: "Relative Movable-do Transposition (+semitones)", insertText: "?+ ${1:2}}", insertTextFormat: 2),
+        TMDLSPCompletionItem(label: "?- 2", kind: .snippet, detail: "Relative Movable-do Transposition (-semitones)", insertText: "?- ${1:2}}", insertTextFormat: 2),
+        TMDLSPCompletionItem(label: "?= fixed", kind: .value, detail: "Fixed Pitch (Immune to song transpositions)", insertText: "?= fixed}"),
+        TMDLSPCompletionItem(label: "key= Bm", kind: .snippet, detail: "Explicit Tonality (B minor)", insertText: "key= ${1:Bm}}", insertTextFormat: 2),
+        TMDLSPCompletionItem(label: "ppp", kind: .value, detail: "Dynamics (ppp)", insertText: "ppp}"),
+        TMDLSPCompletionItem(label: "pp", kind: .value, detail: "Dynamics (pp)", insertText: "pp}"),
+        TMDLSPCompletionItem(label: "p", kind: .value, detail: "Dynamics (p)", insertText: "p}"),
+        TMDLSPCompletionItem(label: "mp", kind: .value, detail: "Dynamics (mp)", insertText: "mp}"),
+        TMDLSPCompletionItem(label: "mf", kind: .value, detail: "Dynamics (mf)", insertText: "mf}"),
+        TMDLSPCompletionItem(label: "f", kind: .value, detail: "Dynamics (f)", insertText: "f}"),
+        TMDLSPCompletionItem(label: "ff", kind: .value, detail: "Dynamics (ff)", insertText: "ff}"),
+        TMDLSPCompletionItem(label: "fff", kind: .value, detail: "Dynamics (fff)", insertText: "fff}"),
+        TMDLSPCompletionItem(label: "<4/4>", kind: .snippet, detail: "Time Signature Change", insertText: "<${1:4}/${2:4}>}", insertTextFormat: 2)
+    ]
+
     public static func complete(source: String, position: TMDLSPPosition) -> [TMDLSPCompletionItem] {
         let lines = source.components(separatedBy: "\n")
         guard position.line < lines.count else { return [] }
@@ -373,6 +392,17 @@ public struct TMDLSPCompletionEngine {
             }
 
             return items
+        }
+
+        // 5. Section directives: after an open brace, filtered by the typed prefix.
+        if let lastBraceIndex = prefix.lastIndex(of: "{") {
+            let afterBrace = String(prefix[prefix.index(after: lastBraceIndex)...])
+            if !afterBrace.contains("}") && afterBrace.count <= 16 {
+                let typed = afterBrace.trimmingCharacters(in: .whitespaces).lowercased()
+                return sectionDirectiveCompletions.filter {
+                    typed.isEmpty || $0.label.lowercased().hasPrefix(typed)
+                }
+            }
         }
 
         return []
@@ -653,4 +683,3 @@ public final class TMDLSPServer: @unchecked Sendable {
         return dict
     }
 }
-

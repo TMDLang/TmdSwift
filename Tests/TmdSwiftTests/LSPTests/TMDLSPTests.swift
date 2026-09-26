@@ -120,6 +120,42 @@ struct TMDLSPTests {
         #expect(canonAutoClose?.insertText?.hasSuffix(")") == false)
     }
 
+    @Test("Provides all section directives and filters typed directive prefixes")
+    func testCompletionSectionDirectives() throws {
+        let source = """
+        A:Piano@|0|{
+            <4*>
+            {
+        """
+        let all = TMDLSPCompletionEngine.complete(
+            source: source,
+            position: TMDLSPPosition(line: 2, character: 5)
+        )
+        let labels = all.map(\.label)
+        #expect(labels.contains("!= 120"))
+        #expect(labels.contains("!+ 10"))
+        #expect(labels.contains("?= C"))
+        #expect(labels.contains("?+ 2"))
+        #expect(labels.contains("?- 2"))
+        #expect(labels.contains("?= fixed"))
+        #expect(labels.contains("key= Bm"))
+        #expect(labels.contains("ppp"))
+        #expect(labels.contains("p"))
+        #expect(labels.contains("fff"))
+        #expect(labels.contains("<4/4>"))
+
+        let partial = """
+        A:Piano@|0|{
+            <4*>
+            {key
+        """
+        let keyItems = TMDLSPCompletionEngine.complete(
+            source: partial,
+            position: TMDLSPPosition(line: 2, character: 8)
+        )
+        #expect(keyItems.map(\.label) == ["key= Bm"])
+    }
+
     @Test("Provides General MIDI 128 instrument names after colon in paragraph header")
     func testCompletionGeneralMIDIInstruments() throws {
         let source = """
@@ -299,4 +335,3 @@ struct TMDLSPTests {
         #expect(symbolResp.contains("Test Score") || symbolResp.contains("verse"))
     }
 }
-
