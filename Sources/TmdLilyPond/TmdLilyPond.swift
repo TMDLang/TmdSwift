@@ -12,6 +12,7 @@ public struct TMDLilyPondGenerator {
         let sheet = TMDMacroEvaluator.expand(inputSheet)
         let composer = sheet.metadata["composer"] ?? "TMD"
         let initialTempoCommand = resolveTempo(beat: sheet.beat, quarterBPM: sheet.speed > 0 ? sheet.speed : 120)
+        let effectiveKey = sheet.declaredKey ?? sheet.keySignature.description
         var ly = """
         \\version "2.24.0"
 
@@ -29,7 +30,7 @@ public struct TMDLilyPondGenerator {
         global = {
           \\time \(sheet.beat.count)/\(sheet.beat.noteValue)
           \(initialTempoCommand)
-          \\key \(lilyPondKey(sheet.keySignature.description))
+          \\key \(lilyPondKey(effectiveKey))
         }
 
         """
@@ -137,6 +138,10 @@ public struct TMDLilyPondGenerator {
             return "\\time \(beat.count)/\(beat.noteValue) "
         case .absoluteKey(let key):
             return "\\key \(lilyPondKey(key)) "
+        case .explicitKey(let key):
+            return "\\key \(lilyPondKey(key)) "
+        case .dynamics(let mark):
+            return "\\\(mark.rawValue) "
         case .relativeKey:
             let semitone = ((directive.state.keyOffset % 12) + 12) % 12
             let keyTonic = PitchMapping.lilyPondNames[semitone]
@@ -269,13 +274,22 @@ public struct TMDLilyPondGenerator {
     private static func lilyPondKey(_ key: String) -> String {
         let trimmed = key.trimmingCharacters(in: .whitespaces)
         guard let first = trimmed.first else { return "c \\major" }
+        var isMinor = false
+        var rest = String(trimmed.dropFirst())
+        if rest.hasSuffix("m") && !rest.hasSuffix("maj") {
+            isMinor = true
+            rest.removeLast()
+        } else if rest.lowercased().hasSuffix("minor") {
+            isMinor = true
+            rest = String(rest.dropLast(5)).trimmingCharacters(in: .whitespaces)
+        }
         var pitch = String(first).lowercased()
-        if trimmed.contains("'") || trimmed.contains("#") {
+        if rest.contains("'") || rest.contains("#") {
             pitch += "is"
-        } else if trimmed.contains(",") || trimmed.contains("b") {
+        } else if rest.contains(",") || rest.contains("b") {
             pitch += "es"
         }
-        return "\(pitch) \\major"
+        return "\(pitch) \\\(isMinor ? "minor" : "major")"
     }
 
     private static func sanitizeIdentifier(_ string: String, index: Int) -> String {

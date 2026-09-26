@@ -2148,3 +2148,67 @@ func testInvalidMultiNoteSyntax() {
         }
     }
 }
+
+@Test func testExplicitKeyHeaderAndInlineDirectives() throws {
+    let tmd = """
+    ::SCORE::
+    ** Explicit Key Test **
+    != 120
+    ?= D
+    key= Bm
+    <4/4>
+
+    main:Piano@|0|{
+        <4*>
+        | 1 2 3 4 |
+        | {key= F#m} 1 2 3 4 |
+    }
+
+    -> main ->#
+    """
+
+    let sheet = try #require(TmdParser.parse(string: tmd))
+    #expect(sheet.declaredKey == "Bm")
+    #expect(sheet.keySignature.description == "D")
+
+    let paragraph = sheet.paragraphs[0]
+    let section = paragraph.sections[0]
+    let directives = section.directives
+    #expect(directives.contains { directive in
+        if case .explicitKey(let k) = directive.kind {
+            return k == "F#m"
+        }
+        return false
+    })
+}
+
+@Test func testDynamicsDirectivesParsing() throws {
+    let tmd = """
+    ::SCORE::
+    ** Dynamics Test **
+    != 120
+    ?= C
+    <4/4>
+
+    main:Piano@|0|{
+        <4*>
+        | {p} 1 2 {f} 3 4 |
+        | {pp} 1 2 {ff} 3 4 |
+    }
+
+    -> main ->#
+    """
+
+    let sheet = try #require(TmdParser.parse(string: tmd))
+    let section = sheet.paragraphs[0].sections[0]
+    let directives = section.directives
+
+    let dynamicKinds = directives.compactMap { directive -> DynamicMark? in
+        if case .dynamics(let d) = directive.kind {
+            return d
+        }
+        return nil
+    }
+    #expect(dynamicKinds == [.p, .f, .pp, .ff])
+}
+

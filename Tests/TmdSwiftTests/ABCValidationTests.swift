@@ -198,5 +198,35 @@ struct ABCValidationTests {
 
         #expect(abcEighthTime.contains("Q:1/8=240"))
     }
+
+    @Test func testExplicitKeyAndDynamicsInABC() throws {
+        let tmd = """
+        ::SCORE::
+        ** Explicit Key & Dynamics **
+        != 120
+        ?= D
+        key= Bm
+        <4/4>
+
+        A:Piano@|0|{
+            <4*>
+            | {p} 1 2 {f} 3 4 |
+            | {key= F#m} 1 2 3 4 |
+        }
+        -> A ->#
+        """
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let abc = TMDABCGenerator.generateABC(from: sheet)
+
+        // Header declared key= Bm -> K:Bm
+        #expect(abc.contains("K:Bm"))
+
+        // Section dynamics directives
+        #expect(abc.contains("!p!"))
+        #expect(abc.contains("!f!"))
+
+        // Section inline directive {key= F#m} -> K:F#m
+        #expect(abc.contains("K:F#m"))
+    }
 }
 

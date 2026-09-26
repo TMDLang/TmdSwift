@@ -49,10 +49,11 @@ intro:Piano@|0|{
 1. **Header**: `::SCORE::` (must be at the beginning of the score).
 2. **Title**: `** Title **` (enclosed in double asterisks).
 3. **Tempo**: `!= 120` (in BPM, supports integer or decimals like `!= 120.5`).
-4. **Key Signature**: `?= C` (tonic letter `C`..`B`, optional sharp `'` or flat `,`, e.g., `?= A'`, `?= E,`).
-5. **Time Signature**: `<4/4>` (numerator/denominator, e.g. `<3/4>`, `<6/8>`).
-6. **Paragraphs / Instrument Tracks**: `name:instrument@|offset|{ ... }`.
-7. **Playback Flow**: `-> section1 -> section2 ->#` (must start with `->` and terminate with `->#`).
+4. **Pitch Center / Key Signature**: `?= C` (movable-do base tonic letter `C`..`B`, optional sharp `'` or flat `,`, e.g., `?= A'`, `?= E,`).
+5. **Declared Key Signature (Optional)**: `key= Bm` or `Key= Bm` (explicit musical tonality for sheet music key signature engraving, e.g. `key= Bm` paired with `?= D`).
+6. **Time Signature**: `<4/4>` (numerator/denominator, e.g. `<3/4>`, `<6/8>`).
+7. **Paragraphs / Instrument Tracks**: `name:instrument@|offset|{ ... }`.
+8. **Playback Flow**: `-> section1 -> section2 ->#` (must start with `->` and terminate with `->#`).
 
 ---
 
@@ -220,16 +221,18 @@ The number of dashes in `%(...)` defines how many base beats the group occupies:
 You can place inline directives anywhere inside a section between notes:
 - `{!= 140}`: Absolute tempo change (BPM).
 - `{!+ 10}`: Relative tempo change (+10 BPM).
-- `{?= D}`: Absolute key change to D.
+- `{?= D}`: Absolute pitch center / movable-do base change to D.
 - `{?+ 2}`: Relative key transposition up 2 semitones.
 - `{?- 2}`: Relative key transposition down 2 semitones.
+- `{key= F#m}`: Mid-score explicit key signature change for sheet engraving (e.g. F# minor).
+- `{p}`, `{f}`, `{pp}`, `{mp}`, `{mf}`, `{ff}`: Dynamics markings (controls MIDI playback velocity and renders dynamic hairpins/symbols in MusicXML, LilyPond, ABC).
 - `{?= fixed}` (or `{? fixed}`): Forces **Fixed Pitch** for this track section (locks `keyOffset = 0`, immune to song-level playback transpositions like `-> {?+3} -> ...`). Ideal for Timpani, Sound FX, or non-transposing tracks.
 - `{<3/4>}`: Time signature change to 3/4.
 
 Example:
 ```tmd
 <4*>
-1 2 {!=140} 3 4
+| {p} 1 2 {f} 3 4 |
 ```
 
 ---

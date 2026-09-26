@@ -9,6 +9,7 @@ public enum Token: Equatable, Sendable {
     case speedPrefix                 // !=
     case relativeTempoPrefix         // !+
     case keySignaturePrefix          // ?=
+    case explicitKeyPrefix           // key= or Key=
     case openAngle                   // <
     case slash                       // /
     case asterisk                    // *
@@ -46,6 +47,7 @@ public enum Token: Equatable, Sendable {
         case .speedPrefix: return "!="
         case .relativeTempoPrefix: return "!+"
         case .keySignaturePrefix: return "?="
+        case .explicitKeyPrefix: return "key="
         case .openAngle: return "<"
         case .slash: return "/"
         case .asterisk: return "*"
@@ -460,6 +462,18 @@ public final class Lexer {
             }
         }
 
+        // key= or Key= (optional whitespace handled by lexer)
+        if (c == "k" || c == "K") && (peek(offset: 1) == "e" || peek(offset: 1) == "E") && (peek(offset: 2) == "y" || peek(offset: 2) == "Y") {
+            var offset = 3
+            while let sc = peek(offset: offset), sc == " " || sc == "\t" {
+                offset += 1
+            }
+            if peek(offset: offset) == "=" {
+                for _ in 0...offset { advance() }
+                return .explicitKeyPrefix
+            }
+        }
+
         // **
         if c == "*" && peek(offset: 1) == "*" {
             advance(); advance()
@@ -591,12 +605,16 @@ public final class Lexer {
             }
         }
 
-        // Identifier or text token (allows hyphens internal to names like Chorus-1)
+        // Identifier or text token (allows hyphens internal to names like Chorus-1 and sharps like F#m)
         var idStr = ""
-        let stops = Set(" \t\r\n:!=?*<>/|{}()[]@#,+".unicodeScalars)
+        let stops = Set(" \t\r\n:!=?*<>/|{}()[]@,+".unicodeScalars)
         while !isAtEnd {
             guard let cur = peek() else { break }
             if stops.contains(cur) {
+                break
+            }
+            if cur == "#" && idStr.isEmpty {
+                // If # stands alone or starts token, check if it's -># (which is handled earlier) or single #
                 break
             }
             if cur == "-" && (peek(offset: 1) == ">" || peek(offset: 1) == " ") {
@@ -779,6 +797,7 @@ private struct TokenParser {
         var name = ""
         var speed = 0.0
         var keySignature = KeySignature()
+        var declaredKey: String?
         var beat = Beat()
         var paragraphs: [Paragraph] = []
         var orders: [Order] = []
@@ -830,6 +849,20 @@ private struct TokenParser {
                     advance()
                 }
                 keySignature = KeySignature(string: key)
+
+            case .explicitKeyPrefix:
+                advance()
+                var key = ""
+                if case .identifier(let s) = current {
+                    key = s
+                    advance()
+                } else if case .note(let note) = current {
+                    key = String(note.degree.rawValue)
+                    advance()
+                }
+                if !key.isEmpty {
+                    declaredKey = key
+                }
 
             case .openAngle:
                 advance()
@@ -919,7 +952,7 @@ private struct TokenParser {
             }
         }
 
-        return Sheet(name: name, speed: speed, keySignature: keySignature, beat: beat, paragraphs: paragraphs, orders: orders, metadata: metadata)
+        return Sheet(name: name, speed: speed, keySignature: keySignature, declaredKey: declaredKey, beat: beat, paragraphs: paragraphs, orders: orders, metadata: metadata)
     }
 
     private mutating func parseParagraph() -> Paragraph? {
@@ -1275,6 +1308,19 @@ private struct TokenParser {
                 return SectionDirective(position: position, kind: .fixedPitch)
             }
             return SectionDirective(position: position, kind: .absoluteKey(value))
+        case .explicitKeyPrefix:
+            advance()
+            var value = ""
+            if case .identifier(let s) = current { value = s; advance() }
+            else if case .note(let n) = current { value = String(n.degree.rawValue); advance() }
+            if !value.isEmpty {
+                return SectionDirective(position: position, kind: .explicitKey(value))
+            }
+        case .identifier(let s):
+            if let dyn = DynamicMark(rawValue: s.lowercased()) {
+                advance()
+                return SectionDirective(position: position, kind: .dynamics(dyn))
+            }
         case .openAngle:
             advance()
             var count = 4

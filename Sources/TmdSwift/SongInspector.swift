@@ -943,7 +943,7 @@ public enum TMDSongInspector {
         }
 
         let pitchClassNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-        let baseKey = sheet.keySignature.description
+        let baseKey = sheet.declaredKey ?? sheet.keySignature.description
 
         // Global distribution & K-S correlation
         let globalDist = makePitchClassDistribution(weights: globalWeights, tonicOffset: sheet.keySignature.semitoneOffset)

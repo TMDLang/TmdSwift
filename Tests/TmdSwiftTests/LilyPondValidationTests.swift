@@ -187,5 +187,35 @@ struct LilyPondValidationTests {
 
         #expect(lyEighthTime.contains("\\tempo 8 = 240"))
     }
+
+    @Test func testExplicitKeyAndDynamicsInLilyPond() throws {
+        let tmd = """
+        ::SCORE::
+        ** Explicit Key & Dynamics **
+        != 120
+        ?= D
+        key= Bm
+        <4/4>
+
+        A:Piano@|0|{
+            <4*>
+            | {p} 1 2 {f} 3 4 |
+            | {key= F#m} 1 2 3 4 |
+        }
+        -> A ->#
+        """
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let ly = TMDLilyPondGenerator.generateLilyPond(from: sheet)
+
+        // Header declared key= Bm -> \key b \minor
+        #expect(ly.contains("\\key b \\minor"))
+
+        // Section dynamics directives
+        #expect(ly.contains("\\p"))
+        #expect(ly.contains("\\f"))
+
+        // Section inline directive {key= F#m} -> \key fis \minor
+        #expect(ly.contains("\\key fis \\minor"))
+    }
 }
 

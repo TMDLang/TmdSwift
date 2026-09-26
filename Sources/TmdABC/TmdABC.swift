@@ -21,7 +21,8 @@ public struct TMDABCGenerator {
         let speed = sheet.speed > 0 ? sheet.speed : 120
         let tempoField = resolveTempo(beat: sheet.beat, quarterBPM: speed)
         abc += "\(tempoField)\n"
-        abc += "K:\(abcKey(sheet.keySignature.description))\n\n"
+        let effectiveKey = sheet.declaredKey ?? sheet.keySignature.description
+        abc += "K:\(abcKey(effectiveKey))\n\n"
 
         let instruments = sheet.distinctInstruments(fallbackToDefault: false)
 
@@ -102,6 +103,10 @@ public struct TMDABCGenerator {
             return "M:\(beat.count)/\(beat.noteValue) "
         case .absoluteKey(let key):
             return "K:\(abcKey(key)) "
+        case .explicitKey(let key):
+            return "K:\(abcKey(key)) "
+        case .dynamics(let mark):
+            return "!\(mark.rawValue)! "
         case .relativeKey:
             let key = keyInfo(for: directive.state.keyOffset).name
             return "K:\(key) "
@@ -241,8 +246,25 @@ public struct TMDABCGenerator {
     }
 
     private static func abcKey(_ key: String) -> String {
-        let keySig = KeySignature(string: key)
-        return keyInfo(for: keySig.semitoneOffset).name
+        let trimmed = key.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return "C" }
+        var isMinor = false
+        var root = trimmed
+        if root.hasSuffix("m") && !root.hasSuffix("maj") {
+            isMinor = true
+            root.removeLast()
+        } else if root.lowercased().hasSuffix("minor") {
+            isMinor = true
+            root = String(root.dropLast(5)).trimmingCharacters(in: .whitespaces)
+        }
+        let keySig = KeySignature(string: root)
+        let normalized = ((keySig.semitoneOffset % 12) + 12) % 12
+        var majorName = keyInfo(for: normalized).name
+        if root.contains("#") && majorName.contains("b") {
+            let sharps = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+            majorName = sharps[normalized]
+        }
+        return isMinor ? "\(majorName)m" : majorName
     }
 
 }

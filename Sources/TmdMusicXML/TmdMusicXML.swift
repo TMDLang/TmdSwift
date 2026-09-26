@@ -296,6 +296,21 @@ public struct TMDMusicXMLGenerator {
             """
         case .absoluteKey(let key):
             return "        <attributes><key><fifths>\(keySignatureToFifths(key))</fifths></key></attributes>\n"
+        case .explicitKey(let key):
+            let parsed = parseKeyModeAndFifths(key)
+            let modeTag = parsed.mode != nil ? "<mode>\(parsed.mode!)</mode>" : ""
+            return "        <attributes><key><fifths>\(parsed.fifths)</fifths>\(modeTag)</key></attributes>\n"
+        case .dynamics(let mark):
+            return """
+                <direction placement="below">
+                  <direction-type>
+                    <dynamics>
+                      <\(mark.rawValue)/>
+                    </dynamics>
+                  </direction-type>
+                </direction>
+
+            """
         case .relativeKey:
             let fifths = semitoneOffsetToFifths(directive.state.keyOffset)
             return "        <attributes><key><fifths>\(fifths)</fifths></key></attributes>\n"
@@ -344,11 +359,18 @@ public struct TMDMusicXMLGenerator {
         let speed = sheet.speed > 0 ? sheet.speed : 120
         let initialMetronome = resolveMetronome(beat: sheet.beat, quarterBPM: speed)
         let dotTag = initialMetronome.isDotted ? "\n            <beat-unit-dot/>" : ""
+        let keyInfo: (fifths: Int, mode: String?)
+        if let declaredKey = sheet.declaredKey {
+            keyInfo = parseKeyModeAndFifths(declaredKey)
+        } else {
+            keyInfo = (fifths: keySignatureToFifths(sheet.keySignature.description), mode: nil)
+        }
+        let modeTag = keyInfo.mode != nil ? "\n            <mode>\(keyInfo.mode!)</mode>" : ""
         return """
               <attributes>
                 <divisions>\(divisions)</divisions>
                 <key>
-                  <fifths>\(keySignatureToFifths(sheet.keySignature.description))</fifths>
+                  <fifths>\(keyInfo.fifths)</fifths>\(modeTag)
                 </key>
                 <time>
                   <beats>\(sheet.beat.count)</beats>
@@ -542,10 +564,58 @@ public struct TMDMusicXMLGenerator {
         case "F": return -1
         case "BB", "B,": return -2
         case "EB", "E,": return -3
-        case "AB", "A,", "A'": return 3 // A major = 3 sharps
+        case "AB", "A,": return -4
+        case "A#", "A'": return -5 // or 7 sharps
         case "DB", "D,": return -5
         case "GB", "G,": return -6
         default: return 0
+        }
+    }
+
+    public static func parseKeyModeAndFifths(_ key: String) -> (fifths: Int, mode: String?) {
+        let trimmed = key.trimmingCharacters(in: .whitespaces)
+        var root = trimmed
+        var isMinor = false
+        if root.hasSuffix("m") && !root.hasSuffix("maj") {
+            isMinor = true
+            root.removeLast()
+        } else if root.lowercased().hasSuffix("minor") {
+            isMinor = true
+            root = String(root.dropLast(5)).trimmingCharacters(in: .whitespaces)
+        } else if root.lowercased().hasSuffix("major") {
+            root = String(root.dropLast(5)).trimmingCharacters(in: .whitespaces)
+        }
+
+        // Relative major fifths mapping for minor keys:
+        // Am -> C (0), Em -> G (1), Bm -> D (2), F#m -> A (3), C#m -> E (4), G#m -> B (5), D#m -> F# (6)
+        // Dm -> F (-1), Gm -> Bb (-2), Cm -> Eb (-3), Fm -> Ab (-4), Bbm -> Db (-5), Ebm -> Gb (-6)
+        if isMinor {
+            let normalizedRoot = root.uppercased()
+            let minorFifths: Int = switch normalizedRoot {
+            case "A": 0
+            case "E": 1
+            case "B": 2
+            case "F#", "F'": 3
+            case "C#", "C'": 4
+            case "G#", "G'": 5
+            case "D#", "D'": 6
+            case "D": -1
+            case "G": -2
+            case "C": -3
+            case "F": -4
+            case "BB", "B,": -5
+            case "EB", "E,": -6
+            case "AB", "A,": -7
+            default:
+                if normalizedRoot == "BB" || normalizedRoot == "B," || normalizedRoot.hasPrefix("B") && (normalizedRoot.hasSuffix("B") || normalizedRoot.hasSuffix(",")) {
+                    -5
+                } else {
+                    keySignatureToFifths(root) - 3
+                }
+            }
+            return (minorFifths, "minor")
+        } else {
+            return (keySignatureToFifths(root), "major")
         }
     }
 

@@ -427,6 +427,32 @@ public struct UnitGroup: Equatable {
 
 /// The kind of local musical change occurring inside a section.
 ///
+/// Standard Italian musical dynamic markings for volume and performance intensity.
+public enum DynamicMark: String, Equatable, Hashable, Sendable, CaseIterable {
+    case ppp
+    case pp
+    case p
+    case mp
+    case mf
+    case f
+    case ff
+    case fff
+
+    /// Default MIDI velocity corresponding to this dynamic level.
+    public var defaultVelocity: UInt8 {
+        switch self {
+        case .ppp: return 20
+        case .pp: return 35
+        case .p: return 50
+        case .mp: return 65
+        case .mf: return 80
+        case .f: return 95
+        case .ff: return 110
+        case .fff: return 125
+        }
+    }
+}
+
 /// A directive is stored together with its position in ``Section.directives``.
 /// Its position is measured in the section's base units, so exporters can apply
 /// the change at the correct point in the rendered timeline.
@@ -442,6 +468,12 @@ public enum SectionDirectiveKind: Equatable, Sendable {
 
     /// Transposes the current key by the given number of semitones.
     case relativeKey(Int)
+
+    /// Explicitly declares an inline musical key/mode change (e.g. `Bm`, `F#m`, `C`).
+    case explicitKey(String)
+
+    /// Sets the playback dynamic level and engraved dynamic mark (e.g. `{p}`, `{f}`).
+    case dynamics(DynamicMark)
 
     /// Forces fixed pitch (keyOffset = 0, immune to song-level order transpositions).
     case fixedPitch
@@ -598,10 +630,13 @@ public struct Sheet: Equatable {
     /// > Note: Originally named `speed` in Aguai's C++ code.
     public let speed: Double
 
-    /// Initial key signature (syntax denoted by `?= A'`).
+    /// Initial movable-do key signature base (syntax denoted by `?= A'`).
     ///
     /// > Note: Originally named `keySignature` in Aguai's C++ code.
     public let keySignature: KeySignature
+
+    /// Optional explicit musical key/mode declaration (syntax denoted by `key= Bm` or `Key= Bm`).
+    public let declaredKey: String?
 
     /// Time signature (syntax denoted by `<4/4>`).
     ///
@@ -625,6 +660,7 @@ public struct Sheet: Equatable {
         name: String = "",
         speed: Double = 0.0,
         keySignature: KeySignature = KeySignature(),
+        declaredKey: String? = nil,
         beat: Beat = Beat(),
         paragraphs: [Paragraph] = [],
         orders: [Order] = [],
@@ -633,6 +669,7 @@ public struct Sheet: Equatable {
         self.name = name
         self.speed = speed
         self.keySignature = keySignature
+        self.declaredKey = declaredKey
         self.beat = beat
         self.paragraphs = paragraphs
         self.orders = orders
@@ -644,12 +681,13 @@ public struct Sheet: Equatable {
         name: String = "",
         speed: Double = 0.0,
         keySignature: String,
+        declaredKey: String? = nil,
         beat: Beat = Beat(),
         paragraphs: [Paragraph] = [],
         orders: [Order] = [],
         metadata: [String: String] = [:]
     ) {
-        self.init(name: name, speed: speed, keySignature: KeySignature(string: keySignature), beat: beat, paragraphs: paragraphs, orders: orders, metadata: metadata)
+        self.init(name: name, speed: speed, keySignature: KeySignature(string: keySignature), declaredKey: declaredKey, beat: beat, paragraphs: paragraphs, orders: orders, metadata: metadata)
     }
 
     /// Returns a sorted list of unique instrument names present across all paragraphs in the sheet.

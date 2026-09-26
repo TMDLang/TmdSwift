@@ -9,6 +9,9 @@ extension Sheet {
         lines.append("Name:         \(name)")
         lines.append("Speed:        \(speed) BPM")
         lines.append("KeySignature: \(keySignature)")
+        if let declaredKey {
+            lines.append("DeclaredKey:  \(declaredKey)")
+        }
         lines.append("Beat:         \(beat.count)/\(beat.noteValue)")
         lines.append("Paragraphs:   \(paragraphs.count)")
         for (idx, p) in paragraphs.enumerated() {
@@ -41,6 +44,9 @@ extension Sheet {
         result += "** \(name) **\n"
         result += "!=\(speed.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(speed)) : String(speed))\n"
         result += "?=\(keySignature)\n"
+        if let declaredKey {
+            result += "key= \(declaredKey)\n"
+        }
         result += "<\(beat.count)/\(beat.noteValue)>\n\n"
 
         for (key, value) in metadata.sorted(by: { $0.key < $1.key }) {
@@ -180,6 +186,10 @@ extension SectionDirective {
             "{?=\(key)}"
         case .relativeKey(let value):
             "{?\(value >= 0 ? "+\(value)" : String(value))}"
+        case .explicitKey(let key):
+            "{key= \(key)}"
+        case .dynamics(let mark):
+            "{\(mark.rawValue)}"
         case .fixedPitch:
             "{?=fixed}"
         case .timeSignature(let beat):

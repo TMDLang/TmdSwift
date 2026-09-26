@@ -430,5 +430,35 @@ struct MusicXMLValidationTests {
         // Eighth note beat unit: quarter BPM 120 -> eighth note BPM 240
         #expect(xmlEighthTime.contains("<beat-unit>eighth</beat-unit>\n            <per-minute>240</per-minute>"))
     }
+
+    @Test func testExplicitKeyAndDynamicsInMusicXML() throws {
+        let tmd = """
+        ::SCORE::
+        ** Explicit Key & Dynamics **
+        != 120
+        ?= D
+        key= Bm
+        <4/4>
+
+        A:Piano@|0|{
+            <4*>
+            | {p} 1 2 {f} 3 4 |
+            | {key= F#m} 1 2 3 4 |
+        }
+        -> A ->#
+        """
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let xml = TMDMusicXMLGenerator.generateMusicXML(from: sheet)
+
+        // Header declared key= Bm -> 2 sharps, minor mode
+        #expect(xml.contains("<fifths>2</fifths>\n            <mode>minor</mode>"))
+
+        // Section inline dynamics
+        #expect(xml.contains("<dynamics>\n          <p/>\n        </dynamics>"))
+        #expect(xml.contains("<dynamics>\n          <f/>\n        </dynamics>"))
+
+        // Inline directive {key= F#m} -> 3 sharps, minor mode
+        #expect(xml.contains("<key><fifths>3</fifths><mode>minor</mode></key>"))
+    }
 }
 

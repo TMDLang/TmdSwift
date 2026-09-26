@@ -52,7 +52,7 @@ public struct TMDReaperGenerator {
                     segments[segments.count - 1].bpm = directive.state.tempo
                     segments[segments.count - 1].timeSignature = directive.state.timeSignature
                 }
-            case .absoluteKey, .relativeKey, .fixedPitch:
+            case .absoluteKey, .relativeKey, .explicitKey, .dynamics, .fixedPitch:
                 break
             }
         }

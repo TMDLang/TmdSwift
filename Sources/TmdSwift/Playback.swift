@@ -13,6 +13,14 @@ public struct PlaybackState: Equatable, Sendable {
     public let tempo: Double
     public let keyOffset: Int
     public let timeSignature: Beat
+    public let dynamicLevel: DynamicMark
+
+    public init(tempo: Double, keyOffset: Int, timeSignature: Beat, dynamicLevel: DynamicMark = .mf) {
+        self.tempo = tempo
+        self.keyOffset = keyOffset
+        self.timeSignature = timeSignature
+        self.dynamicLevel = dynamicLevel
+    }
 }
 
 /// A musical event expressed in quarter-note units.
@@ -61,11 +69,11 @@ public enum TMDPlaybackRenderer {
             switch order {
             case .relative(let value):
                 if let delta = Int(value.replacingOccurrences(of: "+", with: "")) {
-                    state = PlaybackState(tempo: state.tempo, keyOffset: state.keyOffset + delta, timeSignature: state.timeSignature)
+                    state = PlaybackState(tempo: state.tempo, keyOffset: state.keyOffset + delta, timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
                 }
             case .absolute(let value):
                 let keyOffset = KeySignature(string: value).semitoneOffset
-                state = PlaybackState(tempo: state.tempo, keyOffset: keyOffset, timeSignature: state.timeSignature)
+                state = PlaybackState(tempo: state.tempo, keyOffset: keyOffset, timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
             case .name(let name):
                 let matchingParagraphs = paragraphs.filter { $0.name == name }
                 let paragraphDuration = duration(of: name, in: sheet, beat: state.timeSignature)
@@ -317,17 +325,21 @@ public enum TMDPlaybackRenderer {
     private static func apply(_ kind: SectionDirectiveKind, to state: PlaybackState) -> PlaybackState {
         switch kind {
         case .tempo(let value):
-            PlaybackState(tempo: max(1, value), keyOffset: state.keyOffset, timeSignature: state.timeSignature)
+            PlaybackState(tempo: max(1, value), keyOffset: state.keyOffset, timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
         case .relativeTempo(let value):
-            PlaybackState(tempo: max(1, state.tempo + value), keyOffset: state.keyOffset, timeSignature: state.timeSignature)
+            PlaybackState(tempo: max(1, state.tempo + value), keyOffset: state.keyOffset, timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
         case .absoluteKey(let value):
-            PlaybackState(tempo: state.tempo, keyOffset: KeySignature(string: value).semitoneOffset, timeSignature: state.timeSignature)
+            PlaybackState(tempo: state.tempo, keyOffset: KeySignature(string: value).semitoneOffset, timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
         case .relativeKey(let value):
-            PlaybackState(tempo: state.tempo, keyOffset: state.keyOffset + value, timeSignature: state.timeSignature)
+            PlaybackState(tempo: state.tempo, keyOffset: state.keyOffset + value, timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
+        case .explicitKey(let value):
+            PlaybackState(tempo: state.tempo, keyOffset: KeySignature(string: value).semitoneOffset, timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
+        case .dynamics(let mark):
+            PlaybackState(tempo: state.tempo, keyOffset: state.keyOffset, timeSignature: state.timeSignature, dynamicLevel: mark)
         case .fixedPitch:
-            PlaybackState(tempo: state.tempo, keyOffset: 0, timeSignature: state.timeSignature)
+            PlaybackState(tempo: state.tempo, keyOffset: 0, timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
         case .timeSignature(let beat):
-            PlaybackState(tempo: state.tempo, keyOffset: state.keyOffset, timeSignature: beat)
+            PlaybackState(tempo: state.tempo, keyOffset: state.keyOffset, timeSignature: beat, dynamicLevel: state.dynamicLevel)
         }
     }
 

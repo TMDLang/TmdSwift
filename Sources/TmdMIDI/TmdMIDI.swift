@@ -67,7 +67,7 @@ public struct TMDMIDIGenerator {
             switch directive.kind {
             case .tempo, .relativeTempo: return MIDIEvent(tick: tick, message: .tempo(directive.state.tempo))
             case .timeSignature: return MIDIEvent(tick: tick, message: .timeSignature(directive.state.timeSignature))
-            case .absoluteKey, .relativeKey, .fixedPitch: return nil
+            case .absoluteKey, .relativeKey, .explicitKey, .dynamics, .fixedPitch: return nil
             }
         }
         return initial + directives
@@ -95,10 +95,12 @@ public struct TMDMIDIGenerator {
             let duration = max(1, midiTick(event.duration, ticksPerQuarter: ticksPerQuarter))
             switch event.content {
             case .note(let note):
-                appendNote(&events, start: start, duration: duration, channel: channel, pitch: noteToMIDIPitch(note, keyOffset: event.state.keyOffset), velocity: 96)
+                let baseVelocity = event.state.dynamicLevel.defaultVelocity
+                appendNote(&events, start: start, duration: duration, channel: channel, pitch: noteToMIDIPitch(note, keyOffset: event.state.keyOffset), velocity: baseVelocity)
             case .chord(let chord):
+                let baseVelocity = UInt8(clamping: max(1, Int(event.state.dynamicLevel.defaultVelocity) - 8))
                 chordToMIDIPitches(chord, keyOffset: event.state.keyOffset).forEach {
-                    appendNote(&events, start: start, duration: duration, channel: channel, pitch: $0, velocity: 88)
+                    appendNote(&events, start: start, duration: duration, channel: channel, pitch: $0, velocity: baseVelocity)
                 }
             case .percussion(let pattern):
                 let step = max(1, duration / UInt32(clamping: max(1, pattern.count)))
