@@ -30,9 +30,10 @@ function getTmdExecutable() {
 function getWebviewL10nScript() {
     const keys = [
         "TMD Score", "Song Inspector", "Valid Score", "Ready", "Error", "Refresh",
-        "Duration", "Initial Key", "Tempo", "Arrangement Density",
+        "Duration", "Movable-do base", "Tempo", "Arrangement Density",
         "Peak concurrency (avg {0})", "Quarter note beat", "Meter <{0}>",
-        "Major", "bars", "tracks", "notes", "notes total",
+        "Major", "Minor", "Modal", "Insufficient evidence", "Inferred Tonality", "Playback Context", "Best Fit Tonalities (K-S)",
+        "bars", "tracks", "notes", "notes total",
         "Pitch Range & Tessitura Analysis", "Analyzing track notes...",
         "No notes detected.", "No data for selected track.",
         "Pitch Range", "Pitch Span", "octaves", "semitones",
@@ -41,10 +42,10 @@ function getWebviewL10nScript() {
         "Harmonic Vocabulary & Modulations", "Distinct Chords",
         "Key Modulations", "None", "Structure & Conductor Timeline",
         "Tonality & Key Profile Analysis", "Analyzing tonality profile...",
-        "Declared Key", "Diatonic Purity", "Correlation: {0}", "Diatonic / Chromatic",
-        "Best Fit Keys (K-S)", "Circle of Fifths Trajectory",
+        "Inferred Tonality", "Diatonic Purity", "Correlation: {0}", "Diatonic / Chromatic",
+        "Best Fit Tonalities (K-S)", "Playback Context", "Circle of Fifths Trajectory",
         "12-Tone Pitch Class Weight Distribution", "Music Producer Diagnosis",
-        "Musical Character & Mood", "Modulation Journey",
+        "Musical Character & Mood", "Modulation Journey", "Inferred Modulations",
         "Detailed Theoretical Analysis", "No tonality data available",
         "Clean major tonality", "Contemporary major tonality",
         "Click to search {0} in score",
@@ -1107,7 +1108,7 @@ function activate(context) {
       <div id="sub-duration" class="stat-sub">-</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">${vscode.l10n.t('Initial Key')}</div>
+      <div class="stat-label">${vscode.l10n.t('Movable-do base')}</div>
       <div id="val-key" class="stat-value">-</div>
       <div id="sub-key" class="stat-sub">-</div>
     </div>

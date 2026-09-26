@@ -8,6 +8,14 @@ const t = (window.__tmd_t || ((key, ...args) => {
 let currentProfile = null;
 let selectedInstrument = null;
 
+function tonalityModeLabel(mode) {
+  if (mode === 'minor') return t('Minor');
+  if (mode === 'ambiguous') return t('Ambiguous');
+  if (mode === 'modal') return t('Modal');
+  if (mode === 'insufficient') return t('Insufficient evidence');
+  return t('Major');
+}
+
 const COLORS = [
   '#2f81f7', '#3fb950', '#d29922', '#db61a2', '#a371f7', 
   '#f0883e', '#56d364', '#79c0ff', '#e3b341', '#f778ba'
@@ -127,11 +135,11 @@ function renderInspector(profile, fileName) {
     modContainer.innerHTML = `<span class="stat-sub">${t('None')}</span>`;
   }
 
-  // Tonality Profile & Visualizer
-  renderTonalityProfile(profile.tonality);
-
   // Timeline & Sections
   renderTimeline(profile.timing.sections, profile.timing.totalDurationSeconds);
+
+  // Tonality Profile & Visualizer (optional; must not prevent structure rendering)
+  renderTonalityProfile(profile.tonality);
 }
 
 function renderTonalityProfile(tonality) {
@@ -146,20 +154,24 @@ function renderTonalityProfile(tonality) {
     return;
   }
 
-  const stab = tonality.globalCorrelation.stability || 'high';
-  badge.textContent = t(stab.charAt(0).toUpperCase() + stab.slice(1));
+  const stab = tonality.globalInference?.stability || 'insufficient';
+  const stabilityLabel = stab === 'high' ? 'High'
+    : stab === 'moderate' ? 'Moderate'
+      : stab === 'insufficient' ? 'Insufficient evidence' : 'Ambiguous';
+  badge.textContent = t(stabilityLabel);
   badge.className = stab === 'high' ? 'badge-valid' : (stab === 'moderate' ? 'badge-warn' : 'badge-error');
 
   const diatonicPct = (tonality.globalPitchClasses.diatonicRatio * 100).toFixed(1);
-  const corr = tonality.globalCorrelation.declaredKeyCorrelation.toFixed(2);
-  const candidates = (tonality.globalCorrelation.topCandidateKeys || []).slice(0, 3).map(c => `${c.keyName} (${c.correlation.toFixed(2)})`).join(', ');
+  const inference = tonality.globalInference || {};
+  const corr = Number(inference.bestCorrelation || 0).toFixed(2);
+  const candidates = (inference.topCandidates || []).slice(0, 3).map(c => `${c.tonic} ${tonalityModeLabel(c.mode)} (${c.correlation.toFixed(2)})`).join(', ');
   const fifthsPath = (tonality.circleOfFifthsPath || []).map(p => (p >= 0 ? `+${p}` : `${p}`)).join(' → ');
 
   // Pitch Class & Movable-do Scale Degree Mapping
   // C=0, C#=1, D=2, D#=3, E=4, F=5, F#=6, G=7, G#=8, A=9, A#=10, B=11
   const pitchNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
   const keyOffsetMap = { 'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3, 'E': 4, 'F': 5, 'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8, 'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11 };
-  const rootName = (tonality.globalCorrelation.declaredKey || 'C').split(' ')[0];
+  const rootName = inference.tonic || '?';
   const rootOffset = keyOffsetMap[rootName] !== undefined ? keyOffsetMap[rootName] : 0;
   const solfegeMap = { 0: 'Do', 2: 'Re', 4: 'Mi', 5: 'Fa', 7: 'Sol', 9: 'La', 11: 'Ti' };
 
@@ -188,9 +200,10 @@ function renderTonalityProfile(tonality) {
     `;
   }
 
-  const summary = tonality.summaryText || `${tonality.globalCorrelation.declaredKey} ${t('Major')}`;
+  const summary = tonality.summaryText || `${rootName} ${tonalityModeLabel(inference.mode)}`;
   const mood = tonality.moodDescription || (diatonicPct >= 95 ? t('Clean major tonality') : t('Contemporary major tonality'));
   const modStory = tonality.modulationStory || t('None');
+  const inferredModulationCount = (tonality.inferredModulationPath || []).length;
 
   container.innerHTML = `
     <!-- Top-level Producer Diagnosis Headline -->
@@ -206,6 +219,10 @@ function renderTonalityProfile(tonality) {
       <div class="producer-detail-item">
         <span class="producer-label">${t('Modulation Journey')}:</span>
         <span class="producer-value">${modStory}</span>
+      </div>
+      <div class="producer-detail-item">
+        <span class="producer-label">${t('Inferred Modulations')}:</span>
+        <span class="producer-value">${inferredModulationCount}</span>
       </div>
     </div>
 
@@ -223,8 +240,8 @@ function renderTonalityProfile(tonality) {
       <div class="tonality-details-content">
         <div class="tonality-summary-row" style="margin-top: 8px;">
           <div class="tonality-stat-box">
-            <span class="stat-label">${t('Declared Key')}</span>
-            <span class="stat-value">${tonality.globalCorrelation.declaredKey}</span>
+            <span class="stat-label">${t('Inferred Tonality')}</span>
+            <span class="stat-value">${rootName} ${tonalityModeLabel(inference.mode)}</span>
             <span class="stat-sub">${t('Correlation: {0}', corr)}</span>
           </div>
           <div class="tonality-stat-box">
@@ -237,11 +254,18 @@ function renderTonalityProfile(tonality) {
         ${candidates ? `
           <div class="pitch-metric-row" style="margin-top: 6px;">
             <div>
-              <div class="stat-label">${t('Best Fit Keys (K-S)')}</div>
+              <div class="stat-label">${t('Best Fit Tonalities (K-S)')}</div>
               <div style="font-weight: 500; font-size: 12px; color: var(--accent-color); margin-top: 2px;">${candidates}</div>
             </div>
           </div>
         ` : ''}
+
+        <div class="pitch-metric-row" style="margin-top: 6px;">
+          <div>
+            <div class="stat-label">${t('Playback Context')}</div>
+            <div style="font-family: var(--font-mono); font-size: 11px; margin-top: 2px; color: var(--muted-color);">${tonality.playbackContext?.movableDoBase || '?'} · ${(tonality.playbackTranspositionPath || []).join(' → ') || '+0'}</div>
+          </div>
+        </div>
 
         ${fifthsPath ? `
           <div class="pitch-metric-row" style="margin-top: 6px;">
