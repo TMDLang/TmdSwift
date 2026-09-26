@@ -212,7 +212,11 @@ extension Paragraph {
         if instrument.isEmpty {
             result = "\(name) {\n"
         } else {
-            result = "\(name):\(instrument)@|"
+            result = "\(name):\(instrument)"
+            if pitchMode == .fixed {
+                result += "[pitchMode=fixed]"
+            }
+            result += "@|"
             if start > 0 {
                 result += "+\(start)"
             } else {

@@ -116,6 +116,23 @@ func testCanonicalEntrySourceModel() throws {
     #expect(sheet.distinctAssignments() == ["Timpani"])
 }
 
+@Test("Formatting preserves canonical fixed-pitch entry attributes")
+func testCanonicalEntryFormattingRoundTrip() throws {
+    let tmd = """
+    ::SCORE::
+    Intro:Timpani[pitchMode=fixed]@|0|{ <4*> 2__ - - - }
+    """
+
+    let sheet = try #require(TmdParser.parse(string: tmd))
+    let formatted = sheet.format()
+    let reparsed = try #require(TmdParser.parse(string: formatted))
+    let timpani = try #require(reparsed.entries.first)
+
+    #expect(formatted.contains("Intro:Timpani[pitchMode=fixed]"))
+    #expect(timpani.assignment == "Timpani")
+    #expect(timpani.pitchMode == .fixed)
+}
+
 @Test("Assignment identity is case-insensitive")
 func testAssignmentIdentityIsCaseInsensitive() throws {
     let tmd = """
