@@ -79,8 +79,7 @@ let package = Package(
         ),
         .target(
             name: "TmdSwift",
-            dependencies: ["TmdUtils"],
-            resources: [.process("Resources")]
+            dependencies: ["TmdUtils"]
         ),
         .target(
             name: "TmdMIDI",

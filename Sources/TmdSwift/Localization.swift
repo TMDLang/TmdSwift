@@ -3,8 +3,7 @@ import Foundation
 /// BCP-47-like identifier for user-facing library output.
 ///
 /// This is intentionally a string-backed value rather than an enum so a new
-/// language can be added by shipping a resource bundle without changing the
-/// public API.
+/// language can be added without changing the public API.
 public struct TMDLocale: RawRepresentable, Codable, Hashable, Sendable, ExpressibleByStringLiteral {
     public let rawValue: String
 
@@ -68,7 +67,10 @@ public enum TMDLocalizationKey: String, Sendable {
     case htmlDetailedReport = "visualizer.htmlDetailedReport"
 }
 
-/// Resource-backed localizer for Swift-library output.
+/// Built-in localizer for Swift-library output.
+///
+/// The catalog is compiled into the library so command-line distributions do
+/// not need to install a companion SwiftPM resource bundle.
 public struct TMDLocalizer: Sendable {
     public let locale: TMDLocale
     public let fallbackLocale: TMDLocale
@@ -88,13 +90,7 @@ public struct TMDLocalizer: Sendable {
     }
 
     private func lookup(_ key: String, locale: TMDLocale) -> String {
-        guard
-            let url = Bundle.module.url(forResource: locale.rawValue, withExtension: "lproj"),
-            let bundle = Bundle(url: url)
-        else {
-            return key
-        }
-        return bundle.localizedString(forKey: key, value: key, table: "Localizable")
+        TMDLocalizationCatalog.values[locale.rawValue]?[key] ?? key
     }
 }
 

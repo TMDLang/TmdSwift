@@ -1,4 +1,5 @@
 {
+  "TMD Score": "TMD Score",
   "No active editor found. Please open a .tmd file.": "No active editor found. Please open a .tmd file.",
   "Please save the file before exporting.": "Please save the file before exporting.",
   "TMD export commands can only be used on .tmd files.": "TMD export commands can only be used on .tmd files.",
@@ -116,6 +117,9 @@
   "Modulation Journey": "Modulation Journey",
   "Detailed Theoretical Analysis": "Detailed Theoretical Analysis",
   "No tonality data available": "No tonality data available",
+  "Clean major tonality": "clean major tonality",
+  "Contemporary major tonality": "contemporary major tonality",
+  "Click to search {0} in score": "Click to search {0} in score",
   "Declared Key": "Declared Key",
   "Diatonic Purity": "Diatonic Purity",
   "Correlation: {0}": "Correlation: {0}",

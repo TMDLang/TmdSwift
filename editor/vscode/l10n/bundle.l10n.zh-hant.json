@@ -1,4 +1,5 @@
 {
+  "TMD Score": "TMD 樂譜",
   "No active editor found. Please open a .tmd file.": "找不到啟用的編輯器。請開啟 .tmd 檔案。",
   "Please save the file before exporting.": "匯出前請先儲存檔案。",
   "TMD export commands can only be used on .tmd files.": "TMD 匯出指令僅能用於 .tmd 檔案。",
@@ -116,6 +117,9 @@
   "Modulation Journey": "轉調歷程",
   "Detailed Theoretical Analysis": "樂理細節 (Advanced)",
   "No tonality data available": "無調性資料",
+  "Clean major tonality": "純淨自然大調",
+  "Contemporary major tonality": "流行色彩大調",
+  "Click to search {0} in score": "點擊搜尋樂譜中的 {0}",
   "Declared Key": "核心調號",
   "Diatonic Purity": "自然音純度",
   "Correlation: {0}": "相關度：{0}",

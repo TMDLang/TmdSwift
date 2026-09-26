@@ -29,7 +29,7 @@ function getTmdExecutable() {
  */
 function getWebviewL10nScript() {
     const keys = [
-        "Song Inspector", "Valid Score", "Ready", "Error", "Refresh",
+        "TMD Score", "Song Inspector", "Valid Score", "Ready", "Error", "Refresh",
         "Duration", "Initial Key", "Tempo", "Arrangement Density",
         "Peak concurrency (avg {0})", "Quarter note beat", "Meter <{0}>",
         "Major", "bars", "tracks", "notes", "notes total",
@@ -46,6 +46,8 @@ function getWebviewL10nScript() {
         "12-Tone Pitch Class Weight Distribution", "Music Producer Diagnosis",
         "Musical Character & Mood", "Modulation Journey",
         "Detailed Theoretical Analysis", "No tonality data available",
+        "Clean major tonality", "Contemporary major tonality",
+        "Click to search {0} in score",
         "Easy", "Moderate", "Challenging", "Difficult",
         "High", "Ambiguous",
         "Soprano", "Mezzo-Soprano", "Contralto", "Tenor", "Baritone", "Bass",
@@ -69,6 +71,11 @@ function getWebviewL10nScript() {
     return str;
   };
 </script>`;
+}
+
+function getTmdInspectLocale() {
+    const language = (vscode.env.language || 'en').toLowerCase();
+    return language.startsWith('zh') ? 'zh-Hant' : 'en';
 }
 
 /**
@@ -2081,7 +2088,8 @@ function activate(context) {
                 return;
             }
 
-            const args = asJson ? ['inspect', tempFilePath, '--json'] : ['inspect', tempFilePath];
+            const args = ['inspect', tempFilePath, '--locale', getTmdInspectLocale()];
+            if (asJson) args.push('--json');
             execFile(tmdBin, args, (error, stdout, stderr) => {
                 try { fs.unlinkSync(tempFilePath); } catch (_) {}
                 if (error && (!stdout || stdout.trim().length === 0)) {
@@ -2885,4 +2893,3 @@ module.exports = {
     deactivate,
     extendMarkdownIt
 };
-

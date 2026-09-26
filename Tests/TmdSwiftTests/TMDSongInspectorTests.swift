@@ -426,4 +426,14 @@ struct TMDSongInspectorTests {
         #expect(localizer.text(.reportTitle) == "TMD Song Profile")
         #expect(localizer.text(.analysisScope).contains("Major and minor"))
     }
+
+    @Test func testLocalizationCatalogIsAvailableWithoutResourceBundle() {
+        let english = TMDLocalizer(locale: .en)
+        let traditionalChinese = TMDLocalizer(locale: .zhHant)
+
+        #expect(english.text(.reportTitle) == "TMD Song Profile")
+        #expect(english.text(.modulationStart, arguments: ["C"]) == "Starts in C Major")
+        #expect(traditionalChinese.text(.reportTitle) == "TMD Song Profile")
+        #expect(traditionalChinese.text(.modulationStart, arguments: ["C"]) == "C 大調起奏")
+    }
 }

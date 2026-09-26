@@ -29,7 +29,7 @@ window.addEventListener('message', event => {
 function renderError(errorMsg, fileName) {
   document.getElementById('status-badge').className = 'badge-error';
   document.getElementById('status-badge').textContent = t('Error');
-  document.getElementById('score-title').textContent = fileName || 'TMD Score';
+  document.getElementById('score-title').textContent = fileName || t('TMD Score');
   document.getElementById('file-path').textContent = errorMsg;
 }
 
@@ -39,7 +39,7 @@ function renderInspector(profile, fileName) {
   // Header
   document.getElementById('status-badge').className = 'badge-valid';
   document.getElementById('status-badge').textContent = t('Valid Score');
-  document.getElementById('score-title').textContent = profile.title || fileName || 'TMD Score';
+  document.getElementById('score-title').textContent = profile.title || fileName || t('TMD Score');
   document.getElementById('file-path').textContent = fileName || '';
 
   // Stats Grid
@@ -102,7 +102,7 @@ function renderInspector(profile, fileName) {
       const tag = document.createElement('span');
       tag.className = 'tag-chord';
       tag.textContent = ch;
-      tag.title = `Click to search ${ch} in score`;
+      tag.title = t('Click to search {0} in score', ch);
       tag.addEventListener('click', () => {
         vscode.postMessage({ type: 'findText', text: ch });
       });
@@ -188,8 +188,8 @@ function renderTonalityProfile(tonality) {
     `;
   }
 
-  const summary = tonality.summaryText || `${tonality.globalCorrelation.declaredKey} Major`;
-  const mood = tonality.moodDescription || (diatonicPct >= 95 ? '純淨自然大調' : '流行色彩大調');
+  const summary = tonality.summaryText || `${tonality.globalCorrelation.declaredKey} ${t('Major')}`;
+  const mood = tonality.moodDescription || (diatonicPct >= 95 ? t('Clean major tonality') : t('Contemporary major tonality'));
   const modStory = tonality.modulationStory || t('None');
 
   container.innerHTML = `
@@ -368,7 +368,7 @@ function renderTimeline(sections, totalSeconds) {
     seg.className = 'timeline-segment';
     seg.style.width = `${pct}%`;
     seg.style.backgroundColor = color;
-    seg.title = `${sec.name}: ${sec.durationSeconds.toFixed(1)}s (${sec.measures} bars, ${pct}%)`;
+    seg.title = `${sec.name}: ${sec.durationSeconds.toFixed(1)}s (${sec.measures} ${t('bars')}, ${pct}%)`;
     if (parseFloat(pct) > 5) {
       seg.textContent = sec.name;
     }
@@ -383,7 +383,7 @@ function renderTimeline(sections, totalSeconds) {
     item.innerHTML = `
       <span class="timeline-item-index" style="color: ${color};">#${idx + 1}</span>
       <span class="timeline-item-name">${sec.name}</span>
-      <span class="timeline-item-time">${sec.durationSeconds.toFixed(1)}s (${sec.measures}m)</span>
+      <span class="timeline-item-time">${sec.durationSeconds.toFixed(1)}s (${sec.measures} ${t('bars')})</span>
     `;
     item.addEventListener('click', () => {
       vscode.postMessage({ type: 'jumpToSection', sectionName: sec.name });

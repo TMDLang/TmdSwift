@@ -150,6 +150,9 @@ struct TmdInspectCommand: ParsableCommand {
     @Flag(name: [.customLong("html")], help: "Output tonality report and dashboard as HTML.")
     var html: Bool = false
 
+    @Option(name: [.customLong("locale")], help: "Localization to use for generated profile text (en or zh-Hant).")
+    var locale: String?
+
     func run() throws {
         let sheet: Sheet
         do {
@@ -167,7 +170,7 @@ struct TmdInspectCommand: ParsableCommand {
             throw ExitCode.failure
         }
 
-        let profile = TMDSongInspector.inspect(sheet: sheet)
+        let profile = TMDSongInspector.inspect(sheet: sheet, locale: inspectionLocale)
 
         if json {
             let encoder = JSONEncoder()
@@ -184,6 +187,11 @@ struct TmdInspectCommand: ParsableCommand {
         } else {
             print(TMDSongInspector.generateReport(profile))
         }
+    }
+
+    private var inspectionLocale: TMDLocale {
+        guard let locale else { return .en }
+        return locale.lowercased().hasPrefix("zh") ? .zhHant : .en
     }
 }
 
