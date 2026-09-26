@@ -4,6 +4,66 @@ import Foundation
 
 @Suite("TMD Measure Check Tests")
 struct TmdMeasureCheckTests {
+    @Test func testTimeSignatureChangeMustStartAtMeasureBoundary() throws {
+        let input = """
+        ::SCORE::
+        ** Mid-Measure Time Signature **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Piano@|0|{
+            <4*>
+            | 1 2 {<3/4>} 3 4 |
+        }
+
+        -> verse ->#
+        """
+
+        let issues = TMDMeasureChecker.check(source: input)
+        #expect(issues.contains { $0.snippet.contains("Time signature directive") })
+    }
+
+    @Test func testTimeSignatureChangeAtMeasureBoundaryUpdatesExpectedLength() throws {
+        let input = """
+        ::SCORE::
+        ** Boundary Time Signature **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Piano@|0|{
+            <4*>
+            | 1 2 3 4 | {<3/4>} | 1 2 3 |
+        }
+
+        -> verse ->#
+        """
+
+        let issues = TMDMeasureChecker.check(source: input)
+        #expect(issues.isEmpty)
+    }
+
+    @Test func testTempoAndDynamicsMayChangeWithinMeasure() throws {
+        let input = """
+        ::SCORE::
+        ** Inline Tempo and Dynamics **
+        != 120
+        ?= C
+        <4/4>
+
+        verse:Piano@|0|{
+            <4*>
+            | 1 {!= 140} 2 {p} 3 4 |
+        }
+
+        -> verse ->#
+        """
+
+        let issues = TMDMeasureChecker.check(source: input)
+        #expect(issues.isEmpty)
+    }
+
     @Test func testValidMeasuresReportNoErrors() throws {
         let input = """
         ::SCORE::

@@ -154,6 +154,7 @@ public struct TMDMeasureChecker {
 
                 // Parse inside paragraph
                 var noteLength = 4
+                var currentBeat = beat
                 var currentMeasureUnits = 0
                 var currentMeasureSnippet: [String] = []
                 var measureCount = 0
@@ -164,8 +165,8 @@ public struct TMDMeasureChecker {
                 func expectedUnitsForMeasure() -> Int {
                     // expected units = beat.count * (noteLength / beat.noteValue)
                     // If noteLength / beat.noteValue is fractional, calculate carefully
-                    let numerator = beat.count * noteLength
-                    return max(1, numerator / beat.noteValue)
+                    let numerator = currentBeat.count * noteLength
+                    return max(1, numerator / currentBeat.noteValue)
                 }
 
                 var unclosedParagraph = false
@@ -228,6 +229,53 @@ public struct TMDMeasureChecker {
                             currentMeasureUnits = 0
                             currentMeasureSnippet = []
                             measureStartLine = pipeLine
+                        }
+                        continue
+                    }
+
+                    // Section directives do not consume musical time. Tempo and
+                    // dynamics may occur anywhere; a time signature must begin
+                    // at the start of a measure so all consumers agree on the
+                    // meter that governs the following notes.
+                    if item.token == .openBrace {
+                        let directiveLine = item.range.start.line
+                        _ = advance() // {
+
+                        var timeSignature: Beat?
+                        if current()?.token == .openAngle {
+                            _ = advance() // <
+                            let count = current().flatMap { intValueOfToken($0.token) }
+                            if count != nil { _ = advance() }
+                            if current()?.token == .slash { _ = advance() }
+                            let noteValue = current().flatMap { intValueOfToken($0.token) }
+                            if noteValue != nil { _ = advance() }
+                            if current()?.token == .closeAngle { _ = advance() }
+                            if let count, let noteValue, count > 0, noteValue > 0 {
+                                timeSignature = Beat(count: count, noteValue: noteValue)
+                            }
+                        }
+
+                        while pos < tokensWithRanges.count && current()?.token != .closeBrace {
+                            _ = advance()
+                        }
+                        if current()?.token == .closeBrace { _ = advance() }
+
+                        if let timeSignature {
+                            if currentMeasureUnits != 0 {
+                                issues.append(TMDMeasureIssue(
+                                    paragraphName: pName,
+                                    instrument: instName,
+                                    lineNumber: directiveLine,
+                                    measureIndex: measureCount + 1,
+                                    expectedUnits: expectedUnitsForMeasure(),
+                                    actualUnits: currentMeasureUnits,
+                                    noteLength: noteLength,
+                                    beat: currentBeat,
+                                    snippet: "Time signature directive must occur at a measure boundary: <\(timeSignature.count)/\(timeSignature.noteValue)>"
+                                ))
+                            } else {
+                                currentBeat = timeSignature
+                            }
                         }
                         continue
                     }
@@ -355,7 +403,7 @@ public struct TMDMeasureChecker {
 
                 // If measureCount was counted via bar lines, use measureCount.
                 // Otherwise calculate measure count based on total quarter notes / measure duration.
-                let nominalMeasureDur = Double(max(1, beat.count)) * 4.0 / Double(max(1, beat.noteValue))
+                let nominalMeasureDur = Double(max(1, currentBeat.count)) * 4.0 / Double(max(1, currentBeat.noteValue))
                 let calculatedMeasures = Int(round(paragraphQuarterNotes / nominalMeasureDur))
                 let actualMeasures = measureCount > 0 ? measureCount : max(1, calculatedMeasures)
 

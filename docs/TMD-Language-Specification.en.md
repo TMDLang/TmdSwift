@@ -175,7 +175,9 @@ Supported directives include:
 - Explicit inline tonality modulations (`{key= Bm}` or `{Key= Bm}`).
 - Dynamics directives (`{pp}`, `{p}`, `{mp}`, `{mf}`, `{f}`, `{ff}`, etc.) setting playback velocity and engraved dynamic markings on score output.
 - **Fixed Pitch directive (`{?=fixed}` or `{?fixed}`)**: Locks this track section to fixed pitch (`keyOffset = 0`), making it immune to global order-level transpositions (e.g. `-> {?+3} -> ...`). Ideal for Timpani, Sound FX, or non-transposing percussion.
-- Inline time signature / meter changes (`{<3/4>}`).
+- Inline time signature / meter changes (`{<3/4>}`), which must occur at a measure boundary rather than in the middle of a measure.
+
+Tempo and dynamics are event directives, so they may take effect within a measure. A time signature defines the following measure boundaries and must be placed after the previous measure ends and before the next one begins; the measure checker reports a time-signature directive placed mid-measure.
 
 MIDI encoders write tempo and meter changes to the conductor track, while MusicXML, LilyPond, and ABC exporters output corresponding score directives.
 
