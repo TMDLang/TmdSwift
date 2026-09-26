@@ -38,7 +38,7 @@ public enum TMDTonalityVisualizer {
 
           <!-- Title Bar -->
           <text x="32" y="44" fill="#f8fafc" font-size="20" font-weight="bold">🎼 TMD Tonality Visualizer: \(xmlEscape(profile.title))</text>
-          <text x="32" y="68" fill="#94a3b8" font-size="13">Declared Key: \(tonality.globalCorrelation.declaredKey) | Stability: \(tonality.globalCorrelation.stability.rawValue.capitalized) | K-S Correlation: \(String(format: "%0.2f", tonality.globalCorrelation.declaredKeyCorrelation)) | Diatonic: \(String(format: "%0.1f%%", tonality.globalPitchClasses.diatonicRatio * 100.0))</text>
+          <text x="32" y="68" fill="#94a3b8" font-size="13">\(xmlEscape(localizer.text(.visualizerInferredTonality))): \(xmlEscape("\(tonality.globalInference.tonic ?? "?") \(modeLabel(tonality.globalInference.mode, localizer: localizer))")) | \(xmlEscape(localizer.text(.visualizerConfidence))): \(String(format: "%0.0f%%", tonality.globalInference.confidence * 100.0)) | \(xmlEscape(localizer.text(.visualizerDiatonicEvidence))): \(String(format: "%0.1f%%", tonality.globalPitchClasses.diatonicRatio * 100.0))</text>
 
         """
 
@@ -285,7 +285,8 @@ public enum TMDTonalityVisualizer {
                 let textX = currentX + secWidth / 2.0
                 let keyLabel: String
                 if let tonality = profile.tonality, idx < tonality.sections.count {
-                    keyLabel = tonality.sections[idx].declaredKey
+                    let inference = tonality.sections[idx].inferredTonality
+                    keyLabel = inference.tonic.map { "\($0) \(modeLabel(inference.mode, localizer: localizer))" } ?? localizer.text(.visualizerAmbiguous)
                 } else {
                     keyLabel = "\(sec.keyOffset)"
                 }
@@ -303,5 +304,15 @@ public enum TMDTonalityVisualizer {
            .replacingOccurrences(of: ">", with: "&gt;")
            .replacingOccurrences(of: "\"", with: "&quot;")
            .replacingOccurrences(of: "'", with: "&apos;")
+    }
+
+    private static func modeLabel(_ mode: TMDTonalityMode, localizer: TMDLocalizer) -> String {
+        switch mode {
+        case .major: localizer.text(.major)
+        case .minor: localizer.text(.minor)
+        case .modal: localizer.text(.modeModal)
+        case .ambiguous: localizer.text(.modeAmbiguous)
+        case .insufficient: localizer.text(.modeInsufficient)
+        }
     }
 }

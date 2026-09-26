@@ -229,21 +229,21 @@ struct TMDSongInspectorTests {
 
         let verseSec = tonality.sections[0]
         #expect(verseSec.sectionName == "verse")
-        #expect(verseSec.declaredKey == "C")
-        #expect(verseSec.keyOffset == 0)
+        #expect(verseSec.inferredTonality.tonic == "C")
+        #expect(verseSec.playbackContext.transpositionOffset == 0)
         #expect(verseSec.fifthsPosition == 0)
         #expect(verseSec.pitchClasses.diatonicRatio > 0.99)
-        #expect(verseSec.correlation.declaredKeyCorrelation > 0.8)
-        #expect(verseSec.correlation.stability == .high)
+        #expect(verseSec.inferredTonality.bestCorrelation > 0.8)
+        #expect(verseSec.inferredTonality.stability == .ambiguous)
         #expect(verseSec.nonDiatonicNotes.isEmpty)
 
         let chorusSec = tonality.sections[1]
         #expect(chorusSec.sectionName == "chorus")
-        #expect(chorusSec.declaredKey == "D")
-        #expect(chorusSec.keyOffset == 2)
+        #expect(chorusSec.inferredTonality.tonic == "D")
+        #expect(chorusSec.playbackContext.transpositionOffset == 2)
         #expect(chorusSec.fifthsPosition == 2)
         #expect(chorusSec.pitchClasses.diatonicRatio > 0.99)
-        #expect(chorusSec.correlation.declaredKeyCorrelation > 0.8)
+        #expect(chorusSec.inferredTonality.bestCorrelation > 0.8)
 
         // 2. Global Fifths Path
         #expect(tonality.circleOfFifthsPath == [0, 2])
@@ -251,10 +251,10 @@ struct TMDSongInspectorTests {
         // 3. Human-readable Producer Report
         let report = TMDSongInspector.generateReport(profile)
         #expect(report.contains("🗝  調性診斷："))
-        #expect(report.contains("目前以大調分析為主；建議優先支援大調與小調"))
+        #expect(report.contains("由實際發聲的音符與和弦推測調性"))
         #expect(report.contains("五度圈歷程:"))
         #expect(report.contains("+0 -> +2"))
-        #expect(tonality.modulationStory.contains("轉至 D 大調"))
+        #expect(tonality.inferredModulationPath.isEmpty)
         #expect(tonality.moodDescription.contains("大調"))
     }
 
@@ -312,11 +312,11 @@ struct TMDSongInspectorTests {
         let tonality = try #require(profile.tonality)
         let section = try #require(tonality.sections.first)
 
-        #expect(section.declaredKey == "D")
-        #expect(section.keyOffset == 2)
+        #expect(section.inferredTonality.tonic == "D")
+        #expect(section.playbackContext.transpositionOffset == 2)
         #expect(section.fifthsPosition == 2)
         #expect(section.nonDiatonicNotes.isEmpty)
-        #expect(tonality.modulationStory == "全曲維持單一調性（未轉調）")
+        #expect(tonality.modulationStory == "全曲維持單一推測調性（未偵測到可信轉調）")
     }
 
     @Test func testTonalityReportsRelativeModulationFromNonCInitialKey() throws {
@@ -346,10 +346,10 @@ struct TMDSongInspectorTests {
         let profile = TMDSongInspector.inspect(sheet: sheet)
         let tonality = try #require(profile.tonality)
 
-        #expect(tonality.sections.map(\.declaredKey) == ["D", "E"])
-        #expect(tonality.sections.map(\.keyOffset) == [2, 4])
-        #expect(tonality.modulationStory.contains("D 大調起奏"))
-        #expect(tonality.modulationStory.contains("轉至 E 大調 (+2 半音"))
+        #expect(tonality.sections.map { $0.inferredTonality.tonic } == ["D", "E"])
+        #expect(tonality.sections.map { $0.playbackContext.transpositionOffset } == [2, 4])
+        #expect(tonality.inferredModulationPath.isEmpty)
+        #expect(tonality.playbackTranspositionPath == [2, 4])
     }
 
     @Test func testTonalityVisualizerSVGAndHTMLGeneration() throws {
@@ -416,7 +416,7 @@ struct TMDSongInspectorTests {
         #expect(profile.locale == .en)
         #expect(report.contains("TMD Song Profile"))
         #expect(report.contains("Analysis scope"))
-        #expect(report.contains("Major and minor are the recommended first scope"))
+        #expect(report.contains("Inferred tonality from sounding note and chord evidence"))
         #expect(!report.contains("調性診斷"))
     }
 
@@ -424,7 +424,7 @@ struct TMDSongInspectorTests {
         let localizer = TMDLocalizer(locale: TMDLocale(rawValue: "ja"), fallbackLocale: .en)
 
         #expect(localizer.text(.reportTitle) == "TMD Song Profile")
-        #expect(localizer.text(.analysisScope).contains("Major and minor"))
+        #expect(localizer.text(.analysisScope).contains("Inferred tonality"))
     }
 
     @Test func testLocalizationCatalogIsAvailableWithoutResourceBundle() {
@@ -432,8 +432,8 @@ struct TMDSongInspectorTests {
         let traditionalChinese = TMDLocalizer(locale: .zhHant)
 
         #expect(english.text(.reportTitle) == "TMD Song Profile")
-        #expect(english.text(.modulationStart, arguments: ["C"]) == "Starts in C Major")
+        #expect(english.text(.modulationStart, arguments: ["C", "Major"]) == "Starts in C Major")
         #expect(traditionalChinese.text(.reportTitle) == "TMD Song Profile")
-        #expect(traditionalChinese.text(.modulationStart, arguments: ["C"]) == "C 大調起奏")
+        #expect(traditionalChinese.text(.modulationStart, arguments: ["C", "大調"]) == "C 大調起奏")
     }
 }
