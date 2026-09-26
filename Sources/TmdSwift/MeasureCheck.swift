@@ -19,12 +19,12 @@ public struct TMDMeasureIssue: Equatable, CustomStringConvertible, Sendable {
     public var description: String {
         if instrument == "Order" {
             if !paragraphName.isEmpty {
-                return "Order (line \(lineNumber)): Undefined section '\(paragraphName)' in playback order (\(snippet))"
+                return "Playback (line \(lineNumber)): Undefined section '\(paragraphName)' in playback (\(snippet))"
             } else {
-                return "Order (line \(lineNumber)): \(snippet)"
+                return "Playback (line \(lineNumber)): \(snippet)"
             }
         }
-        if snippet.hasPrefix("Unclosed paragraph") {
+        if snippet.hasPrefix("Unclosed entry") {
             return "\(paragraphName):\(instrument) (line \(lineNumber)): \(snippet)"
         }
         if snippet.contains("explicit barlines") {
@@ -400,7 +400,7 @@ public struct TMDMeasureChecker {
                         actualUnits: 0,
                         noteLength: noteLength,
                         beat: beat,
-                        snippet: "Unclosed paragraph '{' for \(pName):\(instName)"
+                        snippet: "Unclosed entry '{' for \(pName):\(instName)"
                     ))
                 }
 
@@ -481,7 +481,7 @@ public struct TMDMeasureChecker {
                 actualUnits: 0,
                 noteLength: 4,
                 beat: beat,
-                snippet: "Missing playback order"
+                snippet: "Missing playback"
             ))
         } else if !terminatedWithHash {
             issues.append(TMDMeasureIssue(
@@ -493,7 +493,7 @@ public struct TMDMeasureChecker {
                 actualUnits: 0,
                 noteLength: 4,
                 beat: beat,
-                snippet: "Playback order must terminate with '#'"
+                snippet: "Playback must terminate with '#'"
             ))
         }
 

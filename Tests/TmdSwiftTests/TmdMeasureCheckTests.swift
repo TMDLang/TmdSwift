@@ -361,7 +361,7 @@ struct TmdMeasureCheckTests {
         #expect(issue.paragraphName == "chorus")
         #expect(issue.instrument == "Order")
         #expect(issue.measureIndex == 0)
-        #expect(issue.description.contains("Undefined section 'chorus' in playback order"))
+        #expect(issue.description.contains("Undefined section 'chorus' in playback"))
     }
 
     @Test func testReportsIssueWhenPlaybackOrderIsMissing() throws {
@@ -382,7 +382,7 @@ struct TmdMeasureCheckTests {
         #expect(issues.count == 1)
         guard let issue = issues.first else { return }
         #expect(issue.instrument == "Order")
-        #expect(issue.description.contains("Missing playback order"))
+        #expect(issue.description.contains("Missing playback"))
     }
 
     @Test func testReportsIssueWhenPlaybackOrderDoesNotEndWithHash() throws {
@@ -405,7 +405,7 @@ struct TmdMeasureCheckTests {
         #expect(issues.count == 1)
         guard let issue = issues.first else { return }
         #expect(issue.instrument == "Order")
-        #expect(issue.description.contains("Playback order must terminate with '#'"))
+        #expect(issue.description.contains("Playback must terminate with '#'"))
     }
 
     @Test func testAccuratelyChecksPipelessMeasuresAndMixedPipeParagraphs() throws {
@@ -540,10 +540,10 @@ struct TmdMeasureCheckTests {
         -> intro -> verse ->#
         """
         let issues = TMDMeasureChecker.check(source: code)
-        let unclosed = issues.filter { $0.snippet.contains("Unclosed paragraph") }
+        let unclosed = issues.filter { $0.snippet.contains("Unclosed entry") }
         #expect(!unclosed.isEmpty)
         #expect(unclosed[0].paragraphName == "intro")
         #expect(unclosed[0].instrument == "Piano")
-        #expect(unclosed[0].description.contains("Unclosed paragraph '{' for intro:Piano"))
+        #expect(unclosed[0].description.contains("Unclosed entry '{' for intro:Piano"))
     }
 }
