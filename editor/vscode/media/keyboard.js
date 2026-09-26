@@ -1,6 +1,10 @@
 (function () {
     const vscode = acquireVsCodeApi();
 
+    if (typeof installSoundfontFetchCache === 'function' && typeof loadAudio !== 'undefined') {
+        installSoundfontFetchCache(loadAudio, { version: '1' });
+    }
+
     let audioContext = null;
     let pianoInstrument = null;
     let isPianoLoading = false;
