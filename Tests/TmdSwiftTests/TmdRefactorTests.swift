@@ -489,6 +489,7 @@ struct TmdRefactorTests {
         #expect(harmonized.contains("verse:Harmony@|0|{"))
         #expect(harmonized.contains("3 4 5 3"))
         #expect(harmonized.contains("[C] - - -"))
+        #expect(harmonized.contains("3 4 5 3 |"))
 
         let issues = TMDMeasureChecker.check(source: harmonized)
         #expect(issues.isEmpty)
@@ -801,4 +802,3 @@ struct TmdRefactorTests {
         #expect(transposed.contains("chorus:Lead@|0|{\n    <4*>\n    | 5 6 7 1^ |"))
     }
 }
-

@@ -79,7 +79,7 @@ public enum TMDMacroEvaluator {
                 }
                 return UnitGroup(units: newUnits, length: group.length)
             }
-            return Section(noteLength: section.noteLength, unitGroups: newGroups, directives: section.directives)
+            return Section(noteLength: section.noteLength, unitGroups: newGroups, directives: section.directives, barlinePositions: section.barlinePositions)
         }
     }
 
@@ -95,7 +95,7 @@ public enum TMDMacroEvaluator {
             let count = s.unitGroups.count
             let sub = Array(allGroups[idx..<idx + count])
             idx += count
-            return Section(noteLength: s.noteLength, unitGroups: sub, directives: s.directives)
+            return Section(noteLength: s.noteLength, unitGroups: sub, directives: s.directives, barlinePositions: s.barlinePositions)
         }
     }
 
@@ -144,7 +144,7 @@ public enum TMDMacroEvaluator {
                 }
                 return UnitGroup(units: newUnits, length: g.length)
             }
-            return Section(noteLength: s.noteLength, unitGroups: newGroups, directives: s.directives)
+            return Section(noteLength: s.noteLength, unitGroups: newGroups, directives: s.directives, barlinePositions: s.barlinePositions)
         }
     }
 
@@ -172,7 +172,7 @@ public enum TMDMacroEvaluator {
                 }
                 return UnitGroup(units: newUnits, length: g.length)
             }
-            return Section(noteLength: s.noteLength, unitGroups: newGroups, directives: s.directives)
+            return Section(noteLength: s.noteLength, unitGroups: newGroups, directives: s.directives, barlinePositions: s.barlinePositions)
         }
     }
 
@@ -200,7 +200,7 @@ public enum TMDMacroEvaluator {
                 }
                 return UnitGroup(units: newUnits, length: g.length)
             }
-            return Section(noteLength: s.noteLength, unitGroups: newGroups, directives: s.directives)
+            return Section(noteLength: s.noteLength, unitGroups: newGroups, directives: s.directives, barlinePositions: s.barlinePositions)
         }
     }
 
