@@ -280,7 +280,6 @@ public struct TMDLSPCompletionEngine {
         TMDLSPCompletionItem(label: "?= C", kind: .snippet, detail: "Movable-do Base", insertText: "?= ${1:C}}", insertTextFormat: 2),
         TMDLSPCompletionItem(label: "?+ 2", kind: .snippet, detail: "Relative Movable-do Transposition (+semitones)", insertText: "?+ ${1:2}}", insertTextFormat: 2),
         TMDLSPCompletionItem(label: "?- 2", kind: .snippet, detail: "Relative Movable-do Transposition (-semitones)", insertText: "?- ${1:2}}", insertTextFormat: 2),
-        TMDLSPCompletionItem(label: "?= fixed", kind: .value, detail: "Fixed Pitch (Immune to song transpositions)", insertText: "?= fixed}"),
         TMDLSPCompletionItem(label: "key= Bm", kind: .snippet, detail: "Explicit Tonality (B minor)", insertText: "key= ${1:Bm}}", insertTextFormat: 2),
         TMDLSPCompletionItem(label: "ppp", kind: .value, detail: "Dynamics (ppp)", insertText: "ppp}"),
         TMDLSPCompletionItem(label: "pp", kind: .value, detail: "Dynamics (pp)", insertText: "pp}"),
@@ -317,6 +316,16 @@ public struct TMDLSPCompletionEngine {
 
         let remainder = String(currentLine.dropFirst(position.character))
         let nextChar = remainder.first
+
+        if prefix.range(of: #":\s*[A-Za-z][A-Za-z0-9_-]*\[$"#, options: .regularExpression) != nil {
+            return [TMDLSPCompletionItem(
+                label: "pitchMode=fixed",
+                kind: .value,
+                detail: "Fixed Pitch Entry Attribute",
+                documentation: "Keep this entry at its written pitch during playback transposition.",
+                insertText: "pitchMode=fixed]"
+            )]
+        }
 
         if isInsideMacro {
             return macroSnippets.map {

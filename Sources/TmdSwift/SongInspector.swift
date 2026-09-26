@@ -1347,7 +1347,7 @@ public enum TMDSongInspector {
 
     private static func collectTimelineDirectives(sheet: Sheet) -> [PlaybackDirectiveEvent] {
         let paragraphs = sheet.paragraphs
-        let instruments = Set(paragraphs.map { $0.instrument.isEmpty ? "Piano" : $0.instrument })
+        let instruments = Set(paragraphs.map(\.instrument).filter { !$0.isEmpty })
         var directives: [PlaybackDirectiveEvent] = []
         for instrument in instruments {
             directives.append(contentsOf: TMDPlaybackRenderer.render(sheet: sheet, instrument: instrument).directives)
