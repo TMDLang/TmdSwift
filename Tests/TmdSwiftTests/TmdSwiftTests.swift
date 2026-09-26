@@ -154,6 +154,25 @@ func testPlaybackValidationAllowsAdjacentAssignmentEntries() throws {
     #expect(TMDPlaybackRenderer.validate(sheet: sheet).isEmpty)
 }
 
+@Test("Playback matches assignment names case-insensitively")
+func testPlaybackMatchesAssignmentNamesCaseInsensitively() throws {
+    let sheet = try #require(TmdParser.parse(string: """
+    ::SCORE::
+    A:Piano@|0|{
+    <4*>
+    | 1 2 3 4 |
+    }
+
+    -> A ->#
+    """))
+
+    let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "pIaNo")
+    #expect(timeline.events.filter {
+        if case .note = $0.content { return true }
+        return false
+    }.count == 4)
+}
+
 @Test func testTokenize() throws {
     let text = "::SCORE:: ** Title ** != 120 ?= C <4/4> ->#"
     let tokens = Lexer(string: text).tokenize()

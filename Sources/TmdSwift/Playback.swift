@@ -99,7 +99,9 @@ public enum TMDPlaybackRenderer {
     /// Renders one instrument's playback sequence in quarter-note units.
     public static func render(sheet inputSheet: Sheet, instrument: String) -> PlaybackTimeline {
         let sheet = TMDMacroEvaluator.expand(inputSheet)
-        let paragraphs = sheet.paragraphs.filter { $0.instrument == instrument }
+        let paragraphs = sheet.paragraphs.filter {
+            $0.instrument.caseInsensitiveCompare(instrument) == .orderedSame
+        }
         let orders = sheet.orders.isEmpty
             ? sheet.paragraphs.map(\.name).reduce(into: [String]()) { names, name in
                 if !names.contains(name) { names.append(name) }
