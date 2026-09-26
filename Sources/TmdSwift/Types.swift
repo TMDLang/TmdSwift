@@ -513,12 +513,16 @@ public struct Section: Equatable {
     /// > Note: Originally named `unitGroups` in Aguai's C++ code.
     public let unitGroups: [UnitGroup]
 
+    /// Absolute unit positions at which the source contained an explicit barline.
+    public let barlinePositions: [Int]
+
     public let directives: [SectionDirective]
 
-    public init(noteLength: Int = 4, unitGroups: [UnitGroup] = [], directives: [SectionDirective] = []) {
+    public init(noteLength: Int = 4, unitGroups: [UnitGroup] = [], directives: [SectionDirective] = [], barlinePositions: [Int] = []) {
         self.noteLength = noteLength
         self.unitGroups = unitGroups
         self.directives = directives
+        self.barlinePositions = barlinePositions
     }
 }
 

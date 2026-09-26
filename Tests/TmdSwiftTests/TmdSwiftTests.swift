@@ -173,6 +173,23 @@ func testPlaybackMatchesAssignmentNamesCaseInsensitively() throws {
     }.count == 4)
 }
 
+@Test("Sections preserve explicit barline positions through formatting")
+func testSectionBarlinePositionsRoundTrip() throws {
+    let source = """
+    ::SCORE::
+    intro:Piano@|0|{
+    <4*>
+    | 1 2 3 4 | 5 6 7 1 |
+    }
+    -> intro ->#
+    """
+
+    let sheet = try #require(TmdParser.parse(string: source))
+    #expect(sheet.entries[0].sections[0].barlinePositions == [0, 4, 8])
+    #expect(sheet.format().contains("1 2 3 4 |"))
+    #expect(sheet.format().contains("5 6 7 1 |"))
+}
+
 @Test func testTokenize() throws {
     let text = "::SCORE:: ** Title ** != 120 ?= C <4/4> ->#"
     let tokens = Lexer(string: text).tokenize()

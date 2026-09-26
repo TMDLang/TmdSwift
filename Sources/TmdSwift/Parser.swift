@@ -1063,8 +1063,12 @@ private struct TokenParser {
 
                 var unitGroups: [UnitGroup] = []
                 var directives: [SectionDirective] = []
+                var barlinePositions: [Int] = []
                 while current != .openAngle && current != .closeBrace && current != .eof {
-                    skipPipes()
+                    while current == .pipe {
+                        barlinePositions.append(unitGroups.reduce(0) { $0 + $1.length })
+                        advance()
+                    }
                     if current == .openAngle || current == .closeBrace || current == .eof {
                         break
                     }
@@ -1116,7 +1120,7 @@ private struct TokenParser {
                         }
                     }
                 }
-                sections.append(Section(noteLength: noteLength, unitGroups: unitGroups, directives: directives))
+                sections.append(Section(noteLength: noteLength, unitGroups: unitGroups, directives: directives, barlinePositions: barlinePositions))
             } else {
                 recordFailure(at: pos, expected: .openAngle)
                 return nil

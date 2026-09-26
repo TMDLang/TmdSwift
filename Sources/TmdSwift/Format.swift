@@ -155,8 +155,10 @@ extension Section {
             }
         }
         var position = 0
+        let barlines = Set(barlinePositions)
         appendDirectives(at: position, to: &result)
         for unitGroup in unitGroups {
+            if barlines.contains(position) { result += "| " }
             if counter % 8 == 0 || counter >= 8 {
                 result += "\n\t"
                 counter = 0
@@ -166,6 +168,7 @@ extension Section {
             position += unitGroup.length
             appendDirectives(at: position, to: &result)
         }
+        if barlines.contains(position) { result += "| " }
         while directiveIndex < sortedDirectives.count {
             result += "\(sortedDirectives[directiveIndex].format()) "
             directiveIndex += 1
