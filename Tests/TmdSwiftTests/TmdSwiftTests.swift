@@ -167,6 +167,8 @@ func testPlaybackMatchesAssignmentNamesCaseInsensitively() throws {
     """))
 
     let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "pIaNo")
+    #expect(timeline.track?.assignment == "Piano")
+    #expect(timeline.track?.events == timeline.events)
     #expect(timeline.events.filter {
         if case .note = $0.content { return true }
         return false

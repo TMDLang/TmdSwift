@@ -38,11 +38,32 @@ public struct PlaybackDirectiveEvent: Equatable, Sendable {
     public let state: PlaybackState
 }
 
+/// One assignment's ordered playback material.
+public struct PlaybackTrack: Equatable, Sendable {
+    public let assignment: String
+    public let events: [PlaybackEvent]
+    public let directives: [PlaybackDirectiveEvent]
+    public let duration: Double
+}
+
 /// The common timeline consumed by format-specific exporters.
 public struct PlaybackTimeline: Equatable, Sendable {
     public let events: [PlaybackEvent]
     public let directives: [PlaybackDirectiveEvent]
     public let duration: Double
+    public let assignment: String?
+
+    public var track: PlaybackTrack? {
+        guard let assignment else { return nil }
+        return PlaybackTrack(assignment: assignment, events: events, directives: directives, duration: duration)
+    }
+
+    public init(events: [PlaybackEvent], directives: [PlaybackDirectiveEvent], duration: Double, assignment: String? = nil) {
+        self.events = events
+        self.directives = directives
+        self.duration = duration
+        self.assignment = assignment
+    }
 }
 
 /// A semantic playback issue found before target-specific rendering.
@@ -179,7 +200,8 @@ public enum TMDPlaybackRenderer {
         return PlaybackTimeline(
             events: adjustedEvents.sorted { $0.position < $1.position },
             directives: adjustedDirectives.sorted { $0.position < $1.position },
-            duration: timelinePosition + offset
+            duration: timelinePosition + offset,
+            assignment: paragraphs.first?.instrument ?? instrument
         )
     }
 
