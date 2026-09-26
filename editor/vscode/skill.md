@@ -40,10 +40,11 @@ intro:Piano@|0|{
 1. **Header**: `::SCORE::` (must be at the beginning of the score).
 2. **Title**: `** Title **` (enclosed in double asterisks).
 3. **Tempo**: `!= 120` (in BPM, supports integer or decimals like `!= 120.5`).
-4. **Key Signature**: `?= C` (tonic letter `C`..`B`, optional sharp `'` or flat `,`, e.g., `?= A'`, `?= E,`).
-5. **Time Signature**: `<4/4>` (numerator/denominator, e.g. `<3/4>`, `<6/8>`).
-6. **Paragraphs / Instrument Tracks**: `name:instrument@|offset|{ ... }`.
-7. **Playback Flow**: `-> section1 -> section2 ->#` (must start with `->` and terminate with `->#`).
+4. **Movable-do base**: `?= C` (sets the pitch of numbered degree `1`; it is not a major/minor declaration).
+5. **Explicit tonality**: `key= Bm` or `Key= C` (stores the actual declared key and mode separately from `?=`).
+6. **Time Signature**: `<4/4>` (numerator/denominator, e.g. `<3/4>`, `<6/8>`).
+7. **Paragraphs / Instrument Tracks**: `name:instrument@|offset|{ ... }`.
+8. **Playback Flow**: `-> section1 -> section2 ->#` (must start with `->` and terminate with `->#`).
 
 ---
 
@@ -197,7 +198,9 @@ The number of dashes in `%(...)` defines how many base beats the group occupies:
 You can place inline directives anywhere inside a section between notes:
 - `{!= 140}`: Absolute tempo change (BPM).
 - `{!+ 10}`: Relative tempo change (+10 BPM).
-- `{?= D}`: Absolute key change to D.
+- `{?= D}`: Absolute movable-do base change to D.
+- `{key= Bm}`: Explicit tonality change to B minor, independent from movable-do playback context.
+- `{ppp}`, `{pp}`, `{p}`, `{mp}`, `{mf}`, `{f}`, `{ff}`, `{fff}`: Set playback velocity and emit engraved dynamic marks.
 - `{?+ 2}`: Relative key transposition up 2 semitones.
 - `{<3/4>}`: Time signature change to 3/4.
 

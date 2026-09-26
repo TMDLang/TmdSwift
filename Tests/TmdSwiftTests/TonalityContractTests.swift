@@ -38,6 +38,30 @@ struct TonalityContractTests {
         #expect(tonality.globalInference.confidence > 0)
     }
 
+    @Test func keepsDeclaredKeySeparateFromMovableDoContext() throws {
+        let tmd = """
+        ::SCORE::
+        ** Explicit Key Context **
+        != 120
+        ?= D
+        key= Bm
+        <4/4>
+
+        verse:Vocal@|0|{
+            <4*>
+            6 1 3 6
+        }
+
+        -> verse ->#
+        """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let tonality = try #require(TMDSongInspector.inspect(sheet: sheet).tonality)
+
+        #expect(sheet.keySignature.description == "D")
+        #expect(sheet.declaredKey == "Bm")
+        #expect(tonality.playbackContext.movableDoBase == "D")
+    }
+
     @Test func reportsInsufficientEvidenceWithoutForcingMajor() throws {
         let tmd = """
         ::SCORE::

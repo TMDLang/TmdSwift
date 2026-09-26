@@ -996,7 +996,7 @@ public enum TMDSongInspector {
         }
 
         let pitchClassNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-        let baseKey = sheet.declaredKey ?? sheet.keySignature.description
+        let baseKey = sheet.keySignature.description
 
         // Infer tonality from sounding evidence. The movable-do base is only playback context.
         let globalInference = evaluateTonality(weights: globalWeights, evidence: TMDTonalityEvidence(noteWeight: noteWeight, chordWeight: chordWeight))
