@@ -1329,6 +1329,29 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     #expect(violin.events.map { $0.state.keyOffset } == [3, 3])
 }
 
+@Test func testMIDIAndWAVDoNotCreateTracksForRestOnlyAssignments() throws {
+    let tmd = """
+    ::SCORE::
+    ** Rest Only **
+    != 120
+    ?= C
+    <4/4>
+
+    Piano:Piano@|0|{
+        <4*>
+        0 0 0 0
+    }
+
+    -> Piano ->#
+    """
+    let sheet = try #require(TmdParser.parse(string: tmd))
+    let midi = TMDMIDIGenerator.generateMIDI(from: sheet)
+
+    #expect(midi.count >= 12)
+    let trackCount = UInt16(midi[10]) << 8 | UInt16(midi[11])
+    #expect(trackCount == 1)
+}
+
 @Test func testFilePathNormalizerVariants() throws {
     #expect(FilePathNormalizer.isFileURL(" file:///tmp/a%20b "))
     #expect(FilePathNormalizer.isFileURL("<file://localhost/tmp/a>"))
