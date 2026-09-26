@@ -522,6 +522,12 @@ public struct Section: Equatable {
     }
 }
 
+/// Pitch interpretation for an entire assigned entry.
+public enum EntryPitchMode: Equatable, Sendable {
+    case transposing
+    case fixed
+}
+
 /// A multi-track voice or instrument paragraph, formatted as
 /// `name:instrument@|start|{ ... }`.
 ///
@@ -540,6 +546,9 @@ public struct Paragraph: Equatable {
     /// > Note: Originally named `instrument` in Aguai's C++ code.
     public let instrument: String
 
+    /// Canonical entry-wide pitch interpretation.
+    public let pitchMode: EntryPitchMode
+
     /// Measure start offset (e.g. `@|0|` starts at measure 0, `@|+4|` starts at
     /// measure 4).
     ///
@@ -557,14 +566,24 @@ public struct Paragraph: Equatable {
     /// Raw body of a show-program block enclosed by triple quotes.
     public let showProgram: String?
 
-    public init(name: String = "", instrument: String = "", start: Int = 0, sections: [Section] = [], executionTime: String? = nil, showProgram: String? = nil) {
+    public init(name: String = "", instrument: String = "", pitchMode: EntryPitchMode = .transposing, start: Int = 0, sections: [Section] = [], executionTime: String? = nil, showProgram: String? = nil) {
         self.name = name
         self.instrument = instrument
+        self.pitchMode = pitchMode
         self.start = start
         self.sections = sections
         self.executionTime = executionTime
         self.showProgram = showProgram
     }
+}
+
+/// Canonical terminology for a source entry. `Paragraph` remains the source
+/// compatibility name until the public API migration is complete.
+public typealias Entry = Paragraph
+
+public extension Paragraph {
+    var assignment: String? { instrument.isEmpty ? nil : instrument }
+    var isPrototype: Bool { assignment == nil }
 }
 
 /// An S-Expression node representing symbols, numbers, and nested lists for macro composition.
@@ -656,6 +675,9 @@ public struct Sheet: Equatable {
     /// Song-level metadata such as lyrics, composer, and arranger credits.
     public let metadata: [String: String]
 
+    /// Canonical source entries, retained alongside the compatibility field.
+    public var entries: [Entry] { paragraphs }
+
     public init(
         name: String = "",
         speed: Double = 0.0,
@@ -698,6 +720,14 @@ public struct Sheet: Equatable {
             return ["Piano"]
         }
         return distinct
+    }
+
+    public func distinctAssignments() -> [String] {
+        var canonical: [String: String] = [:]
+        for assignment in entries.compactMap(\.assignment) {
+            canonical[assignment.lowercased(), default: assignment] = assignment
+        }
+        return canonical.values.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
 
     /// Resolves the target vocal instrument for singing-synthesis exporters (VSQ, VSQX, UST).

@@ -91,6 +91,43 @@ import TmdSkill
     #expect(sheet?.beat.noteValue == 4)
 }
 
+@Test("Canonical source model exposes assignment and fixed-pitch entry attributes")
+func testCanonicalEntrySourceModel() throws {
+    let tmd = """
+    ::SCORE::
+    Intro:Timpani[pitchMode=fixed]@|0|{
+        <4*>
+        2__ - - -
+    }
+    Theme{
+        <4*>
+        1 2 3 4
+    }
+    """
+
+    let sheet = try #require(TmdParser.parse(string: tmd))
+    let timpani = try #require(sheet.entries.first { $0.assignment == "Timpani" })
+    let prototype = try #require(sheet.entries.first { $0.name == "Theme" })
+
+    #expect(timpani.isPrototype == false)
+    #expect(timpani.pitchMode == .fixed)
+    #expect(prototype.isPrototype)
+    #expect(prototype.assignment == nil)
+    #expect(sheet.distinctAssignments() == ["Timpani"])
+}
+
+@Test("Assignment identity is case-insensitive")
+func testAssignmentIdentityIsCaseInsensitive() throws {
+    let tmd = """
+    ::SCORE::
+    A:Piano@|0|{ <4*> 1 2 3 4 }
+    B:piano@|0|{ <4*> 5 6 7 1^ }
+    """
+
+    let sheet = try #require(TmdParser.parse(string: tmd))
+    #expect(sheet.distinctAssignments().map { $0.lowercased() } == ["piano"])
+}
+
 @Test func testTokenize() throws {
     let text = "::SCORE:: ** Title ** != 120 ?= C <4/4> ->#"
     let tokens = Lexer(string: text).tokenize()

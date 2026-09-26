@@ -963,6 +963,7 @@ private struct TokenParser {
         }
 
         var instrument = ""
+        var pitchMode: EntryPitchMode = .transposing
         var start = 0
         var executionTime: String?
 
@@ -971,6 +972,16 @@ private struct TokenParser {
             if case .identifier(let s) = current {
                 instrument = s
                 advance()
+            }
+
+            if case .chord(let attribute) = current {
+                if attribute.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "pitchmode=fixed" {
+                    pitchMode = .fixed
+                    advance()
+                } else {
+                    recordFailure(at: pos, expected: ["pitchMode=fixed"])
+                    return nil
+                }
             }
 
             guard require(.at) else {
@@ -1021,7 +1032,7 @@ private struct TokenParser {
         if case .programText(let body) = current {
             advance()
             match(.closeBrace)
-            return Paragraph(name: name, instrument: instrument, start: start, sections: [], executionTime: executionTime, showProgram: body)
+            return Paragraph(name: name, instrument: instrument, pitchMode: pitchMode, start: start, sections: [], executionTime: executionTime, showProgram: body)
         }
 
         var sections: [Section] = []
@@ -1113,7 +1124,7 @@ private struct TokenParser {
         }
         match(.closeBrace)
 
-        return Paragraph(name: name, instrument: instrument, start: start, sections: sections, executionTime: executionTime)
+        return Paragraph(name: name, instrument: instrument, pitchMode: pitchMode, start: start, sections: sections, executionTime: executionTime)
     }
 
     private mutating func parseUnits() -> [Unit] {
@@ -1396,4 +1407,3 @@ private struct TokenParser {
         return .list(items)
     }
 }
-
