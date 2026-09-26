@@ -23,7 +23,7 @@ public struct TMDABCGenerator {
         abc += "\(tempoField)\n"
         abc += "K:\(abcKey(sheet.keySignature.description))\n\n"
 
-        let instruments = sheet.distinctInstruments()
+        let instruments = sheet.distinctInstruments(fallbackToDefault: false)
 
         // Output Voice headers
         for (idx, inst) in instruments.enumerated() {

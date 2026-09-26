@@ -6,6 +6,28 @@ import TmdMusicXML
 @Suite("MusicXML Validation Tests")
 struct MusicXMLValidationTests {
 
+    @Test func testPrototypeOnlySheetDoesNotCreateImplicitPianoPart() throws {
+        let tmd = """
+        ::SCORE::
+        ** Prototype Only **
+        != 120
+        ?= C
+        <4/4>
+
+        Theme {
+            <4*>
+            1 2 3 4
+        }
+        """
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+
+        let xml = TMDMusicXMLGenerator.generateMusicXML(from: sheet)
+
+        #expect(xml.contains("<score-partwise"))
+        #expect(!xml.contains("<score-part id=\"P1\">"))
+        #expect(!xml.contains("<part id=\"P1\">"))
+    }
+
     @Test func testMusicXMLWellFormedXML() throws {
         let sampleURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
@@ -409,5 +431,4 @@ struct MusicXMLValidationTests {
         #expect(xmlEighthTime.contains("<beat-unit>eighth</beat-unit>\n            <per-minute>240</per-minute>"))
     }
 }
-
 

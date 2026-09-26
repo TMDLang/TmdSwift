@@ -16,12 +16,8 @@ public struct TMDReaperGenerator {
     /// Generates REAPER project file content (.rpp) from a Sheet.
     public static func generateRPP(from inputSheet: Sheet, ppq: UInt16 = defaultPPQ) -> String {
         let sheet = TMDMacroEvaluator.expand(inputSheet)
-        let distinctInstruments = sheet.distinctInstruments()
-        let timelineInstrument = sheet.paragraphs.first {
-            $0.sections.contains { !$0.directives.isEmpty }
-        }?.instrument ?? distinctInstruments.first ?? "Piano"
-
-        let conductorTimeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: timelineInstrument)
+        let distinctInstruments = sheet.distinctInstruments(fallbackToDefault: false)
+        let conductorTimeline = TMDPlaybackRenderer.renderConductor(sheet: sheet)
 
         // Build timeline tempo segments
         let initialBpm = sheet.speed > 0 ? sheet.speed : 120
@@ -84,10 +80,19 @@ public struct TMDReaperGenerator {
         var currentQuarter = 0.0
         var markerId = 1
         var markerLines: [String] = []
+        var markerTimeSignature = sheet.beat
+        var markerDirectiveIndex = 0
 
         for order in orders {
             if case .name(let name) = order {
-                let paragraphDuration = TMDPlaybackRenderer.duration(of: name, in: sheet)
+                while markerDirectiveIndex < sortedDirectives.count,
+                      sortedDirectives[markerDirectiveIndex].position <= currentQuarter {
+                    if case .timeSignature(let beat) = sortedDirectives[markerDirectiveIndex].kind {
+                        markerTimeSignature = beat
+                    }
+                    markerDirectiveIndex += 1
+                }
+                let paragraphDuration = TMDPlaybackRenderer.duration(of: name, in: sheet, beat: markerTimeSignature)
                 let secondPos = quarterToSeconds(currentQuarter)
                 markerLines.append(String(format: "  MARKER %d %.8f \"%@\" 0", markerId, secondPos, name))
                 markerId += 1

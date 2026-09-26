@@ -32,10 +32,7 @@ public struct TMDMIDIGenerator {
             distinctInstruments = distinctInstruments.filter { $0 == targetInstrument }
         }
 
-        let timelineInstrument = effectiveSheet.paragraphs.first {
-            $0.sections.contains { !$0.directives.isEmpty }
-        }?.instrument ?? distinctInstruments.first ?? "Piano"
-        let timeline = TMDPlaybackRenderer.render(sheet: effectiveSheet, instrument: timelineInstrument)
+        let timeline = TMDPlaybackRenderer.renderConductor(sheet: effectiveSheet)
         var trackData = [TMDMIDIEncoder.encodeTrack(events: conductorEvents(
             sheet: effectiveSheet, timeline: timeline, ticksPerQuarter: ticksPerQuarter
         ))]

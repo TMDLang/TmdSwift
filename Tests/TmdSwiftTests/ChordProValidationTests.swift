@@ -91,6 +91,27 @@ struct ChordProValidationTests {
         #expect(chorusMatches == 1)
     }
 
+    @Test func testRepeatedSectionChordsFollowOrderModulation() throws {
+        let tmd = """
+        ::SCORE::
+        ** Modulated ChordPro **
+        != 120
+        ?= C
+        <4/4>
+
+        Verse:Guitar@|0|{
+            <4*>
+            [1] - - -
+        }
+        -> Verse -> {?+2} -> Verse ->#
+        """
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let cho = TMDChordProGenerator.generateChordPro(from: sheet)
+
+        #expect(cho.components(separatedBy: "[C]").count - 1 == 1)
+        #expect(cho.components(separatedBy: "[D]").count - 1 == 1)
+    }
+
     @Test func testCustomMeasuresPerLine() throws {
         let tmd = """
         ::SCORE::

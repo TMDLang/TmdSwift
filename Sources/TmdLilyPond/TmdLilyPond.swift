@@ -34,7 +34,7 @@ public struct TMDLilyPondGenerator {
 
         """
 
-        let instruments = sheet.distinctInstruments()
+        let instruments = sheet.distinctInstruments(fallbackToDefault: false)
 
         var identifierMap: [String: String] = [:]
         var usedNames: Set<String> = []

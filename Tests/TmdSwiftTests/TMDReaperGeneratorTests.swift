@@ -69,6 +69,39 @@ struct TMDReaperGeneratorTests {
         #expect(rpp.range(of: #"PT 4\.00000000 120(\.0+)? 0 262148"#, options: .regularExpression) != nil)
     }
 
+    @Test func testMarkersUseMeterStateForParagraphStartOffsets() throws {
+        let tmd = """
+        ::SCORE::
+        ** Meter-Aware Markers **
+        != 120
+        ?= C
+        <4/4>
+
+        A:Piano@|0|{
+            <4*>
+            1 - - -
+            {<3/4>}
+        }
+
+        B:Piano@|1|{
+            <4*>
+            1 - - -
+        }
+
+        C:Piano@|0|{
+            <4*>
+            1 - - -
+        }
+        -> A -> B -> C ->#
+        """
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let rpp = TMDReaperGenerator.generateRPP(from: sheet)
+
+        // A = 4 quarters, B starts 1 bar later in the active 3/4 meter and lasts 4 quarters.
+        // C therefore starts at 11 quarters = 5.5 seconds at 120 BPM.
+        #expect(rpp.range(of: #"MARKER 3 5\.50000000 "C" 0"#, options: .regularExpression) != nil)
+    }
+
     @Test func testTrackConfigurationPanningColorsAndInlineMIDI() throws {
         let tmd = """
         ::SCORE::

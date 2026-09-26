@@ -80,15 +80,31 @@ public struct TMDChordProGenerator: Sendable {
             : uniqueParagraphNames.map { .name($0) }
 
         let measuresPerLine = max(1, options.measuresPerLine)
+        var currentKeyOffset = sheet.keySignature.semitoneOffset
+        var emittedKeyOffset = currentKeyOffset
 
         for order in orders {
+            switch order {
+            case .relative(let value):
+                if let delta = Int(value.replacingOccurrences(of: "+", with: "")) {
+                    currentKeyOffset += delta
+                }
+                continue
+            case .absolute(let value):
+                currentKeyOffset = KeySignature(string: value).semitoneOffset
+                continue
+            case .macro:
+                continue
+            case .name(let pName):
+                guard !pName.isEmpty else { continue }
+            }
             guard case .name(let pName) = order else { continue }
             let sectionParagraphs = sheet.paragraphs.filter { $0.name == pName }
-            // Create a sub-sheet with just this section to isolate its measures
+            let sectionKey = keySignature(for: currentKeyOffset)
             let sectionSheet = Sheet(
                 name: sheet.name,
                 speed: sheet.speed,
-                keySignature: sheet.keySignature,
+                keySignature: sectionKey,
                 beat: sheet.beat,
                 paragraphs: sectionParagraphs,
                 orders: [.name(pName)],
@@ -110,6 +126,10 @@ public struct TMDChordProGenerator: Sendable {
             if sectionMeasures.isEmpty { continue }
 
             lines.append("")
+            if currentKeyOffset != emittedKeyOffset {
+                lines.append("{key: \(sectionKey.description)}")
+                emittedKeyOffset = currentKeyOffset
+            }
             lines.append("{comment: \(pName)}")
 
             var measureStrings: [String] = []
@@ -118,7 +138,7 @@ public struct TMDChordProGenerator: Sendable {
                 var chordsInMeasure: [String] = []
                 for ev in m.events {
                     if case .chord(let chord) = ev.content {
-                        chordsInMeasure.append("[\(chord.description)]")
+                        chordsInMeasure.append("[\(chordText(chord, keyOffset: ev.state.keyOffset))]")
                     }
                 }
 
@@ -143,5 +163,25 @@ public struct TMDChordProGenerator: Sendable {
         }
 
         return lines.joined(separator: "\n") + "\n"
+    }
+
+    private static let chromaticNames = ["C", "C'", "D", "D'", "E", "F", "F'", "G", "G'", "A", "A'", "B"]
+
+    private static func keySignature(for offset: Int) -> KeySignature {
+        let normalized = ((offset % 12) + 12) % 12
+        return KeySignature(string: chromaticNames[normalized])
+    }
+
+    private static func chordText(_ chord: ChordSymbol, keyOffset: Int) -> String {
+        let root = chord.root.isScaleDegree
+            ? chromaticNames[((keyOffset + chord.root.semitoneOffset) % 12 + 12) % 12]
+            : chord.root.description
+        let suffix = String(chord.description.dropFirst(chord.root.description.count))
+        guard let bass = chord.bass else { return root + suffix }
+        let qualitySuffix = suffix.split(separator: "/", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? ""
+        let bassText = bass.isScaleDegree
+            ? chromaticNames[((keyOffset + bass.semitoneOffset) % 12 + 12) % 12]
+            : bass.description
+        return root + qualitySuffix + "/" + bassText
     }
 }

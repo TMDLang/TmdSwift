@@ -1082,6 +1082,35 @@ import TmdSkill
     #expect(timeline.directives.map(\.position) == [5, 5])
 }
 
+@Test func testConductorTimelineMergesDirectivesAcrossInstruments() throws {
+    let tempoSection = Section(
+        noteLength: 4,
+        unitGroups: [UnitGroup(units: [.note(Note(degree: .c))], length: 1)],
+        directives: [SectionDirective(position: 1, kind: .tempo(90))]
+    )
+    let meterSection = Section(
+        noteLength: 4,
+        unitGroups: [UnitGroup(units: [.note(Note(degree: .e))], length: 1)],
+        directives: [SectionDirective(position: 1, kind: .timeSignature(Beat(count: 3, noteValue: 4)))]
+    )
+    let sheet = Sheet(
+        speed: 120,
+        paragraphs: [
+            Paragraph(name: "A", instrument: "Piano", sections: [tempoSection]),
+            Paragraph(name: "A", instrument: "Violin", sections: [meterSection])
+        ],
+        orders: [.name("A")]
+    )
+
+    let timeline = TMDPlaybackRenderer.renderConductor(sheet: sheet)
+
+    #expect(timeline.directives.count == 2)
+    #expect(timeline.directives.map { $0.kind } == [
+        .tempo(90),
+        .timeSignature(Beat(count: 3, noteValue: 4))
+    ])
+}
+
 @Test func testFilePathNormalizerVariants() throws {
     #expect(FilePathNormalizer.isFileURL(" file:///tmp/a%20b "))
     #expect(FilePathNormalizer.isFileURL("<file://localhost/tmp/a>"))

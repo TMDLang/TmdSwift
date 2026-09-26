@@ -31,7 +31,7 @@ public struct TMDMusicXMLGenerator {
 
         """
 
-        let instruments = sheet.distinctInstruments()
+        let instruments = sheet.distinctInstruments(fallbackToDefault: false)
 
         // Part List
         xml += "  <part-list>\n"

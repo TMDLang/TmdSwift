@@ -124,6 +124,47 @@ public enum TMDPlaybackRenderer {
         )
     }
 
+    /// Renders the score-level conductor timeline by merging directives from every concrete instrument.
+    public static func renderConductor(sheet inputSheet: Sheet) -> PlaybackTimeline {
+        let sheet = TMDMacroEvaluator.expand(inputSheet)
+        let instruments = sheet.distinctInstruments(fallbackToDefault: false)
+        let sourceTimelines = instruments.map { render(sheet: sheet, instrument: $0) }
+        var merged: [PlaybackDirectiveEvent] = []
+
+        for timeline in sourceTimelines {
+            for directive in timeline.directives.sorted(by: { $0.position < $1.position }) {
+                if merged.contains(where: { $0.position == directive.position && $0.kind == directive.kind }) {
+                    continue
+                }
+                merged.append(directive)
+            }
+        }
+
+        let initialState = PlaybackState(
+            tempo: sheet.speed > 0 ? sheet.speed : 120,
+            keyOffset: sheet.keySignature.semitoneOffset,
+            timeSignature: sheet.beat
+        )
+        var state = initialState
+        let directives = merged.enumerated()
+            .sorted {
+                $0.element.position == $1.element.position
+                    ? $0.offset < $1.offset
+                    : $0.element.position < $1.element.position
+            }
+            .map(\.element)
+            .map { directive in
+                state = apply(directive.kind, to: state)
+                return PlaybackDirectiveEvent(position: directive.position, kind: directive.kind, state: state)
+            }
+
+        return PlaybackTimeline(
+            events: [],
+            directives: directives,
+            duration: sourceTimelines.map(\.duration).max() ?? 0
+        )
+    }
+
     private static func render(
         paragraph: Paragraph,
         start: Double,
