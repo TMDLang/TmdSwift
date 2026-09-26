@@ -128,6 +128,32 @@ func testAssignmentIdentityIsCaseInsensitive() throws {
     #expect(sheet.distinctAssignments().map { $0.lowercased() } == ["piano"])
 }
 
+@Test("Playback validation rejects overlapping entries for one assignment")
+func testPlaybackValidationRejectsOverlappingAssignmentEntries() throws {
+    let tmd = """
+    ::SCORE::
+    A:Piano@|0|{ <4*> 1 2 3 4 }
+    A:piano@|0|{ <4*> 5 6 7 1^ }
+    """
+
+    let sheet = try #require(TmdParser.parse(string: tmd))
+    let issues = TMDPlaybackRenderer.validate(sheet: sheet)
+    #expect(issues.count == 1)
+    #expect(issues[0].assignment.lowercased() == "piano")
+}
+
+@Test("Playback validation allows adjacent entries for one assignment")
+func testPlaybackValidationAllowsAdjacentAssignmentEntries() throws {
+    let tmd = """
+    ::SCORE::
+    A:Piano@|0|{ <4*> 1 2 3 4 }
+    A:piano@|1|{ <4*> 5 6 7 1^ }
+    """
+
+    let sheet = try #require(TmdParser.parse(string: tmd))
+    #expect(TMDPlaybackRenderer.validate(sheet: sheet).isEmpty)
+}
+
 @Test func testTokenize() throws {
     let text = "::SCORE:: ** Title ** != 120 ?= C <4/4> ->#"
     let tokens = Lexer(string: text).tokenize()

@@ -45,8 +45,57 @@ public struct PlaybackTimeline: Equatable, Sendable {
     public let duration: Double
 }
 
+/// A semantic playback issue found before target-specific rendering.
+public struct PlaybackValidationIssue: Equatable, Sendable, CustomStringConvertible {
+    public let sectionName: String
+    public let assignment: String
+    public let firstOffset: Int
+    public let secondOffset: Int
+
+    public var description: String {
+        "Overlapping entries for assignment \(assignment) in section \(sectionName) at offsets \(firstOffset) and \(secondOffset)"
+    }
+}
+
 /// Expands immutable TMD AST data into a shared playback timeline.
 public enum TMDPlaybackRenderer {
+    /// Validates source entries that will be assembled into the same assignment track.
+    /// Entries may be adjacent; only their occupied measure ranges may not overlap.
+    public static func validate(sheet: Sheet) -> [PlaybackValidationIssue] {
+        let grouped = Dictionary(grouping: sheet.entries.filter { !$0.isPrototype }) {
+            "\($0.name.lowercased())\u{0}\($0.assignment!.lowercased())"
+        }
+        var issues: [PlaybackValidationIssue] = []
+        for entries in grouped.values {
+            for index in entries.indices {
+                for otherIndex in entries.index(after: index)..<entries.endIndex {
+                    let first = entries[index]
+                    let second = entries[otherIndex]
+                    let firstRange = range(of: first, beat: sheet.beat)
+                    let secondRange = range(of: second, beat: sheet.beat)
+                    if max(firstRange.lowerBound, secondRange.lowerBound) < min(firstRange.upperBound, secondRange.upperBound) {
+                        issues.append(PlaybackValidationIssue(
+                            sectionName: first.name,
+                            assignment: first.assignment ?? "",
+                            firstOffset: first.start,
+                            secondOffset: second.start
+                        ))
+                    }
+                }
+            }
+        }
+        return issues
+    }
+
+    private static func range(of entry: Entry, beat: Beat) -> Range<Double> {
+        let duration = entry.sections.reduce(0.0) { total, section in
+            let unitDuration = 4.0 / Double(max(1, section.noteLength))
+            return total + section.unitGroups.reduce(0.0) { $0 + Double(max(0, $1.length)) * unitDuration }
+        }
+        let start = Double(entry.start) * measureDuration(for: beat)
+        return start..<start + duration
+    }
+
     /// Renders one instrument's playback sequence in quarter-note units.
     public static func render(sheet inputSheet: Sheet, instrument: String) -> PlaybackTimeline {
         let sheet = TMDMacroEvaluator.expand(inputSheet)
