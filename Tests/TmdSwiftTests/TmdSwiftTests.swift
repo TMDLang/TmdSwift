@@ -1352,6 +1352,31 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     #expect(trackCount == 1)
 }
 
+@Test func testNotationExportersMatchPercussionAssignmentsCaseInsensitively() throws {
+    let tmd = """
+    ::SCORE::
+    ** Lowercase Drums **
+    != 120
+    ?= C
+    <4/4>
+
+    A:drums@|0|{
+        <4*>
+        D S X O
+    }
+
+    -> A ->#
+    """
+    let sheet = try #require(TmdParser.parse(string: tmd))
+
+    let lily = TMDLilyPondGenerator.generateLilyPond(from: sheet)
+    let abc = TMDABCGenerator.generateABC(from: sheet)
+
+    #expect(lily.contains("\\drummode"))
+    #expect(lily.contains("\\new DrumStaff"))
+    #expect(abc.contains("%%MIDI channel 10"))
+}
+
 @Test func testFilePathNormalizerVariants() throws {
     #expect(FilePathNormalizer.isFileURL(" file:///tmp/a%20b "))
     #expect(FilePathNormalizer.isFileURL("<file://localhost/tmp/a>"))
