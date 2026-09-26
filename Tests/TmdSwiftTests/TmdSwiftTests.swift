@@ -207,6 +207,23 @@ func testFixedPitchEntryIgnoresPlaybackKeyModifiers() throws {
     #expect(timeline.events.allSatisfy { $0.state.keyOffset == 0 })
 }
 
+@Test("Playback reports conflicting tempo directives at one position")
+func testPlaybackReportsConflictingTempoDirectives() throws {
+    let sheet = try #require(TmdParser.parse(string: """
+    ::SCORE::
+    Intro:Piano@|0|{
+    <4*>
+    {!=90}{!=100} 1 2 3 4
+    }
+    -> Intro ->#
+    """))
+
+    let conflicts = TMDPlaybackRenderer.validateTempoConflicts(sheet: sheet)
+    #expect(conflicts.count == 1)
+    #expect(conflicts[0].position == 0)
+    #expect(conflicts[0].tempos == [90, 100])
+}
+
 @Test func testTokenize() throws {
     let text = "::SCORE:: ** Title ** != 120 ?= C <4/4> ->#"
     let tokens = Lexer(string: text).tokenize()

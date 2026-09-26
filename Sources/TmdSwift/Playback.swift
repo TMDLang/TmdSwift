@@ -78,8 +78,30 @@ public struct PlaybackValidationIssue: Equatable, Sendable, CustomStringConverti
     }
 }
 
+public struct PlaybackTempoConflict: Equatable, Sendable {
+    public let position: Double
+    public let tempos: [Double]
+}
+
 /// Expands immutable TMD AST data into a shared playback timeline.
 public enum TMDPlaybackRenderer {
+    /// Finds different absolute tempo values declared at the same playback position.
+    public static func validateTempoConflicts(sheet: Sheet) -> [PlaybackTempoConflict] {
+        var directives: [PlaybackDirectiveEvent] = []
+        for assignment in sheet.distinctAssignments() {
+            directives.append(contentsOf: render(sheet: sheet, instrument: assignment).directives)
+        }
+        let grouped = Dictionary(grouping: directives) { $0.position }
+        return grouped.compactMap { position, values in
+            let tempos = Array(Set(values.compactMap { directive -> Double? in
+                if case .tempo(let value) = directive.kind { return value }
+                return nil
+            })).sorted()
+            guard tempos.count > 1 else { return nil }
+            return PlaybackTempoConflict(position: position, tempos: tempos)
+        }.sorted { $0.position < $1.position }
+    }
+
     /// Validates source entries that will be assembled into the same assignment track.
     /// Entries may be adjacent; only their occupied measure ranges may not overlap.
     public static func validate(sheet: Sheet) -> [PlaybackValidationIssue] {
