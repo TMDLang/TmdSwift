@@ -21,12 +21,14 @@ TitleContent            = { ? any character except newline or "**" ? } ;
 
 HeaderDirective         = TempoDirective
                         | KeySignatureDirective
+                        | KeyDirective
                         | TimeSignatureDirective
                         | MetadataDirective
                         | Comment ;
 
 TempoDirective          = "!=" , Whitespace , Number ;
 KeySignatureDirective   = "?=" , Whitespace , KeySignature ;
+KeyDirective            = ( "key=" | "Key=" ) , Whitespace , ExplicitKey ;
 TimeSignatureDirective  = "<" , Number , "/" , Number , ">" ;
 
 MetadataDirective       = CreditDirective | NamedMetadataDirective ;
@@ -58,15 +60,20 @@ ParagraphDirective      = DirectiveBrace
                         | TempoChangeDirective
                         | RelativeKeyDirective
                         | AbsoluteKeyDirective
+                        | InlineKeyDirective
+                        | DynamicsDirective
                         | FixedPitchDirective
                         | InlineTimeSignature ;
 
-DirectiveBrace          = "{" , ( RelativeTempoDirective | TempoChangeDirective | RelativeKeyDirective | AbsoluteKeyDirective | FixedPitchDirective | InlineTimeSignature ) , "}" ;
+DirectiveBrace          = "{" , ( RelativeTempoDirective | TempoChangeDirective | RelativeKeyDirective | AbsoluteKeyDirective | InlineKeyDirective | DynamicsDirective | FixedPitchDirective | InlineTimeSignature ) , "}" ;
 
 RelativeTempoDirective  = "!+" , Number ;
 TempoChangeDirective    = "!=" , Number ;
 RelativeKeyDirective    = "{?" , [ "+" | "-" ] , Number , "}" ;
 AbsoluteKeyDirective    = "{?=" , KeySignature , "}" ;
+InlineKeyDirective      = "{" , ( "key=" | "Key=" ) , ExplicitKey , "}" ;
+DynamicsDirective       = "{" , DynamicMark , "}" ;
+DynamicMark             = "ppp" | "pp" | "p" | "mp" | "mf" | "f" | "ff" | "fff" ;
 FixedPitchDirective     = "{?=fixed}" | "{?fixed}" ;
 InlineTimeSignature     = "{" , "<" , Number , "/" , Number , ">" , "}" ;
 
@@ -135,6 +142,7 @@ SignedNumber            = ( "+" | "-" ) , Number ;
 
 (* --- Lexical Tokens & Terminals --- *)
 KeySignature            = PitchLetter , [ "'" | "#" | "," | "b" ] , [ "m" ] ;
+ExplicitKey             = PitchLetter , [ "'" | "#" | "," | "b" ] , [ "m" ] ;
 TripleQuotedString      = '"""' , { ? any character ? } , '"""' ;
 StringLiteral           = '"' , { ? any character except quote or newline ? } , '"' ;
 Identifier              = ( Letter | "_" ) , { Letter | Digit | "_" | "-" } ;
@@ -155,7 +163,8 @@ Whitespace              = { " " | "\t" | "\r" | "\n" } ;
 - **Header**: Every TMD score begins with `::SCORE::`.
 - **Title**: Enclosed in `** ... **` (e.g. `** Song Title **`).
 - **Tempo (`!=`)**: Sets beats per minute (e.g. `!= 120` or `!= 85.5`).
-- **Key Signature (`?=`)**: Movable-do tonic letter with optional accidental (e.g. `?= C`, `?= F#`, `?= Bb`, `?= A'm`).
+- **Movable-Do Key Signature (`?=`)**: Sets movable-do base tonic letter with optional accidental (e.g. `?= C`, `?= D`, `?= F#`, `?= Bb`). Governs pitch mapping ($1=C$, $1=D$).
+- **Explicit Tonality (`key=` or `Key=`)**: Explicitly declares the musical key/mode of the score for human players, sheet engraving (MusicXML), and tonality validation (e.g. `key= Bm`, `Key= C`, `key= F#m`).
 - **Time Signature (`<N/D>`)**: Default meter, e.g. `<4/4>`, `<3/4>`, `<6/8>`.
 - **Credits & Metadata**:
   - Direct credit: `~ "lyrics: aguai"`, `~ "詞：阿怪"`
@@ -200,8 +209,10 @@ Strokes can be written individually (`D - S -`), grouped in beats (`(xxxx)`), or
 Directives can be placed anywhere between notes inside a section:
 - `{!= 140}`: Absolute tempo change (BPM).
 - `{!+ 10}`: Relative tempo change (+10 BPM).
-- `{?= D}`: Absolute key change to D.
+- `{?= D}`: Absolute movable-do key base change to D.
 - `{?+ 2}` / `{?- 2}`: Relative key transposition (+/- semitones).
+- `{key= Bm}` (or `{Key= Bm}`): Inline explicit tonality modulation declaration.
+- `{pp}`, `{p}`, `{mp}`, `{mf}`, `{f}`, `{ff}`: Dynamics directive setting playback velocity and engraved dynamic markings on sheet output.
 - `{?= fixed}` (or `{? fixed}`): Forces **Fixed Pitch** for this track section (`keyOffset = 0`), locking its pitches against global song order transpositions (`-> {?+3} -> ...`). Ideal for Timpani, Sound FX, or non-transposing instruments.
 - `{<3/4>}`: Inline time signature change.
 

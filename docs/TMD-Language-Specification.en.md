@@ -65,20 +65,22 @@ Identifiers, numbers, and scale-degree digits enclosed between `**` delimiters a
 
 Tempo is stored as a `Double` representing beats per minute (BPM). Both integer and decimal values are supported. Inside sections, `{!=145}` or `{!+30}` can also be used to alter the absolute or relative playback tempo downstream.
 
-### 4.3 Key Signature
+### 4.3 Movable-Do Base and Explicit Tonality
 
 ```text
-?= A'
-? = C
+?= D
+key= Bm
 ```
 
-The key signature is stored as a string without strict validation at the parser level. Thus, `C`, `A'`, `Bb`, or any token readable as an identifier can be accepted. Key modulation such as `{?+5}` represents relative transposition in the playback order rather than this header field.
+- **Movable-Do Pitch Base (`?=` )**:
+  Establishes the absolute pitch that movable-do degree $1$ aligns to (e.g. `?= C` maps $1=C$, `?= D` maps $1=D$). It is stored as a string without strict validation at the parser level, serving purely as an offset anchor for scale-degree playback calculations.
+- **Explicit Tonality Declaration (`key=` or `Key=`)**:
+  Formally declares the musical key and mode of the score (e.g. `key= Bm`, `key= C`, `key= F#m`, `Key= Am`). This directive guides score engraving exporters (e.g. MusicXML `<mode>` and key signatures), provides an unambiguous contract for human performers, and informs Song Inspector key compatibility diagnostics. Inside sections, `{key= Bm}` can also be used to declare an explicit inline key modulation.
 
-The Song Inspector currently uses a major-key model as its analysis baseline. As a
-product scope recommendation, major and minor should be supported first, since that
-would cover many common popular songs; other modes such as Dorian and Mixolydian can
-remain future extensions and should not be interpreted as formally identified until
-they are fully supported.
+The Song Inspector currently uses major-key and minor-key models as its analysis baseline.
+As a product scope recommendation, major and minor are prioritized as they cover
+the vast majority of popular songs; modal systems such as Dorian and Mixolydian can
+remain subsequent extensions.
 
 ### 4.4 Time Signature
 
@@ -169,7 +171,9 @@ Directives can be placed anywhere between musical units inside a section:
 
 Supported directives include:
 - Absolute tempo changes (`{!=140}`) and relative tempo changes (`{!+10}`) in BPM.
-- Absolute key changes (`{?=D}`) and relative transpositions (`{?+2}`, `{?-2}`) in semitones.
+- Absolute movable-do key base changes (`{?=D}`) and relative transpositions (`{?+2}`, `{?-2}`) in semitones.
+- Explicit inline tonality modulations (`{key= Bm}` or `{Key= Bm}`).
+- Dynamics directives (`{pp}`, `{p}`, `{mp}`, `{mf}`, `{f}`, `{ff}`, etc.) setting playback velocity and engraved dynamic markings on score output.
 - **Fixed Pitch directive (`{?=fixed}` or `{?fixed}`)**: Locks this track section to fixed pitch (`keyOffset = 0`), making it immune to global order-level transpositions (e.g. `-> {?+3} -> ...`). Ideal for Timpani, Sound FX, or non-transposing percussion.
 - Inline time signature / meter changes (`{<3/4>}`).
 
