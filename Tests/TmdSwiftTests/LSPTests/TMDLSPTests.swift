@@ -154,6 +154,18 @@ struct TMDLSPTests {
             position: TMDLSPPosition(line: 2, character: 8)
         )
         #expect(keyItems.map(\.label) == ["key= Bm"])
+
+        let sourceWithAutoClose = """
+        A:Piano@|0|{
+            <4*>
+            {}
+        """
+        let autoCloseItems = TMDLSPCompletionEngine.complete(
+            source: sourceWithAutoClose,
+            position: TMDLSPPosition(line: 2, character: 5)
+        )
+        let meterItem = autoCloseItems.first(where: { $0.label == "<4/4>" })
+        #expect(meterItem?.insertText?.hasSuffix("}") == false)
     }
 
     @Test("Provides General MIDI 128 instrument names after colon in paragraph header")
@@ -254,6 +266,7 @@ struct TMDLSPTests {
         server.handle(message: initFrame)
         #expect(sentMessages.count == 1)
         #expect(sentMessages[0].contains("\"capabilities\""))
+        #expect(sentMessages[0].contains("\"triggerCharacters\":[\">\",\"(\",\":\",\"[\",\"{\"]"))
 
         // 2. Open document
         let source = """

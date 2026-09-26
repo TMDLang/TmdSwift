@@ -399,8 +399,25 @@ public struct TMDLSPCompletionEngine {
             let afterBrace = String(prefix[prefix.index(after: lastBraceIndex)...])
             if !afterBrace.contains("}") && afterBrace.count <= 16 {
                 let typed = afterBrace.trimmingCharacters(in: .whitespaces).lowercased()
-                return sectionDirectiveCompletions.filter {
+                let matches = sectionDirectiveCompletions.filter {
                     typed.isEmpty || $0.label.lowercased().hasPrefix(typed)
+                }
+                guard nextChar == "}" else { return matches }
+
+                // VS Code usually inserts a matching `}` when the user types
+                // `{`. Reuse that brace instead of inserting a second one.
+                return matches.map { item in
+                    guard let insertText = item.insertText, insertText.hasSuffix("}") else {
+                        return item
+                    }
+                    return TMDLSPCompletionItem(
+                        label: item.label,
+                        kind: item.kind,
+                        detail: item.detail,
+                        documentation: item.documentation,
+                        insertText: String(insertText.dropLast()),
+                        insertTextFormat: item.insertTextFormat
+                    )
                 }
             }
         }
@@ -501,7 +518,7 @@ public final class TMDLSPServer: @unchecked Sendable {
                     "textDocumentSync": 1, // Full document sync
                     "completionProvider": [
                         "resolveProvider": false,
-                        "triggerCharacters": [">", "(", ":", "["]
+                        "triggerCharacters": [">", "(", ":", "[", "{"]
                     ],
                     "documentFormattingProvider": true,
                     "documentSymbolProvider": true

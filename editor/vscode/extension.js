@@ -2701,13 +2701,13 @@ I am ready to help you compose, check, or format TMD music scores!
     const tmdLspClient = new TMDLanguageClient();
     tmdLspClient.start();
 
-    // Register LSP completion provider with triggers: '>', '(', ':', '['
+    // Register LSP completion provider with triggers: '>', '(', ':', '[', '{'
     context.subscriptions.push(
         vscode.languages.registerCompletionItemProvider('tmd', {
             provideCompletionItems(document, position) {
                 return tmdLspClient.requestCompletion(document, position);
             }
-        }, '>', '(', ':', '[')
+        }, '>', '(', ':', '[', '{')
     );
 
     // Register LSP formatting provider
