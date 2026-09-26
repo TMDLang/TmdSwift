@@ -321,6 +321,8 @@ public struct TMDTonalityProfile: Equatable, Sendable, Codable {
     public let modulationStory: String
     /// Locale used when generating the human-readable narrative fields.
     public let locale: TMDLocale
+    /// Explicit musical tonality declared with `key=`, separate from movable-do `?=`.
+    public let declaredKey: String?
 
     public init(
         globalPitchClasses: TMDPitchClassDistribution,
@@ -333,7 +335,8 @@ public struct TMDTonalityProfile: Equatable, Sendable, Codable {
         summaryText: String = "",
         moodDescription: String = "",
         modulationStory: String = "",
-        locale: TMDLocale = .zhHant
+        locale: TMDLocale = .zhHant,
+        declaredKey: String? = nil
     ) {
         self.globalPitchClasses = globalPitchClasses
         self.globalInference = globalInference
@@ -346,11 +349,12 @@ public struct TMDTonalityProfile: Equatable, Sendable, Codable {
         self.moodDescription = moodDescription
         self.modulationStory = modulationStory
         self.locale = locale
+        self.declaredKey = declaredKey
     }
 
     private enum CodingKeys: String, CodingKey {
         case globalPitchClasses, globalInference, playbackContext, playbackTranspositionPath, inferredModulationPath, circleOfFifthsPath, sections
-        case summaryText, moodDescription, modulationStory, locale
+        case summaryText, moodDescription, modulationStory, locale, declaredKey
     }
 
     public init(from decoder: Decoder) throws {
@@ -366,7 +370,8 @@ public struct TMDTonalityProfile: Equatable, Sendable, Codable {
             summaryText: try container.decode(String.self, forKey: .summaryText),
             moodDescription: try container.decode(String.self, forKey: .moodDescription),
             modulationStory: try container.decode(String.self, forKey: .modulationStory),
-            locale: try container.decodeIfPresent(TMDLocale.self, forKey: .locale) ?? .zhHant
+            locale: try container.decodeIfPresent(TMDLocale.self, forKey: .locale) ?? .zhHant,
+            declaredKey: try container.decodeIfPresent(String.self, forKey: .declaredKey)
         )
     }
 }
@@ -1128,7 +1133,8 @@ public enum TMDSongInspector {
             summaryText: summaryText,
             moodDescription: moodDescription,
             modulationStory: modulationStory,
-            locale: locale
+            locale: locale,
+            declaredKey: sheet.declaredKey
         )
     }
 

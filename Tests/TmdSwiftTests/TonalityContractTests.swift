@@ -60,6 +60,7 @@ struct TonalityContractTests {
         #expect(sheet.keySignature.description == "D")
         #expect(sheet.declaredKey == "Bm")
         #expect(tonality.playbackContext.movableDoBase == "D")
+        #expect(tonality.declaredKey == "Bm")
     }
 
     @Test func reportsInsufficientEvidenceWithoutForcingMajor() throws {

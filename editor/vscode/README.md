@@ -7,7 +7,7 @@ Official Visual Studio Code extension providing language support, syntax highlig
 - **Syntax Highlighting**:
   - `::SCORE::` root score marker.
   - Song title `** Title **`.
-  - Global tempo (`!= 120`), key signature (`?= C`), and time signature (`<4/4>`).
+       - Global tempo (`!= 120`), movable-do base (`?= C`), optional declared tonality (`key= Bm`), and time signature (`<4/4>`).
   - Paragraph definitions (`intro:Piano@|0|{ ... }`).
   - Section divisions (`<4*>`, `<16*>`).
   - Numbered musical notation (Jianpu) with accidentals (`1'`, `2,`) and octave marks (`1^`, `1_`).
@@ -76,4 +76,3 @@ You can install or symlink this extension directly into VS Code, VS Code Insider
 ```
 
 After running the script, open VS Code, press `Cmd+Shift+P` (or `Ctrl+Shift+P`), select **Developer: Reload Window**, and open any `.tmd` file (such as `sample/basic/三天三夜.tmd`) to enjoy syntax highlighting, playback, and visual inspectors!
-

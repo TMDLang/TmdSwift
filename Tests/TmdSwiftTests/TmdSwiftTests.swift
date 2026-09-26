@@ -1409,6 +1409,23 @@ import TmdSkill
     try? FileManager.default.removeItem(at: tempDir)
 }
 
+@Test func testVSCodeSyntaxAndREADMEDistinguishDeclaredKeyAndDynamics() throws {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let grammarURL = packageRoot.appendingPathComponent("editor/vscode/syntaxes/tmd.tmLanguage.json")
+    let readmeURL = packageRoot.appendingPathComponent("editor/vscode/README.md")
+    let grammar = try String(contentsOf: grammarURL, encoding: .utf8)
+    let readme = try String(contentsOf: readmeURL, encoding: .utf8)
+
+    #expect(grammar.contains("key\\\\s*="))
+    #expect(grammar.contains("Key\\\\s*="))
+    #expect(grammar.contains("ppp|pp|p|mp|mf|f|ff|fff"))
+    #expect(readme.contains("movable-do base (`?= C`)") || readme.contains("movable-do base"))
+    #expect(readme.contains("key= Bm"))
+}
+
 @Test func testTupletWhitespaceAndUnspacedDigits() throws {
     func makeScore(_ body: String) -> String {
         """
@@ -2211,4 +2228,3 @@ func testInvalidMultiNoteSyntax() {
     }
     #expect(dynamicKinds == [.p, .f, .pp, .ff])
 }
-
