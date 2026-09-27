@@ -243,7 +243,7 @@ public enum TMDMacroEvaluator {
         func getThemeSections(_ themeArg: SExpr) throws -> (name: String, sections: [Section]) {
             if case .list(let items) = themeArg {
                 if items.isEmpty {
-                    return ("empty", [])
+                    throw TMDMacroError("Empty prototype list")
                 }
 
                 guard case .symbol(let headRaw) = items[0] else {
@@ -380,30 +380,16 @@ public enum TMDMacroEvaluator {
             case .list: themeName = ""
             }
 
-            if let p = abstractMap[themeName] ?? sheet.entries.first(where: { $0.name == themeName }) {
+            if let p = abstractMap[themeName] {
                 return (themeName, p.sections)
             }
-            throw TMDMacroError("Theme '\(themeName)' not found")
+            throw TMDMacroError("Unknown prototype '\(themeName)'")
         }
 
         func evalExpr(_ expr: SExpr) throws -> [String] {
             guard case .list(let items) = expr else {
                 let targetName = expr.description
-                let matching = concreteParagraphs.filter { $0.name == targetName }
-                if !matching.isEmpty {
-                    var clonedNames: [String] = []
-                    for p in matching {
-                        let synthetic = createSyntheticParagraph(
-                            baseName: p.name,
-            assignment: p.assignment ?? "",
-                            startOffset: p.start,
-                            sections: p.sections
-                        )
-                        clonedNames.append(synthetic.name)
-                    }
-                    return clonedNames
-                }
-                throw TMDMacroError("Target '\(targetName)' is not a valid section or macro expression")
+                throw TMDMacroError("Concrete section '\(targetName)' is not a valid macro source")
             }
 
             guard !items.isEmpty, case .symbol(let opRaw) = items[0] else {
@@ -414,15 +400,22 @@ public enum TMDMacroEvaluator {
 
             switch op {
             case "play":
-                guard items.count >= 3 else {
+                guard items.count == 3 || items.count == 4 || items.count == 5 else {
                     throw TMDMacroError("'play' requires theme and instrument, e.g. (play Theme Violin)")
                 }
                 let themeTarget = items[1]
                 let instrument = items[2].description
                 var atOffset = 0
-                if items.count >= 5, case .symbol(let atFlag) = items[3], atFlag.lowercased() == ":at" {
-                    if case .number(let n) = items[4] { atOffset = n }
-                } else if items.count >= 4, case .number(let n) = items[3] {
+                if items.count == 5 {
+                    guard case .symbol(let atFlag) = items[3], atFlag.lowercased() == ":at",
+                          case .number(let n) = items[4] else {
+                        throw TMDMacroError("'play' offset must be an integer after :at")
+                    }
+                    atOffset = n
+                } else if items.count == 4 {
+                    guard case .number(let n) = items[3] else {
+                        throw TMDMacroError("'play' offset must be an integer")
+                    }
                     atOffset = n
                 }
 
@@ -436,26 +429,13 @@ public enum TMDMacroEvaluator {
                 return [p.name]
 
             case "loop":
-                guard items.count >= 3 else {
-                    throw TMDMacroError("'loop' requires theme and instrument (or theme and times), e.g. (loop B 10) or (loop Theme Cello 4)")
+                guard items.count == 4 else {
+                    throw TMDMacroError("'loop' requires theme, instrument, and a positive integer count")
                 }
                 let themeTarget = items[1]
-                var instrument = ""
-                var times = 1
-
-                if items.count == 3, case .number(let n) = items[2] {
-                    times = n
-                    let targetName = themeTarget.description
-                    if let match = sheet.entries.first(where: { $0.name == targetName && $0.assignment != nil }) {
-                        instrument = match.assignment!
-                    } else {
-                        throw TMDMacroError("'loop' with 2 arguments requires a concrete section with an instrument, but '\(targetName)' has no instrument")
-                    }
-                } else {
-                    instrument = items[2].description
-                    if items.count >= 4, case .number(let n) = items[3] {
-                        times = n
-                    }
+                let instrument = items[2].description
+                guard case .number(let times) = items[3], times > 0 else {
+                    throw TMDMacroError("'loop' count must be a positive integer")
                 }
 
                 let (themeName, baseSections) = try getThemeSections(themeTarget)
@@ -473,19 +453,16 @@ public enum TMDMacroEvaluator {
                 return [p.name]
 
             case "canon":
-                guard items.count >= 3 else {
-                    throw TMDMacroError("'canon' requires theme and instruments, e.g. (canon Theme (Violin1 Violin2) 2)")
+                guard items.count == 4 else {
+                    throw TMDMacroError("'canon' requires a prototype, non-empty instrument list, and non-negative integer offset")
                 }
                 let themeTarget = items[1]
-                var instruments: [String] = []
-                if case .list(let instList) = items[2] {
-                    instruments = instList.map(\.description)
-                } else {
-                    instruments = [items[2].description]
+                guard case .list(let instList) = items[2], !instList.isEmpty else {
+                    throw TMDMacroError("'canon' requires a non-empty instrument list")
                 }
-                var offsetBars = 0
-                if items.count >= 4, case .number(let n) = items[3] {
-                    offsetBars = n
+                let instruments = instList.map(\.description)
+                guard case .number(let offsetBars) = items[3], offsetBars >= 0 else {
+                    throw TMDMacroError("'canon' offset must be a non-negative integer")
                 }
 
                 // Check if themeTarget is a nested sub-expression
@@ -548,6 +525,14 @@ assignment: concreteParagraphs[i].assignment,
                 }
 
                 let (themeName, sections) = try getThemeSections(themeTarget)
+                let prototypeQuarterDuration = sections.reduce(0.0) { total, section in
+                    let unitDuration = 4.0 / Double(max(1, section.noteLength))
+                    return total + section.unitGroups.reduce(0.0) { $0 + Double(max(0, $1.length)) * unitDuration }
+                }
+                let prototypeBars = prototypeQuarterDuration / TMDPlaybackRenderer.measureDuration(for: sheet.beat)
+                if let lastIndex = instruments.indices.last, Double(lastIndex * offsetBars) > prototypeBars {
+                    throw TMDMacroError("Canon voice \(lastIndex + 1) enters after the combined prototype ends")
+                }
                 genCounter += 1
                 let canonSectionName = "__canon_\(themeName)_\(genCounter)"
 
@@ -565,6 +550,9 @@ assignment: concreteParagraphs[i].assignment,
                 return [canonSectionName]
 
             case "layer":
+                guard items.count > 1 else {
+                    throw TMDMacroError("'layer' requires at least one child expression")
+                }
                 var childNames: [String] = []
                 for i in 1..<items.count {
                     let names = try evalExpr(items[i])
@@ -586,6 +574,9 @@ assignment: concreteParagraphs[i].assignment,
                 return [layerSectionName]
 
             case "seq":
+                guard items.count > 1 else {
+                    throw TMDMacroError("'seq' requires at least one child expression")
+                }
                 var seqNames: [String] = []
                 for i in 1..<items.count {
                     let names = try evalExpr(items[i])
@@ -830,8 +821,9 @@ assignment: concreteParagraphs[idx].assignment,
                 }
             }
         } catch {
-            // Re-throw or propagate
-            print("\(error.localizedDescription)")
+            // The non-throwing compatibility API cannot expose diagnostics;
+            // never return a partially expanded arrangement.
+            return sheet
         }
 
         return Sheet(
@@ -882,7 +874,7 @@ assignment: concreteParagraphs[idx].assignment,
         func getThemeSections(_ themeArg: SExpr) throws -> (name: String, sections: [Section]) {
             if case .list(let items) = themeArg {
                 if items.isEmpty {
-                    return ("empty", [])
+                    throw TMDMacroError("Empty prototype list")
                 }
 
                 guard case .symbol(let headRaw) = items[0] else {
@@ -1017,30 +1009,16 @@ assignment: concreteParagraphs[idx].assignment,
             case .list: themeName = ""
             }
 
-            if let p = abstractMap[themeName] ?? sheet.entries.first(where: { $0.name == themeName }) {
+            if let p = abstractMap[themeName] {
                 return (themeName, p.sections)
             }
-            throw TMDMacroError("Theme '\(themeName)' not found")
+            throw TMDMacroError("Unknown prototype '\(themeName)'")
         }
 
         func evalExpr(_ expr: SExpr) throws -> [String] {
             guard case .list(let items) = expr else {
                 let targetName = expr.description
-                let matching = concreteParagraphs.filter { $0.name == targetName }
-                if !matching.isEmpty {
-                    var clonedNames: [String] = []
-                    for p in matching {
-                        let synthetic = createSyntheticParagraph(
-                            baseName: p.name,
-                            assignment: p.assignment ?? "",
-                            startOffset: p.start,
-                            sections: p.sections
-                        )
-                        clonedNames.append(synthetic.name)
-                    }
-                    return clonedNames
-                }
-                throw TMDMacroError("Target '\(targetName)' is not a valid section or macro expression")
+                throw TMDMacroError("Concrete section '\(targetName)' is not a valid macro source")
             }
 
             guard !items.isEmpty, case .symbol(let opRaw) = items[0] else {
@@ -1057,9 +1035,18 @@ assignment: concreteParagraphs[idx].assignment,
                 let themeTarget = items[1]
                 let instrument = items[2].description
                 var atOffset = 0
-                if items.count >= 5, case .symbol(let atFlag) = items[3], atFlag.lowercased() == ":at" {
-                    if case .number(let n) = items[4] { atOffset = n }
-                } else if items.count >= 4, case .number(let n) = items[3] {
+                if items.count != 3 && items.count != 4 && items.count != 5 {
+                    throw TMDMacroError("'play' requires exactly one optional integer offset")
+                } else if items.count == 5 {
+                    guard case .symbol(let atFlag) = items[3], atFlag.lowercased() == ":at",
+                          case .number(let n) = items[4] else {
+                        throw TMDMacroError("'play' offset must be an integer after :at")
+                    }
+                    atOffset = n
+                } else if items.count == 4 {
+                    guard case .number(let n) = items[3] else {
+                        throw TMDMacroError("'play' offset must be an integer")
+                    }
                     atOffset = n
                 }
 
@@ -1077,22 +1064,12 @@ assignment: concreteParagraphs[idx].assignment,
                     throw TMDMacroError("'loop' requires theme and instrument (or theme and times), e.g. (loop B 10) or (loop Theme Cello 4)")
                 }
                 let themeTarget = items[1]
-                var instrument = ""
-                var times = 1
-
-                if items.count == 3, case .number(let n) = items[2] {
-                    times = n
-                    let targetName = themeTarget.description
-                    if let match = sheet.entries.first(where: { $0.name == targetName && $0.assignment != nil }) {
-                        instrument = match.assignment ?? ""
-                    } else {
-                        throw TMDMacroError("'loop' with 2 arguments requires a concrete section with an instrument, but '\(targetName)' has no instrument")
-                    }
-                } else {
-                    instrument = items[2].description
-                    if items.count >= 4, case .number(let n) = items[3] {
-                        times = n
-                    }
+                guard items.count == 4 else {
+                    throw TMDMacroError("'loop' requires theme, instrument, and a positive integer count")
+                }
+                let instrument = items[2].description
+                guard case .number(let times) = items[3], times > 0 else {
+                    throw TMDMacroError("'loop' count must be a positive integer")
                 }
 
                 let (themeName, baseSections) = try getThemeSections(themeTarget)
@@ -1110,19 +1087,16 @@ assignment: concreteParagraphs[idx].assignment,
                 return [p.name]
 
             case "canon":
-                guard items.count >= 3 else {
-                    throw TMDMacroError("'canon' requires theme and instruments, e.g. (canon Theme (Violin1 Violin2) 2)")
+                guard items.count == 4 else {
+                    throw TMDMacroError("'canon' requires a prototype, non-empty instrument list, and non-negative integer offset")
                 }
                 let themeTarget = items[1]
-                var instruments: [String] = []
-                if case .list(let instList) = items[2] {
-                    instruments = instList.map(\.description)
-                } else {
-                    instruments = [items[2].description]
+                guard case .list(let instList) = items[2], !instList.isEmpty else {
+                    throw TMDMacroError("'canon' requires a non-empty instrument list")
                 }
-                var offsetBars = 0
-                if items.count >= 4, case .number(let n) = items[3] {
-                    offsetBars = n
+                let instruments = instList.map(\.description)
+                guard case .number(let offsetBars) = items[3], offsetBars >= 0 else {
+                    throw TMDMacroError("'canon' offset must be a non-negative integer")
                 }
 
                 func isSubExpr(_ node: SExpr) -> Bool {
@@ -1184,6 +1158,14 @@ assignment: concreteParagraphs[i].assignment,
                 }
 
                 let (themeName, sections) = try getThemeSections(themeTarget)
+                let prototypeQuarterDuration = sections.reduce(0.0) { total, section in
+                    let unitDuration = 4.0 / Double(max(1, section.noteLength))
+                    return total + section.unitGroups.reduce(0.0) { $0 + Double(max(0, $1.length)) * unitDuration }
+                }
+                let prototypeBars = prototypeQuarterDuration / TMDPlaybackRenderer.measureDuration(for: sheet.beat)
+                if let lastIndex = instruments.indices.last, Double(lastIndex * offsetBars) > prototypeBars {
+                    throw TMDMacroError("Canon voice \(lastIndex + 1) enters after the combined prototype ends")
+                }
                 genCounter += 1
                 let canonSectionName = "__canon_\(themeName)_\(genCounter)"
 
@@ -1201,6 +1183,9 @@ assignment: concreteParagraphs[i].assignment,
                 return [canonSectionName]
 
             case "layer":
+                guard items.count > 1 else {
+                    throw TMDMacroError("'layer' requires at least one child expression")
+                }
                 var childNames: [String] = []
                 for i in 1..<items.count {
                     let names = try evalExpr(items[i])
@@ -1222,6 +1207,9 @@ assignment: concreteParagraphs[i].assignment,
                 return [layerSectionName]
 
             case "seq":
+                guard items.count > 1 else {
+                    throw TMDMacroError("'seq' requires at least one child expression")
+                }
                 var seqNames: [String] = []
                 for i in 1..<items.count {
                     let names = try evalExpr(items[i])

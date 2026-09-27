@@ -998,6 +998,10 @@ private struct TokenParser {
                         start = -note.degree.rawValue
                         advance()
                     } else if case .positiveNumber(let n) = current {
+                        if n == 0 {
+                            recordFailure(at: pos, expected: ["positive non-zero entry offset"])
+                            return nil
+                        }
                         start = n
                         advance()
                     }
@@ -1005,6 +1009,10 @@ private struct TokenParser {
                     start = n
                     advance()
                 } else if case .positiveNumber(let n) = current {
+                    if n == 0 {
+                        recordFailure(at: pos, expected: ["positive non-zero entry offset"])
+                        return nil
+                    }
                     start = n
                     advance()
                 } else if case .note(let note) = current {
@@ -1127,6 +1135,11 @@ private struct TokenParser {
             }
         }
         match(.closeBrace)
+
+        if instrument.isEmpty && sections.contains(where: { !$0.directives.isEmpty }) {
+            recordFailure(at: pos, expected: ["prototype without modifiers"])
+            return nil
+        }
 
         return Entry(name: name, assignment: instrument.isEmpty ? nil : instrument, pitchMode: pitchMode, start: start, sections: sections, executionTime: executionTime)
     }
@@ -1296,7 +1309,8 @@ private struct TokenParser {
             if let delta = Int(value) {
                 return SectionDirective(position: position, kind: .relativeKey(delta))
             } else if value.lowercased() == "fixed" {
-                return SectionDirective(position: position, kind: .fixedPitch)
+                recordFailure(at: position, expected: ["entry attribute [pitchMode=fixed]"])
+                return nil
             }
         case .absoluteOrderPrefix:
             advance()
@@ -1311,7 +1325,8 @@ private struct TokenParser {
                 }
             }
             if value.lowercased() == "fixed" {
-                return SectionDirective(position: position, kind: .fixedPitch)
+                recordFailure(at: position, expected: ["entry attribute [pitchMode=fixed]"])
+                return nil
             }
             return SectionDirective(position: position, kind: .absoluteKey(value))
         case .keySignaturePrefix:
@@ -1320,7 +1335,8 @@ private struct TokenParser {
             if case .identifier(let s) = current { value = s; advance() }
             else if case .note(let n) = current { value = String(n.degree.rawValue); advance() }
             if value.lowercased() == "fixed" {
-                return SectionDirective(position: position, kind: .fixedPitch)
+                recordFailure(at: position, expected: ["entry attribute [pitchMode=fixed]"])
+                return nil
             }
             return SectionDirective(position: position, kind: .absoluteKey(value))
         case .explicitKeyPrefix:

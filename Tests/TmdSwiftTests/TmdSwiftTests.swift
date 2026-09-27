@@ -354,6 +354,40 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     }
 }
 
+@Test func testParserRejectsZeroEntryOffset() throws {
+    let sources = [
+        "::SCORE::\nIntro:Piano@|+0|{ <4*> 1 2 3 4 }",
+        "::SCORE::\nIntro:Piano@0{ <4*> 1 2 3 4 }"
+    ]
+
+    for source in sources {
+        #expect(throws: TMDParseError.self) {
+            _ = try TmdParser.parseThrowing(string: source)
+        }
+    }
+}
+
+@Test func testLegacyBareEntryOffsetFormatsCanonically() throws {
+    let source = "::SCORE::\nIntro:Piano@{ <4*> 1 2 3 4 }"
+    let sheet = try TmdParser.parseThrowing(string: source)
+    #expect(sheet.format().contains("Intro:Piano@|0|"))
+}
+
+@Test func testPrototypeRejectsModifiers() throws {
+    let source = """
+    ::SCORE::
+    Theme{
+        <4*>
+        {?= C}
+        1 2 3 4
+    }
+    """
+
+    #expect(throws: TMDParseError.self) {
+        _ = try TmdParser.parseThrowing(string: source)
+    }
+}
+
 @Test func testParserRejectsInvalidUnitTokenInEntry() throws {
     let tmd = """
     ::SCORE::
@@ -625,7 +659,6 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         {!= 140}
         {!+10}
         {?+2}
-        {?=fixed}
         {<3/4>}
     }
     A:Drums@|0|{
@@ -650,7 +683,6 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         SectionDirective(position: 7, kind: .tempo(140)),
         SectionDirective(position: 7, kind: .relativeTempo(10)),
         SectionDirective(position: 7, kind: .relativeKey(2)),
-        SectionDirective(position: 7, kind: .fixedPitch),
         SectionDirective(position: 7, kind: .timeSignature(Beat(count: 3, noteValue: 4)))
     ])
 
@@ -680,7 +712,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     #expect(abc.contains("%%MIDI channel 10"))
 }
 
-@Test func testFixedPitchSectionDirective() throws {
+@Test func testFixedPitchEntryAttribute() throws {
     let tmd = """
     ::SCORE::
     ** Fixed Pitch Test **
@@ -688,9 +720,8 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     ?= G
     <4/4>
 
-    verse:Timpani@|0|{
+    verse:Timpani[pitchMode=fixed]@|0|{
         <4*>
-        {?=fixed}
         1 2 3 4
     }
 
@@ -704,7 +735,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
     let sheet = try #require(TmdParser.parse(string: tmd))
     
-    // In Timpani track, {?=fixed} forces keyOffset = 0 regardless of initial key G or global transposition {?+3}
+    // The fixed-pitch entry attribute forces keyOffset = 0 regardless of initial key G or global transposition {?+3}
     let timpaniTimeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Timpani")
     #expect(!timpaniTimeline.events.isEmpty)
     for event in timpaniTimeline.events {
