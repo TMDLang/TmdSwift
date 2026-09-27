@@ -200,7 +200,7 @@ public struct TMDRefactor {
     /// Preserves score metadata, headers, tempo, key, beat, comments, and orders.
     public static func extractInstrument(from source: String, instrument: String) throws -> String {
         let sheet = try TmdParser.parseThrowing(string: source)
-        let matchingParagraphs = sheet.paragraphs.filter { $0.assignment == instrument }
+        let matchingParagraphs = sheet.entries.filter { $0.assignment == instrument }
         guard !matchingParagraphs.isEmpty else {
             throw TMDRefactorError.instrumentNotFound(instrument)
         }
@@ -269,7 +269,7 @@ public struct TMDRefactor {
         octaveShift: Int = 0
     ) throws -> String {
         let sheet = try TmdParser.parseThrowing(string: source)
-        var matching = sheet.paragraphs.filter { $0.assignment == sourceInstrument }
+        var matching = sheet.entries.filter { $0.assignment == sourceInstrument }
         if let sec = section {
             matching = matching.filter { $0.name == sec }
         }
@@ -347,7 +347,7 @@ public struct TMDRefactor {
         intervalSteps: Int
     ) throws -> String {
         let sheet = try TmdParser.parseThrowing(string: source)
-        var matching = sheet.paragraphs.filter { $0.assignment == sourceInstrument }
+        var matching = sheet.entries.filter { $0.assignment == sourceInstrument }
         if let sec = section {
             matching = matching.filter { $0.name == sec }
         }
@@ -432,12 +432,13 @@ public struct TMDRefactor {
     /// Unrolls / inlines score playback orders into a linear score sequence.
     public static func inlineOrders(source: String) throws -> String {
         let sheet = try TmdParser.parseThrowing(string: source)
-        guard !sheet.orders.isEmpty else { return source }
+        guard !sheet.playback.isEmpty else { return source }
 
         var seenInstruments: [String] = []
-        for p in sheet.paragraphs {
-            if !seenInstruments.contains(p.instrument) {
-                seenInstruments.append(p.instrument)
+        for p in sheet.entries {
+            let assignment = p.assignment ?? ""
+            if !seenInstruments.contains(assignment) {
+                seenInstruments.append(assignment)
             }
         }
 
@@ -446,9 +447,9 @@ public struct TMDRefactor {
             var combinedUnitGroups: [UnitGroup] = []
             var baseNoteLength = 4
 
-            for ord in sheet.orders {
+            for ord in sheet.playback {
                 guard case .name(let sName) = ord else { continue }
-                guard let para = sheet.paragraphs.first(where: { $0.name == sName && $0.assignment == inst }) else {
+                guard let para = sheet.entries.first(where: { $0.name == sName && $0.assignment == inst }) else {
                     continue
                 }
                 for sec in para.sections {
@@ -948,9 +949,9 @@ public struct TMDRefactor {
         // Optimize each paragraph independently so one indivisible track does not block other tracks
         var current = source
         if let sheet = try? TmdParser.parseThrowing(string: current) {
-            for p in sheet.paragraphs {
+            for p in sheet.entries {
                 var paraCurrent = current
-                let pTarget = TMDRefactorTarget(section: p.name, instrument: p.instrument)
+                let pTarget = TMDRefactorTarget(section: p.name, instrument: p.assignment)
                 while true {
                     do {
                         let next = try halveGrid(source: paraCurrent, target: pTarget)
