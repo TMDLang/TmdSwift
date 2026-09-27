@@ -524,7 +524,7 @@ public enum TMDMacroEvaluator {
                                 sections: ip.sections
                             )
                             concreteParagraphs.removeAll { $0.name == outerP.name }
-                            concreteParagraphs.append(Paragraph(
+                    concreteParagraphs.append(Entry(
                                 name: outerCanonSectionName,
                                 instrument: mappedInst,
                                 start: ip.start + offsetBars,
@@ -535,7 +535,7 @@ public enum TMDMacroEvaluator {
 
                     for i in 0..<concreteParagraphs.count {
                         if innerNames.contains(concreteParagraphs[i].name) {
-                            concreteParagraphs[i] = Paragraph(
+                            concreteParagraphs[i] = Entry(
                                 name: outerCanonSectionName,
                                 instrument: concreteParagraphs[i].instrument,
                                 start: concreteParagraphs[i].start,
@@ -553,7 +553,7 @@ public enum TMDMacroEvaluator {
 
                 for (idx, inst) in instruments.enumerated() {
                     let startOffset = idx * offsetBars
-                    let p = Paragraph(
+            let p = Entry(
                         name: canonSectionName,
                         instrument: inst,
                         start: startOffset,
@@ -575,7 +575,7 @@ public enum TMDMacroEvaluator {
                 let layerSectionName = "__layer_\(genCounter)"
                 for i in 0..<concreteParagraphs.count {
                     if childNames.contains(concreteParagraphs[i].name) {
-                        concreteParagraphs[i] = Paragraph(
+                            concreteParagraphs[i] = Entry(
                             name: layerSectionName,
                             instrument: concreteParagraphs[i].instrument,
                             start: concreteParagraphs[i].start,
@@ -600,7 +600,7 @@ public enum TMDMacroEvaluator {
                 let innerNames = try evalExpr(items[1])
                 for i in 0..<concreteParagraphs.count {
                     if innerNames.contains(concreteParagraphs[i].name) {
-                        concreteParagraphs[i] = Paragraph(
+                            concreteParagraphs[i] = Entry(
                             name: concreteParagraphs[i].name,
                             instrument: concreteParagraphs[i].instrument,
                             start: concreteParagraphs[i].start,
@@ -619,7 +619,7 @@ public enum TMDMacroEvaluator {
                 let innerNames = try evalExpr(items[1])
                 for i in 0..<concreteParagraphs.count {
                     if innerNames.contains(concreteParagraphs[i].name) {
-                        concreteParagraphs[i] = Paragraph(
+                            concreteParagraphs[i] = Entry(
                             name: concreteParagraphs[i].name,
                             instrument: concreteParagraphs[i].instrument,
                             start: concreteParagraphs[i].start,
@@ -636,7 +636,7 @@ public enum TMDMacroEvaluator {
                 let innerNames = try evalExpr(items[1])
                 for i in 0..<concreteParagraphs.count {
                     if innerNames.contains(concreteParagraphs[i].name) {
-                        concreteParagraphs[i] = Paragraph(
+                            concreteParagraphs[i] = Entry(
                             name: concreteParagraphs[i].name,
                             instrument: concreteParagraphs[i].instrument,
                             start: concreteParagraphs[i].start,
@@ -653,7 +653,7 @@ public enum TMDMacroEvaluator {
                 let innerNames = try evalExpr(items[1])
                 for i in 0..<concreteParagraphs.count {
                     if innerNames.contains(concreteParagraphs[i].name) {
-                        concreteParagraphs[i] = Paragraph(
+                            concreteParagraphs[i] = Entry(
                             name: concreteParagraphs[i].name,
                             instrument: concreteParagraphs[i].instrument,
                             start: concreteParagraphs[i].start,
@@ -678,7 +678,7 @@ public enum TMDMacroEvaluator {
                 let innerNames = try evalExpr(target)
                 for i in 0..<concreteParagraphs.count {
                     if innerNames.contains(concreteParagraphs[i].name) {
-                        concreteParagraphs[i] = Paragraph(
+                            concreteParagraphs[i] = Entry(
                             name: concreteParagraphs[i].name,
                             instrument: concreteParagraphs[i].instrument,
                             start: concreteParagraphs[i].start,
@@ -703,7 +703,7 @@ public enum TMDMacroEvaluator {
                             var semi = 0
                             if tList.count >= 2, case .number(let n) = tList[1] { semi = n }
                             for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                                concreteParagraphs[idx] = Paragraph(
+                                concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
                                     instrument: concreteParagraphs[idx].instrument,
                                     start: concreteParagraphs[idx].start,
@@ -712,7 +712,7 @@ public enum TMDMacroEvaluator {
                             }
                         } else if tOp == "reverse" {
                             for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                                concreteParagraphs[idx] = Paragraph(
+                                concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
                                     instrument: concreteParagraphs[idx].instrument,
                                     start: concreteParagraphs[idx].start,
@@ -723,7 +723,7 @@ public enum TMDMacroEvaluator {
                             var axis: Int? = nil
                             if tList.count >= 2, case .number(let a) = tList[1] { axis = a }
                             for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                                concreteParagraphs[idx] = Paragraph(
+                                concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
                                     instrument: concreteParagraphs[idx].instrument,
                                     start: concreteParagraphs[idx].start,
@@ -732,7 +732,7 @@ public enum TMDMacroEvaluator {
                             }
                         } else if tOp == "minor" {
                             for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                                concreteParagraphs[idx] = Paragraph(
+                                concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
                                     instrument: concreteParagraphs[idx].instrument,
                                     start: concreteParagraphs[idx].start,
@@ -741,7 +741,7 @@ public enum TMDMacroEvaluator {
                             }
                         } else if tOp == "major" {
                             for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                                concreteParagraphs[idx] = Paragraph(
+                                concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
                                     instrument: concreteParagraphs[idx].instrument,
                                     start: concreteParagraphs[idx].start,
@@ -753,7 +753,7 @@ public enum TMDMacroEvaluator {
                         let lower = sym.lowercased()
                         if lower == "reverse" {
                             for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                                concreteParagraphs[idx] = Paragraph(
+                                concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
                                     instrument: concreteParagraphs[idx].instrument,
                                     start: concreteParagraphs[idx].start,
@@ -762,7 +762,7 @@ public enum TMDMacroEvaluator {
                             }
                         } else if lower == "flip" {
                             for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                                concreteParagraphs[idx] = Paragraph(
+                                concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
                                     instrument: concreteParagraphs[idx].instrument,
                                     start: concreteParagraphs[idx].start,
@@ -771,7 +771,7 @@ public enum TMDMacroEvaluator {
                             }
                         } else if lower == "minor" {
                             for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                                concreteParagraphs[idx] = Paragraph(
+                                concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
                                     instrument: concreteParagraphs[idx].instrument,
                                     start: concreteParagraphs[idx].start,
@@ -780,7 +780,7 @@ public enum TMDMacroEvaluator {
                             }
                         } else if lower == "major" {
                             for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                                concreteParagraphs[idx] = Paragraph(
+                                concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
                                     instrument: concreteParagraphs[idx].instrument,
                                     start: concreteParagraphs[idx].start,
@@ -789,7 +789,7 @@ public enum TMDMacroEvaluator {
                             }
                         } else if let semi = Int(sym) {
                             for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                                concreteParagraphs[idx] = Paragraph(
+                                concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
                                     instrument: concreteParagraphs[idx].instrument,
                                     start: concreteParagraphs[idx].start,
@@ -799,7 +799,7 @@ public enum TMDMacroEvaluator {
                         }
                     case .number(let semi):
                         for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                            concreteParagraphs[idx] = Paragraph(
+                                concreteParagraphs[idx] = Entry(
                                 name: concreteParagraphs[idx].name,
                                 instrument: concreteParagraphs[idx].instrument,
                                 start: concreteParagraphs[idx].start,
@@ -1160,7 +1160,7 @@ public enum TMDMacroEvaluator {
                                 sections: ip.sections
                             )
                             concreteParagraphs.removeAll { $0.name == outerP.name }
-                            concreteParagraphs.append(Paragraph(
+                            concreteParagraphs.append(Entry(
                                 name: outerCanonSectionName,
                                 instrument: mappedInst,
                                 start: ip.start + offsetBars,
@@ -1171,7 +1171,7 @@ public enum TMDMacroEvaluator {
 
                     for i in 0..<concreteParagraphs.count {
                         if innerNames.contains(concreteParagraphs[i].name) {
-                            concreteParagraphs[i] = Paragraph(
+                            concreteParagraphs[i] = Entry(
                                 name: outerCanonSectionName,
                                 instrument: concreteParagraphs[i].instrument,
                                 start: concreteParagraphs[i].start,
@@ -1189,7 +1189,7 @@ public enum TMDMacroEvaluator {
 
                 for (idx, inst) in instruments.enumerated() {
                     let startOffset = idx * offsetBars
-                    let p = Paragraph(
+            let p = Entry(
                         name: canonSectionName,
                         instrument: inst,
                         start: startOffset,
@@ -1211,7 +1211,7 @@ public enum TMDMacroEvaluator {
                 let layerSectionName = "__layer_\(genCounter)"
                 for i in 0..<concreteParagraphs.count {
                     if childNames.contains(concreteParagraphs[i].name) {
-                        concreteParagraphs[i] = Paragraph(
+                            concreteParagraphs[i] = Entry(
                             name: layerSectionName,
                             instrument: concreteParagraphs[i].instrument,
                             start: concreteParagraphs[i].start,
@@ -1236,7 +1236,7 @@ public enum TMDMacroEvaluator {
                 let innerNames = try evalExpr(items[1])
                 for i in 0..<concreteParagraphs.count {
                     if innerNames.contains(concreteParagraphs[i].name) {
-                        concreteParagraphs[i] = Paragraph(
+                            concreteParagraphs[i] = Entry(
                             name: concreteParagraphs[i].name,
                             instrument: concreteParagraphs[i].instrument,
                             start: concreteParagraphs[i].start,
@@ -1255,7 +1255,7 @@ public enum TMDMacroEvaluator {
                 let innerNames = try evalExpr(items[1])
                 for i in 0..<concreteParagraphs.count {
                     if innerNames.contains(concreteParagraphs[i].name) {
-                        concreteParagraphs[i] = Paragraph(
+                            concreteParagraphs[i] = Entry(
                             name: concreteParagraphs[i].name,
                             instrument: concreteParagraphs[i].instrument,
                             start: concreteParagraphs[i].start,
@@ -1272,7 +1272,7 @@ public enum TMDMacroEvaluator {
                 let innerNames = try evalExpr(items[1])
                 for i in 0..<concreteParagraphs.count {
                     if innerNames.contains(concreteParagraphs[i].name) {
-                        concreteParagraphs[i] = Paragraph(
+                            concreteParagraphs[i] = Entry(
                             name: concreteParagraphs[i].name,
                             instrument: concreteParagraphs[i].instrument,
                             start: concreteParagraphs[i].start,
@@ -1289,7 +1289,7 @@ public enum TMDMacroEvaluator {
                 let innerNames = try evalExpr(items[1])
                 for i in 0..<concreteParagraphs.count {
                     if innerNames.contains(concreteParagraphs[i].name) {
-                        concreteParagraphs[i] = Paragraph(
+                            concreteParagraphs[i] = Entry(
                             name: concreteParagraphs[i].name,
                             instrument: concreteParagraphs[i].instrument,
                             start: concreteParagraphs[i].start,
@@ -1314,7 +1314,7 @@ public enum TMDMacroEvaluator {
                 let innerNames = try evalExpr(target)
                 for i in 0..<concreteParagraphs.count {
                     if innerNames.contains(concreteParagraphs[i].name) {
-                        concreteParagraphs[i] = Paragraph(
+                            concreteParagraphs[i] = Entry(
                             name: concreteParagraphs[i].name,
                             instrument: concreteParagraphs[i].instrument,
                             start: concreteParagraphs[i].start,
@@ -1339,7 +1339,7 @@ public enum TMDMacroEvaluator {
                             var semi = 0
                             if tList.count >= 2, case .number(let n) = tList[1] { semi = n }
                             for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                                concreteParagraphs[idx] = Paragraph(
+                                concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
                                     instrument: concreteParagraphs[idx].instrument,
                                     start: concreteParagraphs[idx].start,
@@ -1348,7 +1348,7 @@ public enum TMDMacroEvaluator {
                             }
                         } else if tOp == "reverse" {
                             for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                                concreteParagraphs[idx] = Paragraph(
+                                concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
                                     instrument: concreteParagraphs[idx].instrument,
                                     start: concreteParagraphs[idx].start,
@@ -1359,7 +1359,7 @@ public enum TMDMacroEvaluator {
                             var axis: Int? = nil
                             if tList.count >= 2, case .number(let a) = tList[1] { axis = a }
                             for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                                concreteParagraphs[idx] = Paragraph(
+                                concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
                                     instrument: concreteParagraphs[idx].instrument,
                                     start: concreteParagraphs[idx].start,
@@ -1368,7 +1368,7 @@ public enum TMDMacroEvaluator {
                             }
                         } else if tOp == "minor" {
                             for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                                concreteParagraphs[idx] = Paragraph(
+                                concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
                                     instrument: concreteParagraphs[idx].instrument,
                                     start: concreteParagraphs[idx].start,
@@ -1377,7 +1377,7 @@ public enum TMDMacroEvaluator {
                             }
                         } else if tOp == "major" {
                             for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                                concreteParagraphs[idx] = Paragraph(
+                                concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
                                     instrument: concreteParagraphs[idx].instrument,
                                     start: concreteParagraphs[idx].start,
@@ -1389,7 +1389,7 @@ public enum TMDMacroEvaluator {
                         let lower = sym.lowercased()
                         if lower == "reverse" {
                             for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                                concreteParagraphs[idx] = Paragraph(
+                                concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
                                     instrument: concreteParagraphs[idx].instrument,
                                     start: concreteParagraphs[idx].start,
@@ -1398,7 +1398,7 @@ public enum TMDMacroEvaluator {
                             }
                         } else if lower == "flip" {
                             for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                                concreteParagraphs[idx] = Paragraph(
+                                concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
                                     instrument: concreteParagraphs[idx].instrument,
                                     start: concreteParagraphs[idx].start,
@@ -1407,7 +1407,7 @@ public enum TMDMacroEvaluator {
                             }
                         } else if lower == "minor" {
                             for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                                concreteParagraphs[idx] = Paragraph(
+                                concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
                                     instrument: concreteParagraphs[idx].instrument,
                                     start: concreteParagraphs[idx].start,
@@ -1416,7 +1416,7 @@ public enum TMDMacroEvaluator {
                             }
                         } else if lower == "major" {
                             for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                                concreteParagraphs[idx] = Paragraph(
+                                concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
                                     instrument: concreteParagraphs[idx].instrument,
                                     start: concreteParagraphs[idx].start,
@@ -1425,7 +1425,7 @@ public enum TMDMacroEvaluator {
                             }
                         } else if let semi = Int(sym) {
                             for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                                concreteParagraphs[idx] = Paragraph(
+                                concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
                                     instrument: concreteParagraphs[idx].instrument,
                                     start: concreteParagraphs[idx].start,
@@ -1435,7 +1435,7 @@ public enum TMDMacroEvaluator {
                         }
                     case .number(let semi):
                         for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                            concreteParagraphs[idx] = Paragraph(
+                            concreteParagraphs[idx] = Entry(
                                 name: concreteParagraphs[idx].name,
                                 instrument: concreteParagraphs[idx].instrument,
                                 start: concreteParagraphs[idx].start,
