@@ -542,8 +542,12 @@ public struct Entry: Equatable {
     /// > Note: Originally named `name` in Aguai's C++ code.
     public let name: String
 
-    /// Assignment name (e.g. `Guitar`, `CHORD`, `Piano`).
-    public let instrument: String
+    /// Assignment name (e.g. `Guitar`, `CHORD`, `Piano`). `nil` identifies a prototype.
+    public let assignment: String?
+
+    /// Source-compatibility projection for clients using the pre-canonical name.
+    @available(*, deprecated, renamed: "assignment")
+    public var instrument: String { assignment ?? "" }
 
     /// Canonical entry-wide pitch interpretation.
     public let pitchMode: EntryPitchMode
@@ -566,8 +570,12 @@ public struct Entry: Equatable {
     public let showProgram: String?
 
     public init(name: String = "", instrument: String = "", pitchMode: EntryPitchMode = .transposing, start: Int = 0, sections: [Section] = [], executionTime: String? = nil, showProgram: String? = nil) {
+        self.init(name: name, assignment: instrument.isEmpty ? nil : instrument, pitchMode: pitchMode, start: start, sections: sections, executionTime: executionTime, showProgram: showProgram)
+    }
+
+    public init(name: String = "", assignment: String? = nil, pitchMode: EntryPitchMode = .transposing, start: Int = 0, sections: [Section] = [], executionTime: String? = nil, showProgram: String? = nil) {
         self.name = name
-        self.instrument = instrument
+        self.assignment = assignment
         self.pitchMode = pitchMode
         self.start = start
         self.sections = sections
@@ -581,7 +589,6 @@ public struct Entry: Equatable {
 public typealias Paragraph = Entry
 
 public extension Entry {
-    var assignment: String? { instrument.isEmpty ? nil : instrument }
     var isPrototype: Bool { assignment == nil }
 }
 

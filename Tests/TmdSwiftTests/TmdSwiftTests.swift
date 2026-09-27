@@ -118,10 +118,11 @@ func testCanonicalEntrySourceModel() throws {
 
 @Test("Entry is the primary source-model type while Paragraph remains source-compatible")
 func testCanonicalEntryType() {
-    let entry = Entry(name: "Theme", sections: [])
+    let entry = Entry(name: "Theme", assignment: "Piano", sections: [])
     let paragraph: Paragraph = entry
     #expect(entry.name == paragraph.name)
-    #expect(entry.isPrototype)
+    #expect(entry.assignment == "Piano")
+    #expect(entry.instrument == "Piano")
 }
 
 @Test("Formatting preserves canonical fixed-pitch entry attributes")
