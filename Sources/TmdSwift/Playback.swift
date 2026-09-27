@@ -148,7 +148,7 @@ public enum TMDPlaybackRenderer {
         let orders = sheet.orders.isEmpty
             ? sheet.paragraphs.map(\.name).reduce(into: [String]()) { names, name in
                 if !names.contains(name) { names.append(name) }
-            }.map(Order.name)
+            }.map(Playback.name)
             : sheet.orders
         var state = PlaybackState(
             tempo: sheet.speed > 0 ? sheet.speed : 120,
@@ -278,7 +278,7 @@ public enum TMDPlaybackRenderer {
     }
 
     private static func render(
-        paragraph: Paragraph,
+        paragraph: Entry,
         start: Double,
         state initialState: PlaybackState,
         fixedPitch: Bool
@@ -489,7 +489,7 @@ public enum TMDPlaybackRenderer {
         let orders = sheet.orders.isEmpty
             ? sheet.paragraphs.map(\.name).reduce(into: [String]()) { names, name in
                 if !names.contains(name) { names.append(name) }
-            }.map(Order.name)
+            }.map(Playback.name)
             : sheet.orders
         var state = PlaybackState(
             tempo: sheet.speed > 0 ? sheet.speed : 120,

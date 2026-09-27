@@ -201,7 +201,7 @@ extension SectionDirective {
     }
 }
 
-extension Paragraph {
+extension Entry {
     /// Formats paragraph into TMD representation.
     public func format() -> String {
         if let showProgram {
@@ -233,7 +233,7 @@ extension Paragraph {
     }
 }
 
-extension Order {
+extension Playback {
     /// Formats order instruction into TMD representation.
     public func format() -> String {
         switch self {
