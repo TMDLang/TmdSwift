@@ -142,14 +142,14 @@ public enum TMDPlaybackRenderer {
     /// Renders one instrument's playback sequence in quarter-note units.
     public static func render(sheet inputSheet: Sheet, instrument: String) -> PlaybackTimeline {
         let sheet = TMDMacroEvaluator.expand(inputSheet)
-        let paragraphs = sheet.paragraphs.filter {
+        let paragraphs = sheet.entries.filter {
             $0.assignment?.caseInsensitiveCompare(instrument) == .orderedSame
         }
-        let orders = sheet.orders.isEmpty
-            ? sheet.paragraphs.map(\.name).reduce(into: [String]()) { names, name in
+        let orders = sheet.playback.isEmpty
+            ? sheet.entries.map(\.name).reduce(into: [String]()) { names, name in
                 if !names.contains(name) { names.append(name) }
             }.map(Playback.name)
-            : sheet.orders
+            : sheet.playback
         var state = PlaybackState(
             tempo: sheet.speed > 0 ? sheet.speed : 120,
             keyOffset: sheet.keySignature.semitoneOffset,
@@ -464,7 +464,7 @@ public enum TMDPlaybackRenderer {
     /// measured from the section's downbeat anchor (measure 0) to the latest ending note.
     public static func duration(of name: String, in sheet: Sheet, beat: Beat? = nil) -> Double {
         let effectiveBeat = beat ?? sheet.beat
-        let matching = sheet.paragraphs.filter { $0.name == name }
+        let matching = sheet.entries.filter { $0.name == name }
         guard !matching.isEmpty else { return 0.0 }
 
         let ends = matching.map { paragraph in
@@ -486,11 +486,11 @@ public enum TMDPlaybackRenderer {
     /// Calculates the global negative offset across all instruments in the score orders,
     /// ensuring all tracks share the exact same temporal alignment.
     public static func globalEarliestPosition(in sheet: Sheet) -> Double {
-        let orders = sheet.orders.isEmpty
-            ? sheet.paragraphs.map(\.name).reduce(into: [String]()) { names, name in
+        let orders = sheet.playback.isEmpty
+            ? sheet.entries.map(\.name).reduce(into: [String]()) { names, name in
                 if !names.contains(name) { names.append(name) }
             }.map(Playback.name)
-            : sheet.orders
+            : sheet.playback
         var state = PlaybackState(
             tempo: sheet.speed > 0 ? sheet.speed : 120,
             keyOffset: sheet.keySignature.semitoneOffset,
@@ -509,7 +509,7 @@ public enum TMDPlaybackRenderer {
                 let keyOffset = KeySignature(string: value).semitoneOffset
                 state = PlaybackState(tempo: state.tempo, keyOffset: keyOffset, timeSignature: state.timeSignature)
             case .name(let name):
-                let matchingParagraphs = sheet.paragraphs.filter { $0.name == name }
+                let matchingParagraphs = sheet.entries.filter { $0.name == name }
                 let paragraphDuration = duration(of: name, in: sheet, beat: state.timeSignature)
                 for paragraph in matchingParagraphs {
                     let start = timelinePosition + Double(paragraph.start) * measureDuration(for: state.timeSignature)

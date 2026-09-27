@@ -503,9 +503,9 @@ public enum TMDSongInspector {
     }
 
     private static func buildTimingProfile(sheet: Sheet, timelineDirectives: [PlaybackDirectiveEvent]) -> TMDTimingProfile {
-        let orders = sheet.orders.isEmpty
-            ? sheet.paragraphs.map(\.name).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }.map(Playback.name)
-            : sheet.orders
+        let orders = sheet.playback.isEmpty
+            ? sheet.entries.map(\.name).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }.map(Playback.name)
+            : sheet.playback
 
         var state = PlaybackState(
             tempo: sheet.speed > 0 ? sheet.speed : 120.0,
@@ -763,7 +763,7 @@ public enum TMDSongInspector {
 
     private static func buildHarmonyProfile(sheet: Sheet) -> TMDHarmonyProfile {
         var chords: [String] = []
-        for p in sheet.paragraphs {
+        for p in sheet.entries {
             for sec in p.sections {
                 for group in sec.unitGroups {
                     for unit in group.units {
@@ -779,7 +779,7 @@ public enum TMDSongInspector {
         }
 
         var modulations: [String] = []
-        for order in sheet.orders {
+        for order in sheet.playback {
             if case .relative(let val) = order {
                 modulations.append("Relative: \(val) semitones")
             } else if case .absolute(let val) = order {
@@ -796,7 +796,7 @@ public enum TMDSongInspector {
 
     private static func buildDensityProfile(sheet: Sheet) -> TMDArrangementDensityProfile {
         var sectionDict: [String: [String]] = [:]
-        for p in sheet.paragraphs {
+        for p in sheet.entries {
             guard let assignment = p.assignment else { continue }
             sectionDict[p.name, default: []].append(assignment)
         }
@@ -1016,7 +1016,7 @@ public enum TMDSongInspector {
 
         for (secIdx, sec) in timingProfile.sections.enumerated() {
             let weights = sectionWeights[secIdx] ?? [Double](repeating: 0.0, count: 12)
-            let fixedPitch = sheet.paragraphs
+            let fixedPitch = sheet.entries
                 .filter { $0.name == sec.name }
                 .contains { paragraph in
                     paragraph.sections.contains { section in
@@ -1346,7 +1346,7 @@ public enum TMDSongInspector {
     }
 
     private static func collectTimelineDirectives(sheet: Sheet) -> [PlaybackDirectiveEvent] {
-        let paragraphs = sheet.paragraphs
+        let paragraphs = sheet.entries
         let instruments = Set(paragraphs.compactMap(\.assignment).filter { !$0.isEmpty })
         var directives: [PlaybackDirectiveEvent] = []
         for instrument in instruments {

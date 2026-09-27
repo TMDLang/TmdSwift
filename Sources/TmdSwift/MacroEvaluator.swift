@@ -208,13 +208,13 @@ public enum TMDMacroEvaluator {
     /// paragraphs and concrete order sequences.
     /// If the sheet contains no macro orders, it returns the sheet unchanged.
     public static func expand(_ sheet: Sheet) -> Sheet {
-        let hasMacro = sheet.orders.contains { if case .macro = $0 { return true } else { return false } }
+        let hasMacro = sheet.playback.contains { if case .macro = $0 { return true } else { return false } }
         if !hasMacro {
             return sheet
         }
 
         var abstractMap: [String: Entry] = [:]
-        for p in sheet.paragraphs where p.assignment == nil {
+        for p in sheet.entries where p.assignment == nil {
             abstractMap[p.name] = p
         }
 
@@ -380,7 +380,7 @@ public enum TMDMacroEvaluator {
             case .list: themeName = ""
             }
 
-            if let p = abstractMap[themeName] ?? sheet.paragraphs.first(where: { $0.name == themeName }) {
+            if let p = abstractMap[themeName] ?? sheet.entries.first(where: { $0.name == themeName }) {
                 return (themeName, p.sections)
             }
             throw TMDMacroError("Theme '\(themeName)' not found")
@@ -816,7 +816,7 @@ public enum TMDMacroEvaluator {
         }
 
         do {
-            for order in sheet.orders {
+            for order in sheet.playback {
                 switch order {
                 case .macro(let expr):
                     let names = try evalExpr(expr)
