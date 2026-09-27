@@ -123,6 +123,10 @@ func testCanonicalEntryType() {
     #expect(entry.name == paragraph.name)
     #expect(entry.assignment == "Piano")
     #expect(entry.instrument == "Piano")
+
+    let sheet = Sheet(entries: [entry], playback: [])
+    #expect(sheet.entries == [entry])
+    #expect(sheet.paragraphs == [entry])
 }
 
 @Test("Formatting preserves canonical fixed-pitch entry attributes")

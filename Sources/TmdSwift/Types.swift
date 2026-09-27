@@ -725,10 +725,27 @@ public struct Sheet: Equatable {
         self.init(name: name, speed: speed, keySignature: KeySignature(string: keySignature), declaredKey: declaredKey, beat: beat, paragraphs: paragraphs, orders: orders, metadata: metadata)
     }
 
+    /// Canonical source/playback initializer. The legacy storage properties
+    /// remain available through the compatibility initializer and projections.
+    public init(
+        name: String = "",
+        speed: Double = 0.0,
+        keySignature: KeySignature = KeySignature(),
+        declaredKey: String? = nil,
+        beat: Beat = Beat(),
+        entries: [Entry] = [],
+        playback: [Playback] = [],
+        metadata: [String: String] = [:]
+    ) {
+        self.init(name: name, speed: speed, keySignature: keySignature,
+                  declaredKey: declaredKey, beat: beat,
+                  paragraphs: entries, orders: playback, metadata: metadata)
+    }
+
     /// Returns a sorted list of unique instrument names present across all paragraphs in the sheet.
     /// - Parameter fallbackToDefault: If true and no instruments exist, returns `["Piano"]`.
     public func distinctInstruments(fallbackToDefault: Bool = true) -> [String] {
-        let distinct = Array(Set(paragraphs.map(\.instrument).filter { !$0.isEmpty })).sorted()
+        let distinct = Array(Set(paragraphs.compactMap(\.assignment).filter { !$0.isEmpty })).sorted()
         if distinct.isEmpty && fallbackToDefault {
             return ["Piano"]
         }

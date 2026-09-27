@@ -143,7 +143,7 @@ public enum TMDPlaybackRenderer {
     public static func render(sheet inputSheet: Sheet, instrument: String) -> PlaybackTimeline {
         let sheet = TMDMacroEvaluator.expand(inputSheet)
         let paragraphs = sheet.paragraphs.filter {
-            $0.instrument.caseInsensitiveCompare(instrument) == .orderedSame
+            $0.assignment?.caseInsensitiveCompare(instrument) == .orderedSame
         }
         let orders = sheet.orders.isEmpty
             ? sheet.paragraphs.map(\.name).reduce(into: [String]()) { names, name in
@@ -232,7 +232,7 @@ public enum TMDPlaybackRenderer {
             events: adjustedEvents.sorted { $0.position < $1.position },
             directives: adjustedDirectives.sorted { $0.position < $1.position },
             duration: timelinePosition + offset,
-            assignment: paragraphs.first?.instrument ?? instrument
+            assignment: paragraphs.first?.assignment ?? instrument
         )
     }
 

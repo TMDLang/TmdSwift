@@ -200,7 +200,7 @@ public struct TMDRefactor {
     /// Preserves score metadata, headers, tempo, key, beat, comments, and orders.
     public static func extractInstrument(from source: String, instrument: String) throws -> String {
         let sheet = try TmdParser.parseThrowing(string: source)
-        let matchingParagraphs = sheet.paragraphs.filter { $0.instrument == instrument }
+        let matchingParagraphs = sheet.paragraphs.filter { $0.assignment == instrument }
         guard !matchingParagraphs.isEmpty else {
             throw TMDRefactorError.instrumentNotFound(instrument)
         }
@@ -269,7 +269,7 @@ public struct TMDRefactor {
         octaveShift: Int = 0
     ) throws -> String {
         let sheet = try TmdParser.parseThrowing(string: source)
-        var matching = sheet.paragraphs.filter { $0.instrument == sourceInstrument }
+        var matching = sheet.paragraphs.filter { $0.assignment == sourceInstrument }
         if let sec = section {
             matching = matching.filter { $0.name == sec }
         }
