@@ -17,7 +17,7 @@ extension Sheet {
         for (idx, p) in paragraphs.enumerated() {
             let secCount = p.sections.count
             let totalUnits = p.sections.reduce(0) { $0 + $1.unitGroups.count }
-            lines.append("  [\(idx + 1)] \(p.name) (Assignment: \(p.instrument), Start: \(p.start), Sections: \(secCount), UnitGroups: \(totalUnits))")
+            lines.append("  [\(idx + 1)] \(p.name) (Assignment: \(p.assignment ?? ""), Start: \(p.start), Sections: \(secCount), UnitGroups: \(totalUnits))")
         }
         lines.append("Playback:     \(orders.count)")
         for (idx, order) in orders.enumerated() {

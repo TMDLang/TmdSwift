@@ -262,7 +262,7 @@ public struct TMDLSPCompletionEngine {
 
     public static let macroSnippets: [(label: String, insertText: String, detail: String)] = [
         ("canon", "(canon ${1:Theme} (${2:Violin1 Violin2}) ${3:2})", "Polyphonic Canon: (canon <theme> (<instruments...>) <offset_bars>)"),
-        ("loop", "(loop ${1:Theme} ${2:Cello} ${3:4})", "Sequential Loop: (loop <theme> <instrument> <times>) or (loop <section> <times>)"),
+        ("loop", "(loop ${1:Theme} ${2:Cello} ${3:4})", "Sequential Loop: (loop <theme> <assignment> <times>) or (loop <section> <times>)"),
         ("layer", "(layer\n\t${1:expr1}\n\t${2:expr2})", "Parallel Concurrency: (layer <expr1> <expr2> ...)"),
         ("seq", "(seq\n\t${1:expr1}\n\t${2:expr2})", "Sequential Chain: (seq <expr1> <expr2> ...)"),
         ("reverse", "(reverse ${1:Theme})", "Retrograde Inversion: (reverse <theme|expr>)"),
@@ -271,7 +271,7 @@ public struct TMDLSPCompletionEngine {
         ("vary", "(vary ${1:Theme} ${2:reverse} ${3:12})", "Chained Transformations: (vary <theme> <trans1> ...)"),
         ("minor", "(minor ${1:Theme})", "Parallel Minor Modal Transform: (minor <theme>)"),
         ("major", "(major ${1:Theme})", "Parallel Major Modal Transform: (major <theme>)"),
-        ("play", "(play ${1:Theme} ${2:Violin})", "Track Binding: (play <theme> <instrument>)")
+        ("play", "(play ${1:Theme} ${2:Violin})", "Track Binding: (play <theme> <assignment>)")
     ]
 
     public static let sectionDirectiveCompletions: [TMDLSPCompletionItem] = [
@@ -365,7 +365,7 @@ public struct TMDLSPCompletionEngine {
                     label: $0,
                     kind: .keyword,
                     detail: "General MIDI Assignment: \($0)",
-                    documentation: "Standard instrument sound assignment"
+                    documentation: "Standard assignment sound"
                 )
             }
         }
