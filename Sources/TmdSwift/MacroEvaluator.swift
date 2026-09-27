@@ -839,26 +839,26 @@ public enum TMDMacroEvaluator {
             speed: sheet.speed,
             keySignature: sheet.keySignature,
             beat: sheet.beat,
-            paragraphs: concreteParagraphs,
-            orders: newOrders,
+            entries: concreteParagraphs,
+            playback: newOrders,
             metadata: sheet.metadata
         )
     }
 
     /// Throwing variant of expand.
     public static func expandThrowing(_ sheet: Sheet) throws -> Sheet {
-        let hasMacro = sheet.orders.contains { if case .macro = $0 { return true } else { return false } }
+        let hasMacro = sheet.playback.contains { if case .macro = $0 { return true } else { return false } }
         if !hasMacro {
             return sheet
         }
 
-        var abstractMap: [String: Paragraph] = [:]
-        for p in sheet.paragraphs where p.instrument.isEmpty {
+        var abstractMap: [String: Entry] = [:]
+        for p in sheet.entries where p.assignment == nil {
             abstractMap[p.name] = p
         }
 
-        var concreteParagraphs: [Paragraph] = sheet.paragraphs.filter { !$0.instrument.isEmpty }
-        var newOrders: [Order] = []
+        var concreteParagraphs: [Entry] = sheet.entries.filter { $0.assignment != nil }
+        var newOrders: [Playback] = []
         var genCounter = 0
 
         func createSyntheticParagraph(
@@ -866,12 +866,12 @@ public enum TMDMacroEvaluator {
             instrument: String,
             startOffset: Int,
             sections: [Section]
-        ) -> Paragraph {
+        ) -> Entry {
             genCounter += 1
             let uniqueName = "__macro_\(baseName)_\(genCounter)"
-            let p = Paragraph(
+            let p = Entry(
                 name: uniqueName,
-                instrument: instrument,
+                assignment: instrument,
                 start: startOffset,
                 sections: sections
             )
