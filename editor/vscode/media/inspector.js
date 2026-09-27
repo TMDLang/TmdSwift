@@ -405,10 +405,15 @@ function renderTimeline(sections, totalSeconds) {
     const item = document.createElement('div');
     item.className = 'timeline-item';
     item.innerHTML = `
+      <button type="button" class="timeline-play-btn" data-play-section="${sec.name}" title="${t('Play section')}" aria-label="${t('Play section')}">▶</button>
       <span class="timeline-item-index" style="color: ${color};">#${idx + 1}</span>
       <span class="timeline-item-name">${sec.name}</span>
       <span class="timeline-item-time">${sec.durationSeconds.toFixed(1)}s (${sec.measures} ${t('bars')})</span>
     `;
+    item.querySelector('.timeline-play-btn').addEventListener('click', (event) => {
+      event.stopPropagation();
+      vscode.postMessage({ type: 'playSection', sectionName: sec.name });
+    });
     item.addEventListener('click', () => {
       vscode.postMessage({ type: 'jumpToSection', sectionName: sec.name });
     });

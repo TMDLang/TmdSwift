@@ -356,6 +356,25 @@ body {
   transition: border-color 0.15s ease;
 }
 
+.timeline-play-btn {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  font-size: 9px;
+  line-height: 18px;
+  text-align: center;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+  cursor: pointer;
+}
+
+.timeline-play-btn:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
 .timeline-item:hover {
   border-color: var(--accent-color);
 }

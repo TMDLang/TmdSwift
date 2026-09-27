@@ -55,6 +55,7 @@ function getWebviewL10nScript() {
         "Section {0}", "Piano", "Key: {0}", "Audition", "Audition note",
         "Insert", "Insert TMD note at cursor", "Octave down", "Octave up",
         "TMD Web MIDI Player", "Loading...", "Play", "Pause", "Stop", "Synth:",
+        "Play section",
         "General MIDI (FluidR3 Multi-Track)", "Grand Piano (FluidR3)",
         "Tiny Synth (Chiptune)", "System MIDI Out"
     ];
@@ -1229,6 +1230,8 @@ function activate(context) {
                         break;
                     }
                 }
+            } else if (message.type === 'playSection' && message.sectionName) {
+                playMidiWithFilter({ section: message.sectionName });
             } else if (message.type === 'findText' && message.text) {
                 vscode.commands.executeCommand('actions.find', { searchString: message.text });
             }
