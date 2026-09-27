@@ -4,6 +4,27 @@ import Foundation
 
 @Suite("TMD Song Profile & Inspector Tests")
 struct TMDSongInspectorTests {
+    @Test func prototypeOnlyScoreDoesNotCreateInspectorPianoTrack() throws {
+        let tmd = """
+        ::SCORE::
+        ** Prototype Only **
+        != 120
+        ?= C
+        <4/4>
+
+        Theme{
+            <4*>
+            1 2 3 4
+        }
+        """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+
+        let profile = TMDSongInspector.inspect(sheet: sheet)
+
+        #expect(profile.instrumentRanges.isEmpty)
+        #expect(profile.density.sectionDensities.allSatisfy { !$0.instruments.contains("") })
+    }
+
 
     @Test func testInspectSongBasicProfile() throws {
         let tmd = """
@@ -383,7 +404,7 @@ struct TMDSongInspectorTests {
         #expect(svg.contains("<svg"))
         #expect(svg.contains("Circle of Fifths Trajectory"))
         #expect(svg.contains("12-Tone Pitch Class Distribution"))
-        #expect(svg.contains("Timeline Keyscape Ribbon"))
+        #expect(svg.contains("Playback Keyscape Ribbon"))
         #expect(svg.contains("Visualizer Test Song"))
 
         // 2. HTML Generation

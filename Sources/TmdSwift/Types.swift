@@ -513,13 +513,23 @@ public struct Section: Equatable {
     /// > Note: Originally named `unitGroups` in Aguai's C++ code.
     public let unitGroups: [UnitGroup]
 
+    /// Absolute unit positions at which the source contained an explicit barline.
+    public let barlinePositions: [Int]
+
     public let directives: [SectionDirective]
 
-    public init(noteLength: Int = 4, unitGroups: [UnitGroup] = [], directives: [SectionDirective] = []) {
+    public init(noteLength: Int = 4, unitGroups: [UnitGroup] = [], directives: [SectionDirective] = [], barlinePositions: [Int] = []) {
         self.noteLength = noteLength
         self.unitGroups = unitGroups
         self.directives = directives
+        self.barlinePositions = barlinePositions
     }
+}
+
+/// Pitch interpretation for an entire assigned entry.
+public enum EntryPitchMode: Equatable, Sendable {
+    case transposing
+    case fixed
 }
 
 /// A multi-track voice or instrument paragraph, formatted as
@@ -540,6 +550,9 @@ public struct Paragraph: Equatable {
     /// > Note: Originally named `instrument` in Aguai's C++ code.
     public let instrument: String
 
+    /// Canonical entry-wide pitch interpretation.
+    public let pitchMode: EntryPitchMode
+
     /// Measure start offset (e.g. `@|0|` starts at measure 0, `@|+4|` starts at
     /// measure 4).
     ///
@@ -557,14 +570,24 @@ public struct Paragraph: Equatable {
     /// Raw body of a show-program block enclosed by triple quotes.
     public let showProgram: String?
 
-    public init(name: String = "", instrument: String = "", start: Int = 0, sections: [Section] = [], executionTime: String? = nil, showProgram: String? = nil) {
+    public init(name: String = "", instrument: String = "", pitchMode: EntryPitchMode = .transposing, start: Int = 0, sections: [Section] = [], executionTime: String? = nil, showProgram: String? = nil) {
         self.name = name
         self.instrument = instrument
+        self.pitchMode = pitchMode
         self.start = start
         self.sections = sections
         self.executionTime = executionTime
         self.showProgram = showProgram
     }
+}
+
+/// Canonical terminology for a source entry. `Paragraph` remains the source
+/// compatibility name until the public API migration is complete.
+public typealias Entry = Paragraph
+
+public extension Paragraph {
+    var assignment: String? { instrument.isEmpty ? nil : instrument }
+    var isPrototype: Bool { assignment == nil }
 }
 
 /// An S-Expression node representing symbols, numbers, and nested lists for macro composition.
@@ -613,6 +636,10 @@ public enum Order: Equatable {
     case macro(SExpr)
 }
 
+/// Canonical name for one source playback expression.
+/// `Order` remains available as a source-compatibility name.
+public typealias Playback = Order
+
 /// The complete TMD score sheet.
 ///
 /// Contains song title, tempo, key signature, time signature, instrument
@@ -656,6 +683,12 @@ public struct Sheet: Equatable {
     /// Song-level metadata such as lyrics, composer, and arranger credits.
     public let metadata: [String: String]
 
+    /// Canonical source entries, retained alongside the compatibility field.
+    public var entries: [Entry] { paragraphs }
+
+    /// Canonical playback expressions, retained alongside the compatibility field.
+    public var playback: [Playback] { orders }
+
     public init(
         name: String = "",
         speed: Double = 0.0,
@@ -698,6 +731,14 @@ public struct Sheet: Equatable {
             return ["Piano"]
         }
         return distinct
+    }
+
+    public func distinctAssignments() -> [String] {
+        var canonical: [String: String] = [:]
+        for assignment in entries.compactMap(\.assignment) {
+            canonical[assignment.lowercased(), default: assignment] = assignment
+        }
+        return canonical.values.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
 
     /// Resolves the target vocal instrument for singing-synthesis exporters (VSQ, VSQX, UST).

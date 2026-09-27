@@ -112,6 +112,13 @@ public struct TMDReaperGenerator {
         var melodyChannel: UInt8 = 0
 
         for instrument in distinctInstruments {
+            let instTimeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: instrument)
+            guard instTimeline.events.contains(where: { event in
+                switch event.content {
+                case .note, .chord, .percussion: return true
+                case .rest: return false
+                }
+            }) else { continue }
             let midiInst = MIDIInstrument.resolve(instrument)
             let channel: UInt8
             if midiInst.isPercussion {
@@ -135,7 +142,6 @@ public struct TMDReaperGenerator {
             let color = getTrackColor(midiInst)
 
             // Render track events
-            let instTimeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: instrument)
             let events: [MIDIEvent] = TMDMIDIGenerator.instrumentEvents(
                 timeline: instTimeline,
                 instrument: instrument,

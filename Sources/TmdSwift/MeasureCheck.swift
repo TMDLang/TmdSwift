@@ -19,12 +19,15 @@ public struct TMDMeasureIssue: Equatable, CustomStringConvertible, Sendable {
     public var description: String {
         if instrument == "Order" {
             if !paragraphName.isEmpty {
-                return "Order (line \(lineNumber)): Undefined section '\(paragraphName)' in playback order (\(snippet))"
+                return "Playback (line \(lineNumber)): Undefined section '\(paragraphName)' in playback (\(snippet))"
             } else {
-                return "Order (line \(lineNumber)): \(snippet)"
+                return "Playback (line \(lineNumber)): \(snippet)"
             }
         }
-        if snippet.hasPrefix("Unclosed paragraph") {
+        if snippet.hasPrefix("Unclosed entry") {
+            return "\(paragraphName):\(instrument) (line \(lineNumber)): \(snippet)"
+        }
+        if snippet.contains("explicit barlines") {
             return "\(paragraphName):\(instrument) (line \(lineNumber)): \(snippet)"
         }
         let diffStr = deltaUnits > 0 ? "+\(deltaUnits)" : "\(deltaUnits)"
@@ -397,7 +400,7 @@ public struct TMDMeasureChecker {
                         actualUnits: 0,
                         noteLength: noteLength,
                         beat: beat,
-                        snippet: "Unclosed paragraph '{' for \(pName):\(instName)"
+                        snippet: "Unclosed entry '{' for \(pName):\(instName)"
                     ))
                 }
 
@@ -478,7 +481,7 @@ public struct TMDMeasureChecker {
                 actualUnits: 0,
                 noteLength: 4,
                 beat: beat,
-                snippet: "Missing playback order"
+                snippet: "Missing playback"
             ))
         } else if !terminatedWithHash {
             issues.append(TMDMeasureIssue(
@@ -490,7 +493,7 @@ public struct TMDMeasureChecker {
                 actualUnits: 0,
                 noteLength: 4,
                 beat: beat,
-                snippet: "Playback order must terminate with '#'"
+                snippet: "Playback must terminate with '#'"
             ))
         }
 
@@ -519,6 +522,29 @@ public struct TMDMeasureChecker {
         // early exit / solos / breakdowns). TMDPlaybackRenderer pads trailing silence up to durationOf(section),
         // so shorter tracks are considered natural implicit rests rather than errors.
 
+        if let sheet = TmdParser.parse(string: source) {
+            let measureDuration = Double(max(1, sheet.beat.count) * 4) / Double(max(1, sheet.beat.noteValue))
+            for entry in sheet.entries where !entry.sections.isEmpty {
+                for section in entry.sections {
+                    let duration = section.unitGroups.reduce(0.0) { total, group in
+                        total + Double(max(0, group.length)) * 4.0 / Double(max(1, section.noteLength))
+                    }
+                    if duration > measureDuration + 1e-9 && section.barlinePositions.isEmpty {
+                        issues.append(TMDMeasureIssue(
+                            paragraphName: entry.name,
+                            instrument: entry.instrument,
+                            lineNumber: 0,
+                            measureIndex: 0,
+                            expectedUnits: Int((duration / measureDuration).rounded()),
+                            actualUnits: Int((duration / measureDuration).rounded()),
+                            noteLength: section.noteLength,
+                            beat: sheet.beat,
+                            snippet: "Multi-measure section requires explicit barlines"
+                        ))
+                    }
+                }
+            }
+        }
         return issues
     }
 

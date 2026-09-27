@@ -137,7 +137,7 @@ struct TMDLSPTests {
         #expect(labels.contains("?= C"))
         #expect(labels.contains("?+ 2"))
         #expect(labels.contains("?- 2"))
-        #expect(labels.contains("?= fixed"))
+        #expect(!labels.contains("?= fixed"))
         #expect(labels.contains("key= Bm"))
         #expect(labels.contains("ppp"))
         #expect(labels.contains("p"))
@@ -189,6 +189,17 @@ struct TMDLSPTests {
         #expect(labels.contains("Cello"))
         #expect(labels.contains("Bass") || labels.contains("ElectricBassFinger"))
         #expect(labels.contains("Drums"))
+        #expect(items.first(where: { $0.label == "Piano" })?.detail == "General MIDI Assignment: Piano")
+    }
+
+    @Test("Provides canonical fixed-pitch entry attributes")
+    func testCompletionFixedPitchEntryAttribute() throws {
+        let source = "A:Timpani["
+        let items = TMDLSPCompletionEngine.complete(
+            source: source,
+            position: TMDLSPPosition(line: 0, character: source.count)
+        )
+        #expect(items.map(\.label).contains("pitchMode=fixed"))
     }
 
     @Test("Provides diatonic and scale-degree chords when opening bracket '[' inside paragraph")

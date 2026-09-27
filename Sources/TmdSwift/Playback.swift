@@ -38,19 +38,113 @@ public struct PlaybackDirectiveEvent: Equatable, Sendable {
     public let state: PlaybackState
 }
 
-/// The common timeline consumed by format-specific exporters.
-public struct PlaybackTimeline: Equatable, Sendable {
+/// One assignment's ordered playback material.
+public struct PlaybackTrack: Equatable, Sendable {
+    public let assignment: String
     public let events: [PlaybackEvent]
     public let directives: [PlaybackDirectiveEvent]
     public let duration: Double
 }
 
+/// The common timeline consumed by format-specific exporters.
+public struct PlaybackTimeline: Equatable, Sendable {
+    public let events: [PlaybackEvent]
+    public let directives: [PlaybackDirectiveEvent]
+    public let duration: Double
+    public let assignment: String?
+
+    public var track: PlaybackTrack? {
+        guard let assignment else { return nil }
+        return PlaybackTrack(assignment: assignment, events: events, directives: directives, duration: duration)
+    }
+
+    public init(events: [PlaybackEvent], directives: [PlaybackDirectiveEvent], duration: Double, assignment: String? = nil) {
+        self.events = events
+        self.directives = directives
+        self.duration = duration
+        self.assignment = assignment
+    }
+}
+
+/// A semantic playback issue found before target-specific rendering.
+public struct PlaybackValidationIssue: Equatable, Sendable, CustomStringConvertible {
+    public let sectionName: String
+    public let assignment: String
+    public let firstOffset: Int
+    public let secondOffset: Int
+
+    public var description: String {
+        "Overlapping entries for assignment \(assignment) in section \(sectionName) at offsets \(firstOffset) and \(secondOffset)"
+    }
+}
+
+public struct PlaybackTempoConflict: Equatable, Sendable {
+    public let position: Double
+    public let tempos: [Double]
+}
+
 /// Expands immutable TMD AST data into a shared playback timeline.
 public enum TMDPlaybackRenderer {
+    /// Finds different absolute tempo values declared at the same playback position.
+    public static func validateTempoConflicts(sheet: Sheet) -> [PlaybackTempoConflict] {
+        var directives: [PlaybackDirectiveEvent] = []
+        for assignment in sheet.distinctAssignments() {
+            directives.append(contentsOf: render(sheet: sheet, instrument: assignment).directives)
+        }
+        let grouped = Dictionary(grouping: directives) { $0.position }
+        return grouped.compactMap { position, values in
+            let tempos = Array(Set(values.compactMap { directive -> Double? in
+                if case .tempo(let value) = directive.kind { return value }
+                return nil
+            })).sorted()
+            guard tempos.count > 1 else { return nil }
+            return PlaybackTempoConflict(position: position, tempos: tempos)
+        }.sorted { $0.position < $1.position }
+    }
+
+    /// Validates source entries that will be assembled into the same assignment track.
+    /// Entries may be adjacent; only their occupied measure ranges may not overlap.
+    public static func validate(sheet: Sheet) -> [PlaybackValidationIssue] {
+        let grouped = Dictionary(grouping: sheet.entries.filter { !$0.isPrototype }) {
+            "\($0.name.lowercased())\u{0}\($0.assignment!.lowercased())"
+        }
+        var issues: [PlaybackValidationIssue] = []
+        for entries in grouped.values {
+            for index in entries.indices {
+                for otherIndex in entries.index(after: index)..<entries.endIndex {
+                    let first = entries[index]
+                    let second = entries[otherIndex]
+                    let firstRange = range(of: first, beat: sheet.beat)
+                    let secondRange = range(of: second, beat: sheet.beat)
+                    if max(firstRange.lowerBound, secondRange.lowerBound) < min(firstRange.upperBound, secondRange.upperBound) {
+                        issues.append(PlaybackValidationIssue(
+                            sectionName: first.name,
+                            assignment: first.assignment ?? "",
+                            firstOffset: first.start,
+                            secondOffset: second.start
+                        ))
+                    }
+                }
+            }
+        }
+        return issues
+    }
+
+    private static func range(of entry: Entry, beat: Beat) -> Range<Double> {
+        let duration = entry.sections.reduce(0.0) { total, section in
+            let unitDuration = 4.0 / Double(max(1, section.noteLength))
+            return total + section.unitGroups.reduce(0.0) { $0 + Double(max(0, $1.length)) * unitDuration }
+        }
+        let start = Double(entry.start) * measureDuration(for: beat)
+        return start..<start + duration
+    }
+
     /// Renders one instrument's playback sequence in quarter-note units.
     public static func render(sheet inputSheet: Sheet, instrument: String) -> PlaybackTimeline {
         let sheet = TMDMacroEvaluator.expand(inputSheet)
-        let paragraphs = sheet.paragraphs.filter { $0.instrument == instrument }
+        let paragraphs = sheet.paragraphs.filter {
+            $0.instrument.caseInsensitiveCompare(instrument) == .orderedSame
+        }
         let orders = sheet.orders.isEmpty
             ? sheet.paragraphs.map(\.name).reduce(into: [String]()) { names, name in
                 if !names.contains(name) { names.append(name) }
@@ -84,14 +178,23 @@ public enum TMDPlaybackRenderer {
 
                 for paragraph in matchingParagraphs {
                     let start = timelinePosition + Double(paragraph.start) * measureDuration(for: state.timeSignature)
+                    let paragraphState = paragraph.pitchMode == .fixed
+                        ? PlaybackState(tempo: state.tempo, keyOffset: 0, timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
+                        : state
                     let rendered = render(
                         paragraph: paragraph,
                         start: start,
-                        state: state
+                        state: paragraphState,
+                        fixedPitch: paragraph.pitchMode == .fixed
                     )
                     events.append(contentsOf: rendered.events)
                     directives.append(contentsOf: rendered.directives)
-                    state = rendered.state
+                    state = PlaybackState(
+                        tempo: rendered.state.tempo,
+                        keyOffset: paragraph.pitchMode == .fixed ? state.keyOffset : rendered.state.keyOffset,
+                        timeSignature: state.timeSignature,
+                        dynamicLevel: rendered.state.dynamicLevel
+                    )
                 }
                 timelinePosition += paragraphDuration
             case .macro:
@@ -128,7 +231,8 @@ public enum TMDPlaybackRenderer {
         return PlaybackTimeline(
             events: adjustedEvents.sorted { $0.position < $1.position },
             directives: adjustedDirectives.sorted { $0.position < $1.position },
-            duration: timelinePosition + offset
+            duration: timelinePosition + offset,
+            assignment: paragraphs.first?.instrument ?? instrument
         )
     }
 
@@ -176,7 +280,8 @@ public enum TMDPlaybackRenderer {
     private static func render(
         paragraph: Paragraph,
         start: Double,
-        state initialState: PlaybackState
+        state initialState: PlaybackState,
+        fixedPitch: Bool
     ) -> (events: [PlaybackEvent], directives: [PlaybackDirectiveEvent], state: PlaybackState, duration: Double) {
         var state = initialState
         var events: [PlaybackEvent] = []
@@ -193,7 +298,7 @@ public enum TMDPlaybackRenderer {
                 while directiveIndex < sortedDirectives.count,
                       sortedDirectives[directiveIndex].position <= sectionPosition {
                     let directive = sortedDirectives[directiveIndex]
-                    state = apply(directive.kind, to: state)
+                    state = apply(directive.kind, to: state, fixedPitch: fixedPitch)
                     directives.append(PlaybackDirectiveEvent(
                         position: position,
                         kind: directive.kind,
@@ -341,6 +446,18 @@ public enum TMDPlaybackRenderer {
         case .timeSignature(let beat):
             PlaybackState(tempo: state.tempo, keyOffset: state.keyOffset, timeSignature: beat, dynamicLevel: state.dynamicLevel)
         }
+    }
+
+    private static func apply(_ kind: SectionDirectiveKind, to state: PlaybackState, fixedPitch: Bool) -> PlaybackState {
+        if fixedPitch {
+            switch kind {
+            case .absoluteKey, .relativeKey, .fixedPitch:
+                return state
+            default:
+                break
+            }
+        }
+        return apply(kind, to: state)
     }
 
     /// Calculates total quarter-note duration of a section/paragraph name in a sheet,

@@ -306,7 +306,7 @@ public struct TMDRefactor {
                     }
                     return UnitGroup(units: clonedUnits, length: g.length)
                 }
-                return Section(noteLength: sec.noteLength, unitGroups: clonedGroups, directives: sec.directives)
+                return Section(noteLength: sec.noteLength, unitGroups: clonedGroups, directives: sec.directives, barlinePositions: sec.barlinePositions)
             }
             return Paragraph(
                 name: orig.name,
@@ -397,7 +397,7 @@ public struct TMDRefactor {
                     }
                     return UnitGroup(units: clonedUnits, length: g.length)
                 }
-                return Section(noteLength: sec.noteLength, unitGroups: clonedGroups, directives: sec.directives)
+                return Section(noteLength: sec.noteLength, unitGroups: clonedGroups, directives: sec.directives, barlinePositions: sec.barlinePositions)
             }
             return Paragraph(
                 name: orig.name,
@@ -1254,4 +1254,3 @@ public struct TMDRefactor {
         return outTokens.joined(separator: " ") + commentSuffix
     }
 }
-

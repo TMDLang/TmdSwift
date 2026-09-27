@@ -91,6 +91,169 @@ import TmdSkill
     #expect(sheet?.beat.noteValue == 4)
 }
 
+@Test("Canonical source model exposes assignment and fixed-pitch entry attributes")
+func testCanonicalEntrySourceModel() throws {
+    let tmd = """
+    ::SCORE::
+    Intro:Timpani[pitchMode=fixed]@|0|{
+        <4*>
+        2__ - - -
+    }
+    Theme{
+        <4*>
+        1 2 3 4
+    }
+    """
+
+    let sheet = try #require(TmdParser.parse(string: tmd))
+    let timpani = try #require(sheet.entries.first { $0.assignment == "Timpani" })
+    let prototype = try #require(sheet.entries.first { $0.name == "Theme" })
+
+    #expect(timpani.isPrototype == false)
+    #expect(timpani.pitchMode == .fixed)
+    #expect(prototype.isPrototype)
+    #expect(prototype.assignment == nil)
+    #expect(sheet.distinctAssignments() == ["Timpani"])
+}
+
+@Test("Formatting preserves canonical fixed-pitch entry attributes")
+func testCanonicalEntryFormattingRoundTrip() throws {
+    let tmd = """
+    ::SCORE::
+    Intro:Timpani[pitchMode=fixed]@|0|{ <4*> 2__ - - - }
+    """
+
+    let sheet = try #require(TmdParser.parse(string: tmd))
+    let formatted = sheet.format()
+    let reparsed = try #require(TmdParser.parse(string: formatted))
+    let timpani = try #require(reparsed.entries.first)
+
+    #expect(formatted.contains("Intro:Timpani[pitchMode=fixed]"))
+    #expect(timpani.assignment == "Timpani")
+    #expect(timpani.pitchMode == .fixed)
+}
+
+@Test("Canonical playback view exposes the score playback sequence")
+func testCanonicalPlaybackView() throws {
+    let tmd = """
+    ::SCORE::
+    Intro:Piano@|0|{ <4*> 1 2 3 4 }
+    -> Intro ->#
+    """
+
+    let sheet = try #require(TmdParser.parse(string: tmd))
+    #expect(sheet.playback == sheet.orders)
+    #expect(sheet.playback == [.name("Intro")])
+}
+
+@Test("Assignment identity is case-insensitive")
+func testAssignmentIdentityIsCaseInsensitive() throws {
+    let tmd = """
+    ::SCORE::
+    A:Piano@|0|{ <4*> 1 2 3 4 }
+    B:piano@|0|{ <4*> 5 6 7 1^ }
+    """
+
+    let sheet = try #require(TmdParser.parse(string: tmd))
+    #expect(sheet.distinctAssignments().map { $0.lowercased() } == ["piano"])
+}
+
+@Test("Playback validation rejects overlapping entries for one assignment")
+func testPlaybackValidationRejectsOverlappingAssignmentEntries() throws {
+    let tmd = """
+    ::SCORE::
+    A:Piano@|0|{ <4*> 1 2 3 4 }
+    A:piano@|0|{ <4*> 5 6 7 1^ }
+    """
+
+    let sheet = try #require(TmdParser.parse(string: tmd))
+    let issues = TMDPlaybackRenderer.validate(sheet: sheet)
+    #expect(issues.count == 1)
+    #expect(issues[0].assignment.lowercased() == "piano")
+}
+
+@Test("Playback validation allows adjacent entries for one assignment")
+func testPlaybackValidationAllowsAdjacentAssignmentEntries() throws {
+    let tmd = """
+    ::SCORE::
+    A:Piano@|0|{ <4*> 1 2 3 4 }
+    A:piano@|1|{ <4*> 5 6 7 1^ }
+    """
+
+    let sheet = try #require(TmdParser.parse(string: tmd))
+    #expect(TMDPlaybackRenderer.validate(sheet: sheet).isEmpty)
+}
+
+@Test("Playback matches assignment names case-insensitively")
+func testPlaybackMatchesAssignmentNamesCaseInsensitively() throws {
+    let sheet = try #require(TmdParser.parse(string: """
+    ::SCORE::
+    A:Piano@|0|{
+    <4*>
+    | 1 2 3 4 |
+    }
+
+    -> A ->#
+    """))
+
+    let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "pIaNo")
+    #expect(timeline.track?.assignment == "Piano")
+    #expect(timeline.track?.events == timeline.events)
+    #expect(timeline.events.filter {
+        if case .note = $0.content { return true }
+        return false
+    }.count == 4)
+}
+
+@Test("Sections preserve explicit barline positions through formatting")
+func testSectionBarlinePositionsRoundTrip() throws {
+    let source = """
+    ::SCORE::
+    intro:Piano@|0|{
+    <4*>
+    | 1 2 3 4 | 5 6 7 1 |
+    }
+    -> intro ->#
+    """
+
+    let sheet = try #require(TmdParser.parse(string: source))
+    #expect(sheet.entries[0].sections[0].barlinePositions == [0, 4, 8])
+    #expect(sheet.format().contains("1 2 3 4 |"))
+    #expect(sheet.format().contains("5 6 7 1 |"))
+}
+
+@Test("Fixed-pitch entry ignores playback key modifiers")
+func testFixedPitchEntryIgnoresPlaybackKeyModifiers() throws {
+    let sheet = try #require(TmdParser.parse(string: """
+    ::SCORE::
+    ?= G
+    <4/4>
+    Intro:Timpani[pitchMode=fixed]@|0|{ <4*> 1 2 3 4 }
+    -> {?+3} -> Intro ->#
+    """))
+
+    let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Timpani")
+    #expect(!timeline.events.isEmpty)
+    #expect(timeline.events.allSatisfy { $0.state.keyOffset == 0 })
+}
+
+@Test("Playback reports conflicting tempo directives at one position")
+func testPlaybackReportsConflictingTempoDirectives() throws {
+    let sheet = try #require(TmdParser.parse(string: """
+    ::SCORE::
+    Intro:Piano@|0|{
+    <4*>
+    {!=90}{!=100} 1 2 3 4
+    }
+    -> Intro ->#
+    """))
+
+    let conflicts = TMDPlaybackRenderer.validateTempoConflicts(sheet: sheet)
+    #expect(conflicts.count == 1)
+    #expect(conflicts[0].position == 0)
+    #expect(conflicts[0].tempos == [90, 100])
+}
+
 @Test func testTokenize() throws {
     let text = "::SCORE:: ** Title ** != 120 ?= C <4/4> ->#"
     let tokens = Lexer(string: text).tokenize()
@@ -541,6 +704,9 @@ import TmdSkill
     for event in pianoTimeline.events {
         #expect(event.state.keyOffset == 10)
     }
+
+    let xml = TMDMusicXMLGenerator.generateMusicXML(from: sheet)
+    #expect(xml.contains("<step>C</step>"))
 }
 
 @Test func testMIDIGenerationWithTargetSectionAndInstrument() throws {
@@ -1109,6 +1275,139 @@ import TmdSkill
         .tempo(90),
         .timeSignature(Beat(count: 3, noteValue: 4))
     ])
+}
+
+@Test func testMeterModifierIsLocalToContainingEntry() throws {
+    let meterChangedEntry = Section(
+        noteLength: 4,
+        unitGroups: [UnitGroup(units: [.note(Note(degree: .c))], length: 1)],
+        directives: [SectionDirective(position: 0, kind: .timeSignature(Beat(count: 3, noteValue: 4)))]
+    )
+    let followingEntry = Section(
+        noteLength: 4,
+        unitGroups: [UnitGroup(units: [.note(Note(degree: .e))], length: 1)]
+    )
+    let sheet = Sheet(
+        speed: 120,
+        paragraphs: [
+            Paragraph(name: "A", instrument: "Piano", sections: [meterChangedEntry]),
+            Paragraph(name: "B", instrument: "Piano", sections: [followingEntry])
+        ],
+        orders: [.name("A"), .name("B")]
+    )
+
+    let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+
+    #expect(timeline.events.count == 2)
+    #expect(timeline.events[0].state.timeSignature == Beat(count: 3, noteValue: 4))
+    #expect(timeline.events[1].state.timeSignature == Beat())
+}
+
+@Test func testTempoAndDynamicsPersistPerAssignmentAcrossEntries() throws {
+    let pianoStateEntry = Section(
+        noteLength: 4,
+        unitGroups: [UnitGroup(units: [.note(Note(degree: .c))], length: 1)],
+        directives: [
+            SectionDirective(position: 0, kind: .tempo(90)),
+            SectionDirective(position: 0, kind: .dynamics(.f))
+        ]
+    )
+    let followingEntry = Section(
+        noteLength: 4,
+        unitGroups: [UnitGroup(units: [.note(Note(degree: .e))], length: 1)]
+    )
+    let sheet = Sheet(
+        speed: 120,
+        paragraphs: [
+            Paragraph(name: "A", instrument: "Piano", sections: [pianoStateEntry]),
+            Paragraph(name: "B", instrument: "Piano", sections: [followingEntry]),
+            Paragraph(name: "A", instrument: "Violin", sections: [followingEntry])
+        ],
+        orders: [.name("A"), .name("B")]
+    )
+
+    let piano = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+    let violin = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Violin")
+
+    #expect(piano.events.map { $0.state.tempo } == [90, 90])
+    #expect(piano.events.map { $0.state.dynamicLevel } == [.f, .f])
+    #expect(violin.events[0].state == PlaybackState(tempo: 120, keyOffset: 0, timeSignature: Beat()))
+}
+
+@Test func testPlaybackAndEntryKeyModifiersUseReadingOrderPerAssignment() throws {
+    let pianoEntry = Section(
+        noteLength: 4,
+        unitGroups: [UnitGroup(units: [.note(Note(degree: .c))], length: 1)],
+        directives: [SectionDirective(position: 0, kind: .absoluteKey("E"))]
+    )
+    let followingEntry = Section(
+        noteLength: 4,
+        unitGroups: [UnitGroup(units: [.note(Note(degree: .e))], length: 1)]
+    )
+    let sheet = Sheet(
+        speed: 120,
+        paragraphs: [
+            Paragraph(name: "A", instrument: "Piano", sections: [pianoEntry]),
+            Paragraph(name: "A", instrument: "Violin", sections: [followingEntry]),
+            Paragraph(name: "B", instrument: "Piano", sections: [followingEntry]),
+            Paragraph(name: "B", instrument: "Violin", sections: [followingEntry])
+        ],
+        orders: [.relative("+3"), .name("A"), .name("B")]
+    )
+
+    let piano = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+    let violin = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Violin")
+
+    #expect(piano.events.map { $0.state.keyOffset } == [4, 4])
+    #expect(violin.events.map { $0.state.keyOffset } == [3, 3])
+}
+
+@Test func testMIDIAndWAVDoNotCreateTracksForRestOnlyAssignments() throws {
+    let tmd = """
+    ::SCORE::
+    ** Rest Only **
+    != 120
+    ?= C
+    <4/4>
+
+    Piano:Piano@|0|{
+        <4*>
+        0 0 0 0
+    }
+
+    -> Piano ->#
+    """
+    let sheet = try #require(TmdParser.parse(string: tmd))
+    let midi = TMDMIDIGenerator.generateMIDI(from: sheet)
+
+    #expect(midi.count >= 12)
+    let trackCount = UInt16(midi[10]) << 8 | UInt16(midi[11])
+    #expect(trackCount == 1)
+}
+
+@Test func testNotationExportersMatchPercussionAssignmentsCaseInsensitively() throws {
+    let tmd = """
+    ::SCORE::
+    ** Lowercase Drums **
+    != 120
+    ?= C
+    <4/4>
+
+    A:drums@|0|{
+        <4*>
+        D S X O
+    }
+
+    -> A ->#
+    """
+    let sheet = try #require(TmdParser.parse(string: tmd))
+
+    let lily = TMDLilyPondGenerator.generateLilyPond(from: sheet)
+    let abc = TMDABCGenerator.generateABC(from: sheet)
+
+    #expect(lily.contains("\\drummode"))
+    #expect(lily.contains("\\new DrumStaff"))
+    #expect(abc.contains("%%MIDI channel 10"))
 }
 
 @Test func testFilePathNormalizerVariants() throws {

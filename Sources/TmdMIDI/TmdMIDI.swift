@@ -38,6 +38,13 @@ public struct TMDMIDIGenerator {
         ))]
         var melodyChannel = 0
         for (_, instrument) in distinctInstruments.enumerated() {
+            let timeline = TMDPlaybackRenderer.render(sheet: effectiveSheet, instrument: instrument)
+            guard timeline.events.contains(where: { event in
+                switch event.content {
+                case .note, .chord, .percussion: return true
+                case .rest: return false
+                }
+            }) else { continue }
             let midiInstrument = MIDIInstrument.resolve(instrument)
             let channel: UInt8
             if midiInstrument.isPercussion {
@@ -47,7 +54,6 @@ public struct TMDMIDIGenerator {
                 channel = UInt8(melodyChannel % 16)
                 melodyChannel += 1
             }
-            let timeline = TMDPlaybackRenderer.render(sheet: effectiveSheet, instrument: instrument)
             trackData.append(TMDMIDIEncoder.encodeTrack(events: instrumentEvents(
                 timeline: timeline, instrument: instrument, midiInstrument: midiInstrument,
                 channel: channel, ticksPerQuarter: ticksPerQuarter
