@@ -71,9 +71,9 @@ public struct TMDReaperGenerator {
         }
 
         // Section markers
-        let orders: [Order] = !sheet.orders.isEmpty
-            ? sheet.orders
-            : sheet.paragraphs.map(\.name).reduce(into: [String]()) { names, name in
+        let orders: [Playback] = !sheet.playback.isEmpty
+            ? sheet.playback
+            : sheet.entries.map(\.name).reduce(into: [String]()) { names, name in
                 if !names.contains(name) { names.append(name) }
             }.map(Order.name)
 

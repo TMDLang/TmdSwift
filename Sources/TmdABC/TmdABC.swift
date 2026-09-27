@@ -37,7 +37,7 @@ public struct TMDABCGenerator {
         for (idx, inst) in instruments.enumerated() {
             let vId = "V\(idx + 1)"
             abc += "[V:\(vId)]\n"
-            if paragraphsContainPercussion(sheet.paragraphs, instrument: inst) {
+            if paragraphsContainPercussion(sheet.entries, instrument: inst) {
                 abc += "%%MIDI channel 10\n"
             }
             abc += generateTrackMusic(instrument: inst, sheet: sheet)

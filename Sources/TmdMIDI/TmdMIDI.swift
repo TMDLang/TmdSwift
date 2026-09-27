@@ -15,7 +15,7 @@ public struct TMDMIDIGenerator {
         let sheet = TMDMacroEvaluator.expand(inputSheet)
         var effectiveSheet = sheet
         if let targetParagraph {
-            let filteredParagraphs = sheet.paragraphs.filter { $0.name == targetParagraph }
+        let filteredParagraphs = sheet.entries.filter { $0.name == targetParagraph }
             effectiveSheet = Sheet(
                 name: sheet.name,
                 speed: sheet.speed,

@@ -53,7 +53,7 @@ public struct TMDLilyPondGenerator {
         // Generate track music definitions for each instrument
         for inst in instruments {
             let varName = identifierMap[inst] ?? "Track"
-            let isDrum = paragraphsContainPercussion(sheet.paragraphs, instrument: inst)
+            let isDrum = paragraphsContainPercussion(sheet.entries, instrument: inst)
             ly += "\(varName) = \(isDrum ? "\\drummode " : ""){\n"
             ly += "  \\global\n"
             ly += generateTrackMusic(instrument: inst, sheet: sheet, percussion: isDrum)
@@ -65,7 +65,7 @@ public struct TMDLilyPondGenerator {
         ly += "  <<\n"
         for inst in instruments {
             let varName = identifierMap[inst] ?? "Track"
-            let isDrum = paragraphsContainPercussion(sheet.paragraphs, instrument: inst)
+            let isDrum = paragraphsContainPercussion(sheet.entries, instrument: inst)
             let staffType = isDrum ? "DrumStaff" : "Staff"
             ly += """
                 \\new \(staffType) = "\(escapeLilyPond(inst))" \\with {

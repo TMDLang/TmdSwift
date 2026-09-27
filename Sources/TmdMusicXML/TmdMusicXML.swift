@@ -192,7 +192,7 @@ public struct TMDMusicXMLGenerator {
         let lower = instrument.lowercased()
         let aliases = ["drum", "drums", "groove", "percussion", "beat", "drumkit", "cajon", "snare", "kick", "hihat"]
         if aliases.contains(where: { lower.contains($0) }) { return true }
-        return sheet.paragraphs.filter { $0.assignment == instrument }.contains { paragraph in
+        return sheet.entries.filter { $0.assignment == instrument }.contains { paragraph in
             paragraph.sections.contains { section in
                 section.unitGroups.contains { group in
                     group.units.contains { if case .percussion = $0 { return true }; return false }

@@ -69,14 +69,14 @@ public struct TMDChordProGenerator: Sendable {
         // Group sections by order
         var seenNames = Set<String>()
         var uniqueParagraphNames: [String] = []
-        for paragraph in sheet.paragraphs {
+        for paragraph in sheet.entries {
             if seenNames.insert(paragraph.name).inserted {
                 uniqueParagraphNames.append(paragraph.name)
             }
         }
 
-        let orders: [Order] = !sheet.orders.isEmpty
-            ? sheet.orders
+        let orders: [Playback] = !sheet.playback.isEmpty
+            ? sheet.playback
             : uniqueParagraphNames.map { .name($0) }
 
         let measuresPerLine = max(1, options.measuresPerLine)
@@ -99,15 +99,15 @@ public struct TMDChordProGenerator: Sendable {
                 guard !pName.isEmpty else { continue }
             }
             guard case .name(let pName) = order else { continue }
-            let sectionParagraphs = sheet.paragraphs.filter { $0.name == pName }
+            let sectionParagraphs = sheet.entries.filter { $0.name == pName }
             let sectionKey = keySignature(for: currentKeyOffset)
             let sectionSheet = Sheet(
                 name: sheet.name,
                 speed: sheet.speed,
                 keySignature: sectionKey,
                 beat: sheet.beat,
-                paragraphs: sectionParagraphs,
-                orders: [.name(pName)],
+                entries: sectionParagraphs,
+                playback: [.name(pName)],
                 metadata: sheet.metadata
             )
 
