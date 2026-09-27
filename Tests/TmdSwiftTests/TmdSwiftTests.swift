@@ -116,6 +116,14 @@ func testCanonicalEntrySourceModel() throws {
     #expect(sheet.distinctAssignments() == ["Timpani"])
 }
 
+@Test("Entry is the primary source-model type while Paragraph remains source-compatible")
+func testCanonicalEntryType() {
+    let entry = Entry(name: "Theme", sections: [])
+    let paragraph: Paragraph = entry
+    #expect(entry.name == paragraph.name)
+    #expect(entry.isPrototype)
+}
+
 @Test("Formatting preserves canonical fixed-pitch entry attributes")
 func testCanonicalEntryFormattingRoundTrip() throws {
     let tmd = """

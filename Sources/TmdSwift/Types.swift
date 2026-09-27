@@ -532,22 +532,17 @@ public enum EntryPitchMode: Equatable, Sendable {
     case fixed
 }
 
-/// A multi-track voice or instrument paragraph, formatted as
+/// A source entry, formatted as
 /// `name:instrument@|start|{ ... }`.
 ///
-/// Represents an instrument track's musical score within a specific song
-/// section and its entry measure offset.
-///
-/// > Note: Originally named `Paragraph` in Aguai's C++ code.
-public struct Paragraph: Equatable {
-    /// Paragraph/section name (e.g. `intro`, `A`, `bridge`).
+/// An entry contains one section's musical material and its measure offset.
+public struct Entry: Equatable {
+    /// Entry section name (e.g. `intro`, `A`, `bridge`).
     ///
     /// > Note: Originally named `name` in Aguai's C++ code.
     public let name: String
 
-    /// Instrument or track name (e.g. `Guitar`, `CHORD`, `Piano`).
-    ///
-    /// > Note: Originally named `instrument` in Aguai's C++ code.
+    /// Assignment name (e.g. `Guitar`, `CHORD`, `Piano`).
     public let instrument: String
 
     /// Canonical entry-wide pitch interpretation.
@@ -559,7 +554,7 @@ public struct Paragraph: Equatable {
     /// > Note: Originally named `start` in Aguai's C++ code.
     public let start: Int
 
-    /// Section list contained within this paragraph.
+    /// Section list contained within this entry.
     ///
     /// > Note: Originally named `sections` in Aguai's C++ code.
     public let sections: [Section]
@@ -581,11 +576,11 @@ public struct Paragraph: Equatable {
     }
 }
 
-/// Canonical terminology for a source entry. `Paragraph` remains the source
-/// compatibility name until the public API migration is complete.
-public typealias Entry = Paragraph
+/// `Paragraph` remains the source compatibility name for clients using the
+/// pre-canonical API.
+public typealias Paragraph = Entry
 
-public extension Paragraph {
+public extension Entry {
     var assignment: String? { instrument.isEmpty ? nil : instrument }
     var isPrototype: Bool { assignment == nil }
 }
