@@ -428,7 +428,7 @@ public enum TMDPlaybackRenderer {
     }
 
     private static func apply(_ kind: SectionDirectiveKind, to state: PlaybackState) -> PlaybackState {
-        switch kind {
+        return switch kind {
         case .tempo(let value):
             PlaybackState(tempo: max(1, value), keyOffset: state.keyOffset, timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
         case .relativeTempo(let value):
@@ -437,8 +437,11 @@ public enum TMDPlaybackRenderer {
             PlaybackState(tempo: state.tempo, keyOffset: KeySignature(string: value).semitoneOffset, timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
         case .relativeKey(let value):
             PlaybackState(tempo: state.tempo, keyOffset: state.keyOffset + value, timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
-        case .explicitKey(let value):
-            PlaybackState(tempo: state.tempo, keyOffset: KeySignature(string: value).semitoneOffset, timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
+        case .explicitKey:
+            // `key=` is notation metadata only. Unlike `?=` and relative
+            // movable-do directives, it must not alter the sounding pitch
+            // context.
+            state
         case .dynamics(let mark):
             PlaybackState(tempo: state.tempo, keyOffset: state.keyOffset, timeSignature: state.timeSignature, dynamicLevel: mark)
         case .fixedPitch:

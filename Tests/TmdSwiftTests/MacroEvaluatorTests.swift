@@ -145,7 +145,7 @@ struct MacroEvaluatorTests {
 
         Theme {
             <4*>
-            3^ 2^ 1^ 7 | 6 5 6 7
+            3^ 2^ 1^ 7 | 6 5 6 7 | 1^ 7 6 5 | 4 3 4 2
         }
 
         -> (canon Theme (Violin1 Violin2 Violin3) 2) ->#
@@ -159,9 +159,9 @@ struct MacroEvaluatorTests {
         #expect(v2.events[0].position == 8)  // 2 measures * 4 beats
         #expect(v3.events[0].position == 16) // 4 measures * 4 beats
 
-        #expect(v1.events.count == 8)
-        #expect(v2.events.count == 8)
-        #expect(v3.events.count == 8)
+        #expect(v1.events.count == 16)
+        #expect(v2.events.count == 16)
+        #expect(v3.events.count == 16)
     }
 
     @Test("Evaluates nested canon (canon (canon Theme (Violin1 Violin2) 1) (Flute1 Flute2) 4)")
@@ -248,45 +248,6 @@ struct MacroEvaluatorTests {
         // Violin 3 enters at 16, plays 16 beats
         #expect(v3.events[0].position == 16)
         #expect(v3.events.count == 16)
-    }
-
-    @Test("Evaluates (layer A (loop B 10)) with concrete paragraphs without requiring explicit instrument arguments")
-    func testLayerBareConcreteParagraphAndTwoArgLoop() throws {
-        let input = """
-        ::SCORE::
-        ** Layer Bare Concrete Paragraph & 2-arg Loop **
-        != 120
-        ?= C
-        <4/4>
-
-        A:Piano@|0|{
-            <4*>
-            1 2 3 4
-        }
-
-        B:Bass@|0|{
-            <4*>
-            1_ - 5_ -
-        }
-
-        -> (layer
-             A
-             (loop B 10)) ->#
-        """
-        let sheet = try #require(TmdParser.parse(string: input))
-        let expanded = TMDMacroEvaluator.expand(sheet)
-
-        #expect(expanded.playback.count == 1)
-
-        let piano = TMDPlaybackRenderer.render(sheet: expanded, instrument: "Piano")
-        let bass = TMDPlaybackRenderer.render(sheet: expanded, instrument: "Bass")
-
-        #expect(piano.duration == 40)
-        #expect(piano.events.count == 4)
-
-        // Bass loops 10 times * 4 beats = 40 beats
-        #expect(bass.duration == 40)
-        #expect(bass.events.count == 20)
     }
 
     @Test("Passes TMDMeasureChecker and exports MIDI / WAV seamlessly")
@@ -483,7 +444,7 @@ struct MacroEvaluatorTests {
         -> (layer
              (play Subject SoloViolin)
              (play (vary Subject +19) Flute)
-             (canon (vary Subject reverse -12) (Cello Bass) 2)) ->#
+             (canon (vary Subject reverse -12) (Cello Bass) 1)) ->#
         """
         let sheet = try #require(TmdParser.parse(string: input))
         let violin = TMDPlaybackRenderer.render(sheet: sheet, instrument: "SoloViolin")
@@ -515,7 +476,7 @@ struct MacroEvaluatorTests {
             return nil
         }
         #expect(bassPitches == [55, 52, 50, 48])
-        #expect(bass.events[0].position == 8)
+        #expect(bass.events[0].position == 4)
     }
 
     @Test("Evaluates (seq ...) chronologically chaining expressions")
@@ -612,49 +573,6 @@ struct MacroEvaluatorTests {
         #endif
     }
 
-    @Test("Evaluates (layer A (loop B 10)) with concrete paragraphs without requiring explicit instrument arguments")
-    func testLayerWithBareConcreteParagraphsAndTwoArgLoop() throws {
-        let input = """
-        ::SCORE::
-        ** Layer Bare Concrete Paragraph & 2-arg Loop **
-        != 120
-        ?= C
-        <4/4>
-
-        A:Piano@|0|{
-            <4*>
-            1 2 3 4
-        }
-
-        B:Bass@|0|{
-            <4*>
-            1_ - 5_ -
-        }
-
-        -> (layer
-             A
-             (loop B 10)) ->#
-        """
-        let sheet = try #require(TmdParser.parse(string: input))
-        let expanded = try TMDMacroEvaluator.expandThrowing(sheet)
-
-        #expect(expanded.playback.count == 1)
-        if case .name(let orderName) = expanded.playback[0] {
-            #expect(orderName.hasPrefix("__layer_"))
-        } else {
-            Issue.record("Expected Order.name for expanded layer")
-        }
-
-        let piano = TMDPlaybackRenderer.render(sheet: expanded, instrument: "Piano")
-        let bass = TMDPlaybackRenderer.render(sheet: expanded, instrument: "Bass")
-
-        #expect(piano.duration == 40.0)
-        #expect(piano.events.count == 4)
-
-        #expect(bass.duration == 40.0)
-        #expect(bass.events.count == 20)
-    }
-
     @Test("Throwing parser rejects unclosed S-expression macro parenthesis before arrow")
     func testThrowingParserRejectsUnclosedMacroParen() throws {
         let input = """
@@ -673,6 +591,126 @@ struct MacroEvaluatorTests {
         """
         #expect(throws: TMDParseError.self) {
             try TmdParser.parseThrowing(string: input)
+        }
+    }
+
+    @Test("Explicit notation keys do not transpose playback pitches")
+    func testExplicitKeyIsPitchNeutral() throws {
+        let input = """
+        ::SCORE::
+        ** Explicit Key Metadata **
+        != 120
+        ?= C
+        key= C
+        <4/4>
+
+        Intro:Piano@|0|{
+            <4*>
+            1 2 3 4 | {key= F#m} 1 2 3 4
+        }
+
+        -> Intro ->#
+        """
+        let sheet = try #require(TmdParser.parse(string: input))
+        let playback = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+        let pitches = playback.events.compactMap { event -> Int? in
+            if case .note(let note) = event.content {
+                return TMDMIDIGenerator.noteToMIDIPitch(note, keyOffset: event.state.keyOffset)
+            }
+            return nil
+        }
+
+        #expect(pitches == [60, 62, 64, 65, 60, 62, 64, 65])
+        #expect(playback.events.dropFirst(4).allSatisfy { $0.state.keyOffset == 0 })
+    }
+
+    @Test("Concrete sections are not valid macro sources")
+    func testConcreteSectionCannotBeMacroSource() throws {
+        let input = """
+        ::SCORE::
+        ** Concrete Macro Source **
+        != 120
+        ?= C
+        <4/4>
+
+        Intro:Piano@|0|{
+            <4*>
+            1 2 3 4
+        }
+
+        -> (play Intro Violin) ->#
+        """
+        let sheet = try #require(TmdParser.parse(string: input))
+        #expect(throws: TMDMacroError.self) {
+            try TMDMacroEvaluator.expandThrowing(sheet)
+        }
+    }
+
+    @Test("Loop requires an explicit instrument and positive iteration count")
+    func testLoopRequiresInstrumentAndPositiveCount() throws {
+        let input = """
+        ::SCORE::
+        ** Invalid Loop **
+        != 120
+        ?= C
+        <4/4>
+
+        Theme {
+            <4*>
+            1 2 3 4
+        }
+
+        -> (loop Theme 0) ->#
+        """
+        let sheet = try #require(TmdParser.parse(string: input))
+        #expect(throws: TMDMacroError.self) {
+            try TMDMacroEvaluator.expandThrowing(sheet)
+        }
+    }
+
+    @Test("Canon rejects voices that enter after the prototype ends")
+    func testCanonRejectsEntryAfterPrototypeDuration() throws {
+        let input = """
+        ::SCORE::
+        ** Canon Duration Bound **
+        != 120
+        ?= C
+        <4/4>
+
+        Theme {
+            <4*>
+            1 2 3 4
+        }
+
+        -> (canon Theme (Violin1 Violin2) 2) ->#
+        """
+        let sheet = try #require(TmdParser.parse(string: input))
+        #expect(throws: TMDMacroError.self) {
+            try TMDMacroEvaluator.expandThrowing(sheet)
+        }
+    }
+
+    @Test("Empty layer and sequence expressions are rejected")
+    func testEmptyCompositionExpressionsAreRejected() throws {
+        for expression in ["(layer)", "(seq)"] {
+            let input = """
+            ::SCORE::
+            ** Empty Composition **
+            != 120
+            ?= C
+            <4/4>
+
+            Theme {
+                <4*>
+                1 2 3 4
+            }
+
+            -> \(expression) ->#
+            """
+            let sheet = try #require(TmdParser.parse(string: input))
+            #expect(throws: TMDMacroError.self) {
+                try TMDMacroEvaluator.expandThrowing(sheet)
+            }
         }
     }
 }
