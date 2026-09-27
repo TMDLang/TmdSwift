@@ -280,7 +280,7 @@ public struct TMDRefactor {
             throw TMDRefactorError.instrumentNotFound(sourceInstrument)
         }
 
-        let duplicatedParagraphs: [Paragraph] = matching.map { orig in
+        let duplicatedParagraphs: [Entry] = matching.map { orig in
             let clonedSections = orig.sections.map { sec in
                 let clonedGroups = sec.unitGroups.map { g in
                     let clonedUnits = g.units.map { u -> Unit in
@@ -308,7 +308,7 @@ public struct TMDRefactor {
                 }
                 return Section(noteLength: sec.noteLength, unitGroups: clonedGroups, directives: sec.directives, barlinePositions: sec.barlinePositions)
             }
-            return Paragraph(
+            return Entry(
                 name: orig.name,
                 instrument: targetInstrument,
                 start: orig.start,
@@ -347,7 +347,7 @@ public struct TMDRefactor {
         intervalSteps: Int
     ) throws -> String {
         let sheet = try TmdParser.parseThrowing(string: source)
-        var matching = sheet.paragraphs.filter { $0.instrument == sourceInstrument }
+        var matching = sheet.paragraphs.filter { $0.assignment == sourceInstrument }
         if let sec = section {
             matching = matching.filter { $0.name == sec }
         }
@@ -359,7 +359,7 @@ public struct TMDRefactor {
         }
 
         let steps = intervalSteps
-        let harmonizedParagraphs: [Paragraph] = matching.map { orig in
+        let harmonizedParagraphs: [Entry] = matching.map { orig in
             let clonedSections = orig.sections.map { sec in
                 let clonedGroups = sec.unitGroups.map { g in
                     let clonedUnits = g.units.map { u -> Unit in
@@ -399,7 +399,7 @@ public struct TMDRefactor {
                 }
                 return Section(noteLength: sec.noteLength, unitGroups: clonedGroups, directives: sec.directives, barlinePositions: sec.barlinePositions)
             }
-            return Paragraph(
+            return Entry(
                 name: orig.name,
                 instrument: harmonyInstrument,
                 start: orig.start,
@@ -441,14 +441,14 @@ public struct TMDRefactor {
             }
         }
 
-        var linearParagraphs: [Paragraph] = []
+        var linearParagraphs: [Entry] = []
         for inst in seenInstruments {
             var combinedUnitGroups: [UnitGroup] = []
             var baseNoteLength = 4
 
             for ord in sheet.orders {
                 guard case .name(let sName) = ord else { continue }
-                guard let para = sheet.paragraphs.first(where: { $0.name == sName && $0.instrument == inst }) else {
+                guard let para = sheet.paragraphs.first(where: { $0.name == sName && $0.assignment == inst }) else {
                     continue
                 }
                 for sec in para.sections {
@@ -457,7 +457,7 @@ public struct TMDRefactor {
                 }
             }
 
-            linearParagraphs.append(Paragraph(
+            linearParagraphs.append(Entry(
                 name: "linear",
                 instrument: inst,
                 start: 0,
