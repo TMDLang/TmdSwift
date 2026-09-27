@@ -111,7 +111,7 @@ public struct TMDChordProGenerator: Sendable {
                 metadata: sheet.metadata
             )
 
-            let sectionInstruments = Array(Set(sectionParagraphs.map { $0.instrument })).sorted()
+            let sectionInstruments = Array(Set(sectionParagraphs.compactMap { $0.assignment })).sorted()
             let instToRender = sectionInstruments.contains(targetInstrument)
                 ? targetInstrument
                 : (sectionInstruments.first { inst in

@@ -201,7 +201,7 @@ public struct TMDLilyPondGenerator {
     }
 
     private static func paragraphsContainPercussion(_ paragraphs: [Paragraph], instrument: String) -> Bool {
-        paragraphs.filter { $0.instrument.caseInsensitiveCompare(instrument) == .orderedSame }.contains { paragraph in
+        paragraphs.filter { ($0.assignment ?? "").caseInsensitiveCompare(instrument) == .orderedSame }.contains { paragraph in
             paragraph.sections.contains { section in
                 section.unitGroups.contains { group in
                     group.units.contains { if case .percussion = $0 { return true }; return false }
