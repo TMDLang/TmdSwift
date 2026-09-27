@@ -616,7 +616,7 @@ public enum SExpr: Equatable, Hashable, Sendable, CustomStringConvertible {
 ///
 /// > Note: Originally named `Order` and `OrderType` in Aguai's C++ code (where
 /// > relative was typoed as `releative`).
-public enum Order: Equatable {
+public enum Playback: Equatable {
     /// Plays the paragraph matching the given name (e.g. `-> intro`, `-> A`).
     ///
     /// > Note: Originally named `OrderType::Name` in Aguai's C++ code.
@@ -640,7 +640,8 @@ public enum Order: Equatable {
 
 /// Canonical name for one source playback expression.
 /// `Order` remains available as a source-compatibility name.
-public typealias Playback = Order
+/// `Order` remains the source compatibility name for playback expressions.
+public typealias Order = Playback
 
 /// The complete TMD score sheet.
 ///
