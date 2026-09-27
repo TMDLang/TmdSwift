@@ -799,8 +799,8 @@ private struct TokenParser {
         var keySignature = KeySignature()
         var declaredKey: String?
         var beat = Beat()
-        var paragraphs: [Paragraph] = []
-        var orders: [Order] = []
+        var entries: [Entry] = []
+        var playback: [Playback] = []
         var metadata: [String: String] = [:]
 
         while current != .eof {
@@ -903,7 +903,7 @@ private struct TokenParser {
                         }
                     }
                     match(.closeBrace)
-                    orders.append(.relative(name))
+                    playback.append(.relative(name))
                 case .absoluteOrderPrefix:
                     advance()
                     var name = ""
@@ -918,16 +918,16 @@ private struct TokenParser {
                         }
                     }
                     match(.closeBrace)
-                    orders.append(.absolute(name))
+                    playback.append(.absolute(name))
                 case .identifier(let s):
                     advance()
                     if s == "#" {
                         break
                     }
-                    orders.append(.name(s))
+                    playback.append(.name(s))
                 case .openParen:
                     if let expr = parseSExpr() {
-                        orders.append(.macro(expr))
+                        playback.append(.macro(expr))
                     } else {
                         return nil
                     }
@@ -941,8 +941,8 @@ private struct TokenParser {
 
             default:
                 // Paragraph: name:instrument@|start|{ ... } or abstract prototype: Theme { ... }
-                if let paragraph = parseParagraph() {
-                    paragraphs.append(paragraph)
+                if let entry = parseEntry() {
+                    entries.append(entry)
                 } else {
                     if failureIndex == nil {
                         recordFailure(at: pos, expected: [Token.colon.expectedDescription, Token.openBrace.expectedDescription])
@@ -952,10 +952,10 @@ private struct TokenParser {
             }
         }
 
-        return Sheet(name: name, speed: speed, keySignature: keySignature, declaredKey: declaredKey, beat: beat, paragraphs: paragraphs, orders: orders, metadata: metadata)
+        return Sheet(name: name, speed: speed, keySignature: keySignature, declaredKey: declaredKey, beat: beat, entries: entries, playback: playback, metadata: metadata)
     }
 
-    private mutating func parseParagraph() -> Paragraph? {
+    private mutating func parseEntry() -> Entry? {
         var name = ""
         if case .identifier(let s) = current {
             name = s
@@ -1032,7 +1032,7 @@ private struct TokenParser {
         if case .programText(let body) = current {
             advance()
             match(.closeBrace)
-            return Paragraph(name: name, instrument: instrument, pitchMode: pitchMode, start: start, sections: [], executionTime: executionTime, showProgram: body)
+            return Entry(name: name, assignment: instrument.isEmpty ? nil : instrument, pitchMode: pitchMode, start: start, sections: [], executionTime: executionTime, showProgram: body)
         }
 
         var sections: [Section] = []
@@ -1128,7 +1128,7 @@ private struct TokenParser {
         }
         match(.closeBrace)
 
-        return Paragraph(name: name, instrument: instrument, pitchMode: pitchMode, start: start, sections: sections, executionTime: executionTime)
+        return Entry(name: name, assignment: instrument.isEmpty ? nil : instrument, pitchMode: pitchMode, start: start, sections: sections, executionTime: executionTime)
     }
 
     private mutating func parseUnits() -> [Unit] {
