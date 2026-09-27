@@ -214,11 +214,11 @@ public enum TMDMacroEvaluator {
         }
 
         var abstractMap: [String: Entry] = [:]
-        for p in sheet.paragraphs where p.instrument.isEmpty {
+        for p in sheet.paragraphs where p.assignment == nil {
             abstractMap[p.name] = p
         }
 
-        var concreteParagraphs: [Entry] = sheet.paragraphs.filter { $0.assignment != nil }
+        var concreteParagraphs: [Entry] = sheet.entries.filter { $0.assignment != nil }
         var newOrders: [Playback] = []
         var genCounter = 0
 
@@ -395,7 +395,7 @@ public enum TMDMacroEvaluator {
                     for p in matching {
                         let synthetic = createSyntheticParagraph(
                             baseName: p.name,
-                            instrument: p.instrument,
+                            instrument: p.assignment ?? "",
                             startOffset: p.start,
                             sections: p.sections
                         )
@@ -446,8 +446,8 @@ public enum TMDMacroEvaluator {
                 if items.count == 3, case .number(let n) = items[2] {
                     times = n
                     let targetName = themeTarget.description
-                    if let match = sheet.paragraphs.first(where: { $0.name == targetName && !$0.instrument.isEmpty }) {
-                        instrument = match.instrument
+                    if let match = sheet.entries.first(where: { $0.name == targetName && $0.assignment != nil }) {
+                        instrument = match.assignment!
                     } else {
                         throw TMDMacroError("'loop' with 2 arguments requires a concrete section with an instrument, but '\(targetName)' has no instrument")
                     }
@@ -505,8 +505,8 @@ public enum TMDMacroEvaluator {
                     let innerParagraphs = concreteParagraphs.filter { innerNames.contains($0.name) }
 
                     var innerDistinctInsts: [String] = []
-                    for ip in innerParagraphs where !innerDistinctInsts.contains(ip.instrument) {
-                        innerDistinctInsts.append(ip.instrument)
+                    for ip in innerParagraphs where !innerDistinctInsts.contains(ip.assignment ?? "") {
+                        innerDistinctInsts.append(ip.assignment ?? "")
                     }
 
                     genCounter += 1
