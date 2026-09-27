@@ -545,10 +545,6 @@ public struct Entry: Equatable {
     /// Assignment name (e.g. `Guitar`, `CHORD`, `Piano`). `nil` identifies a prototype.
     public let assignment: String?
 
-    /// Source-compatibility projection for clients using the pre-canonical name.
-    @available(*, deprecated, renamed: "assignment")
-    public var instrument: String { assignment ?? "" }
-
     /// Canonical entry-wide pitch interpretation.
     public let pitchMode: EntryPitchMode
 
@@ -569,10 +565,6 @@ public struct Entry: Equatable {
     /// Raw body of a show-program block enclosed by triple quotes.
     public let showProgram: String?
 
-    public init(name: String = "", instrument: String = "", pitchMode: EntryPitchMode = .transposing, start: Int = 0, sections: [Section] = [], executionTime: String? = nil, showProgram: String? = nil) {
-        self.init(name: name, assignment: instrument.isEmpty ? nil : instrument, pitchMode: pitchMode, start: start, sections: sections, executionTime: executionTime, showProgram: showProgram)
-    }
-
     public init(name: String = "", assignment: String? = nil, pitchMode: EntryPitchMode = .transposing, start: Int = 0, sections: [Section] = [], executionTime: String? = nil, showProgram: String? = nil) {
         self.name = name
         self.assignment = assignment
@@ -583,10 +575,6 @@ public struct Entry: Equatable {
         self.showProgram = showProgram
     }
 }
-
-/// `Paragraph` remains the source compatibility name for clients using the
-/// pre-canonical API.
-public typealias Paragraph = Entry
 
 public extension Entry {
     var isPrototype: Bool { assignment == nil }
@@ -614,7 +602,7 @@ public enum SExpr: Equatable, Hashable, Sendable, CustomStringConvertible {
 ///
 /// Example syntax: `-> intro -> A -> {?-3} -> C ->#`.
 ///
-/// > Note: Originally named `Order` and `OrderType` in Aguai's C++ code (where
+/// > Note: Originally named `OrderType` in Aguai's C++ code (where
 /// > relative was typoed as `releative`).
 public enum Playback: Equatable {
     /// Plays the paragraph matching the given name (e.g. `-> intro`, `-> A`).
@@ -637,11 +625,6 @@ public enum Playback: Equatable {
     /// An S-Expression macro evaluation directive (e.g. `(canon Theme (V1 V2) 2)`).
     case macro(SExpr)
 }
-
-/// Canonical name for one source playback expression.
-/// `Order` remains available as a source-compatibility name.
-/// `Order` remains the source compatibility name for playback expressions.
-public typealias Order = Playback
 
 /// The complete TMD score sheet.
 ///
@@ -682,50 +665,6 @@ public struct Sheet: Equatable {
     /// Song-level metadata such as lyrics, composer, and arranger credits.
     public let metadata: [String: String]
 
-    /// Source-compatibility view using the pre-canonical name.
-    @available(*, deprecated, renamed: "entries")
-    public var paragraphs: [Paragraph] { entries }
-
-    /// Source-compatibility view using the pre-canonical name.
-    @available(*, deprecated, renamed: "playback")
-    public var orders: [Order] { playback }
-
-    public init(
-        name: String = "",
-        speed: Double = 0.0,
-        keySignature: KeySignature = KeySignature(),
-        declaredKey: String? = nil,
-        beat: Beat = Beat(),
-        paragraphs: [Paragraph] = [],
-        orders: [Order] = [],
-        metadata: [String: String] = [:]
-    ) {
-        self.name = name
-        self.speed = speed
-        self.keySignature = keySignature
-        self.declaredKey = declaredKey
-        self.beat = beat
-        self.entries = paragraphs
-        self.playback = orders
-        self.metadata = metadata
-    }
-
-    /// Source-compatible initializer accepting the original string spelling.
-    public init(
-        name: String = "",
-        speed: Double = 0.0,
-        keySignature: String,
-        declaredKey: String? = nil,
-        beat: Beat = Beat(),
-        paragraphs: [Paragraph] = [],
-        orders: [Order] = [],
-        metadata: [String: String] = [:]
-    ) {
-        self.init(name: name, speed: speed, keySignature: KeySignature(string: keySignature), declaredKey: declaredKey, beat: beat, paragraphs: paragraphs, orders: orders, metadata: metadata)
-    }
-
-    /// Canonical source/playback initializer. The legacy storage properties
-    /// remain available through the compatibility initializer and projections.
     public init(
         name: String = "",
         speed: Double = 0.0,
@@ -736,9 +675,28 @@ public struct Sheet: Equatable {
         playback: [Playback] = [],
         metadata: [String: String] = [:]
     ) {
-        self.init(name: name, speed: speed, keySignature: keySignature,
-                  declaredKey: declaredKey, beat: beat,
-                  paragraphs: entries, orders: playback, metadata: metadata)
+        self.name = name
+        self.speed = speed
+        self.keySignature = keySignature
+        self.declaredKey = declaredKey
+        self.beat = beat
+        self.entries = entries
+        self.playback = playback
+        self.metadata = metadata
+    }
+
+    /// Source-compatible initializer accepting the original string spelling.
+    public init(
+        name: String = "",
+        speed: Double = 0.0,
+        keySignature: String,
+        declaredKey: String? = nil,
+        beat: Beat = Beat(),
+        entries: [Entry] = [],
+        playback: [Playback] = [],
+        metadata: [String: String] = [:]
+    ) {
+        self.init(name: name, speed: speed, keySignature: KeySignature(string: keySignature), declaredKey: declaredKey, beat: beat, entries: entries, playback: playback, metadata: metadata)
     }
 
     /// Returns a sorted list of unique instrument names present across all paragraphs in the sheet.

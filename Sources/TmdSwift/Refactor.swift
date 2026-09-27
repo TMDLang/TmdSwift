@@ -310,7 +310,7 @@ public struct TMDRefactor {
             }
             return Entry(
                 name: orig.name,
-                instrument: targetInstrument,
+                assignment: targetInstrument,
                 start: orig.start,
                 sections: clonedSections,
                 executionTime: orig.executionTime,
@@ -401,7 +401,7 @@ public struct TMDRefactor {
             }
             return Entry(
                 name: orig.name,
-                instrument: harmonyInstrument,
+                assignment: harmonyInstrument,
                 start: orig.start,
                 sections: clonedSections,
                 executionTime: orig.executionTime,
@@ -460,7 +460,7 @@ public struct TMDRefactor {
 
             linearParagraphs.append(Entry(
                 name: "linear",
-                instrument: inst,
+                assignment: inst,
                 start: 0,
                 sections: [
                     Section(noteLength: baseNoteLength, unitGroups: combinedUnitGroups, directives: [])
@@ -473,8 +473,8 @@ public struct TMDRefactor {
             speed: sheet.speed,
             keySignature: sheet.keySignature,
             beat: sheet.beat,
-            paragraphs: linearParagraphs,
-            orders: [.name("linear")],
+            entries: linearParagraphs,
+            playback: [.name("linear")],
             metadata: sheet.metadata
         )
         return format(newSheet.format())

@@ -37,8 +37,8 @@ struct TmdRefactorTests {
         let origSheet = try #require(TmdParser.parse(string: input))
         let newSheet = try #require(TmdParser.parse(string: formatted))
         #expect(origSheet.name == newSheet.name)
-        #expect(origSheet.paragraphs.count == newSheet.paragraphs.count)
-        #expect(origSheet.orders.count == newSheet.orders.count)
+        #expect(origSheet.entries.count == newSheet.entries.count)
+        #expect(origSheet.playback.count == newSheet.playback.count)
     }
 
     @Test func testFormatMultiLineBlockCommentsWithConsistentIndentation() throws {
@@ -107,9 +107,9 @@ struct TmdRefactorTests {
 
         // Sheet inspection
         let sheet = try #require(TmdParser.parse(string: result))
-        #expect(sheet.paragraphs[0].instrument == "GrandPiano")
-        #expect(sheet.paragraphs[1].instrument == "Guitar")
-        #expect(sheet.paragraphs[2].instrument == "GrandPiano")
+        #expect(sheet.entries[0].assignment == "GrandPiano")
+        #expect(sheet.entries[1].assignment == "Guitar")
+        #expect(sheet.entries[2].assignment == "GrandPiano")
     }
 
     @Test func testRenameSectionInTMDDocumentUpdatesParagraphsAndOrders() throws {
@@ -147,9 +147,9 @@ struct TmdRefactorTests {
         #expect(result.contains("-> intro -> A -> {?+2} -> A ->#"))
 
         let sheet = try #require(TmdParser.parse(string: result))
-        #expect(sheet.paragraphs[1].name == "A")
-        #expect(sheet.paragraphs[2].name == "A")
-        #expect(sheet.orders == [.name("intro"), .name("A"), .relative("+2"), .name("A")])
+        #expect(sheet.entries[1].name == "A")
+        #expect(sheet.entries[2].name == "A")
+        #expect(sheet.playback == [.name("intro"), .name("A"), .relative("+2"), .name("A")])
     }
 
     @Test func testExtractInstrumentFromTMDDocument() throws {
@@ -197,9 +197,9 @@ struct TmdRefactorTests {
 
         let sheet = try #require(TmdParser.parse(string: extracted))
         #expect(sheet.name == "Full Band Song")
-        #expect(sheet.paragraphs.count == 2)
-        #expect(sheet.paragraphs.allSatisfy { $0.instrument == "Piano" })
-        #expect(sheet.orders == [.name("intro"), .name("verse")])
+        #expect(sheet.entries.count == 2)
+        #expect(sheet.entries.allSatisfy { $0.assignment == "Piano" })
+        #expect(sheet.playback == [.name("intro"), .name("verse")])
     }
 
     @Test func testCLISubcommandsFormatAndRefactor() throws {
@@ -523,8 +523,8 @@ struct TmdRefactorTests {
         #expect(inlined.contains("5 6 7 1^"))
 
         let sheet = try #require(TmdParser.parse(string: inlined))
-        #expect(sheet.paragraphs.count == 1)
-        #expect(sheet.paragraphs[0].sections[0].unitGroups.count == 12)
+        #expect(sheet.entries.count == 1)
+        #expect(sheet.entries[0].sections[0].unitGroups.count == 12)
     }
 
     @Test func testDuplicateTrackPreservesComments() throws {

@@ -10,7 +10,7 @@ import TmdABC
 struct MacroEvaluatorTests {
 
     @Test("Parses abstract paragraphs declared without instrument bindings (Theme { ... })")
-    func testParseAbstractParagraph() throws {
+    func testParseAbstractEntry() throws {
         let input = """
         ::SCORE::
         ** Abstract Prototype **
@@ -26,10 +26,10 @@ struct MacroEvaluatorTests {
         -> Theme ->#
         """
         let sheet = try #require(TmdParser.parse(string: input))
-        #expect(sheet.paragraphs.count == 1)
-        let p = sheet.paragraphs[0]
+        #expect(sheet.entries.count == 1)
+        let p = sheet.entries[0]
         #expect(p.name == "Theme")
-        #expect(p.instrument.isEmpty) // Empty instrument indicates abstract prototype
+        #expect(p.assignment == nil) // A nil assignment indicates an abstract prototype
         #expect(p.start == 0)
         #expect(p.sections.count == 1)
         #expect(p.sections[0].unitGroups.count == 4)
@@ -52,9 +52,9 @@ struct MacroEvaluatorTests {
         -> (canon Theme (Violin1 Violin2) 2) ->#
         """
         let sheet = try #require(TmdParser.parse(string: input))
-        #expect(sheet.orders.count == 1)
-        guard case .macro(let expr) = sheet.orders[0] else {
-            Issue.record("Expected .macro order but got \(sheet.orders[0])")
+        #expect(sheet.playback.count == 1)
+        guard case .macro(let expr) = sheet.playback[0] else {
+            Issue.record("Expected .macro order but got \(sheet.playback[0])")
             return
         }
         let expected = SExpr.list([
@@ -276,7 +276,7 @@ struct MacroEvaluatorTests {
         let sheet = try #require(TmdParser.parse(string: input))
         let expanded = TMDMacroEvaluator.expand(sheet)
 
-        #expect(expanded.orders.count == 1)
+        #expect(expanded.playback.count == 1)
 
         let piano = TMDPlaybackRenderer.render(sheet: expanded, instrument: "Piano")
         let bass = TMDPlaybackRenderer.render(sheet: expanded, instrument: "Bass")
@@ -638,8 +638,8 @@ struct MacroEvaluatorTests {
         let sheet = try #require(TmdParser.parse(string: input))
         let expanded = try TMDMacroEvaluator.expandThrowing(sheet)
 
-        #expect(expanded.orders.count == 1)
-        if case .name(let orderName) = expanded.orders[0] {
+        #expect(expanded.playback.count == 1)
+        if case .name(let orderName) = expanded.playback[0] {
             #expect(orderName.hasPrefix("__layer_"))
         } else {
             Issue.record("Expected Order.name for expanded layer")

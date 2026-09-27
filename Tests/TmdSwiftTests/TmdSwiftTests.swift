@@ -38,10 +38,10 @@ import TmdSkill
     #expect(sheet.beat.count == 4)
     #expect(sheet.beat.noteValue == 4)
 
-    #expect(sheet.paragraphs.count == 1)
-    let paragraph = sheet.paragraphs[0]
+    #expect(sheet.entries.count == 1)
+    let paragraph = sheet.entries[0]
     #expect(paragraph.name == "intro")
-    #expect(paragraph.instrument == "Piano")
+    #expect(paragraph.assignment == "Piano")
     #expect(paragraph.start == 0)
     #expect(paragraph.sections.count == 1)
 
@@ -73,10 +73,10 @@ import TmdSkill
     #expect(group7.units[0] == .tie)
 
     // Orders
-    #expect(sheet.orders.count == 3)
-    #expect(sheet.orders[0] == .name("intro"))
-    #expect(sheet.orders[1] == .relative("relative_part"))
-    #expect(sheet.orders[2] == .absolute("absolute_part"))
+    #expect(sheet.playback.count == 3)
+    #expect(sheet.playback[0] == .name("intro"))
+    #expect(sheet.playback[1] == .relative("relative_part"))
+    #expect(sheet.playback[2] == .absolute("absolute_part"))
 }
 
 @Test func testParseData() throws {
@@ -119,14 +119,14 @@ func testCanonicalEntrySourceModel() throws {
 @Test("Entry is the primary source-model type while Paragraph remains source-compatible")
 func testCanonicalEntryType() {
     let entry = Entry(name: "Theme", assignment: "Piano", sections: [])
-    let paragraph: Paragraph = entry
+    let paragraph: Entry = entry
     #expect(entry.name == paragraph.name)
     #expect(entry.assignment == "Piano")
-    #expect(entry.instrument == "Piano")
+    #expect(entry.assignment == "Piano")
 
     let sheet = Sheet(entries: [entry], playback: [])
     #expect(sheet.entries == [entry])
-    #expect(sheet.paragraphs == [entry])
+    #expect(sheet.entries == [entry])
 }
 
 @Test("Formatting preserves canonical fixed-pitch entry attributes")
@@ -155,7 +155,7 @@ func testCanonicalPlaybackView() throws {
     """
 
     let sheet = try #require(TmdParser.parse(string: tmd))
-    #expect(sheet.playback == sheet.orders)
+    #expect(sheet.playback == sheet.playback)
     #expect(sheet.playback == [.name("Intro")])
 }
 
@@ -313,7 +313,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     }
 }
 
-@Test func testThrowingParserRejectsMalformedParagraph() throws {
+@Test func testThrowingParserRejectsMalformedEntry() throws {
     do {
         _ = try TmdParser.parseThrowing(string: "::SCORE::\nintro")
         Issue.record("Expected a parse error")
@@ -354,7 +354,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     }
 }
 
-@Test func testParserRejectsInvalidUnitTokenInParagraph() throws {
+@Test func testParserRejectsInvalidUnitTokenInEntry() throws {
     let tmd = """
     ::SCORE::
     ** Invalid Token Test **
@@ -386,8 +386,8 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     #expect(sheet?.speed == 133.0)
     #expect(sheet?.beat.count == 4)
     #expect(sheet?.beat.noteValue == 4)
-    #expect(sheet?.paragraphs.count == 10)
-    #expect(sheet?.orders.count == 13)
+    #expect(sheet?.entries.count == 10)
+    #expect(sheet?.playback.count == 13)
 
     // Verify summary()
     let summaryText = sheet?.summary() ?? ""
@@ -400,8 +400,8 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     #expect(reparsed != nil)
     #expect(reparsed?.name == sheet?.name)
     #expect(reparsed?.speed == sheet?.speed)
-    #expect(reparsed?.paragraphs.count == sheet?.paragraphs.count)
-    #expect(reparsed?.orders.count == sheet?.orders.count)
+    #expect(reparsed?.entries.count == sheet?.entries.count)
+    #expect(reparsed?.playback.count == sheet?.playback.count)
 
     // Verify MIDI generation
     if let validSheet = sheet {
@@ -444,7 +444,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         let sheet = try TmdParser.parseThrowing(url: fileURL)
         #expect(!sheet.name.isEmpty, "Score in \(fileURL.lastPathComponent) should have a name")
         #expect(sheet.speed > 0, "Score in \(fileURL.lastPathComponent) should have positive BPM")
-        #expect(!sheet.paragraphs.isEmpty, "Score in \(fileURL.lastPathComponent) should have paragraphs")
+        #expect(!sheet.entries.isEmpty, "Score in \(fileURL.lastPathComponent) should have paragraphs")
         testedCount += 1
     }
 
@@ -487,7 +487,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         let sheetBig5 = TmdParser.parse(data: big5Data)
         #expect(sheetBig5 != nil)
         #expect(sheetBig5?.name == "測試Big5")
-        #expect(sheetBig5?.paragraphs.first?.instrument == "鋼琴")
+    #expect(sheetBig5?.entries.first?.assignment == "鋼琴")
     }
 }
 
@@ -643,10 +643,10 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     #expect(TmdParser.parse(string: "::SCORE::\n~ \"曲：作曲者\"\n->#")?.metadata["composer"] == "曲：作曲者")
     #expect(TmdParser.parse(string: "::SCORE::\n~ \"編：編曲者\"\n->#")?.metadata["arranger"] == "編：編曲者")
     #expect(sheet.metadata["ARR"] == "編曲者")
-    #expect(sheet.paragraphs[0].start == -1)
-    #expect(sheet.paragraphs[0].sections[0].unitGroups[0].units[0] == .rest)
-    #expect(sheet.paragraphs[1].sections[0].unitGroups[0].units[0] == .percussion("XsTt"))
-    #expect(sheet.paragraphs[0].sections[0].directives == [
+    #expect(sheet.entries[0].start == -1)
+    #expect(sheet.entries[0].sections[0].unitGroups[0].units[0] == .rest)
+    #expect(sheet.entries[1].sections[0].unitGroups[0].units[0] == .percussion("XsTt"))
+    #expect(sheet.entries[0].sections[0].directives == [
         SectionDirective(position: 7, kind: .tempo(140)),
         SectionDirective(position: 7, kind: .relativeTempo(10)),
         SectionDirective(position: 7, kind: .relativeKey(2)),
@@ -656,8 +656,8 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
     let reparsed = TmdParser.parse(string: sheet.format())
     #expect(reparsed?.metadata == sheet.metadata)
-    #expect(reparsed?.paragraphs[0].start == -1)
-    #expect(reparsed?.paragraphs[0].sections[0].directives == sheet.paragraphs[0].sections[0].directives)
+    #expect(reparsed?.entries[0].start == -1)
+    #expect(reparsed?.entries[0].sections[0].directives == sheet.entries[0].sections[0].directives)
 
     let midi = TMDMIDIGenerator.generateMIDI(from: sheet)
     #expect(midi.contains(0x99))
@@ -837,8 +837,8 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         speed: sheet.speed,
         keySignature: sheet.keySignature,
         beat: sheet.beat,
-        paragraphs: sheet.paragraphs.filter { $0.name == "A" },
-        orders: [.name("A")],
+        entries: sheet.entries.filter { $0.name == "A" },
+        playback: [.name("A")],
         metadata: sheet.metadata
     )
 
@@ -1021,8 +1021,8 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         speed: sheet.speed,
         keySignature: sheet.keySignature,
         beat: sheet.beat,
-        paragraphs: sheet.paragraphs.filter { $0.name == "A1" },
-        orders: [.name("A1")],
+        entries: sheet.entries.filter { $0.name == "A1" },
+        playback: [.name("A1")],
         metadata: sheet.metadata
     )
 
@@ -1067,7 +1067,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
     let sheet = TmdParser.parse(string: tmd)
     #expect(sheet != nil)
-    #expect(sheet?.paragraphs.first?.sections.first?.noteLength == 1)
+    #expect(sheet?.entries.first?.sections.first?.noteLength == 1)
 }
 
 @Test func testCrossSectionPickupOverlapsSustainedIntroNote() throws {
@@ -1158,9 +1158,9 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     """#
 
     let sheet = TmdParser.parse(string: tmd)
-    #expect(sheet?.paragraphs.first?.executionTime == "intro")
-    #expect(sheet?.paragraphs.first?.instrument == "Lighting")
-    #expect(sheet?.paragraphs.first?.showProgram?.contains("cue black") == true)
+    #expect(sheet?.entries.first?.executionTime == "intro")
+    #expect(sheet?.entries.first?.assignment == "Lighting")
+    #expect(sheet?.entries.first?.showProgram?.contains("cue black") == true)
     #expect(sheet?.format().contains("\"\"\"") == true)
     #expect(sheet?.format().contains("cue black") == true)
 }
@@ -1248,8 +1248,8 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     )
     let sheet = Sheet(
         speed: 100,
-        paragraphs: [Paragraph(name: "intro", instrument: "Piano", start: 1, sections: [section])],
-        orders: [.name("intro")]
+        entries: [Entry(name: "intro", assignment: "Piano", start: 1, sections: [section])],
+        playback: [.name("intro")]
     )
 
     let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
@@ -1274,11 +1274,11 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     )
     let sheet = Sheet(
         speed: 120,
-        paragraphs: [
-            Paragraph(name: "A", instrument: "Piano", sections: [tempoSection]),
-            Paragraph(name: "A", instrument: "Violin", sections: [meterSection])
+        entries: [
+            Entry(name: "A", assignment: "Piano", sections: [tempoSection]),
+            Entry(name: "A", assignment: "Violin", sections: [meterSection])
         ],
-        orders: [.name("A")]
+        playback: [.name("A")]
     )
 
     let timeline = TMDPlaybackRenderer.renderConductor(sheet: sheet)
@@ -1302,11 +1302,11 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     )
     let sheet = Sheet(
         speed: 120,
-        paragraphs: [
-            Paragraph(name: "A", instrument: "Piano", sections: [meterChangedEntry]),
-            Paragraph(name: "B", instrument: "Piano", sections: [followingEntry])
+        entries: [
+            Entry(name: "A", assignment: "Piano", sections: [meterChangedEntry]),
+            Entry(name: "B", assignment: "Piano", sections: [followingEntry])
         ],
-        orders: [.name("A"), .name("B")]
+        playback: [.name("A"), .name("B")]
     )
 
     let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
@@ -1331,12 +1331,12 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     )
     let sheet = Sheet(
         speed: 120,
-        paragraphs: [
-            Paragraph(name: "A", instrument: "Piano", sections: [pianoStateEntry]),
-            Paragraph(name: "B", instrument: "Piano", sections: [followingEntry]),
-            Paragraph(name: "A", instrument: "Violin", sections: [followingEntry])
+        entries: [
+            Entry(name: "A", assignment: "Piano", sections: [pianoStateEntry]),
+            Entry(name: "B", assignment: "Piano", sections: [followingEntry]),
+            Entry(name: "A", assignment: "Violin", sections: [followingEntry])
         ],
-        orders: [.name("A"), .name("B")]
+        playback: [.name("A"), .name("B")]
     )
 
     let piano = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
@@ -1359,13 +1359,13 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     )
     let sheet = Sheet(
         speed: 120,
-        paragraphs: [
-            Paragraph(name: "A", instrument: "Piano", sections: [pianoEntry]),
-            Paragraph(name: "A", instrument: "Violin", sections: [followingEntry]),
-            Paragraph(name: "B", instrument: "Piano", sections: [followingEntry]),
-            Paragraph(name: "B", instrument: "Violin", sections: [followingEntry])
+        entries: [
+            Entry(name: "A", assignment: "Piano", sections: [pianoEntry]),
+            Entry(name: "A", assignment: "Violin", sections: [followingEntry]),
+            Entry(name: "B", assignment: "Piano", sections: [followingEntry]),
+            Entry(name: "B", assignment: "Violin", sections: [followingEntry])
         ],
-        orders: [.relative("+3"), .name("A"), .name("B")]
+        playback: [.relative("+3"), .name("A"), .name("B")]
     )
 
     let piano = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
@@ -1484,13 +1484,13 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         speed: 0,
         keySignature: "?",
         beat: Beat(count: 0, noteValue: 0),
-        paragraphs: [Paragraph(name: "A", instrument: "Unknown", sections: [
+        entries: [Entry(name: "A", assignment: "Unknown", sections: [
             Section(noteLength: 8, unitGroups: [
                 UnitGroup(units: [.note(Note(degree: .c)), .chord("???")], length: 2),
                 UnitGroup(units: [], length: 1)
             ])
         ])],
-        orders: [.name("A"), .name("Missing")]
+        playback: [.name("A"), .name("Missing")]
     )
 
     #expect(!TMDMIDIGenerator.generateMIDI(from: sheet).isEmpty)
@@ -1554,9 +1554,9 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     """
 
     let sheet = try TmdParser.parseThrowing(string: tmd)
-    #expect(sheet.paragraphs.count == 2)
-    #expect(sheet.paragraphs[0].start == 0)
-    #expect(sheet.paragraphs[1].start == -1)
+    #expect(sheet.entries.count == 2)
+    #expect(sheet.entries[0].start == 0)
+    #expect(sheet.entries[1].start == -1)
 
     let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
     #expect(!timeline.events.isEmpty)
@@ -1658,8 +1658,8 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     """
 
     let sheet = try TmdParser.parseThrowing(string: tmd)
-    #expect(sheet.orders.count == 3)
-    #expect(sheet.orders[1] == .relative("-1"))
+    #expect(sheet.playback.count == 3)
+    #expect(sheet.playback[1] == .relative("-1"))
 
     let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
     let noteEvents = timeline.events.filter {
@@ -1759,7 +1759,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     let sheet1 = TmdParser.parse(string: makeScore("(1 2 5 1 2 5) % (--) 4 3"))
     #expect(sheet1 != nil)
     guard let s1 = sheet1 else { return }
-    let groups1 = s1.paragraphs[0].sections[0].unitGroups
+    let groups1 = s1.entries[0].sections[0].unitGroups
     let beats1 = groups1.reduce(0) { $0 + $1.length }
     #expect(beats1 == 4)
     #expect(groups1.count == 3)
@@ -1772,7 +1772,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     let sheet2 = TmdParser.parse(string: makeScore("(125125)%(--) 43"))
     #expect(sheet2 != nil)
     guard let s2 = sheet2 else { return }
-    let groups2 = s2.paragraphs[0].sections[0].unitGroups
+    let groups2 = s2.entries[0].sections[0].unitGroups
     let beats2 = groups2.reduce(0) { $0 + $1.length }
     #expect(beats2 == 4)
     #expect(groups2.count == 3)
@@ -1785,7 +1785,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     let sheet3 = TmdParser.parse(string: makeScore("(125125) % (--) 43"))
     #expect(sheet3 != nil)
     guard let s3 = sheet3 else { return }
-    let groups3 = s3.paragraphs[0].sections[0].unitGroups
+    let groups3 = s3.entries[0].sections[0].unitGroups
     let beats3 = groups3.reduce(0) { $0 + $1.length }
     #expect(beats3 == 4)
     #expect(groups3.count == 3)
@@ -1796,7 +1796,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     let sheet4 = TmdParser.parse(string: makeScore("1--- 0--- 5-- 1-"))
     #expect(sheet4 != nil)
     guard let s4 = sheet4 else { return }
-    let groups4 = s4.paragraphs[0].sections[0].unitGroups
+    let groups4 = s4.entries[0].sections[0].unitGroups
     let beats4 = groups4.reduce(0) { $0 + $1.length }
     #expect(beats4 == 13)
     #expect(groups4.count == 13)
@@ -1813,7 +1813,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     let sheet5 = TmdParser.parse(string: makeScore("(1 2 3)% (---) (123)%(----)"))
     #expect(sheet5 != nil)
     guard let s5 = sheet5 else { return }
-    let groups5 = s5.paragraphs[0].sections[0].unitGroups
+    let groups5 = s5.entries[0].sections[0].unitGroups
     #expect(groups5.count == 2)
     #expect(groups5[0].units.count == 3)
     #expect(groups5[0].length == 3)
@@ -1824,7 +1824,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     let sheet6 = TmdParser.parse(string: makeScore("1'^2,_3^-- 43-"))
     #expect(sheet6 != nil)
     guard let s6 = sheet6 else { return }
-    let groups6 = s6.paragraphs[0].sections[0].unitGroups
+    let groups6 = s6.entries[0].sections[0].unitGroups
     let beats6 = groups6.reduce(0) { $0 + $1.length }
     #expect(beats6 == 8)
     #expect(groups6.count == 8)
@@ -1840,18 +1840,18 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
 @Test func testSheetInstrumentHelper() throws {
     let sheetWithInstruments = Sheet(
-        paragraphs: [
-            Paragraph(name: "intro", instrument: "Guitar"),
-            Paragraph(name: "verse", instrument: "Bass"),
-            Paragraph(name: "chorus", instrument: "Vocal"),
-            Paragraph(name: "intro", instrument: "Piano")
+        entries: [
+            Entry(name: "intro", assignment: "Guitar"),
+            Entry(name: "verse", assignment: "Bass"),
+            Entry(name: "chorus", assignment: "Vocal"),
+            Entry(name: "intro", assignment: "Piano")
         ]
     )
 
     #expect(sheetWithInstruments.distinctInstruments() == ["Bass", "Guitar", "Piano", "Vocal"])
     #expect(sheetWithInstruments.distinctInstruments(fallbackToDefault: false) == ["Bass", "Guitar", "Piano", "Vocal"])
 
-    let emptySheet = Sheet(paragraphs: [])
+    let emptySheet = Sheet(entries: [])
     #expect(emptySheet.distinctInstruments(fallbackToDefault: true) == ["Piano"])
     #expect(emptySheet.distinctInstruments(fallbackToDefault: false) == [])
 
@@ -1860,10 +1860,10 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     #expect(sheetWithInstruments.resolveVocalInstrument(requested: "Guitar") == "Guitar")
     #expect(sheetWithInstruments.resolveVocalInstrument(requested: "Unknown") == "Vocal")
 
-    let sheetWithMiku = Sheet(paragraphs: [Paragraph(name: "verse", instrument: "Hatsune_Miku")])
+    let sheetWithMiku = Sheet(entries: [Entry(name: "verse", assignment: "Hatsune_Miku")])
     #expect(sheetWithMiku.resolveVocalInstrument() == "Hatsune_Miku")
 
-    let sheetOnlyBass = Sheet(paragraphs: [Paragraph(name: "verse", instrument: "Bass")])
+    let sheetOnlyBass = Sheet(entries: [Entry(name: "verse", assignment: "Bass")])
     #expect(sheetOnlyBass.resolveVocalInstrument() == "Bass")
 
     #expect(emptySheet.resolveVocalInstrument() == "Vocal")
@@ -2173,8 +2173,8 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
     for template in templates {
         let sheet = try TmdParser.parseThrowing(string: template.content)
-        #expect(!sheet.paragraphs.isEmpty, "Template \(template.name) should have paragraphs")
-        #expect(!sheet.orders.isEmpty, "Template \(template.name) should have orders")
+        #expect(!sheet.entries.isEmpty, "Template \(template.name) should have paragraphs")
+        #expect(!sheet.playback.isEmpty, "Template \(template.name) should have orders")
         let issues = TMDMeasureChecker.check(source: template.content)
         #expect(issues.isEmpty, "Template \(template.name) should not have measure discrepancy issues, found: \(issues)")
     }
@@ -2243,8 +2243,8 @@ func testMultiNoteParsingAndFormatting() throws {
     -> main ->#
     """
     let sheet = try TmdParser.parseThrowing(string: source)
-    #expect(sheet.paragraphs.count == 1)
-    let section = sheet.paragraphs[0].sections[0]
+    #expect(sheet.entries.count == 1)
+    let section = sheet.entries[0].sections[0]
     #expect(section.unitGroups.count == 4)
 
     // Verify first unit group has multiNote with [1, 3]
@@ -2317,7 +2317,7 @@ func testMultiNoteInsideTuplet() throws {
     -> main ->#
     """
     let sheet = try TmdParser.parseThrowing(string: source)
-    let section = sheet.paragraphs[0].sections[0]
+    let section = sheet.entries[0].sections[0]
     #expect(section.unitGroups.count == 3)
     let tuplet = section.unitGroups[0]
     #expect(tuplet.length == 2)
@@ -2500,7 +2500,7 @@ func testInvalidMultiNoteSyntax() {
     #expect(sheet.declaredKey == "Bm")
     #expect(sheet.keySignature.description == "D")
 
-    let paragraph = sheet.paragraphs[0]
+    let paragraph = sheet.entries[0]
     let section = paragraph.sections[0]
     let directives = section.directives
     #expect(directives.contains { directive in
@@ -2529,7 +2529,7 @@ func testInvalidMultiNoteSyntax() {
     """
 
     let sheet = try #require(TmdParser.parse(string: tmd))
-    let section = sheet.paragraphs[0].sections[0]
+    let section = sheet.entries[0].sections[0]
     let directives = section.directives
 
     let dynamicKinds = directives.compactMap { directive -> DynamicMark? in
