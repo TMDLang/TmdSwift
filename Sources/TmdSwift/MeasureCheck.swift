@@ -532,7 +532,7 @@ public struct TMDMeasureChecker {
                     if duration > measureDuration + 1e-9 && section.barlinePositions.isEmpty {
                         issues.append(TMDMeasureIssue(
                             paragraphName: entry.name,
-                            instrument: entry.instrument,
+                            instrument: entry.assignment ?? "",
                             lineNumber: 0,
                             measureIndex: 0,
                             expectedUnits: Int((duration / measureDuration).rounded()),

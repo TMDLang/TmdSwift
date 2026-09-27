@@ -80,7 +80,7 @@ public struct TMDOutlineGenerator {
 
         struct TrackOccurrence {
             let sectionName: String
-            let instrument: String
+            let assignment: String
             let range: TMDOutlineRange
             let selectionRange: TMDOutlineRange
             let detail: String?
@@ -227,7 +227,7 @@ public struct TMDOutlineGenerator {
 
                 trackOccurrences.append(TrackOccurrence(
                     sectionName: secName,
-                    instrument: instName,
+                    assignment: instName,
                     range: range,
                     selectionRange: selectionRange,
                     detail: detail
@@ -273,7 +273,7 @@ public struct TMDOutlineGenerator {
 
                 trackOccurrences.append(TrackOccurrence(
                     sectionName: secName,
-                    instrument: "",
+                    assignment: "",
                     range: range,
                     selectionRange: selectionRange,
                     detail: "Theme"
@@ -433,7 +433,7 @@ public struct TMDOutlineGenerator {
 
             let trackNodes = tracks.map { track in
                 TMDOutlineNode(
-                    name: track.instrument,
+                    name: track.assignment,
                     detail: track.detail,
                     kind: "field",
                     range: track.range,
