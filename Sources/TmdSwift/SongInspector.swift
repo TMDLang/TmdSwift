@@ -58,6 +58,8 @@ public enum TMDVocalClassification: String, Equatable, Sendable, Codable, CaseIt
 /// Vocal or instrument pitch range and tessitura summary.
 public struct TMDPitchRangeProfile: Equatable, Sendable, Codable {
     public let instrument: String
+    /// Canonical assignment represented by this pitch profile.
+    public var assignment: String { instrument }
     public let lowestNote: TMDNotePitchInfo
     public let highestNote: TMDNotePitchInfo
     public let spanSemitones: Int
@@ -476,7 +478,7 @@ public enum TMDSongInspector {
         } else {
             targetVocalInst = sheet.resolveVocalInstrument()
         }
-        let vocalRange = instrumentRanges.first { $0.instrument == targetVocalInst }
+        let vocalRange = instrumentRanges.first { $0.assignment == targetVocalInst }
 
         // 4. Harmony & Chord Profile
         let harmonyProfile = buildHarmonyProfile(sheet: sheet)
@@ -919,7 +921,7 @@ public enum TMDSongInspector {
         lines.append(strings.instrumentRanges)
         for inst in profile.instrumentRanges {
             let octaves = String(format: "%0.1f", inst.spanOctaves)
-            lines.append("  - \(inst.instrument.padding(toLength: 14, withPad: " ", startingAt: 0)): \(inst.lowestNote.noteName) – \(inst.highestNote.noteName) (\(inst.spanSemitones) semitones / \(octaves) octaves, \(inst.totalNotes) notes)")
+            lines.append("  - \(inst.assignment.padding(toLength: 14, withPad: " ", startingAt: 0)): \(inst.lowestNote.noteName) – \(inst.highestNote.noteName) (\(inst.spanSemitones) semitones / \(octaves) octaves, \(inst.totalNotes) notes)")
         }
         lines.append("================================================================================")
 
