@@ -1497,7 +1497,11 @@ function activate(context) {
             }
         });
         if (!valInput) return;
-        const offset = parseInt(valInput, 10);
+        const offset = Number.parseInt(valInput.trim(), 10);
+        if (!Number.isInteger(offset) || offset === 0) {
+            vscode.window.showErrorMessage('TMD transpose requires a non-zero integer offset.');
+            return;
+        }
 
         let updateKey = false;
         if (modeChoice.mode === 'semitones' && !isSelectionOnly) {
@@ -1578,12 +1582,14 @@ function activate(context) {
 
         const args = ['transpose'];
         if (modeChoice.mode === 'semitones') {
-            args.push('--semitones', String(offset));
+            // Use the equals form so the value cannot be detached from the
+            // option when VS Code passes the argument vector to execFile.
+            args.push(`--semitones=${offset}`);
             if (updateKey && !isSelectionOnly) {
                 args.push('--update-key');
             }
         } else {
-            args.push('--diatonic', String(offset));
+            args.push(`--diatonic=${offset}`);
         }
 
         if (!isSelectionOnly) {
