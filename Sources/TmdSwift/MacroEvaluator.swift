@@ -1017,7 +1017,7 @@ assignment: concreteParagraphs[idx].assignment,
             case .list: themeName = ""
             }
 
-            if let p = abstractMap[themeName] ?? sheet.paragraphs.first(where: { $0.name == themeName }) {
+            if let p = abstractMap[themeName] ?? sheet.entries.first(where: { $0.name == themeName }) {
                 return (themeName, p.sections)
             }
             throw TMDMacroError("Theme '\(themeName)' not found")
@@ -1451,7 +1451,7 @@ assignment: concreteParagraphs[idx].assignment,
             }
         }
 
-        for order in sheet.orders {
+        for order in sheet.playback {
             switch order {
             case .macro(let expr):
                 let names = try evalExpr(expr)
@@ -1470,8 +1470,8 @@ assignment: concreteParagraphs[idx].assignment,
             speed: sheet.speed,
             keySignature: sheet.keySignature,
             beat: sheet.beat,
-            paragraphs: concreteParagraphs,
-            orders: newOrders,
+            entries: concreteParagraphs,
+            playback: newOrders,
             metadata: sheet.metadata
         )
     }

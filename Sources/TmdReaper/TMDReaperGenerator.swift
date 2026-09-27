@@ -75,7 +75,7 @@ public struct TMDReaperGenerator {
             ? sheet.playback
             : sheet.entries.map(\.name).reduce(into: [String]()) { names, name in
                 if !names.contains(name) { names.append(name) }
-            }.map(Order.name)
+            }.map(Playback.name)
 
         var currentQuarter = 0.0
         var markerId = 1

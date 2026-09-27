@@ -140,8 +140,8 @@ public struct TMDABCGenerator {
         }
     }
 
-    private static func paragraphsContainPercussion(_ paragraphs: [Paragraph], instrument: String) -> Bool {
-        paragraphs.filter { ($0.assignment ?? "").caseInsensitiveCompare(instrument) == .orderedSame }.contains { paragraph in
+    private static func paragraphsContainPercussion(_ entries: [Entry], instrument: String) -> Bool {
+        entries.filter { ($0.assignment ?? "").caseInsensitiveCompare(instrument) == .orderedSame }.contains { paragraph in
             paragraph.sections.contains { section in
                 section.unitGroups.contains { group in
                     group.units.contains { if case .percussion = $0 { return true }; return false }

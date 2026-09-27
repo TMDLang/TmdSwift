@@ -13,14 +13,14 @@ extension Sheet {
             lines.append("DeclaredKey:  \(declaredKey)")
         }
         lines.append("Beat:         \(beat.count)/\(beat.noteValue)")
-        lines.append("Entries:      \(paragraphs.count)")
-        for (idx, p) in paragraphs.enumerated() {
+        lines.append("Entries:      \(entries.count)")
+        for (idx, p) in entries.enumerated() {
             let secCount = p.sections.count
             let totalUnits = p.sections.reduce(0) { $0 + $1.unitGroups.count }
             lines.append("  [\(idx + 1)] \(p.name) (Assignment: \(p.assignment ?? ""), Start: \(p.start), Sections: \(secCount), UnitGroups: \(totalUnits))")
         }
-        lines.append("Playback:     \(orders.count)")
-        for (idx, order) in orders.enumerated() {
+        lines.append("Playback:     \(playback.count)")
+        for (idx, order) in playback.enumerated() {
             switch order {
             case .name(let n):
                 lines.append("  [\(idx + 1)] -> \(n)")
@@ -58,12 +58,12 @@ extension Sheet {
         }
         if !metadata.isEmpty { result += "\n" }
 
-        for paragraph in paragraphs {
+        for paragraph in entries {
             result += paragraph.format()
         }
 
         var counter = 0
-        for order in orders {
+        for order in playback {
             result += "-> \(order.format()) "
             counter += 1
             if counter % 4 == 0 {
@@ -206,13 +206,14 @@ extension Entry {
     public func format() -> String {
         if let showProgram {
             let time = executionTime ?? ""
-            return "\(name):\(instrument)@\(time){\n\"\"\"\(showProgram)\"\"\"\n}\n\n"
+            let assignmentName = assignment ?? ""
+            return "\(name):\(assignmentName)@\(time){\n\"\"\"\(showProgram)\"\"\"\n}\n\n"
         }
         var result = ""
-        if instrument.isEmpty {
+        if (assignment ?? "").isEmpty {
             result = "\(name) {\n"
         } else {
-            result = "\(name):\(instrument)"
+            result = "\(name):\(assignment ?? "")"
             if pitchMode == .fixed {
                 result += "[pitchMode=fixed]"
             }

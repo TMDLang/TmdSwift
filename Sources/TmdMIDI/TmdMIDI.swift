@@ -21,8 +21,8 @@ public struct TMDMIDIGenerator {
                 speed: sheet.speed,
                 keySignature: sheet.keySignature,
                 beat: sheet.beat,
-                paragraphs: filteredParagraphs,
-                orders: [.name(targetParagraph)],
+                entries: filteredParagraphs,
+                playback: [.name(targetParagraph)],
                 metadata: sheet.metadata
             )
         }
