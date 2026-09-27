@@ -673,24 +673,22 @@ public struct Sheet: Equatable {
     /// > Note: Originally named `beat` in Aguai's C++ code.
     public let beat: Beat
 
-    /// All instrument paragraphs defined across the sheet.
-    ///
-    /// > Note: Originally named `paragraphs` in Aguai's C++ code.
-    public let paragraphs: [Paragraph]
+    /// Canonical source entries defined across the sheet.
+    public let entries: [Entry]
 
-    /// Song structure playback order sequence.
-    ///
-    /// > Note: Originally named `orders` in Aguai's C++ code.
-    public let orders: [Order]
+    /// Canonical playback expressions sequencing the song.
+    public let playback: [Playback]
 
     /// Song-level metadata such as lyrics, composer, and arranger credits.
     public let metadata: [String: String]
 
-    /// Canonical source entries, retained alongside the compatibility field.
-    public var entries: [Entry] { paragraphs }
+    /// Source-compatibility view using the pre-canonical name.
+    @available(*, deprecated, renamed: "entries")
+    public var paragraphs: [Paragraph] { entries }
 
-    /// Canonical playback expressions, retained alongside the compatibility field.
-    public var playback: [Playback] { orders }
+    /// Source-compatibility view using the pre-canonical name.
+    @available(*, deprecated, renamed: "playback")
+    public var orders: [Order] { playback }
 
     public init(
         name: String = "",
@@ -707,8 +705,8 @@ public struct Sheet: Equatable {
         self.keySignature = keySignature
         self.declaredKey = declaredKey
         self.beat = beat
-        self.paragraphs = paragraphs
-        self.orders = orders
+        self.entries = paragraphs
+        self.playback = orders
         self.metadata = metadata
     }
 
@@ -746,7 +744,7 @@ public struct Sheet: Equatable {
     /// Returns a sorted list of unique instrument names present across all paragraphs in the sheet.
     /// - Parameter fallbackToDefault: If true and no instruments exist, returns `["Piano"]`.
     public func distinctInstruments(fallbackToDefault: Bool = true) -> [String] {
-        let distinct = Array(Set(paragraphs.compactMap(\.assignment).filter { !$0.isEmpty })).sorted()
+        let distinct = Array(Set(entries.compactMap(\.assignment).filter { !$0.isEmpty })).sorted()
         if distinct.isEmpty && fallbackToDefault {
             return ["Piano"]
         }
