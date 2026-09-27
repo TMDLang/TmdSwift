@@ -213,13 +213,13 @@ public enum TMDMacroEvaluator {
             return sheet
         }
 
-        var abstractMap: [String: Paragraph] = [:]
+        var abstractMap: [String: Entry] = [:]
         for p in sheet.paragraphs where p.instrument.isEmpty {
             abstractMap[p.name] = p
         }
 
-        var concreteParagraphs: [Paragraph] = sheet.paragraphs.filter { !$0.instrument.isEmpty }
-        var newOrders: [Order] = []
+        var concreteParagraphs: [Entry] = sheet.paragraphs.filter { $0.assignment != nil }
+        var newOrders: [Playback] = []
         var genCounter = 0
 
         func createSyntheticParagraph(
@@ -227,10 +227,10 @@ public enum TMDMacroEvaluator {
             instrument: String,
             startOffset: Int,
             sections: [Section]
-        ) -> Paragraph {
+        ) -> Entry {
             genCounter += 1
             let uniqueName = "__macro_\(baseName)_\(genCounter)"
-            let p = Paragraph(
+            let p = Entry(
                 name: uniqueName,
                 instrument: instrument,
                 start: startOffset,

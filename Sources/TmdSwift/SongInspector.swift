@@ -504,7 +504,7 @@ public enum TMDSongInspector {
 
     private static func buildTimingProfile(sheet: Sheet, timelineDirectives: [PlaybackDirectiveEvent]) -> TMDTimingProfile {
         let orders = sheet.orders.isEmpty
-            ? sheet.paragraphs.map(\.name).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }.map(Order.name)
+            ? sheet.paragraphs.map(\.name).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }.map(Playback.name)
             : sheet.orders
 
         var state = PlaybackState(
@@ -797,8 +797,8 @@ public enum TMDSongInspector {
     private static func buildDensityProfile(sheet: Sheet) -> TMDArrangementDensityProfile {
         var sectionDict: [String: [String]] = [:]
         for p in sheet.paragraphs {
-            guard !p.instrument.isEmpty else { continue }
-            sectionDict[p.name, default: []].append(p.instrument)
+            guard let assignment = p.assignment else { continue }
+            sectionDict[p.name, default: []].append(assignment)
         }
 
         var sectionDensities: [TMDArrangementDensityProfile.SectionDensity] = []
@@ -1347,7 +1347,7 @@ public enum TMDSongInspector {
 
     private static func collectTimelineDirectives(sheet: Sheet) -> [PlaybackDirectiveEvent] {
         let paragraphs = sheet.paragraphs
-        let instruments = Set(paragraphs.map(\.instrument).filter { !$0.isEmpty })
+        let instruments = Set(paragraphs.compactMap(\.assignment).filter { !$0.isEmpty })
         var directives: [PlaybackDirectiveEvent] = []
         for instrument in instruments {
             directives.append(contentsOf: TMDPlaybackRenderer.render(sheet: sheet, instrument: instrument).directives)
