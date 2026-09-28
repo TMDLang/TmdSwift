@@ -21,6 +21,7 @@
     "onCommand:tmd.openMidiPlayer",
     "onCommand:tmd.openKeyboard",
     "onCommand:tmd.inspectSong",
+    "onCommand:tmd.openHummingPanel",
     "onCommand:tmd.newFromTemplate",
     "onView:tmdKeyboardView",
     "onView:tmdInspectorView"
@@ -153,6 +154,13 @@
         "title": "%tmd.commands.inspectSong%",
         "category": "TMD",
         "icon": "$(pulse)",
+        "enablement": "editorLangId == tmd"
+      },
+      {
+        "command": "tmd.openHummingPanel",
+        "title": "%tmd.commands.openHummingPanel%",
+        "category": "TMD",
+        "icon": "$(mic)",
         "enablement": "editorLangId == tmd"
       },
       {
@@ -329,6 +337,11 @@
       ],
       "editor/context": [
         {
+          "command": "tmd.openHummingPanel",
+          "when": "editorLangId == tmd",
+          "group": "tmd_create@1"
+        },
+        {
           "command": "tmd.openMidiPlayer",
           "when": "editorLangId == tmd",
           "group": "tmd_preview@1"
@@ -445,6 +458,11 @@
         }
       ],
       "editor/title": [
+        {
+          "command": "tmd.openHummingPanel",
+          "when": "editorLangId == tmd",
+          "group": "navigation@0"
+        },
         {
           "command": "tmd.openMidiPlayer",
           "when": "editorLangId == tmd",

@@ -1,0 +1,29 @@
+.hum-panel {
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+  font-family: var(--vscode-font-family);
+  padding: 16px;
+  max-width: 760px;
+  margin: 0 auto;
+}
+.hum-header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 16px; }
+.hum-header h1 { font-size: 20px; margin: 0; }
+.hum-status { color: var(--vscode-descriptionForeground); min-height: 20px; }
+.hum-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.hum-field { display: flex; flex-direction: column; gap: 5px; }
+.hum-field label { color: var(--vscode-descriptionForeground); font-size: 12px; }
+.hum-field input, .hum-field select, .hum-result {
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, transparent);
+  padding: 6px;
+  font: inherit;
+}
+.hum-options { display: flex; flex-wrap: wrap; gap: 12px; margin: 14px 0; color: var(--vscode-descriptionForeground); }
+.hum-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.hum-actions button { padding: 7px 12px; cursor: pointer; }
+.hum-actions .primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border: 0; }
+.hum-actions button:disabled { opacity: .55; cursor: default; }
+.hum-result { width: 100%; min-height: 210px; box-sizing: border-box; resize: vertical; font-family: var(--vscode-editor-font-family); }
+.hum-meta { display: flex; gap: 16px; color: var(--vscode-descriptionForeground); min-height: 20px; }
+.hum-error { color: var(--vscode-errorForeground); }

@@ -17,6 +17,7 @@
   "tmd.commands.formatDocument": "格式化文件",
   "tmd.commands.checkMeasures": "檢查小節拍數一致性",
   "tmd.commands.inspectSong": "開啟歌曲分析器（歌曲資訊與音域）",
+  "tmd.commands.openHummingPanel": "哼唱產生 TMD",
   "tmd.commands.refactorDoubleGrid": "重構：網格解析度加倍 (<4*> -> <8*>)",
   "tmd.commands.refactorHalveGrid": "重構：網格解析度減半 (<8*> -> <4*>)",
   "tmd.commands.refactorOptimizeGrid": "重構：最佳化網格解析度（最小冗餘網格）",
