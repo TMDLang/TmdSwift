@@ -8,9 +8,6 @@
     const applyButton = $('hum-apply');
     const previewButton = $('hum-preview');
     const keyBadge = $('hum-key-badge');
-    let recorder = null;
-    let stream = null;
-    let chunks = [];
     let recording = false;
     let countInTimer = null;
     let metronomeTimer = null;
@@ -57,10 +54,8 @@
     }
     function stopRecording() {
         stopTimers();
-        if (recorder && recorder.state !== 'inactive')
-            recorder.stop();
-        stream?.getTracks().forEach((track) => track.stop());
-        stream = null;
+        if (recording)
+            vscode.postMessage({ command: 'stopHummingRecording' });
         recording = false;
         recordButton.textContent = '🎙️ Start recording';
     }
@@ -129,25 +124,9 @@
         previewButton.disabled = false;
         setStatus('Transcribed successfully. Review the TMD before inserting it.');
     }
-    async function startRecording() {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        chunks = [];
-        recorder = new MediaRecorder(stream);
-        recorder.ondataavailable = (event) => { if (event.data.size)
-            chunks.push(event.data); };
-        recorder.onstop = async () => {
-            try {
-                await transcribe(new Blob(chunks, { type: recorder?.mimeType || 'audio/webm' }));
-            }
-            catch (error) {
-                setStatus(`Recording or transcription error: ${error.message || error}`, true);
-            }
-            finally {
-                recordButton.disabled = false;
-            }
-        };
+    function startRecording() {
         const begin = () => {
-            recorder.start();
+            vscode.postMessage({ command: 'startHummingRecording' });
             recording = true;
             recordButton.textContent = '⏹ Stop and transcribe';
             setStatus('Recording… hum or sing a melody, then stop.');
@@ -164,20 +143,35 @@
         else
             begin();
     }
+    window.addEventListener('message', (event) => {
+        const message = event.data;
+        if (message.command === 'hummingRecordingError') {
+            stopTimers();
+            recording = false;
+            recordButton.disabled = false;
+            recordButton.textContent = '🎙️ Start recording';
+            setStatus(`Microphone unavailable: ${message.error || 'Permission denied.'}`, true);
+        }
+        if (message.command === 'hummingRecordingReady' && message.audio) {
+            recording = false;
+            try {
+                const bytes = message.audio instanceof Uint8Array ? message.audio : new Uint8Array(message.audio);
+                const audioBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+                void transcribe(new Blob([audioBuffer], { type: 'audio/wav' }));
+            }
+            catch (error) {
+                setStatus(`Recording or transcription error: ${error.message || error}`, true);
+                recordButton.disabled = false;
+            }
+        }
+    });
     recordButton.addEventListener('click', async () => {
         if (recording) {
             stopRecording();
             return;
         }
         recordButton.disabled = true;
-        try {
-            await startRecording();
-        }
-        catch (error) {
-            stopRecording();
-            recordButton.disabled = false;
-            setStatus(`Microphone unavailable: ${error.message || error}`, true);
-        }
+        startRecording();
     });
     $('hum-cancel').addEventListener('click', () => { stopRecording(); vscode.postMessage({ command: 'closeHummingPanel' }); });
     previewButton.addEventListener('click', () => vscode.postMessage({ command: 'previewHummingTmd', tmd: result.value }));

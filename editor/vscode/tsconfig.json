@@ -7,5 +7,5 @@
     "skipLibCheck": true,
     "esModuleInterop": true
   },
-  "include": ["media/humming-quantizer.ts"]
+  "include": ["media/humming-quantizer.ts", "humming-recorder.ts"]
 }

@@ -36,7 +36,9 @@ test('extension wires a dedicated humming webview and editor insertion messages'
 test('humming webview assets expose recording and result actions', () => {
   const script = fs.readFileSync(path.join(root, 'media', 'humming-panel.js'), 'utf8');
   const css = fs.readFileSync(path.join(root, 'media', 'humming-panel.css'), 'utf8');
-  assert.match(script, /getUserMedia/);
+  assert.doesNotMatch(script, /getUserMedia/);
+  assert.match(script, /startHummingRecording/);
+  assert.match(script, /stopHummingRecording/);
   assert.match(script, /BasicPitch/);
   assert.match(script, /insertHummingTmd/);
   assert.match(script, /hum-record/);

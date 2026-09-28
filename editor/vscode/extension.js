@@ -1,5 +1,6 @@
 const vscode = require('vscode');
 const { execFile, spawn, execFileSync } = require('child_process');
+const { createHummingRecorder } = require('./humming-recorder.js');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -678,6 +679,7 @@ function activate(context) {
     }
 
     function configureHummingWebview(webview, view) {
+        let hummingRecorder = null;
         webview.options = {
             enableScripts: true,
             retainContextWhenHidden: true,
@@ -686,7 +688,37 @@ function activate(context) {
         webview.html = getHummingWebviewContent(webview, context.extensionUri);
         webview.onDidReceiveMessage(async (message) => {
             if (message.command === 'closeHummingPanel') {
+                hummingRecorder?.cancel();
+                hummingRecorder = null;
                 await vscode.commands.executeCommand('workbench.action.closePanel');
+                return;
+            }
+            if (message.command === 'startHummingRecording') {
+                if (hummingRecorder) return;
+                hummingRecorder = createHummingRecorder();
+                try {
+                    await hummingRecorder.start();
+                    await webview.postMessage({ command: 'hummingRecordingStarted' });
+                } catch (error) {
+                    hummingRecorder?.cancel();
+                    hummingRecorder = null;
+                    await webview.postMessage({ command: 'hummingRecordingError', error: error.message || String(error) });
+                }
+                return;
+            }
+            if (message.command === 'stopHummingRecording') {
+                if (!hummingRecorder) {
+                    await webview.postMessage({ command: 'hummingRecordingError', error: 'No active microphone recording.' });
+                    return;
+                }
+                try {
+                    const audio = await hummingRecorder.stop();
+                    await webview.postMessage({ command: 'hummingRecordingReady', audio });
+                } catch (error) {
+                    await webview.postMessage({ command: 'hummingRecordingError', error: error.message || String(error) });
+                } finally {
+                    hummingRecorder = null;
+                }
                 return;
             }
             if (message.command === 'insertHummingTmd') {
@@ -714,6 +746,8 @@ function activate(context) {
         }, null, context.subscriptions);
         currentHummingView = view;
         view.onDidDispose(() => {
+            hummingRecorder?.cancel();
+            hummingRecorder = null;
             currentHummingView = null;
             hummingTargetEditor = null;
         }, null, context.subscriptions);

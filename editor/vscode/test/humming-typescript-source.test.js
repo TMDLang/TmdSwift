@@ -14,6 +14,15 @@ test('humming quantization has a TypeScript source of truth', () => {
 test('humming panel has a TypeScript source of truth', () => {
   const source = fs.readFileSync(require('node:path').join(mediaDir, 'humming-panel.ts'), 'utf8');
   assert.match(source, /declare const acquireVsCodeApi/);
-  assert.match(source, /MediaRecorder/);
+  assert.match(source, /startHummingRecording/);
+  assert.match(source, /stopHummingRecording/);
+  assert.doesNotMatch(source, /getUserMedia/);
   assert.match(source, /BasicPitch/);
+});
+
+test('humming recorder has an extension-host TypeScript source of truth', () => {
+  const source = fs.readFileSync(require('node:path').join(__dirname, '..', 'humming-recorder.ts'), 'utf8');
+  assert.match(source, /export function createHummingRecorder/);
+  assert.match(source, /avfoundation/);
+  assert.match(source, /Microphone recording requires ffmpeg/);
 });
