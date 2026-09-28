@@ -672,7 +672,9 @@ function activate(context) {
     <div class="hum-meta"><span>Processing stays local to the webview.</span></div>
     <textarea id="hum-result" class="hum-result" spellcheck="false" aria-label="Generated TMD"></textarea>
   </main>
+  <script nonce="${nonce}">var __tmdQuantizerExports = {}; var exports = __tmdQuantizerExports;</script>
   <script nonce="${nonce}" src="${quantizerUri}"></script>
+  <script nonce="${nonce}">window.TMDHummingQuantizer = __tmdQuantizerExports;</script>
   <script nonce="${nonce}" src="${panelUri}"></script>
 </body>
 </html>`;

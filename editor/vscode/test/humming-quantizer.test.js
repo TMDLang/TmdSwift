@@ -11,6 +11,12 @@ const {
   quantizeNoteEventsToTmdSection,
 } = require('../media/humming-quantizer');
 
+test('quantizer runtime exposes CommonJS functions for the Webview bridge', () => {
+  const runtime = fs.readFileSync(path.join(__dirname, '..', 'media', 'humming-quantizer.js'), 'utf8');
+  assert.match(runtime, /exports\.detectTonicAndScale/);
+  assert.match(runtime, /exports\.quantizeNoteEventsToTmdSection/);
+});
+
 test('converts MIDI pitch to Jianpu relative to the key', () => {
   assert.equal(midiPitchToJianpu(60, 'C'), '1');
   assert.equal(midiPitchToJianpu(72, 'C'), '1^');

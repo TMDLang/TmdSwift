@@ -29,6 +29,8 @@ test('extension wires a dedicated humming webview and editor insertion messages'
   assert.doesNotMatch(extension, /createWebviewPanel\(\s*['"]tmdHummingPanel['"]/);
   assert.match(extension, /message\.command === ['"]insertHummingTmd['"]/);
   assert.match(extension, /humming-panel\.js/);
+  assert.match(extension, /TMDHummingQuantizer/);
+  assert.match(extension, /__tmdQuantizerExports/);
   assert.match(extension, /! = 120/);
   assert.match(extension, /\? = \$\{key\}/);
 });
@@ -56,6 +58,8 @@ test('humming panel wraps content inside a narrow Panel', () => {
 
 test('humming panel places controls left and result right when wide', () => {
   const css = fs.readFileSync(path.join(root, 'media', 'humming-panel.css'), 'utf8');
+  assert.doesNotMatch(css, /max-width:\s*760px/);
+  assert.match(css, /\.hum-panel[\s\S]*width:\s*100%/);
   assert.match(css, /grid-template-columns:\s*minmax\(220px,\s*\.75fr\)\s+minmax\(300px,\s*1\.25fr\)/);
   assert.match(css, /\.hum-grid[\s\S]*grid-area:\s*settings/);
   assert.match(css, /\.hum-options[\s\S]*grid-area:\s*options/);
