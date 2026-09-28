@@ -71,7 +71,8 @@ public struct KeySignature: Equatable, Hashable, Sendable, CustomStringConvertib
     public init(string: String) {
         let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let first = trimmed.first,
-              let tonic = ScaleDegree(letter: first) else {
+            let tonic = ScaleDegree(letter: first)
+        else {
             self.init()
             return
         }
@@ -107,7 +108,10 @@ public struct ChordRoot: Equatable, Hashable, Sendable, CustomStringConvertible 
     public let octave: Int
     public let isScaleDegree: Bool
 
-    public init(degree: ScaleDegree, accidental: Accidental = .natural, octave: Int = 0, isScaleDegree: Bool = false) {
+    public init(
+        degree: ScaleDegree, accidental: Accidental = .natural, octave: Int = 0,
+        isScaleDegree: Bool = false
+    ) {
         self.degree = degree
         self.accidental = accidental
         self.octave = octave
@@ -115,21 +119,24 @@ public struct ChordRoot: Equatable, Hashable, Sendable, CustomStringConvertible 
     }
 
     public var description: String {
-        let value = isScaleDegree
+        let value =
+            isScaleDegree
             ? String(degree.rawValue)
             : degree.letter
-        let acc = switch accidental {
-        case .natural: value
-        case .sharp: "\(value)'"
-        case .flat: "\(value),"
-        }
-        let oct = if octave > 0 {
-            String(repeating: "^", count: octave)
-        } else if octave < 0 {
-            String(repeating: "_", count: -octave)
-        } else {
-            ""
-        }
+        let acc =
+            switch accidental {
+            case .natural: value
+            case .sharp: "\(value)'"
+            case .flat: "\(value),"
+            }
+        let oct =
+            if octave > 0 {
+                String(repeating: "^", count: octave)
+            } else if octave < 0 {
+                String(repeating: "_", count: -octave)
+            } else {
+                ""
+            }
         return "\(acc)\(oct)"
     }
 
@@ -172,7 +179,9 @@ public enum ChordQuality: Equatable, Hashable, Sendable {
 }
 
 /// A typed chord symbol with a finite common-quality vocabulary and extensibility.
-public struct ChordSymbol: Equatable, Hashable, Sendable, ExpressibleByStringLiteral, CustomStringConvertible {
+public struct ChordSymbol: Equatable, Hashable, Sendable, ExpressibleByStringLiteral,
+    CustomStringConvertible
+{
     public let root: ChordRoot
     public let quality: ChordQuality
     public let bass: ChordRoot?
@@ -205,7 +214,8 @@ public struct ChordSymbol: Equatable, Hashable, Sendable, ExpressibleByStringLit
             suffixStart += 1
         }
         var octave = 0
-        while suffixStart < chars.count && (chars[suffixStart] == "_" || chars[suffixStart] == "^") {
+        while suffixStart < chars.count && (chars[suffixStart] == "_" || chars[suffixStart] == "^")
+        {
             if chars[suffixStart] == "^" {
                 octave += 1
             } else if chars[suffixStart] == "_" {
@@ -214,7 +224,11 @@ public struct ChordSymbol: Equatable, Hashable, Sendable, ExpressibleByStringLit
             suffixStart += 1
         }
         let remaining = String(chars.dropFirst(suffixStart))
-        return (ChordRoot(degree: degree, accidental: accidental, octave: octave, isScaleDegree: isDegree), remaining)
+        return (
+            ChordRoot(
+                degree: degree, accidental: accidental, octave: octave, isScaleDegree: isDegree),
+            remaining
+        )
     }
 
     public init(string: String) {
@@ -249,19 +263,20 @@ public struct ChordSymbol: Equatable, Hashable, Sendable, ExpressibleByStringLit
 
     public var description: String {
         let rootText = root.description
-        let suffix = switch quality {
-        case .major: ""
-        case .minor: "m"
-        case .dominant7: "7"
-        case .major7: "maj7"
-        case .minor7: "m7"
-        case .diminished: "dim"
-        case .halfDiminished: "m7-5"
-        case .augmented: "aug"
-        case .suspended: "sus"
-        case .power: "5"
-        case .custom(let value): value
-        }
+        let suffix =
+            switch quality {
+            case .major: ""
+            case .minor: "m"
+            case .dominant7: "7"
+            case .major7: "maj7"
+            case .minor7: "m7"
+            case .diminished: "dim"
+            case .halfDiminished: "m7-5"
+            case .augmented: "aug"
+            case .suspended: "sus"
+            case .power: "5"
+            case .custom(let value): value
+            }
         let bassText = bass.map { "/\($0.description)" } ?? ""
         return rootText + suffix + bassText
     }
@@ -330,9 +345,15 @@ public enum ScaleDegree: Int, CaseIterable, Equatable, Sendable {
 public enum PitchMapping {
     public static let musicXMLSteps = ["C", "C", "D", "D", "E", "F", "F", "G", "G", "A", "A", "B"]
     public static let musicXMLAlters = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0]
-    public static let lilyPondNames = ["c", "cis", "d", "dis", "e", "f", "fis", "g", "gis", "a", "ais", "b"]
-    public static let abcUpperNames = ["C", "^C", "D", "^D", "E", "F", "^F", "G", "^G", "A", "^A", "B"]
-    public static let abcLowerNames = ["c", "^c", "d", "^d", "e", "f", "^f", "g", "^g", "a", "^a", "b"]
+    public static let lilyPondNames = [
+        "c", "cis", "d", "dis", "e", "f", "fis", "g", "gis", "a", "ais", "b",
+    ]
+    public static let abcUpperNames = [
+        "C", "^C", "D", "^D", "E", "F", "^F", "G", "^G", "A", "^A", "B",
+    ]
+    public static let abcLowerNames = [
+        "c", "^c", "d", "^d", "e", "f", "^f", "g", "^g", "a", "^a", "b",
+    ]
 }
 
 /// A musical note containing scale degree, accidental, and octave displacement.
@@ -518,7 +539,10 @@ public struct Section: Equatable {
 
     public let directives: [SectionDirective]
 
-    public init(noteLength: Int = 4, unitGroups: [UnitGroup] = [], directives: [SectionDirective] = [], barlinePositions: [Int] = []) {
+    public init(
+        noteLength: Int = 4, unitGroups: [UnitGroup] = [], directives: [SectionDirective] = [],
+        barlinePositions: [Int] = []
+    ) {
         self.noteLength = noteLength
         self.unitGroups = unitGroups
         self.directives = directives
@@ -565,7 +589,11 @@ public struct Entry: Equatable {
     /// Raw body of a show-program block enclosed by triple quotes.
     public let showProgram: String?
 
-    public init(name: String = "", assignment: String? = nil, pitchMode: EntryPitchMode = .transposing, start: Int = 0, sections: [Section] = [], executionTime: String? = nil, showProgram: String? = nil) {
+    public init(
+        name: String = "", assignment: String? = nil, pitchMode: EntryPitchMode = .transposing,
+        start: Int = 0, sections: [Section] = [], executionTime: String? = nil,
+        showProgram: String? = nil
+    ) {
         self.name = name
         self.assignment = assignment
         self.pitchMode = pitchMode
@@ -576,8 +604,8 @@ public struct Entry: Equatable {
     }
 }
 
-public extension Entry {
-    var isPrototype: Bool { assignment == nil }
+extension Entry {
+    public var isPrototype: Bool { assignment == nil }
 }
 
 /// An S-Expression node representing symbols, numbers, and nested lists for macro composition.
@@ -696,7 +724,10 @@ public struct Sheet: Equatable {
         playback: [Playback] = [],
         metadata: [String: String] = [:]
     ) {
-        self.init(name: name, speed: speed, keySignature: KeySignature(string: keySignature), declaredKey: declaredKey, beat: beat, entries: entries, playback: playback, metadata: metadata)
+        self.init(
+            name: name, speed: speed, keySignature: KeySignature(string: keySignature),
+            declaredKey: declaredKey, beat: beat, entries: entries, playback: playback,
+            metadata: metadata)
     }
 
     /// Returns a sorted list of unique instrument names present across all paragraphs in the sheet.
@@ -714,7 +745,9 @@ public struct Sheet: Equatable {
         for assignment in entries.compactMap(\.assignment) {
             canonical[assignment.lowercased(), default: assignment] = assignment
         }
-        return canonical.values.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        return canonical.values.sorted {
+            $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
+        }
     }
 
     /// Resolves the target vocal instrument for singing-synthesis exporters (VSQ, VSQX, UST).
@@ -725,7 +758,8 @@ public struct Sheet: Equatable {
             return requested
         }
 
-        let regex = try? NSRegularExpression(pattern: "vocal|voice|miku|utau|teto|sing|lead|melody", options: .caseInsensitive)
+        let regex = try? NSRegularExpression(
+            pattern: "vocal|voice|miku|utau|teto|sing|lead|melody", options: .caseInsensitive)
         if let matched = distinct.first(where: { inst in
             regex?.firstMatch(in: inst, range: NSRange(inst.startIndex..., in: inst)) != nil
         }) {

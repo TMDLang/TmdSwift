@@ -19,7 +19,8 @@ public struct TMDMeasureIssue: Equatable, CustomStringConvertible, Sendable {
     public var description: String {
         if instrument == "Order" {
             if !paragraphName.isEmpty {
-                return "Playback (line \(lineNumber)): Undefined section '\(paragraphName)' in playback (\(snippet))"
+                return
+                    "Playback (line \(lineNumber)): Undefined section '\(paragraphName)' in playback (\(snippet))"
             } else {
                 return "Playback (line \(lineNumber)): \(snippet)"
             }
@@ -34,11 +35,14 @@ public struct TMDMeasureIssue: Equatable, CustomStringConvertible, Sendable {
         if measureIndex == 0 {
             // Section-level instrument length mismatch issue
             var desc = "\(paragraphName):\(instrument) (line \(lineNumber)): "
-            desc += "Expected \(expectedUnits) measures (\(snippet)), found \(actualUnits) measures (\(diffStr) measures)"
+            desc +=
+                "Expected \(expectedUnits) measures (\(snippet)), found \(actualUnits) measures (\(diffStr) measures)"
             return desc
         } else {
-            var desc = "\(paragraphName):\(instrument) (line \(lineNumber), measure \(measureIndex)): "
-            desc += "Expected \(expectedUnits) units (\(beat.count)/\(beat.noteValue) at <\(noteLength)*>), found \(actualUnits) units (\(diffStr) units)"
+            var desc =
+                "\(paragraphName):\(instrument) (line \(lineNumber), measure \(measureIndex)): "
+            desc +=
+                "Expected \(expectedUnits) units (\(beat.count)/\(beat.noteValue) at <\(noteLength)*>), found \(actualUnits) units (\(diffStr) units)"
             if !snippet.isEmpty {
                 desc += "\n  --> | \(snippet) |"
             }
@@ -59,8 +63,9 @@ public struct TMDMeasureChecker {
         for i in 0..<tokensWithRanges.count {
             if tokensWithRanges[i].token == .openAngle {
                 if i + 4 < tokensWithRanges.count,
-                   tokensWithRanges[i + 2].token == .slash,
-                   tokensWithRanges[i + 4].token == .closeAngle {
+                    tokensWithRanges[i + 2].token == .slash,
+                    tokensWithRanges[i + 4].token == .closeAngle
+                {
                     let c = intValueOfToken(tokensWithRanges[i + 1].token) ?? 4
                     let n = intValueOfToken(tokensWithRanges[i + 3].token) ?? 4
                     beat = Beat(count: c, noteValue: n)
@@ -105,13 +110,14 @@ public struct TMDMeasureChecker {
 
             // Paragraph header: identifier:identifier@...{
             if case .identifier(let pName) = tok.token,
-               pos + 3 < tokensWithRanges.count,
-               tokensWithRanges[pos + 1].token == .colon,
-               case .identifier = tokensWithRanges[pos + 2].token,
-               tokensWithRanges[pos + 3].token == .at {
+                pos + 3 < tokensWithRanges.count,
+                tokensWithRanges[pos + 1].token == .colon,
+                case .identifier = tokensWithRanges[pos + 2].token,
+                tokensWithRanges[pos + 3].token == .at
+            {
                 let paraStartLine = tok.range.start.line
-                _ = advance() // pName
-                _ = advance() // :
+                _ = advance()  // pName
+                _ = advance()  // :
 
                 var instName = ""
                 if let instTok = advance(), case .identifier(let iName) = instTok.token {
@@ -153,7 +159,7 @@ public struct TMDMeasureChecker {
                     _ = advance()
                 }
                 guard current()?.token == .openBrace else { continue }
-                _ = advance() // {
+                _ = advance()  // {
 
                 // Parse inside paragraph
                 var noteLength = 4
@@ -179,7 +185,10 @@ public struct TMDMeasureChecker {
                     // If we hit an order arrow (->) or arrowEnd (->#) or another paragraph header,
                     // the current paragraph was not properly closed with '}'. Break out to avoid swallowing orders!
                     var isNextParagraphHeader = false
-                    if case .identifier = item.token, pos + 1 < tokensWithRanges.count && tokensWithRanges[pos + 1].token == .colon {
+                    if case .identifier = item.token,
+                        pos + 1 < tokensWithRanges.count
+                            && tokensWithRanges[pos + 1].token == .colon
+                    {
                         isNextParagraphHeader = true
                     }
                     if item.token == .arrow || item.token == .arrowEnd || isNextParagraphHeader {
@@ -189,14 +198,16 @@ public struct TMDMeasureChecker {
 
                     // Check for Section subdivision header: < noteLength * >
                     if item.token == .openAngle {
-                        if pos + 2 < tokensWithRanges.count && tokensWithRanges[pos + 2].token == .asterisk {
-                            _ = advance() // <
+                        if pos + 2 < tokensWithRanges.count
+                            && tokensWithRanges[pos + 2].token == .asterisk
+                        {
+                            _ = advance()  // <
                             if let lenTok = advance(), let val = intValueOfToken(lenTok.token) {
                                 noteLength = val
                             }
-                            _ = advance() // *
+                            _ = advance()  // *
                             if current()?.token == .closeAngle {
-                                _ = advance() // >
+                                _ = advance()  // >
                             }
                             continue
                         }
@@ -204,25 +215,28 @@ public struct TMDMeasureChecker {
 
                     if item.token == .pipe {
                         let pipeLine = item.range.start.line
-                        _ = advance() // |
+                        _ = advance()  // |
 
                         if insideBar && currentMeasureUnits > 0 {
                             measureCount += 1
                             let expected = expectedUnitsForMeasure()
                             // Check if pickup measure at beginning (only when paragraph start offset is negative)
-                            let isPickup = (startOffset < 0) && measureCount == 1 && currentMeasureUnits < expected && currentMeasureUnits > 0
+                            let isPickup =
+                                (startOffset < 0) && measureCount == 1
+                                && currentMeasureUnits < expected && currentMeasureUnits > 0
                             if currentMeasureUnits != expected && !isPickup {
-                                issues.append(TMDMeasureIssue(
-                                    paragraphName: pName,
-                                    instrument: instName,
-                                    lineNumber: measureStartLine,
-                                    measureIndex: measureCount,
-                                    expectedUnits: expected,
-                                    actualUnits: currentMeasureUnits,
-                                    noteLength: noteLength,
-                                    beat: beat,
-                                    snippet: currentMeasureSnippet.joined(separator: " ")
-                                ))
+                                issues.append(
+                                    TMDMeasureIssue(
+                                        paragraphName: pName,
+                                        instrument: instName,
+                                        lineNumber: measureStartLine,
+                                        measureIndex: measureCount,
+                                        expectedUnits: expected,
+                                        actualUnits: currentMeasureUnits,
+                                        noteLength: noteLength,
+                                        beat: beat,
+                                        snippet: currentMeasureSnippet.joined(separator: " ")
+                                    ))
                             }
                             currentMeasureUnits = 0
                             currentMeasureSnippet = []
@@ -242,11 +256,11 @@ public struct TMDMeasureChecker {
                     // meter that governs the following notes.
                     if item.token == .openBrace {
                         let directiveLine = item.range.start.line
-                        _ = advance() // {
+                        _ = advance()  // {
 
                         var timeSignature: Beat?
                         if current()?.token == .openAngle {
-                            _ = advance() // <
+                            _ = advance()  // <
                             let count = current().flatMap { intValueOfToken($0.token) }
                             if count != nil { _ = advance() }
                             if current()?.token == .slash { _ = advance() }
@@ -265,17 +279,19 @@ public struct TMDMeasureChecker {
 
                         if let timeSignature {
                             if currentMeasureUnits != 0 {
-                                issues.append(TMDMeasureIssue(
-                                    paragraphName: pName,
-                                    instrument: instName,
-                                    lineNumber: directiveLine,
-                                    measureIndex: measureCount + 1,
-                                    expectedUnits: expectedUnitsForMeasure(),
-                                    actualUnits: currentMeasureUnits,
-                                    noteLength: noteLength,
-                                    beat: currentBeat,
-                                    snippet: "Time signature directive must occur at a measure boundary: <\(timeSignature.count)/\(timeSignature.noteValue)>"
-                                ))
+                                issues.append(
+                                    TMDMeasureIssue(
+                                        paragraphName: pName,
+                                        instrument: instName,
+                                        lineNumber: directiveLine,
+                                        measureIndex: measureCount + 1,
+                                        expectedUnits: expectedUnitsForMeasure(),
+                                        actualUnits: currentMeasureUnits,
+                                        noteLength: noteLength,
+                                        beat: currentBeat,
+                                        snippet:
+                                            "Time signature directive must occur at a measure boundary: <\(timeSignature.count)/\(timeSignature.noteValue)>"
+                                    ))
                             } else {
                                 currentBeat = timeSignature
                             }
@@ -288,7 +304,7 @@ public struct TMDMeasureChecker {
 
                     if item.token == .openParen {
                         // Tuplet / unit group: ( ... ) % ( -- )
-                        _ = advance() // (
+                        _ = advance()  // (
                         var innerUnits: [String] = []
                         while pos < tokensWithRanges.count && current()?.token != .closeParen {
                             if let inner = advance() {
@@ -299,7 +315,7 @@ public struct TMDMeasureChecker {
 
                         var length = 1
                         if current()?.token == .percentOpenParen {
-                            _ = advance() // %(
+                            _ = advance()  // %(
                             var dashes = 0
                             while pos < tokensWithRanges.count && current()?.token == .tie {
                                 dashes += 1
@@ -336,7 +352,8 @@ public struct TMDMeasureChecker {
                                 } else {
                                     break
                                 }
-                            } else if let nextTok = current(), case .positiveNumber = nextTok.token {
+                            } else if let nextTok = current(), case .positiveNumber = nextTok.token
+                            {
                                 snippet += nextTok.text
                                 _ = advance()
                             } else {
@@ -355,7 +372,8 @@ public struct TMDMeasureChecker {
                             currentMeasureUnits += 1
                             currentMeasureSnippet.append(item.text)
                         }
-                    case .identifier(let value) where !value.isEmpty && value.allSatisfy({ "XxTtSsDdBbOoCc-".contains($0) }):
+                    case .identifier(let value)
+                    where !value.isEmpty && value.allSatisfy({ "XxTtSsDdBbOoCc-".contains($0) }):
                         _ = advance()
                         let count = value.count
                         paragraphQuarterNotes += Double(count) * unitQuarterNotes
@@ -363,7 +381,8 @@ public struct TMDMeasureChecker {
                             currentMeasureUnits += count
                             currentMeasureSnippet.append(item.text)
                         }
-                    case .identifier(let value) where !value.isEmpty && value.allSatisfy({ $0 == "." }):
+                    case .identifier(let value)
+                    where !value.isEmpty && value.allSatisfy({ $0 == "." }):
                         _ = advance()
                         let count = value.count
                         paragraphQuarterNotes += Double(count) * unitQuarterNotes
@@ -385,34 +404,41 @@ public struct TMDMeasureChecker {
                 }
 
                 if current()?.token == .closeBrace {
-                    _ = advance() // }
+                    _ = advance()  // }
                 } else {
                     unclosedParagraph = true
                 }
 
                 if unclosedParagraph {
-                    issues.append(TMDMeasureIssue(
-                        paragraphName: pName,
-                        instrument: instName,
-                        lineNumber: paraStartLine,
-                        measureIndex: 0,
-                        expectedUnits: 0,
-                        actualUnits: 0,
-                        noteLength: noteLength,
-                        beat: beat,
-                        snippet: "Unclosed entry '{' for \(pName):\(instName)"
-                    ))
+                    issues.append(
+                        TMDMeasureIssue(
+                            paragraphName: pName,
+                            instrument: instName,
+                            lineNumber: paraStartLine,
+                            measureIndex: 0,
+                            expectedUnits: 0,
+                            actualUnits: 0,
+                            noteLength: noteLength,
+                            beat: beat,
+                            snippet: "Unclosed entry '{' for \(pName):\(instName)"
+                        ))
                 }
 
                 // If measureCount was counted via bar lines, use measureCount.
                 // Otherwise calculate measure count based on total quarter notes / measure duration.
-                let nominalMeasureDur = Double(max(1, currentBeat.count)) * 4.0 / Double(max(1, currentBeat.noteValue))
+                let nominalMeasureDur =
+                    Double(max(1, currentBeat.count)) * 4.0 / Double(max(1, currentBeat.noteValue))
                 let calculatedMeasures = Int(round(paragraphQuarterNotes / nominalMeasureDur))
                 let actualMeasures = measureCount > 0 ? measureCount : max(1, calculatedMeasures)
 
                 // When startOffset < 0 (e.g. -1 for pickup measure), the positive measures spanned are (startOffset + actualMeasures)
-                let endMeasure = startOffset < 0 ? max(0, startOffset + actualMeasures) : startOffset + actualMeasures
-                let positiveQuarterNotes = startOffset < 0 ? max(0, paragraphQuarterNotes + Double(startOffset) * nominalMeasureDur) : Double(startOffset) * nominalMeasureDur + paragraphQuarterNotes
+                let endMeasure =
+                    startOffset < 0
+                    ? max(0, startOffset + actualMeasures) : startOffset + actualMeasures
+                let positiveQuarterNotes =
+                    startOffset < 0
+                    ? max(0, paragraphQuarterNotes + Double(startOffset) * nominalMeasureDur)
+                    : Double(startOffset) * nominalMeasureDur + paragraphQuarterNotes
 
                 let info = ParagraphSpanInfo(
                     paragraphName: pName,
@@ -429,9 +455,10 @@ public struct TMDMeasureChecker {
                 let arrowLine = tok.range.start.line
                 lastOrderTokenLine = arrowLine
                 hasOrder = true
-                _ = advance() // ->
+                _ = advance()  // ->
                 if let nextTok = current() {
-                    lastOrderTokenLine = nextTok.range.start.line != 0 ? nextTok.range.start.line : arrowLine
+                    lastOrderTokenLine =
+                        nextTok.range.start.line != 0 ? nextTok.range.start.line : arrowLine
                     if nextTok.token == .arrowEnd {
                         terminatedWithHash = true
                         _ = advance()
@@ -472,29 +499,31 @@ public struct TMDMeasureChecker {
         // Check playback order existence and termination
         if !hasOrder {
             let lastLine = tokensWithRanges.last(where: { $0.token != .eof })?.range.start.line ?? 1
-            issues.append(TMDMeasureIssue(
-                paragraphName: "",
-                instrument: "Order",
-                lineNumber: lastLine,
-                measureIndex: 0,
-                expectedUnits: 0,
-                actualUnits: 0,
-                noteLength: 4,
-                beat: beat,
-                snippet: "Missing playback"
-            ))
+            issues.append(
+                TMDMeasureIssue(
+                    paragraphName: "",
+                    instrument: "Order",
+                    lineNumber: lastLine,
+                    measureIndex: 0,
+                    expectedUnits: 0,
+                    actualUnits: 0,
+                    noteLength: 4,
+                    beat: beat,
+                    snippet: "Missing playback"
+                ))
         } else if !terminatedWithHash {
-            issues.append(TMDMeasureIssue(
-                paragraphName: "",
-                instrument: "Order",
-                lineNumber: lastOrderTokenLine,
-                measureIndex: 0,
-                expectedUnits: 0,
-                actualUnits: 0,
-                noteLength: 4,
-                beat: beat,
-                snippet: "Playback must terminate with '#'"
-            ))
+            issues.append(
+                TMDMeasureIssue(
+                    paragraphName: "",
+                    instrument: "Order",
+                    lineNumber: lastOrderTokenLine,
+                    measureIndex: 0,
+                    expectedUnits: 0,
+                    actualUnits: 0,
+                    noteLength: 4,
+                    beat: beat,
+                    snippet: "Playback must terminate with '#'"
+                ))
         }
 
         // Check for undefined sections referenced in execution orders (-> section)
@@ -504,17 +533,18 @@ public struct TMDMeasureChecker {
                 continue
             }
             if !definedSectionNames.contains(order.name) {
-                issues.append(TMDMeasureIssue(
-                    paragraphName: order.name,
-                    instrument: "Order",
-                    lineNumber: order.line,
-                    measureIndex: 0,
-                    expectedUnits: 0,
-                    actualUnits: 0,
-                    noteLength: 4,
-                    beat: beat,
-                    snippet: "-> \(order.name)"
-                ))
+                issues.append(
+                    TMDMeasureIssue(
+                        paragraphName: order.name,
+                        instrument: "Order",
+                        lineNumber: order.line,
+                        measureIndex: 0,
+                        expectedUnits: 0,
+                        actualUnits: 0,
+                        noteLength: 4,
+                        beat: beat,
+                        snippet: "-> \(order.name)"
+                    ))
             }
         }
 
@@ -523,24 +553,27 @@ public struct TMDMeasureChecker {
         // so shorter tracks are considered natural implicit rests rather than errors.
 
         if let sheet = TmdParser.parse(string: source) {
-            let measureDuration = Double(max(1, sheet.beat.count) * 4) / Double(max(1, sheet.beat.noteValue))
+            let measureDuration =
+                Double(max(1, sheet.beat.count) * 4) / Double(max(1, sheet.beat.noteValue))
             for entry in sheet.entries where !entry.sections.isEmpty {
                 for section in entry.sections {
                     let duration = section.unitGroups.reduce(0.0) { total, group in
-                        total + Double(max(0, group.length)) * 4.0 / Double(max(1, section.noteLength))
+                        total + Double(max(0, group.length)) * 4.0
+                            / Double(max(1, section.noteLength))
                     }
                     if duration > measureDuration + 1e-9 && section.barlinePositions.isEmpty {
-                        issues.append(TMDMeasureIssue(
-                            paragraphName: entry.name,
-                            instrument: entry.assignment ?? "",
-                            lineNumber: 0,
-                            measureIndex: 0,
-                            expectedUnits: Int((duration / measureDuration).rounded()),
-                            actualUnits: Int((duration / measureDuration).rounded()),
-                            noteLength: section.noteLength,
-                            beat: sheet.beat,
-                            snippet: "Multi-measure section requires explicit barlines"
-                        ))
+                        issues.append(
+                            TMDMeasureIssue(
+                                paragraphName: entry.name,
+                                instrument: entry.assignment ?? "",
+                                lineNumber: 0,
+                                measureIndex: 0,
+                                expectedUnits: Int((duration / measureDuration).rounded()),
+                                actualUnits: Int((duration / measureDuration).rounded()),
+                                noteLength: section.noteLength,
+                                beat: sheet.beat,
+                                snippet: "Multi-measure section requires explicit barlines"
+                            ))
                     }
                 }
             }

@@ -1,6 +1,6 @@
 import Foundation
-import TmdSwift
 import TmdMIDI
+import TmdSwift
 
 /// Options for configuring UTAU `.ust` exports.
 public struct USTExportOptions: Sendable, Equatable {
@@ -49,7 +49,9 @@ public struct TMDUSTGenerator: Sendable {
         let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: selectedInstrument)
 
         let initialTempo = sheet.speed > 0 ? sheet.speed : 120.0
-        let title = options.projectName.isEmpty ? (sheet.name.isEmpty ? "TMD UTAU Score" : sheet.name) : options.projectName
+        let title =
+            options.projectName.isEmpty
+            ? (sheet.name.isEmpty ? "TMD UTAU Score" : sheet.name) : options.projectName
 
         var lines: [String] = [
             "[#SETTING]",
@@ -63,7 +65,7 @@ public struct TMDUSTGenerator: Sendable {
             "Tool2=",
             "Mode2=True",
             "Charset=UTF-8",
-            ""
+            "",
         ]
 
         var currentPosition = 0.0
@@ -85,7 +87,8 @@ public struct TMDUSTGenerator: Sendable {
 
             switch event.content {
             case .note(let note):
-                let ticks = max(1, Int((event.duration * Double(options.ticksPerQuarter)).rounded()))
+                let ticks = max(
+                    1, Int((event.duration * Double(options.ticksPerQuarter)).rounded()))
                 let pitch = TMDMIDIGenerator.noteToMIDIPitch(note, keyOffset: event.state.keyOffset)
                 let lyric: String
                 if lyricIndex < options.lyrics.count {
@@ -102,7 +105,7 @@ public struct TMDUSTGenerator: Sendable {
                     "NoteNum=\(pitch)",
                     "PreUtterance=",
                     "Intensity=100",
-                    "Modulation=0"
+                    "Modulation=0",
                 ]
 
                 if abs(event.state.tempo - currentTempo) > 0.001 {
@@ -116,7 +119,8 @@ public struct TMDUSTGenerator: Sendable {
                 currentPosition = event.position + event.duration
 
             case .rest:
-                let ticks = max(1, Int((event.duration * Double(options.ticksPerQuarter)).rounded()))
+                let ticks = max(
+                    1, Int((event.duration * Double(options.ticksPerQuarter)).rounded()))
                 lines.append(contentsOf: formatRestNote(index: noteIndex, ticks: ticks))
                 noteIndex += 1
                 currentPosition = event.position + event.duration
@@ -138,7 +142,7 @@ public struct TMDUSTGenerator: Sendable {
             "Lyric=R",
             "NoteNum=60",
             "PreUtterance=",
-            ""
+            "",
         ]
     }
 

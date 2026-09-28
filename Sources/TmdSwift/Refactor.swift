@@ -53,7 +53,8 @@ public struct TMDRefactor {
             }
             let lineIndent = line.prefix(while: { $0 == " " || $0 == "\t" }).count
             let relIndent = max(0, lineIndent - baseIndent)
-            return indentPrefix + String(repeating: " ", count: relIndent) + line.trimmingCharacters(in: .whitespaces)
+            return indentPrefix + String(repeating: " ", count: relIndent)
+                + line.trimmingCharacters(in: .whitespaces)
         }
     }
 
@@ -115,7 +116,8 @@ public struct TMDRefactor {
                     i += 1
                 }
                 let indent = String(repeating: "    ", count: indentLevel)
-                resultLines.append(contentsOf: reindentBlockComment(lines: commentLines, indentPrefix: indent))
+                resultLines.append(
+                    contentsOf: reindentBlockComment(lines: commentLines, indentPrefix: indent))
                 continue
             }
 
@@ -147,10 +149,14 @@ public struct TMDRefactor {
     }
 
     /// Renames all occurrences of an instrument across paragraphs in a TMD source string.
-    public static func renameInstrument(in source: String, from oldInstrument: String, to newInstrument: String) throws -> String {
+    public static func renameInstrument(
+        in source: String, from oldInstrument: String, to newInstrument: String
+    ) throws -> String {
         // A paragraph header has the syntax: <name>:<instrument>@...
         // We match <name>:<oldInstrument>@ and replace with <name>:<newInstrument>@
-        let pattern = "([A-Za-z0-9_\\-\\u4e00-\\u9fa5]+)\\s*:\\s*" + NSRegularExpression.escapedPattern(for: oldInstrument) + "\\s*@"
+        let pattern =
+            "([A-Za-z0-9_\\-\\u4e00-\\u9fa5]+)\\s*:\\s*"
+            + NSRegularExpression.escapedPattern(for: oldInstrument) + "\\s*@"
         guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
             return source
         }
@@ -162,16 +168,20 @@ public struct TMDRefactor {
             _ = try TmdParser.parseThrowing(string: source)
         }
 
-        let replaced = regex.stringByReplacingMatches(in: source, options: [], range: range, withTemplate: "$1:\(newInstrument)@")
+        let replaced = regex.stringByReplacingMatches(
+            in: source, options: [], range: range, withTemplate: "$1:\(newInstrument)@")
         // Verify valid TMD score after rename
         _ = try TmdParser.parseThrowing(string: replaced)
         return replaced
     }
 
     /// Renames all occurrences of a section across paragraphs and orders in a TMD source string.
-    public static func renameSection(in source: String, from oldSection: String, to newSection: String) throws -> String {
+    public static func renameSection(
+        in source: String, from oldSection: String, to newSection: String
+    ) throws -> String {
         // 1. Rename in paragraph declarations: <oldSection>:<instrument>@... -> <newSection>:<instrument>@...
-        let paraPattern = "(^|\\n)\\s*" + NSRegularExpression.escapedPattern(for: oldSection) + "\\s*:"
+        let paraPattern =
+            "(^|\\n)\\s*" + NSRegularExpression.escapedPattern(for: oldSection) + "\\s*:"
         let paraRegex = try NSRegularExpression(pattern: paraPattern, options: [])
 
         var result = paraRegex.stringByReplacingMatches(
@@ -182,7 +192,9 @@ public struct TMDRefactor {
         )
 
         // 2. Rename in orders: `-> <oldSection> ` or `-> <oldSection>\n` or `-> <oldSection>->`
-        let orderPattern = "(->\\s*)" + NSRegularExpression.escapedPattern(for: oldSection) + "(?=\\s*(->|->#|\\n|$))"
+        let orderPattern =
+            "(->\\s*)" + NSRegularExpression.escapedPattern(for: oldSection)
+            + "(?=\\s*(->|->#|\\n|$))"
         let orderRegex = try NSRegularExpression(pattern: orderPattern, options: [])
         result = orderRegex.stringByReplacingMatches(
             in: result,
@@ -210,7 +222,8 @@ public struct TMDRefactor {
         var insideParagraph = false
         var keepParagraph = false
 
-        let headerPattern = "^([a-zA-Z0-9_\\u4e00-\\u9fa5-]+)\\s*:\\s*([a-zA-Z0-9_\\u4e00-\\u9fa5-]+)(@[^{]*)?\\s*\\{"
+        let headerPattern =
+            "^([a-zA-Z0-9_\\u4e00-\\u9fa5-]+)\\s*:\\s*([a-zA-Z0-9_\\u4e00-\\u9fa5-]+)(@[^{]*)?\\s*\\{"
         let headerRegex = try? NSRegularExpression(pattern: headerPattern, options: [])
 
         for rawLine in rawLines {
@@ -221,7 +234,8 @@ public struct TMDRefactor {
             if let regex = headerRegex {
                 let range = NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)
                 if let match = regex.firstMatch(in: trimmed, options: [], range: range),
-                   let instRange = Range(match.range(at: 2), in: trimmed) {
+                    let instRange = Range(match.range(at: 2), in: trimmed)
+                {
                     isHeader = true
                     pInst = String(trimmed[instRange])
                 }
@@ -286,11 +300,12 @@ public struct TMDRefactor {
                     let clonedUnits = g.units.map { u -> Unit in
                         switch u {
                         case .note(let note):
-                            return .note(Note(
-                                accidental: note.accidental,
-                                degree: note.degree,
-                                octave: note.octave + octaveShift
-                            ))
+                            return .note(
+                                Note(
+                                    accidental: note.accidental,
+                                    degree: note.degree,
+                                    octave: note.octave + octaveShift
+                                ))
                         case .multiNote(let notes):
                             let newNotes = notes.map { note in
                                 Note(
@@ -306,7 +321,9 @@ public struct TMDRefactor {
                     }
                     return UnitGroup(units: clonedUnits, length: g.length)
                 }
-                return Section(noteLength: sec.noteLength, unitGroups: clonedGroups, directives: sec.directives, barlinePositions: sec.barlinePositions)
+                return Section(
+                    noteLength: sec.noteLength, unitGroups: clonedGroups,
+                    directives: sec.directives, barlinePositions: sec.barlinePositions)
             }
             return Entry(
                 name: orig.name,
@@ -318,17 +335,24 @@ public struct TMDRefactor {
             )
         }
 
-        let newParagraphsText = duplicatedParagraphs
+        let newParagraphsText =
+            duplicatedParagraphs
             .map { $0.format() }
             .joined(separator: "\n")
 
         var combined: String
         let orderPattern = "(^|\\n)\\s*->"
         if let regex = try? NSRegularExpression(pattern: orderPattern, options: []),
-           let match = regex.firstMatch(in: source, options: [], range: NSRange(source.startIndex..<source.endIndex, in: source)) {
+            let match = regex.firstMatch(
+                in: source, options: [],
+                range: NSRange(source.startIndex..<source.endIndex, in: source))
+        {
             let matchedRange = Range(match.range, in: source)!
-            let insertPos = source.index(matchedRange.lowerBound, offsetBy: source[matchedRange.lowerBound] == "\n" ? 1 : 0)
-            combined = String(source[..<insertPos]) + "\n" + newParagraphsText + "\n" + String(source[insertPos...])
+            let insertPos = source.index(
+                matchedRange.lowerBound, offsetBy: source[matchedRange.lowerBound] == "\n" ? 1 : 0)
+            combined =
+                String(source[..<insertPos]) + "\n" + newParagraphsText + "\n"
+                + String(source[insertPos...])
         } else {
             combined = source + "\n\n" + newParagraphsText
         }
@@ -365,17 +389,18 @@ public struct TMDRefactor {
                     let clonedUnits = g.units.map { u -> Unit in
                         switch u {
                         case .note(let note):
-                            let currentDeg = note.degree.rawValue // 1..7
-                            let zeroIndexed = currentDeg - 1 // 0..6
+                            let currentDeg = note.degree.rawValue  // 1..7
+                            let zeroIndexed = currentDeg - 1  // 0..6
                             let newZero = zeroIndexed + steps
                             let newDegVal = (((newZero % 7) + 7) % 7) + 1
                             let octaveDelta = Int(floor(Double(newZero) / 7.0))
                             let newDegree = ScaleDegree(rawValue: newDegVal) ?? note.degree
-                            return .note(Note(
-                                accidental: note.accidental,
-                                degree: newDegree,
-                                octave: note.octave + octaveDelta
-                            ))
+                            return .note(
+                                Note(
+                                    accidental: note.accidental,
+                                    degree: newDegree,
+                                    octave: note.octave + octaveDelta
+                                ))
                         case .multiNote(let notes):
                             let newNotes = notes.map { note in
                                 let currentDeg = note.degree.rawValue
@@ -397,7 +422,9 @@ public struct TMDRefactor {
                     }
                     return UnitGroup(units: clonedUnits, length: g.length)
                 }
-                return Section(noteLength: sec.noteLength, unitGroups: clonedGroups, directives: sec.directives, barlinePositions: sec.barlinePositions)
+                return Section(
+                    noteLength: sec.noteLength, unitGroups: clonedGroups,
+                    directives: sec.directives, barlinePositions: sec.barlinePositions)
             }
             return Entry(
                 name: orig.name,
@@ -409,17 +436,24 @@ public struct TMDRefactor {
             )
         }
 
-        let newParagraphsText = harmonizedParagraphs
+        let newParagraphsText =
+            harmonizedParagraphs
             .map { $0.format() }
             .joined(separator: "\n")
 
         var combined: String
         let orderPattern = "(^|\\n)\\s*->"
         if let regex = try? NSRegularExpression(pattern: orderPattern, options: []),
-           let match = regex.firstMatch(in: source, options: [], range: NSRange(source.startIndex..<source.endIndex, in: source)) {
+            let match = regex.firstMatch(
+                in: source, options: [],
+                range: NSRange(source.startIndex..<source.endIndex, in: source))
+        {
             let matchedRange = Range(match.range, in: source)!
-            let insertPos = source.index(matchedRange.lowerBound, offsetBy: source[matchedRange.lowerBound] == "\n" ? 1 : 0)
-            combined = String(source[..<insertPos]) + "\n" + newParagraphsText + "\n" + String(source[insertPos...])
+            let insertPos = source.index(
+                matchedRange.lowerBound, offsetBy: source[matchedRange.lowerBound] == "\n" ? 1 : 0)
+            combined =
+                String(source[..<insertPos]) + "\n" + newParagraphsText + "\n"
+                + String(source[insertPos...])
         } else {
             combined = source + "\n\n" + newParagraphsText
         }
@@ -449,7 +483,11 @@ public struct TMDRefactor {
 
             for ord in sheet.playback {
                 guard case .name(let sName) = ord else { continue }
-                guard let para = sheet.entries.first(where: { $0.name == sName && $0.assignment == inst }) else {
+                guard
+                    let para = sheet.entries.first(where: {
+                        $0.name == sName && $0.assignment == inst
+                    })
+                else {
                     continue
                 }
                 for sec in para.sections {
@@ -458,14 +496,17 @@ public struct TMDRefactor {
                 }
             }
 
-            linearParagraphs.append(Entry(
-                name: "linear",
-                assignment: inst,
-                start: 0,
-                sections: [
-                    Section(noteLength: baseNoteLength, unitGroups: combinedUnitGroups, directives: [])
-                ]
-            ))
+            linearParagraphs.append(
+                Entry(
+                    name: "linear",
+                    assignment: inst,
+                    start: 0,
+                    sections: [
+                        Section(
+                            noteLength: baseNoteLength, unitGroups: combinedUnitGroups,
+                            directives: [])
+                    ]
+                ))
         }
 
         let newSheet = Sheet(
@@ -481,7 +522,8 @@ public struct TMDRefactor {
     }
 
     /// Doubles grid resolution (<4*> -> <8*>) padding units with ties, doubling tuplet dash lengths.
-    public static func doubleGrid(source: String, target: TMDRefactorTarget? = nil) throws -> String {
+    public static func doubleGrid(source: String, target: TMDRefactorTarget? = nil) throws -> String
+    {
         let rawLines = source.components(separatedBy: .newlines)
         var resultLines: [String] = []
 
@@ -489,7 +531,8 @@ public struct TMDRefactor {
         var insideParagraph = false
 
         let headerRegex = try NSRegularExpression(
-            pattern: "^([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)\\s*:\\s*([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)(@[^{]*)?\\s*\\{",
+            pattern:
+                "^([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)\\s*:\\s*([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)(@[^{]*)?\\s*\\{",
             options: []
         )
         let gridRegex = try NSRegularExpression(pattern: "^<(\\d+)\\*>", options: [])
@@ -498,13 +541,15 @@ public struct TMDRefactor {
             let trimmed = rawLine.trimmingCharacters(in: .whitespaces)
 
             let nsTrimmed = trimmed as NSString
-            let match = headerRegex.firstMatch(in: trimmed, options: [], range: NSRange(location: 0, length: nsTrimmed.length))
+            let match = headerRegex.firstMatch(
+                in: trimmed, options: [], range: NSRange(location: 0, length: nsTrimmed.length))
             if let m = match {
                 insideParagraph = true
                 let pSec = nsTrimmed.substring(with: m.range(at: 1))
                 let pInst = nsTrimmed.substring(with: m.range(at: 2))
-                inMatchingPara = (target?.section == nil || target?.section == pSec) &&
-                                 (target?.instrument == nil || target?.instrument == pInst)
+                inMatchingPara =
+                    (target?.section == nil || target?.section == pSec)
+                    && (target?.instrument == nil || target?.instrument == pInst)
                 resultLines.append(rawLine)
                 continue
             }
@@ -521,7 +566,8 @@ public struct TMDRefactor {
                 continue
             }
 
-            let gMatch = gridRegex.firstMatch(in: trimmed, options: [], range: NSRange(location: 0, length: nsTrimmed.length))
+            let gMatch = gridRegex.firstMatch(
+                in: trimmed, options: [], range: NSRange(location: 0, length: nsTrimmed.length))
             if let gm = gMatch {
                 let lenStr = nsTrimmed.substring(with: gm.range(at: 1))
                 let curLen = Int(lenStr) ?? 4
@@ -531,7 +577,9 @@ public struct TMDRefactor {
                 continue
             }
 
-            if trimmed.contains("|") || trimmed.rangeOfCharacter(from: CharacterSet(charactersIn: "01234567[]-")) != nil {
+            if trimmed.contains("|")
+                || trimmed.rangeOfCharacter(from: CharacterSet(charactersIn: "01234567[]-")) != nil
+            {
                 let indent = String(rawLine.prefix(while: { $0 == " " || $0 == "\t" }))
                 let transformed = doubleGridInLine(trimmed)
                 resultLines.append(indent + transformed)
@@ -544,7 +592,8 @@ public struct TMDRefactor {
     }
 
     /// Halves grid resolution (<8*> -> <4*>) collapsing ties and halving tuplet lengths.
-    public static func halveGrid(source: String, target: TMDRefactorTarget? = nil) throws -> String {
+    public static func halveGrid(source: String, target: TMDRefactorTarget? = nil) throws -> String
+    {
         let rawLines = source.components(separatedBy: .newlines)
         var resultLines: [String] = []
 
@@ -552,7 +601,8 @@ public struct TMDRefactor {
         var insideParagraph = false
 
         let headerRegex = try NSRegularExpression(
-            pattern: "^([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)\\s*:\\s*([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)(@[^{]*)?\\s*\\{",
+            pattern:
+                "^([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)\\s*:\\s*([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)(@[^{]*)?\\s*\\{",
             options: []
         )
         let gridRegex = try NSRegularExpression(pattern: "^<(\\d+)\\*>", options: [])
@@ -561,13 +611,15 @@ public struct TMDRefactor {
             let trimmed = rawLine.trimmingCharacters(in: .whitespaces)
             let nsTrimmed = trimmed as NSString
 
-            let match = headerRegex.firstMatch(in: trimmed, options: [], range: NSRange(location: 0, length: nsTrimmed.length))
+            let match = headerRegex.firstMatch(
+                in: trimmed, options: [], range: NSRange(location: 0, length: nsTrimmed.length))
             if let m = match {
                 insideParagraph = true
                 let pSec = nsTrimmed.substring(with: m.range(at: 1))
                 let pInst = nsTrimmed.substring(with: m.range(at: 2))
-                inMatchingPara = (target?.section == nil || target?.section == pSec) &&
-                                 (target?.instrument == nil || target?.instrument == pInst)
+                inMatchingPara =
+                    (target?.section == nil || target?.section == pSec)
+                    && (target?.instrument == nil || target?.instrument == pInst)
                 resultLines.append(rawLine)
                 continue
             }
@@ -584,7 +636,8 @@ public struct TMDRefactor {
                 continue
             }
 
-            let gMatch = gridRegex.firstMatch(in: trimmed, options: [], range: NSRange(location: 0, length: nsTrimmed.length))
+            let gMatch = gridRegex.firstMatch(
+                in: trimmed, options: [], range: NSRange(location: 0, length: nsTrimmed.length))
             if let gm = gMatch {
                 let lenStr = nsTrimmed.substring(with: gm.range(at: 1))
                 let curLen = Int(lenStr) ?? 4
@@ -597,7 +650,9 @@ public struct TMDRefactor {
                 continue
             }
 
-            if trimmed.contains("|") || trimmed.rangeOfCharacter(from: CharacterSet(charactersIn: "01234567[]-")) != nil {
+            if trimmed.contains("|")
+                || trimmed.rangeOfCharacter(from: CharacterSet(charactersIn: "01234567[]-")) != nil
+            {
                 let indent = String(rawLine.prefix(while: { $0 == " " || $0 == "\t" }))
                 let transformed = try halveGridInLine(trimmed)
                 resultLines.append(indent + transformed)
@@ -616,8 +671,11 @@ public struct TMDRefactor {
         let patternWithLen = "^\\(([^)]+)\\)\\s*%\\s*\\(([-]+)\\)$"
         if let regex = try? NSRegularExpression(pattern: patternWithLen, options: []) {
             let nsTok = tok as NSString
-            if let m = regex.firstMatch(in: tok, options: [], range: NSRange(location: 0, length: nsTok.length)) {
-                let inner = nsTok.substring(with: m.range(at: 1)).trimmingCharacters(in: .whitespaces)
+            if let m = regex.firstMatch(
+                in: tok, options: [], range: NSRange(location: 0, length: nsTok.length))
+            {
+                let inner = nsTok.substring(with: m.range(at: 1)).trimmingCharacters(
+                    in: .whitespaces)
                 let dashes = nsTok.substring(with: m.range(at: 2))
                 return (inner: inner, dashes: dashes)
             }
@@ -627,8 +685,11 @@ public struct TMDRefactor {
         let patternWithoutLen = "^\\(([^)]+)\\)$"
         if let regex = try? NSRegularExpression(pattern: patternWithoutLen, options: []) {
             let nsTok = tok as NSString
-            if let m = regex.firstMatch(in: tok, options: [], range: NSRange(location: 0, length: nsTok.length)) {
-                let inner = nsTok.substring(with: m.range(at: 1)).trimmingCharacters(in: .whitespaces)
+            if let m = regex.firstMatch(
+                in: tok, options: [], range: NSRange(location: 0, length: nsTok.length))
+            {
+                let inner = nsTok.substring(with: m.range(at: 1)).trimmingCharacters(
+                    in: .whitespaces)
                 return (inner: inner, dashes: "-")
             }
         }
@@ -641,7 +702,8 @@ public struct TMDRefactor {
         var commentSuffix = ""
         if let commentStart = working.range(of: "/*") {
             commentSuffix = " " + String(working[commentStart.lowerBound...])
-            working = String(working[..<commentStart.lowerBound]).trimmingCharacters(in: .whitespaces)
+            working = String(working[..<commentStart.lowerBound]).trimmingCharacters(
+                in: .whitespaces)
         }
 
         let tokens = tokenizeMeasureLine(working)
@@ -672,7 +734,8 @@ public struct TMDRefactor {
         var commentSuffix = ""
         if let commentStart = working.range(of: "/*") {
             commentSuffix = " " + String(working[commentStart.lowerBound...])
-            working = String(working[..<commentStart.lowerBound]).trimmingCharacters(in: .whitespaces)
+            working = String(working[..<commentStart.lowerBound]).trimmingCharacters(
+                in: .whitespaces)
         }
 
         let tokens = tokenizeMeasureLine(working)
@@ -757,12 +820,16 @@ public struct TMDRefactor {
             if ch == "(" {
                 if let endParen = chars[i...].firstIndex(of: ")") {
                     var afterParen = endParen + 1
-                    while afterParen < chars.count && (chars[afterParen] == " " || chars[afterParen] == "\t") {
+                    while afterParen < chars.count
+                        && (chars[afterParen] == " " || chars[afterParen] == "\t")
+                    {
                         afterParen += 1
                     }
                     if afterParen < chars.count && chars[afterParen] == "%" {
                         var afterPercent = afterParen + 1
-                        while afterPercent < chars.count && (chars[afterPercent] == " " || chars[afterPercent] == "\t") {
+                        while afterPercent < chars.count
+                            && (chars[afterPercent] == " " || chars[afterPercent] == "\t")
+                        {
                             afterPercent += 1
                         }
                         if afterPercent < chars.count && chars[afterPercent] == "(" {
@@ -823,11 +890,13 @@ public struct TMDRefactor {
             return "** \(title) **" + commentSuffix
         }
         if trimmed.hasPrefix("!=") || trimmed.hasPrefix("! =") {
-            let value = trimmed.dropFirst(trimmed.hasPrefix("! =") ? 3 : 2).trimmingCharacters(in: .whitespaces)
+            let value = trimmed.dropFirst(trimmed.hasPrefix("! =") ? 3 : 2).trimmingCharacters(
+                in: .whitespaces)
             return "!= \(value)" + commentSuffix
         }
         if trimmed.hasPrefix("?=") || trimmed.hasPrefix("? =") {
-            let value = trimmed.dropFirst(trimmed.hasPrefix("? =") ? 3 : 2).trimmingCharacters(in: .whitespaces)
+            let value = trimmed.dropFirst(trimmed.hasPrefix("? =") ? 3 : 2).trimmingCharacters(
+                in: .whitespaces)
             return "?= \(value)" + commentSuffix
         }
         if trimmed.hasPrefix("<") && trimmed.hasSuffix(">") && trimmed.contains("/") {
@@ -850,7 +919,9 @@ public struct TMDRefactor {
         }
 
         // Abstract prototype header line: e.g. Theme {
-        if !trimmed.contains(":") && !trimmed.contains("@") && trimmed.hasSuffix("{") && !trimmed.hasPrefix("->") {
+        if !trimmed.contains(":") && !trimmed.contains("@") && trimmed.hasSuffix("{")
+            && !trimmed.hasPrefix("->")
+        {
             let pName = trimmed.dropLast().trimmingCharacters(in: .whitespaces)
             if !pName.isEmpty && !pName.contains(" ") && !pName.contains("\t") {
                 return "\(pName) {" + commentSuffix
@@ -981,9 +1052,12 @@ public struct TMDRefactor {
         }
 
         var currentKeySig = keySignature ?? "C"
-        let keyRegex = try? NSRegularExpression(pattern: "(?:^|\\n)\\s*\\?=\\s*([A-Ga-g0-9',#b]+)", options: [])
+        let keyRegex = try? NSRegularExpression(
+            pattern: "(?:^|\\n)\\s*\\?=\\s*([A-Ga-g0-9',#b]+)", options: [])
         let nsSource = source as NSString
-        if let match = keyRegex?.firstMatch(in: source, options: [], range: NSRange(location: 0, length: nsSource.length)) {
+        if let match = keyRegex?.firstMatch(
+            in: source, options: [], range: NSRange(location: 0, length: nsSource.length))
+        {
             currentKeySig = nsSource.substring(with: match.range(at: 1))
         }
 
@@ -993,12 +1067,19 @@ public struct TMDRefactor {
         var insideParagraph = false
         var inMatchingPara = true
 
-        let isFullScore = source.contains("::SCORE::") ||
-            (try? NSRegularExpression(pattern: "(^|\\n)\\s*[a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+:[a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+@", options: []))?
-                .firstMatch(in: source, options: [], range: NSRange(location: 0, length: nsSource.length)) != nil
+        let isFullScore =
+            source.contains("::SCORE::")
+            || (try? NSRegularExpression(
+                pattern:
+                    "(^|\\n)\\s*[a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+:[a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+@",
+                options: []))?
+                .firstMatch(
+                    in: source, options: [], range: NSRange(location: 0, length: nsSource.length))
+                != nil
 
         let headerRegex = try? NSRegularExpression(
-            pattern: "^([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)\\s*:\\s*([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)(@[^{]*)?\\s*\\{",
+            pattern:
+                "^([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)\\s*:\\s*([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)(@[^{]*)?\\s*\\{",
             options: []
         )
 
@@ -1007,7 +1088,10 @@ public struct TMDRefactor {
 
             if updateKeySignature && (trimmed.hasPrefix("?=") || trimmed.hasPrefix("? =")) {
                 let indent = String(rawLine.prefix(while: { $0 == " " || $0 == "\t" }))
-                let oldKeyStr = trimmed.hasPrefix("? =") ? String(trimmed.dropFirst(3)).trimmingCharacters(in: .whitespaces) : String(trimmed.dropFirst(2)).trimmingCharacters(in: .whitespaces)
+                let oldKeyStr =
+                    trimmed.hasPrefix("? =")
+                    ? String(trimmed.dropFirst(3)).trimmingCharacters(in: .whitespaces)
+                    : String(trimmed.dropFirst(2)).trimmingCharacters(in: .whitespaces)
                 let newKeyStr = transposeKeySignature(oldKeyStr, semitones: semitones)
                 resultLines.append("\(indent)?= \(newKeyStr)")
                 currentKeySig = newKeyStr
@@ -1015,12 +1099,15 @@ public struct TMDRefactor {
             }
 
             let nsTrimmed = trimmed as NSString
-            if let m = headerRegex?.firstMatch(in: trimmed, options: [], range: NSRange(location: 0, length: nsTrimmed.length)) {
+            if let m = headerRegex?.firstMatch(
+                in: trimmed, options: [], range: NSRange(location: 0, length: nsTrimmed.length))
+            {
                 insideParagraph = true
                 let pSec = nsTrimmed.substring(with: m.range(at: 1))
                 let pInst = nsTrimmed.substring(with: m.range(at: 2))
-                inMatchingPara = (target?.section == nil || target?.section == pSec) &&
-                                 (target?.instrument == nil || target?.instrument == pInst)
+                inMatchingPara =
+                    (target?.section == nil || target?.section == pSec)
+                    && (target?.instrument == nil || target?.instrument == pInst)
                 resultLines.append(rawLine)
                 continue
             }
@@ -1033,7 +1120,10 @@ public struct TMDRefactor {
             }
 
             if !isFullScore || (insideParagraph && inMatchingPara) {
-                if trimmed.hasPrefix("|") || trimmed.contains("|") || trimmed.rangeOfCharacter(from: CharacterSet(charactersIn: "01234567[]-")) != nil {
+                if trimmed.hasPrefix("|") || trimmed.contains("|")
+                    || trimmed.rangeOfCharacter(from: CharacterSet(charactersIn: "01234567[]-"))
+                        != nil
+                {
                     let indent = String(rawLine.prefix(while: { $0 == " " || $0 == "\t" }))
                     let transformed = transposeUnitsInLine(
                         trimmed,
@@ -1058,13 +1148,13 @@ public struct TMDRefactor {
         let newOffset = ((oldOffset + semitones) % 12 + 12) % 12
         let offsetToKey: [Int: String] = [
             0: "C", 1: "C'", 2: "D", 3: "E,", 4: "E", 5: "F",
-            6: "F'", 7: "G", 8: "A,", 9: "A", 10: "B,", 11: "B"
+            6: "F'", 7: "G", 8: "A,", 9: "A", 10: "B,", 11: "B",
         ]
         return offsetToKey[newOffset] ?? "C"
     }
 
     private static let scaleDegreeSemitones: [Int: Int] = [
-        1: 0, 2: 2, 3: 4, 4: 5, 5: 7, 6: 9, 7: 11
+        1: 0, 2: 2, 3: 4, 4: 5, 5: 7, 6: 9, 7: 11,
     ]
 
     private static let semitoneToDegreeMap: [Int: (degree: Int, accidental: String)] = [
@@ -1079,7 +1169,7 @@ public struct TMDRefactor {
         8: (5, "'"),
         9: (6, ""),
         10: (7, ","),
-        11: (7, "")
+        11: (7, ""),
     ]
 
     private static func transposeTmdNote(
@@ -1088,17 +1178,27 @@ public struct TMDRefactor {
         diatonicSteps: Int,
         keySignature: String
     ) -> String {
-        guard let regex = try? NSRegularExpression(pattern: "^([1-7])(['#,]*)(\\^*|_*)?$", options: []) else {
+        guard
+            let regex = try? NSRegularExpression(
+                pattern: "^([1-7])(['#,]*)(\\^*|_*)?$", options: [])
+        else {
             return noteStr
         }
         let nsStr = noteStr as NSString
-        guard let match = regex.firstMatch(in: noteStr, options: [], range: NSRange(location: 0, length: nsStr.length)) else {
+        guard
+            let match = regex.firstMatch(
+                in: noteStr, options: [], range: NSRange(location: 0, length: nsStr.length))
+        else {
             return noteStr
         }
 
         guard let deg = Int(nsStr.substring(with: match.range(at: 1))) else { return noteStr }
-        let acc = match.range(at: 2).location != NSNotFound ? nsStr.substring(with: match.range(at: 2)) : ""
-        let oct = match.range(at: 3).location != NSNotFound ? nsStr.substring(with: match.range(at: 3)) : ""
+        let acc =
+            match.range(at: 2).location != NSNotFound
+            ? nsStr.substring(with: match.range(at: 2)) : ""
+        let oct =
+            match.range(at: 3).location != NSNotFound
+            ? nsStr.substring(with: match.range(at: 3)) : ""
 
         var octaveDelta = 0
         if oct.hasPrefix("^") {
@@ -1168,11 +1268,15 @@ public struct TMDRefactor {
             return chordStr
         }
 
-        guard let regex = try? NSRegularExpression(pattern: "^([A-Ga-g]['#,b]?)(.*)$", options: []) else {
+        guard let regex = try? NSRegularExpression(pattern: "^([A-Ga-g]['#,b]?)(.*)$", options: [])
+        else {
             return chordStr
         }
         let nsInner = inner as NSString
-        guard let match = regex.firstMatch(in: inner, options: [], range: NSRange(location: 0, length: nsInner.length)) else {
+        guard
+            let match = regex.firstMatch(
+                in: inner, options: [], range: NSRange(location: 0, length: nsInner.length))
+        else {
             return chordStr
         }
 
@@ -1195,7 +1299,7 @@ public struct TMDRefactor {
         let newOffset = ((semitoneOffset + semitones) % 12 + 12) % 12
         let offsetToLetter: [Int: String] = [
             0: "C", 1: "C#", 2: "D", 3: "Eb", 4: "E", 5: "F",
-            6: "F#", 7: "G", 8: "Ab", 9: "A", 10: "Bb", 11: "B"
+            6: "F#", 7: "G", 8: "Ab", 9: "A", 10: "Bb", 11: "B",
         ]
         let newRoot = offsetToLetter[newOffset] ?? "C"
         return "[\(newRoot)\(suffix)]"
@@ -1211,7 +1315,8 @@ public struct TMDRefactor {
         var commentSuffix = ""
         if let commentStart = working.range(of: "/*") {
             commentSuffix = " " + String(working[commentStart.lowerBound...])
-            working = String(working[..<commentStart.lowerBound]).trimmingCharacters(in: .whitespaces)
+            working = String(working[..<commentStart.lowerBound]).trimmingCharacters(
+                in: .whitespaces)
         }
 
         let tokens = tokenizeMeasureLine(working)
@@ -1224,7 +1329,8 @@ public struct TMDRefactor {
             }
 
             if tok.hasPrefix("[") && tok.hasSuffix("]") {
-                outTokens.append(transposeChordToken(tok, semitones: semitones, diatonicSteps: diatonicSteps))
+                outTokens.append(
+                    transposeChordToken(tok, semitones: semitones, diatonicSteps: diatonicSteps))
                 continue
             }
 
@@ -1232,10 +1338,13 @@ public struct TMDRefactor {
                 let innerTokens = tokenizeMeasureLine(tuplet.inner)
                 let transposedInner = innerTokens.map { t -> String in
                     if let f = t.first, f >= "1" && f <= "7" {
-                        return transposeTmdNote(t, semitones: semitones, diatonicSteps: diatonicSteps, keySignature: keySignature)
+                        return transposeTmdNote(
+                            t, semitones: semitones, diatonicSteps: diatonicSteps,
+                            keySignature: keySignature)
                     }
                     if t.hasPrefix("[") && t.hasSuffix("]") {
-                        return transposeChordToken(t, semitones: semitones, diatonicSteps: diatonicSteps)
+                        return transposeChordToken(
+                            t, semitones: semitones, diatonicSteps: diatonicSteps)
                     }
                     return t
                 }
@@ -1245,7 +1354,10 @@ public struct TMDRefactor {
             }
 
             if let f = tok.first, f >= "1" && f <= "7" {
-                outTokens.append(transposeTmdNote(tok, semitones: semitones, diatonicSteps: diatonicSteps, keySignature: keySignature))
+                outTokens.append(
+                    transposeTmdNote(
+                        tok, semitones: semitones, diatonicSteps: diatonicSteps,
+                        keySignature: keySignature))
                 continue
             }
 

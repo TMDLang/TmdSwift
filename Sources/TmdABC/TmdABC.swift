@@ -17,7 +17,7 @@ public struct TMDABCGenerator {
         abc += "T:\(sheet.name.isEmpty ? "Untitled" : sheet.name)\n"
         abc += "C:\(sheet.metadata["composer"] ?? "TMD (Chen, Chih-Han / aguai)")\n"
         abc += "M:\(sheet.beat.count)/\(sheet.beat.noteValue)\n"
-        abc += "L:1/16\n" // Base unit length = 16th note for high rhythm precision
+        abc += "L:1/16\n"  // Base unit length = 16th note for high rhythm precision
         let speed = sheet.speed > 0 ? sheet.speed : 120
         let tempoField = resolveTempo(beat: sheet.beat, quarterBPM: speed)
         abc += "\(tempoField)\n"
@@ -97,7 +97,8 @@ public struct TMDABCGenerator {
     private static func formatDirective(_ directive: PlaybackDirectiveEvent) -> String {
         switch directive.kind {
         case .tempo, .relativeTempo:
-            let cmd = resolveTempo(beat: directive.state.timeSignature, quarterBPM: directive.state.tempo)
+            let cmd = resolveTempo(
+                beat: directive.state.timeSignature, quarterBPM: directive.state.tempo)
             return "\(cmd) "
         case .timeSignature(let beat):
             return "M:\(beat.count)/\(beat.noteValue) "
@@ -127,7 +128,9 @@ public struct TMDABCGenerator {
         case .rest:
             return "z\(suffix)"
         case .percussion(let pattern):
-            let pitches = pattern.compactMap { ["X": "^F", "x": "^F", "T": "A", "t": "A", "S": "D", "s": "D"][$0] }
+            let pitches = pattern.compactMap {
+                ["X": "^F", "x": "^F", "T": "A", "t": "A", "S": "D", "s": "D"][$0]
+            }
             if pitches.isEmpty { return "z\(suffix)" }
             let count = pitches.count
             let base = multiplier / count
@@ -140,14 +143,19 @@ public struct TMDABCGenerator {
         }
     }
 
-    private static func paragraphsContainPercussion(_ entries: [Entry], instrument: String) -> Bool {
-        entries.filter { ($0.assignment ?? "").caseInsensitiveCompare(instrument) == .orderedSame }.contains { paragraph in
-            paragraph.sections.contains { section in
-                section.unitGroups.contains { group in
-                    group.units.contains { if case .percussion = $0 { return true }; return false }
+    private static func paragraphsContainPercussion(_ entries: [Entry], instrument: String) -> Bool
+    {
+        entries.filter { ($0.assignment ?? "").caseInsensitiveCompare(instrument) == .orderedSame }
+            .contains { paragraph in
+                paragraph.sections.contains { section in
+                    section.unitGroups.contains { group in
+                        group.units.contains {
+                            if case .percussion = $0 { return true }
+                            return false
+                        }
+                    }
                 }
             }
-        }
     }
 
     // MARK: - Pitch Helpers
@@ -163,32 +171,58 @@ public struct TMDABCGenerator {
     private static func keyInfo(for keyOffset: Int) -> ABCKeyInfo {
         let normalized = ((keyOffset % 12) + 12) % 12
         switch normalized {
-        case 0: // C
-            return ABCKeyInfo(name: "C", stepAccidentals: [0, 0, 0, 0, 0, 0, 0], degreeSteps: [0, 1, 2, 3, 4, 5, 6])
-        case 1: // Db
-            return ABCKeyInfo(name: "Db", stepAccidentals: [0, -1, -1, 0, -1, -1, -1], degreeSteps: [1, 2, 3, 4, 5, 6, 0])
-        case 2: // D
-            return ABCKeyInfo(name: "D", stepAccidentals: [1, 0, 0, 1, 0, 0, 0], degreeSteps: [1, 2, 3, 4, 5, 6, 0])
-        case 3: // Eb
-            return ABCKeyInfo(name: "Eb", stepAccidentals: [0, 0, -1, 0, 0, -1, -1], degreeSteps: [2, 3, 4, 5, 6, 0, 1])
-        case 4: // E
-            return ABCKeyInfo(name: "E", stepAccidentals: [1, 1, 0, 1, 1, 0, 0], degreeSteps: [2, 3, 4, 5, 6, 0, 1])
-        case 5: // F
-            return ABCKeyInfo(name: "F", stepAccidentals: [0, 0, 0, 0, 0, 0, -1], degreeSteps: [3, 4, 5, 6, 0, 1, 2])
-        case 6: // F#
-            return ABCKeyInfo(name: "F#", stepAccidentals: [1, 1, 1, 1, 1, 1, 0], degreeSteps: [3, 4, 5, 6, 0, 1, 2])
-        case 7: // G
-            return ABCKeyInfo(name: "G", stepAccidentals: [0, 0, 0, 1, 0, 0, 0], degreeSteps: [4, 5, 6, 0, 1, 2, 3])
-        case 8: // Ab
-            return ABCKeyInfo(name: "Ab", stepAccidentals: [0, -1, -1, 0, 0, -1, -1], degreeSteps: [5, 6, 0, 1, 2, 3, 4])
-        case 9: // A
-            return ABCKeyInfo(name: "A", stepAccidentals: [1, 0, 0, 1, 1, 0, 0], degreeSteps: [5, 6, 0, 1, 2, 3, 4])
-        case 10: // Bb
-            return ABCKeyInfo(name: "Bb", stepAccidentals: [0, 0, -1, 0, 0, 0, -1], degreeSteps: [6, 0, 1, 2, 3, 4, 5])
-        case 11: // B
-            return ABCKeyInfo(name: "B", stepAccidentals: [1, 1, 0, 1, 1, 1, 0], degreeSteps: [6, 0, 1, 2, 3, 4, 5])
+        case 0:  // C
+            return ABCKeyInfo(
+                name: "C", stepAccidentals: [0, 0, 0, 0, 0, 0, 0],
+                degreeSteps: [0, 1, 2, 3, 4, 5, 6])
+        case 1:  // Db
+            return ABCKeyInfo(
+                name: "Db", stepAccidentals: [0, -1, -1, 0, -1, -1, -1],
+                degreeSteps: [1, 2, 3, 4, 5, 6, 0])
+        case 2:  // D
+            return ABCKeyInfo(
+                name: "D", stepAccidentals: [1, 0, 0, 1, 0, 0, 0],
+                degreeSteps: [1, 2, 3, 4, 5, 6, 0])
+        case 3:  // Eb
+            return ABCKeyInfo(
+                name: "Eb", stepAccidentals: [0, 0, -1, 0, 0, -1, -1],
+                degreeSteps: [2, 3, 4, 5, 6, 0, 1])
+        case 4:  // E
+            return ABCKeyInfo(
+                name: "E", stepAccidentals: [1, 1, 0, 1, 1, 0, 0],
+                degreeSteps: [2, 3, 4, 5, 6, 0, 1])
+        case 5:  // F
+            return ABCKeyInfo(
+                name: "F", stepAccidentals: [0, 0, 0, 0, 0, 0, -1],
+                degreeSteps: [3, 4, 5, 6, 0, 1, 2])
+        case 6:  // F#
+            return ABCKeyInfo(
+                name: "F#", stepAccidentals: [1, 1, 1, 1, 1, 1, 0],
+                degreeSteps: [3, 4, 5, 6, 0, 1, 2])
+        case 7:  // G
+            return ABCKeyInfo(
+                name: "G", stepAccidentals: [0, 0, 0, 1, 0, 0, 0],
+                degreeSteps: [4, 5, 6, 0, 1, 2, 3])
+        case 8:  // Ab
+            return ABCKeyInfo(
+                name: "Ab", stepAccidentals: [0, -1, -1, 0, 0, -1, -1],
+                degreeSteps: [5, 6, 0, 1, 2, 3, 4])
+        case 9:  // A
+            return ABCKeyInfo(
+                name: "A", stepAccidentals: [1, 0, 0, 1, 1, 0, 0],
+                degreeSteps: [5, 6, 0, 1, 2, 3, 4])
+        case 10:  // Bb
+            return ABCKeyInfo(
+                name: "Bb", stepAccidentals: [0, 0, -1, 0, 0, 0, -1],
+                degreeSteps: [6, 0, 1, 2, 3, 4, 5])
+        case 11:  // B
+            return ABCKeyInfo(
+                name: "B", stepAccidentals: [1, 1, 0, 1, 1, 1, 0],
+                degreeSteps: [6, 0, 1, 2, 3, 4, 5])
         default:
-            return ABCKeyInfo(name: "C", stepAccidentals: [0, 0, 0, 0, 0, 0, 0], degreeSteps: [0, 1, 2, 3, 4, 5, 6])
+            return ABCKeyInfo(
+                name: "C", stepAccidentals: [0, 0, 0, 0, 0, 0, 0],
+                degreeSteps: [0, 1, 2, 3, 4, 5, 6])
         }
     }
 

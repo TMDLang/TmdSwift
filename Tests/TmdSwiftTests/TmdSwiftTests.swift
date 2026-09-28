@@ -1,32 +1,33 @@
-import Testing
 import Foundation
-@testable import TmdSwift
+import Testing
+import TmdABC
+import TmdAudio
+import TmdLilyPond
 import TmdMIDI
 import TmdMusicXML
-import TmdLilyPond
-import TmdUtils
-import TmdAudio
-import TmdABC
 import TmdSkill
+import TmdUtils
+
+@testable import TmdSwift
 
 @Test func testParseTMDScore() throws {
     let tmd = """
-    ::SCORE::
-    /* Comment block */
-    ** Test Song **
-    != 120.0
-    ?= C
-    <4/4>
+        ::SCORE::
+        /* Comment block */
+        ** Test Song **
+        != 120.0
+        ?= C
+        <4/4>
 
-    intro:Piano@|0|{
-        <4*>
-        1 2 3 4
-        (1' 2, 3^ 4_)%(--)
-        [Cmaj7] -
-    }
+        intro:Piano@|0|{
+            <4*>
+            1 2 3 4
+            (1' 2, 3^ 4_)%(--)
+            [Cmaj7] -
+        }
 
-    -> intro -> {?relative_part} -> {?=absolute_part} ->#
-    """
+        -> intro -> {?relative_part} -> {?=absolute_part} ->#
+        """
 
     let sheet = TmdParser.parse(string: tmd)
     #expect(sheet != nil)
@@ -50,10 +51,14 @@ import TmdSkill
     #expect(section.unitGroups.count == 7)
 
     // 1 2 3 4
-    #expect(section.unitGroups[0].units[0] == .note(Note(accidental: .natural, degree: 1, octave: 0)))
-    #expect(section.unitGroups[1].units[0] == .note(Note(accidental: .natural, degree: 2, octave: 0)))
-    #expect(section.unitGroups[2].units[0] == .note(Note(accidental: .natural, degree: 3, octave: 0)))
-    #expect(section.unitGroups[3].units[0] == .note(Note(accidental: .natural, degree: 4, octave: 0)))
+    #expect(
+        section.unitGroups[0].units[0] == .note(Note(accidental: .natural, degree: 1, octave: 0)))
+    #expect(
+        section.unitGroups[1].units[0] == .note(Note(accidental: .natural, degree: 2, octave: 0)))
+    #expect(
+        section.unitGroups[2].units[0] == .note(Note(accidental: .natural, degree: 3, octave: 0)))
+    #expect(
+        section.unitGroups[3].units[0] == .note(Note(accidental: .natural, degree: 4, octave: 0)))
 
     // (1' 2, 3^ 4_)%(--)
     let group5 = section.unitGroups[4]
@@ -94,16 +99,16 @@ import TmdSkill
 @Test("Canonical source model exposes assignment and fixed-pitch entry attributes")
 func testCanonicalEntrySourceModel() throws {
     let tmd = """
-    ::SCORE::
-    Intro:Timpani[pitchMode=fixed]@|0|{
-        <4*>
-        2__ - - -
-    }
-    Theme{
-        <4*>
-        1 2 3 4
-    }
-    """
+        ::SCORE::
+        Intro:Timpani[pitchMode=fixed]@|0|{
+            <4*>
+            2__ - - -
+        }
+        Theme{
+            <4*>
+            1 2 3 4
+        }
+        """
 
     let sheet = try #require(TmdParser.parse(string: tmd))
     let timpani = try #require(sheet.entries.first { $0.assignment == "Timpani" })
@@ -132,9 +137,9 @@ func testCanonicalEntryType() {
 @Test("Formatting preserves canonical fixed-pitch entry attributes")
 func testCanonicalEntryFormattingRoundTrip() throws {
     let tmd = """
-    ::SCORE::
-    Intro:Timpani[pitchMode=fixed]@|0|{ <4*> 2__ - - - }
-    """
+        ::SCORE::
+        Intro:Timpani[pitchMode=fixed]@|0|{ <4*> 2__ - - - }
+        """
 
     let sheet = try #require(TmdParser.parse(string: tmd))
     let formatted = sheet.format()
@@ -149,10 +154,10 @@ func testCanonicalEntryFormattingRoundTrip() throws {
 @Test("Canonical playback view exposes the score playback sequence")
 func testCanonicalPlaybackView() throws {
     let tmd = """
-    ::SCORE::
-    Intro:Piano@|0|{ <4*> 1 2 3 4 }
-    -> Intro ->#
-    """
+        ::SCORE::
+        Intro:Piano@|0|{ <4*> 1 2 3 4 }
+        -> Intro ->#
+        """
 
     let sheet = try #require(TmdParser.parse(string: tmd))
     #expect(sheet.playback == sheet.playback)
@@ -162,10 +167,10 @@ func testCanonicalPlaybackView() throws {
 @Test("Assignment identity is case-insensitive")
 func testAssignmentIdentityIsCaseInsensitive() throws {
     let tmd = """
-    ::SCORE::
-    A:Piano@|0|{ <4*> 1 2 3 4 }
-    B:piano@|0|{ <4*> 5 6 7 1^ }
-    """
+        ::SCORE::
+        A:Piano@|0|{ <4*> 1 2 3 4 }
+        B:piano@|0|{ <4*> 5 6 7 1^ }
+        """
 
     let sheet = try #require(TmdParser.parse(string: tmd))
     #expect(sheet.distinctAssignments().map { $0.lowercased() } == ["piano"])
@@ -174,10 +179,10 @@ func testAssignmentIdentityIsCaseInsensitive() throws {
 @Test("Playback validation rejects overlapping entries for one assignment")
 func testPlaybackValidationRejectsOverlappingAssignmentEntries() throws {
     let tmd = """
-    ::SCORE::
-    A:Piano@|0|{ <4*> 1 2 3 4 }
-    A:piano@|0|{ <4*> 5 6 7 1^ }
-    """
+        ::SCORE::
+        A:Piano@|0|{ <4*> 1 2 3 4 }
+        A:piano@|0|{ <4*> 5 6 7 1^ }
+        """
 
     let sheet = try #require(TmdParser.parse(string: tmd))
     let issues = TMDPlaybackRenderer.validate(sheet: sheet)
@@ -188,10 +193,10 @@ func testPlaybackValidationRejectsOverlappingAssignmentEntries() throws {
 @Test("Playback validation allows adjacent entries for one assignment")
 func testPlaybackValidationAllowsAdjacentAssignmentEntries() throws {
     let tmd = """
-    ::SCORE::
-    A:Piano@|0|{ <4*> 1 2 3 4 }
-    A:piano@|1|{ <4*> 5 6 7 1^ }
-    """
+        ::SCORE::
+        A:Piano@|0|{ <4*> 1 2 3 4 }
+        A:piano@|1|{ <4*> 5 6 7 1^ }
+        """
 
     let sheet = try #require(TmdParser.parse(string: tmd))
     #expect(TMDPlaybackRenderer.validate(sheet: sheet).isEmpty)
@@ -199,35 +204,38 @@ func testPlaybackValidationAllowsAdjacentAssignmentEntries() throws {
 
 @Test("Playback matches assignment names case-insensitively")
 func testPlaybackMatchesAssignmentNamesCaseInsensitively() throws {
-    let sheet = try #require(TmdParser.parse(string: """
-    ::SCORE::
-    A:Piano@|0|{
-    <4*>
-    | 1 2 3 4 |
-    }
+    let sheet = try #require(
+        TmdParser.parse(
+            string: """
+                ::SCORE::
+                A:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
+                }
 
-    -> A ->#
-    """))
+                -> A ->#
+                """))
 
     let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "pIaNo")
     #expect(timeline.track?.assignment == "Piano")
     #expect(timeline.track?.events == timeline.events)
-    #expect(timeline.events.filter {
-        if case .note = $0.content { return true }
-        return false
-    }.count == 4)
+    #expect(
+        timeline.events.filter {
+            if case .note = $0.content { return true }
+            return false
+        }.count == 4)
 }
 
 @Test("Sections preserve explicit barline positions through formatting")
 func testSectionBarlinePositionsRoundTrip() throws {
     let source = """
-    ::SCORE::
-    intro:Piano@|0|{
-    <4*>
-    | 1 2 3 4 | 5 6 7 1 |
-    }
-    -> intro ->#
-    """
+        ::SCORE::
+        intro:Piano@|0|{
+        <4*>
+        | 1 2 3 4 | 5 6 7 1 |
+        }
+        -> intro ->#
+        """
 
     let sheet = try #require(TmdParser.parse(string: source))
     #expect(sheet.entries[0].sections[0].barlinePositions == [0, 4, 8])
@@ -237,13 +245,15 @@ func testSectionBarlinePositionsRoundTrip() throws {
 
 @Test("Fixed-pitch entry ignores playback key modifiers")
 func testFixedPitchEntryIgnoresPlaybackKeyModifiers() throws {
-    let sheet = try #require(TmdParser.parse(string: """
-    ::SCORE::
-    ?= G
-    <4/4>
-    Intro:Timpani[pitchMode=fixed]@|0|{ <4*> 1 2 3 4 }
-    -> {?+3} -> Intro ->#
-    """))
+    let sheet = try #require(
+        TmdParser.parse(
+            string: """
+                ::SCORE::
+                ?= G
+                <4/4>
+                Intro:Timpani[pitchMode=fixed]@|0|{ <4*> 1 2 3 4 }
+                -> {?+3} -> Intro ->#
+                """))
 
     let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Timpani")
     #expect(!timeline.events.isEmpty)
@@ -252,14 +262,16 @@ func testFixedPitchEntryIgnoresPlaybackKeyModifiers() throws {
 
 @Test("Playback reports conflicting tempo directives at one position")
 func testPlaybackReportsConflictingTempoDirectives() throws {
-    let sheet = try #require(TmdParser.parse(string: """
-    ::SCORE::
-    Intro:Piano@|0|{
-    <4*>
-    {!=90}{!=100} 1 2 3 4
-    }
-    -> Intro ->#
-    """))
+    let sheet = try #require(
+        TmdParser.parse(
+            string: """
+                ::SCORE::
+                Intro:Piano@|0|{
+                <4*>
+                {!=90}{!=100} 1 2 3 4
+                }
+                -> Intro ->#
+                """))
 
     let conflicts = TMDPlaybackRenderer.validateTempoConflicts(sheet: sheet)
     #expect(conflicts.count == 1)
@@ -270,23 +282,24 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 @Test func testTokenize() throws {
     let text = "::SCORE:: ** Title ** != 120 ?= C <4/4> ->#"
     let tokens = Lexer(string: text).tokenize()
-    #expect(tokens == [
-        .scoreHeader,
-        .doubleAsterisk,
-        .identifier("Title"),
-        .doubleAsterisk,
-        .speedPrefix,
-        .number(120),
-        .keySignaturePrefix,
-        .identifier("C"),
-        .openAngle,
-        .note(Note(accidental: .natural, degree: 4, octave: 0)),
-        .slash,
-        .note(Note(accidental: .natural, degree: 4, octave: 0)),
-        .closeAngle,
-        .arrowEnd,
-        .eof
-    ])
+    #expect(
+        tokens == [
+            .scoreHeader,
+            .doubleAsterisk,
+            .identifier("Title"),
+            .doubleAsterisk,
+            .speedPrefix,
+            .number(120),
+            .keySignaturePrefix,
+            .identifier("C"),
+            .openAngle,
+            .note(Note(accidental: .natural, degree: 4, octave: 0)),
+            .slash,
+            .note(Note(accidental: .natural, degree: 4, octave: 0)),
+            .closeAngle,
+            .arrowEnd,
+            .eof,
+        ])
 }
 
 @Test func testTokenRanges() throws {
@@ -357,7 +370,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 @Test func testParserRejectsZeroEntryOffset() throws {
     let sources = [
         "::SCORE::\nIntro:Piano@|+0|{ <4*> 1 2 3 4 }",
-        "::SCORE::\nIntro:Piano@0{ <4*> 1 2 3 4 }"
+        "::SCORE::\nIntro:Piano@0{ <4*> 1 2 3 4 }",
     ]
 
     for source in sources {
@@ -375,13 +388,13 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
 @Test func testPrototypeRejectsModifiers() throws {
     let source = """
-    ::SCORE::
-    Theme{
-        <4*>
-        {?= C}
-        1 2 3 4
-    }
-    """
+        ::SCORE::
+        Theme{
+            <4*>
+            {?= C}
+            1 2 3 4
+        }
+        """
 
     #expect(throws: TMDParseError.self) {
         _ = try TmdParser.parseThrowing(string: source)
@@ -390,18 +403,18 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
 @Test func testParserRejectsInvalidUnitTokenInEntry() throws {
     let tmd = """
-    ::SCORE::
-    ** Invalid Token Test **
-    != 120
-    ?= C
-    <4/4>
+        ::SCORE::
+        ** Invalid Token Test **
+        != 120
+        ?= C
+        <4/4>
 
-    intro:Drums@|0|{
-        <8*>
-        | A - - - A - - - |
-    }
-    -> intro ->#
-    """
+        intro:Drums@|0|{
+            <8*>
+            | A - - - A - - - |
+        }
+        -> intro ->#
+        """
     #expect(throws: TMDParseError.self) {
         _ = try TmdParser.parseThrowing(string: tmd)
     }
@@ -441,7 +454,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     if let validSheet = sheet {
         let midi = TMDMIDIGenerator.generateMIDI(from: validSheet)
         #expect(!midi.isEmpty)
-        #expect(midi.starts(with: [0x4D, 0x54, 0x68, 0x64])) // "MThd"
+        #expect(midi.starts(with: [0x4D, 0x54, 0x68, 0x64]))  // "MThd"
 
         // Verify MusicXML generation
         let xml = TMDMusicXMLGenerator.generateMusicXML(from: validSheet)
@@ -478,11 +491,14 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         let sheet = try TmdParser.parseThrowing(url: fileURL)
         #expect(!sheet.name.isEmpty, "Score in \(fileURL.lastPathComponent) should have a name")
         #expect(sheet.speed > 0, "Score in \(fileURL.lastPathComponent) should have positive BPM")
-        #expect(!sheet.entries.isEmpty, "Score in \(fileURL.lastPathComponent) should have paragraphs")
+        #expect(
+            !sheet.entries.isEmpty, "Score in \(fileURL.lastPathComponent) should have paragraphs")
         testedCount += 1
     }
 
-    #expect(testedCount >= 20, "Expected at least 20 sample TMD scores to be tested, found \(testedCount)")
+    #expect(
+        testedCount >= 20,
+        "Expected at least 20 sample TMD scores to be tested, found \(testedCount)")
 }
 
 @Test func testFileURLAndEncoding() throws {
@@ -506,130 +522,134 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
     // Test Big5 encoded data detection
     let tmdBig5 = """
-    ::SCORE::
-    ** 測試Big5 **
-    != 120
-    ?= C
-    <4/4>
-    intro:鋼琴@|0|{
-    <4*>
-    1 2 3 4
-    }
-    -> intro ->#
-    """
+        ::SCORE::
+        ** 測試Big5 **
+        != 120
+        ?= C
+        <4/4>
+        intro:鋼琴@|0|{
+        <4*>
+        1 2 3 4
+        }
+        -> intro ->#
+        """
     if let big5Data = tmdBig5.data(using: .big5) {
         let sheetBig5 = TmdParser.parse(data: big5Data)
         #expect(sheetBig5 != nil)
         #expect(sheetBig5?.name == "測試Big5")
-    #expect(sheetBig5?.entries.first?.assignment == "鋼琴")
+        #expect(sheetBig5?.entries.first?.assignment == "鋼琴")
     }
 }
 
 #if os(macOS)
-@Test func testAudioRenderingBasic() throws {
-    let tmd = """
-    ::SCORE::
-    ** Audio Test **
-    != 140
-    ?= C
-    <4/4>
-    intro:Piano@|0|{
-    <4*>
-    1 2 3 4
-    }
-    -> intro ->#
-    """
-    guard let sheet = TmdParser.parse(string: tmd) else {
-        Issue.record("Failed to parse audio test score")
-        return
-    }
+    @Test func testAudioRenderingBasic() throws {
+        let tmd = """
+            ::SCORE::
+            ** Audio Test **
+            != 140
+            ?= C
+            <4/4>
+            intro:Piano@|0|{
+            <4*>
+            1 2 3 4
+            }
+            -> intro ->#
+            """
+        guard let sheet = TmdParser.parse(string: tmd) else {
+            Issue.record("Failed to parse audio test score")
+            return
+        }
 
-    let sampleRate: Double = 44100.0
-    let wavData = try TMDWAVRenderer.renderWAV(from: sheet, sampleRate: sampleRate)
-    #expect(!wavData.isEmpty)
-    #expect(wavData.starts(with: [0x52, 0x49, 0x46, 0x46])) // "RIFF"
+        let sampleRate: Double = 44100.0
+        let wavData = try TMDWAVRenderer.renderWAV(from: sheet, sampleRate: sampleRate)
+        #expect(!wavData.isEmpty)
+        #expect(wavData.starts(with: [0x52, 0x49, 0x46, 0x46]))  // "RIFF"
 
-    let pcmBytes = wavData.count - 44
-    let durationSeconds = Double(pcmBytes) / (sampleRate * 4.0)
-    // 4 beats at 140 BPM is ~1.71s + release tail (2.5s) >= 4.0s
-    #expect(durationSeconds >= 4.0)
-}
-
-@Test func testAudioRenderingSlowTempoNotTruncated() throws {
-    // 60 BPM with 4 quarter notes = exactly 4.0 seconds of music.
-    // With release/reverb tail (at least 1.5s - 2.5s), duration MUST be >= 5.5s.
-    // If tempo was hardcoded to 120 BPM, 4 beats would produce only 4 * 0.5 + 1.5 = 3.5s, truncating the song!
-    let tmd = """
-    ::SCORE::
-    ** Slow 60 BPM Test **
-    != 60
-    ?= C
-    <4/4>
-    intro:Piano@|0|{
-    <4*>
-    1 2 3 4
-    }
-    -> intro ->#
-    """
-    guard let sheet = TmdParser.parse(string: tmd) else {
-        Issue.record("Failed to parse 60 BPM score")
-        return
+        let pcmBytes = wavData.count - 44
+        let durationSeconds = Double(pcmBytes) / (sampleRate * 4.0)
+        // 4 beats at 140 BPM is ~1.71s + release tail (2.5s) >= 4.0s
+        #expect(durationSeconds >= 4.0)
     }
 
-    let sampleRate: Double = 44100.0
-    let wavData = try TMDWAVRenderer.renderWAV(from: sheet, sampleRate: sampleRate)
-    #expect(wavData.count > 44)
+    @Test func testAudioRenderingSlowTempoNotTruncated() throws {
+        // 60 BPM with 4 quarter notes = exactly 4.0 seconds of music.
+        // With release/reverb tail (at least 1.5s - 2.5s), duration MUST be >= 5.5s.
+        // If tempo was hardcoded to 120 BPM, 4 beats would produce only 4 * 0.5 + 1.5 = 3.5s, truncating the song!
+        let tmd = """
+            ::SCORE::
+            ** Slow 60 BPM Test **
+            != 60
+            ?= C
+            <4/4>
+            intro:Piano@|0|{
+            <4*>
+            1 2 3 4
+            }
+            -> intro ->#
+            """
+        guard let sheet = TmdParser.parse(string: tmd) else {
+            Issue.record("Failed to parse 60 BPM score")
+            return
+        }
 
-    // Calculate actual audio duration from WAV PCM bytes (16-bit stereo = 4 bytes per frame)
-    let pcmBytes = wavData.count - 44
-    let durationSeconds = Double(pcmBytes) / (sampleRate * 4.0)
+        let sampleRate: Double = 44100.0
+        let wavData = try TMDWAVRenderer.renderWAV(from: sheet, sampleRate: sampleRate)
+        #expect(wavData.count > 44)
 
-    // 4 beats at 60 BPM = 4.0s of score. It must NOT be truncated to 3.5s!
-    #expect(durationSeconds >= 5.5, "Rendered duration (\(durationSeconds)s) was truncated below 5.5s!")
-}
+        // Calculate actual audio duration from WAV PCM bytes (16-bit stereo = 4 bytes per frame)
+        let pcmBytes = wavData.count - 44
+        let durationSeconds = Double(pcmBytes) / (sampleRate * 4.0)
 
-@Test func testAudioRenderingWithTempoChangeDirective() throws {
-    // Starts at 120 BPM (2 beats = 1.0s), then drops to 60 BPM (2 beats = 2.0s). Total score duration = 3.0s.
-    let tmd = """
-    ::SCORE::
-    ** Tempo Change Test **
-    != 120
-    ?= C
-    <4/4>
-    intro:Piano@|0|{
-    <4*>
-    1 2 {!=60} 3 4
+        // 4 beats at 60 BPM = 4.0s of score. It must NOT be truncated to 3.5s!
+        #expect(
+            durationSeconds >= 5.5,
+            "Rendered duration (\(durationSeconds)s) was truncated below 5.5s!")
     }
-    -> intro ->#
-    """
-    guard let sheet = TmdParser.parse(string: tmd) else {
-        Issue.record("Failed to parse tempo change score")
-        return
+
+    @Test func testAudioRenderingWithTempoChangeDirective() throws {
+        // Starts at 120 BPM (2 beats = 1.0s), then drops to 60 BPM (2 beats = 2.0s). Total score duration = 3.0s.
+        let tmd = """
+            ::SCORE::
+            ** Tempo Change Test **
+            != 120
+            ?= C
+            <4/4>
+            intro:Piano@|0|{
+            <4*>
+            1 2 {!=60} 3 4
+            }
+            -> intro ->#
+            """
+        guard let sheet = TmdParser.parse(string: tmd) else {
+            Issue.record("Failed to parse tempo change score")
+            return
+        }
+
+        let sampleRate: Double = 44100.0
+        let wavData = try TMDWAVRenderer.renderWAV(from: sheet, sampleRate: sampleRate)
+        let pcmBytes = wavData.count - 44
+        let durationSeconds = Double(pcmBytes) / (sampleRate * 4.0)
+
+        // Total score duration is 1.0s + 2.0s = 3.0s, plus release tail (>=2.0s) -> >= 4.5s.
+        #expect(
+            durationSeconds >= 4.5,
+            "Rendered duration (\(durationSeconds)s) was truncated below 4.5s!")
     }
-
-    let sampleRate: Double = 44100.0
-    let wavData = try TMDWAVRenderer.renderWAV(from: sheet, sampleRate: sampleRate)
-    let pcmBytes = wavData.count - 44
-    let durationSeconds = Double(pcmBytes) / (sampleRate * 4.0)
-
-    // Total score duration is 1.0s + 2.0s = 3.0s, plus release tail (>=2.0s) -> >= 4.5s.
-    #expect(durationSeconds >= 4.5, "Rendered duration (\(durationSeconds)s) was truncated below 4.5s!")
-}
 #endif
 
 @Test func testABCGeneration() throws {
     let tmd = """
-    ::SCORE::
-    ** ABC Test **
-    != 120
-    ?= C
-    <4/4>
-    intro:Piano@|0|{
-    <4*>
-    1 2 3 4
-    }
-    -> intro ->#
-    """
+        ::SCORE::
+        ** ABC Test **
+        != 120
+        ?= C
+        <4/4>
+        intro:Piano@|0|{
+        <4*>
+        1 2 3 4
+        }
+        -> intro ->#
+        """
     guard let sheet = TmdParser.parse(string: tmd) else {
         Issue.record("Failed to parse ABC test score")
         return
@@ -645,28 +665,28 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
 @Test func testExtendedTMDSyntax() throws {
     let tmd = """
-    ::SCORE::
-    ** Extended **
-    != 120
-    ?= C
-    <4/4>
-    ~ "詞：阿怪"
-    =~:__ARR__= "編曲者"
+        ::SCORE::
+        ** Extended **
+        != 120
+        ?= C
+        <4/4>
+        ~ "詞：阿怪"
+        =~:__ARR__= "編曲者"
 
-    A:Vocal@|-1|{
-        <16*>
-        0--- 1 2 3
-        {!= 140}
-        {!+10}
-        {?+2}
-        {<3/4>}
-    }
-    A:Drums@|0|{
-        <16*>
-        XsTt x--
-    }
-    -> A ->#
-    """
+        A:Vocal@|-1|{
+            <16*>
+            0--- 1 2 3
+            {!= 140}
+            {!+10}
+            {?+2}
+            {<3/4>}
+        }
+        A:Drums@|0|{
+            <16*>
+            XsTt x--
+        }
+        -> A ->#
+        """
 
     let sheet = TmdParser.parse(string: tmd)
     #expect(sheet != nil)
@@ -679,12 +699,13 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     #expect(sheet.entries[0].start == -1)
     #expect(sheet.entries[0].sections[0].unitGroups[0].units[0] == .rest)
     #expect(sheet.entries[1].sections[0].unitGroups[0].units[0] == .percussion("XsTt"))
-    #expect(sheet.entries[0].sections[0].directives == [
-        SectionDirective(position: 7, kind: .tempo(140)),
-        SectionDirective(position: 7, kind: .relativeTempo(10)),
-        SectionDirective(position: 7, kind: .relativeKey(2)),
-        SectionDirective(position: 7, kind: .timeSignature(Beat(count: 3, noteValue: 4)))
-    ])
+    #expect(
+        sheet.entries[0].sections[0].directives == [
+            SectionDirective(position: 7, kind: .tempo(140)),
+            SectionDirective(position: 7, kind: .relativeTempo(10)),
+            SectionDirective(position: 7, kind: .relativeKey(2)),
+            SectionDirective(position: 7, kind: .timeSignature(Beat(count: 3, noteValue: 4))),
+        ])
 
     let reparsed = TmdParser.parse(string: sheet.format())
     #expect(reparsed?.metadata == sheet.metadata)
@@ -693,9 +714,9 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
     let midi = TMDMIDIGenerator.generateMIDI(from: sheet)
     #expect(midi.contains(0x99))
-    #expect(midi.contains(0x51)) // tempo meta event
-    #expect(midi.contains(0x58)) // time-signature meta event
-    #expect(midi.range(of: Data([0xFF, 0x51, 0x03, 0x06, 0x1A, 0x80])) != nil) // 150 BPM
+    #expect(midi.contains(0x51))  // tempo meta event
+    #expect(midi.contains(0x58))  // time-signature meta event
+    #expect(midi.range(of: Data([0xFF, 0x51, 0x03, 0x06, 0x1A, 0x80])) != nil)  // 150 BPM
     let musicXML = TMDMusicXMLGenerator.generateMusicXML(from: sheet)
     #expect(musicXML.contains("<per-minute>140</per-minute>"))
     #expect(musicXML.contains("<beats>3</beats>"))
@@ -714,27 +735,27 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
 @Test func testFixedPitchEntryAttribute() throws {
     let tmd = """
-    ::SCORE::
-    ** Fixed Pitch Test **
-    != 120
-    ?= G
-    <4/4>
+        ::SCORE::
+        ** Fixed Pitch Test **
+        != 120
+        ?= G
+        <4/4>
 
-    verse:Timpani[pitchMode=fixed]@|0|{
-        <4*>
-        1 2 3 4
-    }
+        verse:Timpani[pitchMode=fixed]@|0|{
+            <4*>
+            1 2 3 4
+        }
 
-    verse:Piano@|0|{
-        <4*>
-        1 2 3 4
-    }
+        verse:Piano@|0|{
+            <4*>
+            1 2 3 4
+        }
 
-    -> {?+3} -> verse ->#
-    """
+        -> {?+3} -> verse ->#
+        """
 
     let sheet = try #require(TmdParser.parse(string: tmd))
-    
+
     // The fixed-pitch entry attribute forces keyOffset = 0 regardless of initial key G or global transposition {?+3}
     let timpaniTimeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Timpani")
     #expect(!timpaniTimeline.events.isEmpty)
@@ -755,29 +776,29 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
 @Test func testMIDIGenerationWithTargetSectionAndInstrument() throws {
     let tmd = """
-    ::SCORE::
-    ** Multi Section Song **
-    != 120
-    ?= C
-    <4/4>
+        ::SCORE::
+        ** Multi Section Song **
+        != 120
+        ?= C
+        <4/4>
 
-    intro:Piano@|0|{
-        <4*>
-        1 2 3 4
-    }
+        intro:Piano@|0|{
+            <4*>
+            1 2 3 4
+        }
 
-    intro:Bass@|0|{
-        <4*>
-        1_ - - -
-    }
+        intro:Bass@|0|{
+            <4*>
+            1_ - - -
+        }
 
-    verse:Piano@|0|{
-        <4*>
-        5 6 7 1^
-    }
+        verse:Piano@|0|{
+            <4*>
+            5 6 7 1^
+        }
 
-    -> intro -> verse ->#
-    """
+        -> intro -> verse ->#
+        """
 
     let sheet = try #require(TmdParser.parse(string: tmd))
 
@@ -790,7 +811,8 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     #expect(!introMidi.isEmpty)
 
     // 3. Generate solo track MIDI: intro (Piano only)
-    let pianoIntroMidi = TMDMIDIGenerator.generateMIDI(from: sheet, targetParagraph: "intro", targetInstrument: "Piano")
+    let pianoIntroMidi = TMDMIDIGenerator.generateMIDI(
+        from: sheet, targetParagraph: "intro", targetInstrument: "Piano")
     #expect(!pianoIntroMidi.isEmpty)
     // Should be smaller than introMidi because Bass track is excluded
     #expect(pianoIntroMidi.count < introMidi.count)
@@ -807,7 +829,9 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     if let tmdURL = TmdTestHelper.findTmdExecutable() {
         let process = Process()
         process.executableURL = tmdURL
-        process.arguments = [tmdPath, "-m", midiOutPath, "--section", "intro", "--instrument", "Piano"]
+        process.arguments = [
+            tmdPath, "-m", midiOutPath, "--section", "intro", "--instrument", "Piano",
+        ]
         try process.run()
         process.waitUntilExit()
         #expect(process.terminationStatus == 0)
@@ -815,18 +839,20 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         let cliData = try Data(contentsOf: URL(fileURLWithPath: midiOutPath))
         #expect(!cliData.isEmpty)
 
-#if os(macOS)
-        let wavOutPath = tempDir.appendingPathComponent("intro_piano.wav").path
-        let wavProcess = Process()
-        wavProcess.executableURL = tmdURL
-        wavProcess.arguments = [tmdPath, "-w", wavOutPath, "--section", "intro", "--instrument", "Piano"]
-        try wavProcess.run()
-        wavProcess.waitUntilExit()
-        #expect(wavProcess.terminationStatus == 0)
-        #expect(FileManager.default.fileExists(atPath: wavOutPath))
-        let cliWavData = try Data(contentsOf: URL(fileURLWithPath: wavOutPath))
-        #expect(!cliWavData.isEmpty)
-#endif
+        #if os(macOS)
+            let wavOutPath = tempDir.appendingPathComponent("intro_piano.wav").path
+            let wavProcess = Process()
+            wavProcess.executableURL = tmdURL
+            wavProcess.arguments = [
+                tmdPath, "-w", wavOutPath, "--section", "intro", "--instrument", "Piano",
+            ]
+            try wavProcess.run()
+            wavProcess.waitUntilExit()
+            #expect(wavProcess.terminationStatus == 0)
+            #expect(FileManager.default.fileExists(atPath: wavOutPath))
+            let cliWavData = try Data(contentsOf: URL(fileURLWithPath: wavOutPath))
+            #expect(!cliWavData.isEmpty)
+        #endif
     } else {
         Issue.record("tmd binary must be built and available")
     }
@@ -834,32 +860,32 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
 @Test func testStaggeredEntranceWithLeadInPickup() throws {
     let tmd = """
-    ::SCORE::
-    ** Staggered LeadIn **
-    != 120
-    ?= C
-    <4/4>
+        ::SCORE::
+        ** Staggered LeadIn **
+        != 120
+        ?= C
+        <4/4>
 
-    A:Vocal@|-1|{
-        <4*>
-        | 0 0 3 1 |
-        | 5 6 5 4 |
-    }
+        A:Vocal@|-1|{
+            <4*>
+            | 0 0 3 1 |
+            | 5 6 5 4 |
+        }
 
-    A:Piano@|-1|{
-        <4*>
-        | 0 0 0 0 |
-        | 1 2 3 4 |
-    }
+        A:Piano@|-1|{
+            <4*>
+            | 0 0 0 0 |
+            | 1 2 3 4 |
+        }
 
-    A:Violin@|0|{
-        <4*>
-        | 0 0 0 0 |
-        | 5 6 7 1 |
-    }
+        A:Violin@|0|{
+            <4*>
+            | 0 0 0 0 |
+            | 5 6 7 1 |
+        }
 
-    -> A ->#
-    """
+        -> A ->#
+        """
     let sheet = try #require(TmdParser.parse(string: tmd))
 
     // 1. Test section-filtered playback (as used in VS Code Play Section / Preview)
@@ -877,9 +903,15 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     let pianoTimeline = TMDPlaybackRenderer.render(sheet: sectionFiltered, instrument: "Piano")
     let violinTimeline = TMDPlaybackRenderer.render(sheet: sectionFiltered, instrument: "Violin")
 
-    let vocalNotes = vocalTimeline.events.filter { if case .note = $0.content { return true } else { return false } }
-    let pianoNotes = pianoTimeline.events.filter { if case .note = $0.content { return true } else { return false } }
-    let violinNotes = violinTimeline.events.filter { if case .note = $0.content { return true } else { return false } }
+    let vocalNotes = vocalTimeline.events.filter {
+        if case .note = $0.content { return true } else { return false }
+    }
+    let pianoNotes = pianoTimeline.events.filter {
+        if case .note = $0.content { return true } else { return false }
+    }
+    let violinNotes = violinTimeline.events.filter {
+        if case .note = $0.content { return true } else { return false }
+    }
 
     // Vocal starts pickup at beat 2.0 (Bar -1, beat 3)
     #expect(vocalNotes.first?.position == 2.0)
@@ -891,43 +923,49 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
     // Violin was declared at @|0| with 1 bar of rest: its first note must be at beat 8.0 (Bar 1),
     // NOT at beat 4.0!
-    #expect(violinNotes.first?.position == 8.0, "Violin at @|0| with 1 bar rest must enter at beat 8.0, not be desynced to beat 4.0")
+    #expect(
+        violinNotes.first?.position == 8.0,
+        "Violin at @|0| with 1 bar rest must enter at beat 8.0, not be desynced to beat 4.0")
 }
 
 @Test func testMultiSectionWithLeadInPickupOverlap() throws {
     let tmd = """
-    ::SCORE::
-    ** Overlapping Sections **
-    != 120
-    ?= C
-    <4/4>
+        ::SCORE::
+        ** Overlapping Sections **
+        != 120
+        ?= C
+        <4/4>
 
-    A:Piano@|0|{
-        <4*>
-        | 1 2 3 4 |
-        | 5 6 7 1 |
-    }
+        A:Piano@|0|{
+            <4*>
+            | 1 2 3 4 |
+            | 5 6 7 1 |
+        }
 
-    B:Vocal@|-1|{
-        <4*>
-        | 0 0 3 4 |
-        | 5 6 7 1 |
-    }
+        B:Vocal@|-1|{
+            <4*>
+            | 0 0 3 4 |
+            | 5 6 7 1 |
+        }
 
-    B:Piano@|0|{
-        <4*>
-        | 1 2 3 4 |
-    }
+        B:Piano@|0|{
+            <4*>
+            | 1 2 3 4 |
+        }
 
-    -> A -> B ->#
-    """
+        -> A -> B ->#
+        """
     let sheet = try #require(TmdParser.parse(string: tmd))
 
     let pianoTimeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
     let vocalTimeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Vocal")
 
-    let pianoNotes = pianoTimeline.events.filter { if case .note = $0.content { return true } else { return false } }
-    let vocalNotes = vocalTimeline.events.filter { if case .note = $0.content { return true } else { return false } }
+    let pianoNotes = pianoTimeline.events.filter {
+        if case .note = $0.content { return true } else { return false }
+    }
+    let vocalNotes = vocalTimeline.events.filter {
+        if case .note = $0.content { return true } else { return false }
+    }
 
     // Section A Piano: 8 notes across beats 0.0..<8.0
     #expect(pianoNotes[0].position == 0.0)
@@ -946,37 +984,41 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
 @Test func testScoreStartingWithNegativePickupShiftedToZero() throws {
     let tmd = """
-    ::SCORE::
-    ** Score With Initial Pickup **
-    != 120
-    ?= C
-    <4/4>
+        ::SCORE::
+        ** Score With Initial Pickup **
+        != 120
+        ?= C
+        <4/4>
 
-    Intro:Vocal@|-1|{
-        <4*>
-        | 0 0 3 4 |
-        | 5 6 7 1 |
-    }
+        Intro:Vocal@|-1|{
+            <4*>
+            | 0 0 3 4 |
+            | 5 6 7 1 |
+        }
 
-    Intro:Piano@|0|{
-        <4*>
-        | 1 2 3 4 |
-    }
+        Intro:Piano@|0|{
+            <4*>
+            | 1 2 3 4 |
+        }
 
-    Verse:Piano@|0|{
-        <4*>
-        | 5 6 7 1 |
-    }
+        Verse:Piano@|0|{
+            <4*>
+            | 5 6 7 1 |
+        }
 
-    -> Intro -> Verse ->#
-    """
+        -> Intro -> Verse ->#
+        """
     let sheet = try #require(TmdParser.parse(string: tmd))
 
     let vocalTimeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Vocal")
     let pianoTimeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
 
-    let vocalNotes = vocalTimeline.events.filter { if case .note = $0.content { return true } else { return false } }
-    let pianoNotes = pianoTimeline.events.filter { if case .note = $0.content { return true } else { return false } }
+    let vocalNotes = vocalTimeline.events.filter {
+        if case .note = $0.content { return true } else { return false }
+    }
+    let pianoNotes = pianoTimeline.events.filter {
+        if case .note = $0.content { return true } else { return false }
+    }
 
     // Global earliest note was at beat -2.0 (Bar -1, beat 2). Entire score is shifted by +4.0 (1 measure):
     // Bar -1 starts at 0.0, so pickup note '3' starts at beat 2.0.
@@ -995,55 +1037,55 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
 @Test func testHuoxiangjiStaggeredEntranceAndSectionPreview() throws {
     let tmd = """
-    ::SCORE::
-    ** 藿香薊 **
-    != 120
-    ?= E
-    <4/4>
+        ::SCORE::
+        ** 藿香薊 **
+        != 120
+        ?= E
+        <4/4>
 
-    /* Intro */
+        /* Intro */
 
-    Intro:Violin@|-1| {
-        <4 *>
-        | 0 0 0 5 |
-        | 1^ 5 6 6 | (6 7)%(-) 1^ 7 6 | 5 6 5 (5 5)%(-) | 5 (5 6)%(-) 5 5 |
-        | 1^ 5 6 6 | (6 7)%(-) 1^ 7 6 | 7 1^ 1^ - | - - - - |
-    }
+        Intro:Violin@|-1| {
+            <4 *>
+            | 0 0 0 5 |
+            | 1^ 5 6 6 | (6 7)%(-) 1^ 7 6 | 5 6 5 (5 5)%(-) | 5 (5 6)%(-) 5 5 |
+            | 1^ 5 6 6 | (6 7)%(-) 1^ 7 6 | 7 1^ 1^ - | - - - - |
+        }
 
-    Intro:Piano@|7| {
-        <4*>
-        | 0 0 1 1 |
-        | (1 2)%(-) 3 3 2 | (2 3)%(-) 2 1 1 | (1 2)%(-) 3 3 2 | (2 7_)%(-) 5_ 1 - |
-        | - - - - |
-    }
+        Intro:Piano@|7| {
+            <4*>
+            | 0 0 1 1 |
+            | (1 2)%(-) 3 3 2 | (2 3)%(-) 2 1 1 | (1 2)%(-) 3 3 2 | (2 7_)%(-) 5_ 1 - |
+            | - - - - |
+        }
 
-    /* A */
+        /* A */
 
-    A1:Vocal@|-1| {
-        <4*>
-        | 0 0 3 1 |
-        | 5 6 5 4 | 3 - - - | - - - - | 0 0 1 3 |
-        | 2 (3 2)%(-) 1 2 | 3 - - - | - - - - | 0 0 3 1 |
-        | 5 6 5 4 | 3 - - - | - - - - | 0 0 1 3 |
-        | 3 2 2 1 | 1 - - - | - - - - | 0 5 1^ 5 |
-    }
+        A1:Vocal@|-1| {
+            <4*>
+            | 0 0 3 1 |
+            | 5 6 5 4 | 3 - - - | - - - - | 0 0 1 3 |
+            | 2 (3 2)%(-) 1 2 | 3 - - - | - - - - | 0 0 3 1 |
+            | 5 6 5 4 | 3 - - - | - - - - | 0 0 1 3 |
+            | 3 2 2 1 | 1 - - - | - - - - | 0 5 1^ 5 |
+        }
 
-    A1:Piano@|-1| {
-        <4*>
-        | 0 0 0 0 |
-        | 0 0 0 0 | 0 (3 3 )%(-) 3 (3 3 )%(-) | 3 (3 3 )%(-) 3 2 | 1 - - - |
-        | 0 0 0 0 | 0 (3 3 )%(-) 3 (3 3 )%(-) | 3 (3 3 )%(-) 3 2 | 1 - - - |
-        | 0 0 0 0 | 0 (3 3 )%(-) 3 (3 3 )%(-) | 3 (3 3 )%(-) 3 2 | 1 - - - |
-        | 0 0 0 0 | 0 (3 3 )%(-) 3 (3 3 )%(-) | 3 (3 3 )%(-) 3 2 | 1 - - - |
-    }
+        A1:Piano@|-1| {
+            <4*>
+            | 0 0 0 0 |
+            | 0 0 0 0 | 0 (3 3 )%(-) 3 (3 3 )%(-) | 3 (3 3 )%(-) 3 2 | 1 - - - |
+            | 0 0 0 0 | 0 (3 3 )%(-) 3 (3 3 )%(-) | 3 (3 3 )%(-) 3 2 | 1 - - - |
+            | 0 0 0 0 | 0 (3 3 )%(-) 3 (3 3 )%(-) | 3 (3 3 )%(-) 3 2 | 1 - - - |
+            | 0 0 0 0 | 0 (3 3 )%(-) 3 (3 3 )%(-) | 3 (3 3 )%(-) 3 2 | 1 - - - |
+        }
 
-    A1:Violin@|0| {
-        <4 *>
-        | 0 0 0 0 |
-    }
+        A1:Violin@|0| {
+            <4 *>
+            | 0 0 0 0 |
+        }
 
-    -> Intro -> A1 ->#
-    """
+        -> Intro -> A1 ->#
+        """
     let sheet = try #require(TmdParser.parse(string: tmd))
 
     // 1. Previewing Section A1 (like clicking Play Section on A1 in VS Code)
@@ -1061,8 +1103,12 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     let a1PianoTimeline = TMDPlaybackRenderer.render(sheet: a1FilteredSheet, instrument: "Piano")
     let a1ViolinTimeline = TMDPlaybackRenderer.render(sheet: a1FilteredSheet, instrument: "Violin")
 
-    let a1VocalNotes = a1VocalTimeline.events.filter { if case .note = $0.content { return true } else { return false } }
-    let a1PianoNotes = a1PianoTimeline.events.filter { if case .note = $0.content { return true } else { return false } }
+    let a1VocalNotes = a1VocalTimeline.events.filter {
+        if case .note = $0.content { return true } else { return false }
+    }
+    let a1PianoNotes = a1PianoTimeline.events.filter {
+        if case .note = $0.content { return true } else { return false }
+    }
 
     // Vocal starts pickup at beat 2.0 (Bar -1, beat 2)
     #expect(a1VocalNotes.first?.position == 2.0)
@@ -1080,21 +1126,21 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     // Section A1 starts at measure 13 (beat 56.0).
     // A1:Vocal@|-1| starts at measure 12 (beat 52.0), overlapping Intro Piano!
     let fullVocalTimeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Vocal")
-    let fullVocalNotes = fullVocalTimeline.events.filter { if case .note = $0.content { return true } else { return false } }
+    let fullVocalNotes = fullVocalTimeline.events.filter {
+        if case .note = $0.content { return true } else { return false }
+    }
     // Full song shifted by +4.0 (Intro Violin@|-1|).
     // Intro ends at bar 13 -> beat 4.0 + 13 * 4.0 = 56.0.
     // A1:Vocal@|-1| starts at 56.0 - 4.0 = 52.0. Pickup notes '3' and '1' are at beat 54.0 and 55.0.
     #expect(fullVocalNotes.first?.position == 54.0)
 }
 
-
-
 @Test func testLegacySectionMarkerSyntax() throws {
     let tmd = """
-    ::SCORE:: ** Legacy ** != 120 ?= C <4/4>
-    A:Piano@{ <*1> 1 2 3 4 }
-    -> A ->#
-    """
+        ::SCORE:: ** Legacy ** != 120 ?= C <4/4>
+        A:Piano@{ <*1> 1 2 3 4 }
+        -> A ->#
+        """
 
     let sheet = TmdParser.parse(string: tmd)
     #expect(sheet != nil)
@@ -1103,37 +1149,37 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
 @Test func testCrossSectionPickupOverlapsSustainedIntroNote() throws {
     let tmd = """
-    ::SCORE::
-    ** Cross Section Pickup **
-    != 120
-    ?= C
-    <4/4>
+        ::SCORE::
+        ** Cross Section Pickup **
+        != 120
+        ?= C
+        <4/4>
 
-    Intro:Violin@|-1| {
-        <4*>
-        | 0 0 0 5 |
-        | 1^ 5 6 6 | (6 7)%(-) 1^ 7 6 | 5 (5 6)%(-) 5 (5 5)%(-) | 5 (5 6)%(-) 5 5 |
-        | 1^ 5 6 6 | (6 7)%(-) 1^ 7 6 | (7 - - 1^)%(--) 1^ - | - - 1^ - |
-        | - - 1^ - | - - 1^ - | - - - - | - - - - | - - - - | - - - - |
-    }
+        Intro:Violin@|-1| {
+            <4*>
+            | 0 0 0 5 |
+            | 1^ 5 6 6 | (6 7)%(-) 1^ 7 6 | 5 (5 6)%(-) 5 (5 5)%(-) | 5 (5 6)%(-) 5 5 |
+            | 1^ 5 6 6 | (6 7)%(-) 1^ 7 6 | (7 - - 1^)%(--) 1^ - | - - 1^ - |
+            | - - 1^ - | - - 1^ - | - - - - | - - - - | - - - - | - - - - |
+        }
 
-    Intro:Piano@|6| {
-        <4*>
-        | 0 0 1 1 |
-        | (1 2)%(-) 3 3 2 | (2 3)%(-) 2 1 1 | (1 2)%(-) 3 3 2 | (2 7_)%(-) 5_ 1 - |
-    }
+        Intro:Piano@|6| {
+            <4*>
+            | 0 0 1 1 |
+            | (1 2)%(-) 3 3 2 | (2 3)%(-) 2 1 1 | (1 2)%(-) 3 3 2 | (2 7_)%(-) 5_ 1 - |
+        }
 
-    A1:Vocal@|-1| {
-        <4*>
-        | 0 0 3 1 |
-        | 5 6 5 4 | 3 - - - | - - - - | 0 0 1 3 |
-        | 2 (3 2)%(-) 1 2 | 3 - - - | - - - - | 0 0 3 1 |
-        | 5 6 5 4 | 3 - - - | - - - - | 0 0 1 3 |
-        | 3 2 2 1 | 1 - - - | - - - - | 0 5 1^ 5 |
-    }
+        A1:Vocal@|-1| {
+            <4*>
+            | 0 0 3 1 |
+            | 5 6 5 4 | 3 - - - | - - - - | 0 0 1 3 |
+            | 2 (3 2)%(-) 1 2 | 3 - - - | - - - - | 0 0 3 1 |
+            | 5 6 5 4 | 3 - - - | - - - - | 0 0 1 3 |
+            | 3 2 2 1 | 1 - - - | - - - - | 0 5 1^ 5 |
+        }
 
-    -> Intro -> A1 ->#
-    """
+        -> Intro -> A1 ->#
+        """
     let sheet = try #require(TmdParser.parse(string: tmd))
     let violin = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Violin")
     let vocal = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Vocal")
@@ -1145,7 +1191,8 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         if case .note = $0.content { return true }
         return false
     }
-    let lastIntroNote = try #require(violinNotes.filter { $0.position < 60.0 }.max { $0.position < $1.position })
+    let lastIntroNote = try #require(
+        violinNotes.filter { $0.position < 60.0 }.max { $0.position < $1.position })
     let firstA1Pickup = try #require(vocalNotes.first)
 
     #expect(lastIntroNote.position + lastIntroNote.duration > firstA1Pickup.position)
@@ -1164,29 +1211,39 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         channel: 2,
         ticksPerQuarter: TMDMIDIGenerator.defaultTicksPerQuarterNote
     )
-    let latestIntroViolinOff = try #require(violinMIDI.compactMap { event -> UInt32? in
-        if case .noteOff(channel: 1, note: _) = event.message, event.tick > 0, event.tick <= 60 * 480 { return event.tick }
-        return nil
-    }.max())
-    let firstVocalOn = try #require(vocalMIDI.compactMap { event -> UInt32? in
-        if case .noteOn(channel: 2, note: _, velocity: let velocity) = event.message, velocity > 0 { return event.tick }
-        return nil
-    }.first)
+    let latestIntroViolinOff = try #require(
+        violinMIDI.compactMap { event -> UInt32? in
+            if case .noteOff(channel: 1, note: _) = event.message, event.tick > 0,
+                event.tick <= 60 * 480
+            {
+                return event.tick
+            }
+            return nil
+        }.max())
+    let firstVocalOn = try #require(
+        vocalMIDI.compactMap { event -> UInt32? in
+            if case .noteOn(channel: 2, note: _, velocity: let velocity) = event.message,
+                velocity > 0
+            {
+                return event.tick
+            }
+            return nil
+        }.first)
     #expect(latestIntroViolinOff > firstVocalOn)
 }
 
 @Test func testShowProgramBlock() throws {
     let tmd = #"""
-    ::SCORE::
-    ** Show **
-    show:Lighting@intro{
-    """
-    cue black
-    wait 4
-    """
-    }
-    -> show ->#
-    """#
+        ::SCORE::
+        ** Show **
+        show:Lighting@intro{
+        """
+        cue black
+        wait 4
+        """
+        }
+        -> show ->#
+        """#
 
     let sheet = TmdParser.parse(string: tmd)
     #expect(sheet?.entries.first?.executionTime == "intro")
@@ -1255,7 +1312,6 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     #expect(slashMinorSeventh.description == "Am7/G")
 }
 
-
 @Test func testSharedPitchMappings() throws {
     #expect(ScaleDegree.c.semitoneOffset == 0)
     #expect(ScaleDegree.f.semitoneOffset == 5)
@@ -1270,11 +1326,11 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         noteLength: 4,
         unitGroups: [
             UnitGroup(units: [.note(Note(degree: .c))], length: 1),
-            UnitGroup(units: [.rest], length: 2)
+            UnitGroup(units: [.rest], length: 2),
         ],
         directives: [
             SectionDirective(position: 1, kind: .relativeTempo(10)),
-            SectionDirective(position: 1, kind: .relativeKey(2))
+            SectionDirective(position: 1, kind: .relativeKey(2)),
         ]
     )
     let sheet = Sheet(
@@ -1288,7 +1344,8 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     #expect(timeline.events[0].position == 4)
     #expect(timeline.events[1].position == 5)
     #expect(timeline.events[1].duration == 2)
-    #expect(timeline.events[1].state == PlaybackState(tempo: 110, keyOffset: 2, timeSignature: Beat()))
+    #expect(
+        timeline.events[1].state == PlaybackState(tempo: 110, keyOffset: 2, timeSignature: Beat()))
     #expect(timeline.directives.map(\.position) == [5, 5])
 }
 
@@ -1301,13 +1358,15 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     let meterSection = Section(
         noteLength: 4,
         unitGroups: [UnitGroup(units: [.note(Note(degree: .e))], length: 1)],
-        directives: [SectionDirective(position: 1, kind: .timeSignature(Beat(count: 3, noteValue: 4)))]
+        directives: [
+            SectionDirective(position: 1, kind: .timeSignature(Beat(count: 3, noteValue: 4)))
+        ]
     )
     let sheet = Sheet(
         speed: 120,
         entries: [
             Entry(name: "A", assignment: "Piano", sections: [tempoSection]),
-            Entry(name: "A", assignment: "Violin", sections: [meterSection])
+            Entry(name: "A", assignment: "Violin", sections: [meterSection]),
         ],
         playback: [.name("A")]
     )
@@ -1315,17 +1374,20 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     let timeline = TMDPlaybackRenderer.renderConductor(sheet: sheet)
 
     #expect(timeline.directives.count == 2)
-    #expect(timeline.directives.map { $0.kind } == [
-        .tempo(90),
-        .timeSignature(Beat(count: 3, noteValue: 4))
-    ])
+    #expect(
+        timeline.directives.map { $0.kind } == [
+            .tempo(90),
+            .timeSignature(Beat(count: 3, noteValue: 4)),
+        ])
 }
 
 @Test func testMeterModifierIsLocalToContainingEntry() throws {
     let meterChangedEntry = Section(
         noteLength: 4,
         unitGroups: [UnitGroup(units: [.note(Note(degree: .c))], length: 1)],
-        directives: [SectionDirective(position: 0, kind: .timeSignature(Beat(count: 3, noteValue: 4)))]
+        directives: [
+            SectionDirective(position: 0, kind: .timeSignature(Beat(count: 3, noteValue: 4)))
+        ]
     )
     let followingEntry = Section(
         noteLength: 4,
@@ -1335,7 +1397,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         speed: 120,
         entries: [
             Entry(name: "A", assignment: "Piano", sections: [meterChangedEntry]),
-            Entry(name: "B", assignment: "Piano", sections: [followingEntry])
+            Entry(name: "B", assignment: "Piano", sections: [followingEntry]),
         ],
         playback: [.name("A"), .name("B")]
     )
@@ -1353,7 +1415,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         unitGroups: [UnitGroup(units: [.note(Note(degree: .c))], length: 1)],
         directives: [
             SectionDirective(position: 0, kind: .tempo(90)),
-            SectionDirective(position: 0, kind: .dynamics(.f))
+            SectionDirective(position: 0, kind: .dynamics(.f)),
         ]
     )
     let followingEntry = Section(
@@ -1365,7 +1427,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         entries: [
             Entry(name: "A", assignment: "Piano", sections: [pianoStateEntry]),
             Entry(name: "B", assignment: "Piano", sections: [followingEntry]),
-            Entry(name: "A", assignment: "Violin", sections: [followingEntry])
+            Entry(name: "A", assignment: "Violin", sections: [followingEntry]),
         ],
         playback: [.name("A"), .name("B")]
     )
@@ -1375,7 +1437,8 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
     #expect(piano.events.map { $0.state.tempo } == [90, 90])
     #expect(piano.events.map { $0.state.dynamicLevel } == [.f, .f])
-    #expect(violin.events[0].state == PlaybackState(tempo: 120, keyOffset: 0, timeSignature: Beat()))
+    #expect(
+        violin.events[0].state == PlaybackState(tempo: 120, keyOffset: 0, timeSignature: Beat()))
 }
 
 @Test func testPlaybackAndEntryKeyModifiersUseReadingOrderPerAssignment() throws {
@@ -1394,7 +1457,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
             Entry(name: "A", assignment: "Piano", sections: [pianoEntry]),
             Entry(name: "A", assignment: "Violin", sections: [followingEntry]),
             Entry(name: "B", assignment: "Piano", sections: [followingEntry]),
-            Entry(name: "B", assignment: "Violin", sections: [followingEntry])
+            Entry(name: "B", assignment: "Violin", sections: [followingEntry]),
         ],
         playback: [.relative("+3"), .name("A"), .name("B")]
     )
@@ -1408,19 +1471,19 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
 @Test func testMIDIAndWAVDoNotCreateTracksForRestOnlyAssignments() throws {
     let tmd = """
-    ::SCORE::
-    ** Rest Only **
-    != 120
-    ?= C
-    <4/4>
+        ::SCORE::
+        ** Rest Only **
+        != 120
+        ?= C
+        <4/4>
 
-    Piano:Piano@|0|{
-        <4*>
-        0 0 0 0
-    }
+        Piano:Piano@|0|{
+            <4*>
+            0 0 0 0
+        }
 
-    -> Piano ->#
-    """
+        -> Piano ->#
+        """
     let sheet = try #require(TmdParser.parse(string: tmd))
     let midi = TMDMIDIGenerator.generateMIDI(from: sheet)
 
@@ -1431,19 +1494,19 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
 @Test func testNotationExportersMatchPercussionAssignmentsCaseInsensitively() throws {
     let tmd = """
-    ::SCORE::
-    ** Lowercase Drums **
-    != 120
-    ?= C
-    <4/4>
+        ::SCORE::
+        ** Lowercase Drums **
+        != 120
+        ?= C
+        <4/4>
 
-    A:drums@|0|{
-        <4*>
-        D S X O
-    }
+        A:drums@|0|{
+            <4*>
+            D S X O
+        }
 
-    -> A ->#
-    """
+        -> A ->#
+        """
     let sheet = try #require(TmdParser.parse(string: tmd))
 
     let lily = TMDLilyPondGenerator.generateLilyPond(from: sheet)
@@ -1505,7 +1568,8 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     let utf16BE = Data([0xFE, 0xFF]) + ("測試".data(using: .utf16BigEndian) ?? Data())
     #expect(TextEncodingDetector.detectAndDecode(utf16BE)?.content == "測試")
 
-    let utf32LE = Data([0xFF, 0xFE, 0x00, 0x00]) + ("TMD".data(using: .utf32LittleEndian) ?? Data())
+    let utf32LE =
+        Data([0xFF, 0xFE, 0x00, 0x00]) + ("TMD".data(using: .utf32LittleEndian) ?? Data())
     #expect(TextEncodingDetector.detectAndDecode(utf32LE)?.content == "TMD")
 }
 
@@ -1515,12 +1579,18 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         speed: 0,
         keySignature: "?",
         beat: Beat(count: 0, noteValue: 0),
-        entries: [Entry(name: "A", assignment: "Unknown", sections: [
-            Section(noteLength: 8, unitGroups: [
-                UnitGroup(units: [.note(Note(degree: .c)), .chord("???")], length: 2),
-                UnitGroup(units: [], length: 1)
-            ])
-        ])],
+        entries: [
+            Entry(
+                name: "A", assignment: "Unknown",
+                sections: [
+                    Section(
+                        noteLength: 8,
+                        unitGroups: [
+                            UnitGroup(units: [.note(Note(degree: .c)), .chord("???")], length: 2),
+                            UnitGroup(units: [], length: 1),
+                        ])
+                ])
+        ],
         playback: [.name("A"), .name("Missing")]
     )
 
@@ -1565,24 +1635,24 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
 @Test func testNegativeParagraphStartOffset() throws {
     let tmd = """
-    ::SCORE::
-    ** Negative Offset Test **
-    != 120
-    ?= C
-    <4/4>
+        ::SCORE::
+        ** Negative Offset Test **
+        != 120
+        ?= C
+        <4/4>
 
-    intro:Piano@|0|{
-        <4*>
-        1 2 3 4
-    }
+        intro:Piano@|0|{
+            <4*>
+            1 2 3 4
+        }
 
-    v1:Piano@|-1|{
-        <4*>
-        5 6 7 1^
-    }
+        v1:Piano@|-1|{
+            <4*>
+            5 6 7 1^
+        }
 
-    -> intro -> v1 ->#
-    """
+        -> intro -> v1 ->#
+        """
 
     let sheet = try TmdParser.parseThrowing(string: tmd)
     #expect(sheet.entries.count == 2)
@@ -1609,19 +1679,19 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
 @Test func testTieExtendsNoteDuration() throws {
     let tmd = """
-    ::SCORE::
-    ** Tie Half Note Test **
-    != 120
-    ?= C
-    <4/4>
+        ::SCORE::
+        ** Tie Half Note Test **
+        != 120
+        ?= C
+        <4/4>
 
-    intro:Piano@|0|{
-        <4*>
-        3 - 1 - - -
-    }
+        intro:Piano@|0|{
+            <4*>
+            3 - 1 - - -
+        }
 
-    -> intro ->#
-    """
+        -> intro ->#
+        """
 
     let sheet = try TmdParser.parseThrowing(string: tmd)
     let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
@@ -1639,19 +1709,19 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
 @Test func testTupletTieExtension() throws {
     let tmd = """
-    ::SCORE::
-    ** Tuplet Tie Test **
-    != 120
-    ?= C
-    <4/4>
+        ::SCORE::
+        ** Tuplet Tie Test **
+        != 120
+        ?= C
+        <4/4>
 
-    intro:Piano@|0|{
-        <4*>
-        (1 2 3 -)%(--) -
-    }
+        intro:Piano@|0|{
+            <4*>
+            (1 2 3 -)%(--) -
+        }
 
-    -> intro ->#
-    """
+        -> intro ->#
+        """
 
     let sheet = try TmdParser.parseThrowing(string: tmd)
     let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
@@ -1674,19 +1744,19 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
 @Test func testNegativeTransposition() throws {
     let tmd = """
-    ::SCORE::
-    ** Negative Transposition Test **
-    != 120
-    ?= C
-    <4/4>
+        ::SCORE::
+        ** Negative Transposition Test **
+        != 120
+        ?= C
+        <4/4>
 
-    sec:Piano@|0|{
-        <4*>
-        1 2 3 4
-    }
+        sec:Piano@|0|{
+            <4*>
+            1 2 3 4
+        }
 
-    -> sec -> {?-1} -> sec ->#
-    """
+        -> sec -> {?-1} -> sec ->#
+        """
 
     let sheet = try TmdParser.parseThrowing(string: tmd)
     #expect(sheet.playback.count == 3)
@@ -1736,7 +1806,8 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     #expect(TmdSkill.skillMarkdown.contains("Strict Canon with Measure Offsets"))
     #expect(TmdSkill.skillMarkdown.contains("Fugue Architecture"))
 
-    let tempDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("tmd-skill-test-\(UUID().uuidString)")
+    let tempDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(
+        "tmd-skill-test-\(UUID().uuidString)")
     let targetSkillDir = tempDir.appendingPathComponent("skills/tmd")
 
     let results = TmdSkill.installSkills(to: [targetSkillDir])
@@ -1757,7 +1828,8 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
         .deletingLastPathComponent()
-    let grammarURL = packageRoot.appendingPathComponent("editor/vscode/syntaxes/tmd.tmLanguage.json")
+    let grammarURL = packageRoot.appendingPathComponent(
+        "editor/vscode/syntaxes/tmd.tmLanguage.json")
     let readmeURL = packageRoot.appendingPathComponent("editor/vscode/README.md")
     let grammar = try String(contentsOf: grammarURL, encoding: .utf8)
     let readme = try String(contentsOf: readmeURL, encoding: .utf8)
@@ -1875,12 +1947,15 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
             Entry(name: "intro", assignment: "Guitar"),
             Entry(name: "verse", assignment: "Bass"),
             Entry(name: "chorus", assignment: "Vocal"),
-            Entry(name: "intro", assignment: "Piano")
+            Entry(name: "intro", assignment: "Piano"),
         ]
     )
 
     #expect(sheetWithInstruments.distinctInstruments() == ["Bass", "Guitar", "Piano", "Vocal"])
-    #expect(sheetWithInstruments.distinctInstruments(fallbackToDefault: false) == ["Bass", "Guitar", "Piano", "Vocal"])
+    #expect(
+        sheetWithInstruments.distinctInstruments(fallbackToDefault: false) == [
+            "Bass", "Guitar", "Piano", "Vocal",
+        ])
 
     let emptySheet = Sheet(entries: [])
     #expect(emptySheet.distinctInstruments(fallbackToDefault: true) == ["Piano"])
@@ -1907,7 +1982,9 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         _ = try TmdParser.parseThrowing(string: fullwidthCode)
         Issue.record("Expected parse error for fullwidth brace")
     } catch let error as TMDParseError {
-        #expect(error.description.contains("Fullwidth punctuation detected: `｛` -> replace with halfwidth `{`"))
+        #expect(
+            error.description.contains(
+                "Fullwidth punctuation detected: `｛` -> replace with halfwidth `{`"))
         let frame = error.formatCodeFrame()
         #expect(frame.contains("3 | intro:Piano@|0|｛"))
         #expect(frame.contains("^"))
@@ -1928,7 +2005,10 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         _ = try TmdParser.parseThrowing(string: missingGridCode)
         Issue.record("Expected parse error for missing time grid")
     } catch let error as TMDParseError {
-        #expect(error.description.contains("Each section inside `{ ... }` must start with a time grid directive like `<4*>` or `<8*>`"))
+        #expect(
+            error.description.contains(
+                "Each section inside `{ ... }` must start with a time grid directive like `<4*>` or `<8*>`"
+            ))
     }
 
     // 4. Code frame formatting explicitly
@@ -1949,257 +2029,278 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
 @Test func testVSCodeScoreTemplatesAreValid() throws {
     let templates: [(name: String, content: String)] = [
-        ("Starter", """
-        ::SCORE::
-        ** 小星星 (Twinkle Twinkle) **
-        != 100
-        ?= C
-        <4/4>
+        (
+            "Starter",
+            """
+            ::SCORE::
+            ** 小星星 (Twinkle Twinkle) **
+            != 100
+            ?= C
+            <4/4>
 
-        A:Lead@|0|{
-            <4*>
-            | 1 1 5 5 | 6 6 5 - |
-            | 4 4 3 3 | 2 2 1 - |
-        }
+            A:Lead@|0|{
+                <4*>
+                | 1 1 5 5 | 6 6 5 - |
+                | 4 4 3 3 | 2 2 1 - |
+            }
 
-        A:Piano@|0|{
-            <2*>
-            | [1] [1] | [4] [1] |
-            | [4] [1] | [5] [1] |
-        }
+            A:Piano@|0|{
+                <2*>
+                | [1] [1] | [4] [1] |
+                | [4] [1] | [5] [1] |
+            }
 
-        A:Bass@|0|{
-            <4*>
-            | 1_ - 1_ - | 4__ - 1_ - |
-            | 4__ - 1_ - | 5__ - 1_ - |
-        }
+            A:Bass@|0|{
+                <4*>
+                | 1_ - 1_ - | 4__ - 1_ - |
+                | 4__ - 1_ - | 5__ - 1_ - |
+            }
 
-        B:Lead@|0|{
-            <4*>
-            | 5 5 4 4 | 3 3 2 - |
-            | 5 5 4 4 | 3 3 2 - |
-        }
+            B:Lead@|0|{
+                <4*>
+                | 5 5 4 4 | 3 3 2 - |
+                | 5 5 4 4 | 3 3 2 - |
+            }
 
-        B:Piano@|0|{
-            <2*>
-            | [1] [4] | [1] [5] |
-            | [1] [4] | [1] [5] |
-        }
+            B:Piano@|0|{
+                <2*>
+                | [1] [4] | [1] [5] |
+                | [1] [4] | [1] [5] |
+            }
 
-        B:Bass@|0|{
-            <4*>
-            | 1_ - 4__ - | 1_ - 5__ - |
-            | 1_ - 4__ - | 1_ - 5__ - |
-        }
+            B:Bass@|0|{
+                <4*>
+                | 1_ - 4__ - | 1_ - 5__ - |
+                | 1_ - 4__ - | 1_ - 5__ - |
+            }
 
-        -> A -> B -> A ->#
-        """),
-        ("Blank", """
-        ::SCORE::
-        ** Untitled Song **
-        != 120
-        ?= C
-        <4/4>
+            -> A -> B -> A ->#
+            """
+        ),
+        (
+            "Blank",
+            """
+            ::SCORE::
+            ** Untitled Song **
+            != 120
+            ?= C
+            <4/4>
 
-        intro:Piano@|0|{
-            <4*>
-            | 1 2 3 4 |
-        }
+            intro:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
+            }
 
-        -> intro ->#
-        """),
-        ("LeadSheet", """
-        ::SCORE::
-        ** Pop Lead Sheet **
-        != 128
-        ?= C
-        <4/4>
+            -> intro ->#
+            """
+        ),
+        (
+            "LeadSheet",
+            """
+            ::SCORE::
+            ** Pop Lead Sheet **
+            != 128
+            ?= C
+            <4/4>
 
-        intro:Chord@|0|{
-            <2*>
-            | [1] [5] | [6m] [4] |
-            | [1] [5] | [4]  [1] |
-        }
+            intro:Chord@|0|{
+                <2*>
+                | [1] [5] | [6m] [4] |
+                | [1] [5] | [4]  [1] |
+            }
 
-        intro:Lead@|0|{
-            <4*>
-            | . . . . | . . . . |
-            | 1 2 3 5 | 6 5 3 1 |
-        }
+            intro:Lead@|0|{
+                <4*>
+                | . . . . | . . . . |
+                | 1 2 3 5 | 6 5 3 1 |
+            }
 
-        verse:Chord@|0|{
-            <2*>
-            | [1] [5] | [6m] [4] |
-            | [1] [5] | [4]  [1] |
-        }
+            verse:Chord@|0|{
+                <2*>
+                | [1] [5] | [6m] [4] |
+                | [1] [5] | [4]  [1] |
+            }
 
-        verse:Lead@|0|{
-            <4*>
-            | 1 2 3 1 | 5 5 3 - |
-            | 6 6 5 3 | 2 - - - |
-            | 1 2 3 1 | 5 5 3 - |
-            | 4 3 2 5 | 1 - - - |
-        }
+            verse:Lead@|0|{
+                <4*>
+                | 1 2 3 1 | 5 5 3 - |
+                | 6 6 5 3 | 2 - - - |
+                | 1 2 3 1 | 5 5 3 - |
+                | 4 3 2 5 | 1 - - - |
+            }
 
-        chorus:Chord@|0|{
-            <2*>
-            | [4] [5] | [3m] [6m] |
-            | [2m] [5] | [1]  [1]  |
-        }
+            chorus:Chord@|0|{
+                <2*>
+                | [4] [5] | [3m] [6m] |
+                | [2m] [5] | [1]  [1]  |
+            }
 
-        chorus:Lead@|0|{
-            <4*>
-            | 6 6 7 1^ | 7 5 3 - |
-            | 4 4 3 2  | 5 - - - |
-            | 6 6 7 1^ | 7 5 3 - |
-            | 4 3 2 5  | 1 - - - |
-        }
+            chorus:Lead@|0|{
+                <4*>
+                | 6 6 7 1^ | 7 5 3 - |
+                | 4 4 3 2  | 5 - - - |
+                | 6 6 7 1^ | 7 5 3 - |
+                | 4 3 2 5  | 1 - - - |
+            }
 
-        -> intro -> verse -> chorus ->#
-        """),
-        ("Band", """
-        ::SCORE::
-        ** Band Arrangement **
-        != 120
-        ?= C
-        <4/4>
+            -> intro -> verse -> chorus ->#
+            """
+        ),
+        (
+            "Band",
+            """
+            ::SCORE::
+            ** Band Arrangement **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Vocal@|0|{
-            <4*>
-            | 1 2 3 5 | 6 5 3 - |
-            | 4 4 3 3 | 2 - - - |
-            | 1 2 3 5 | 6 5 3 - |
-            | 4 3 2 5 | 1 - - - |
-        }
+            verse:Vocal@|0|{
+                <4*>
+                | 1 2 3 5 | 6 5 3 - |
+                | 4 4 3 3 | 2 - - - |
+                | 1 2 3 5 | 6 5 3 - |
+                | 4 3 2 5 | 1 - - - |
+            }
 
-        verse:Keyboard@|0|{
-            <2*>
-            | [C] [G] | [Am] [F] |
-            | [C] [G] | [F]  [C] |
-            | [C] [G] | [Am] [F] |
-            | [F] [G] | [C]  [C] |
-        }
+            verse:Keyboard@|0|{
+                <2*>
+                | [C] [G] | [Am] [F] |
+                | [C] [G] | [F]  [C] |
+                | [C] [G] | [Am] [F] |
+                | [F] [G] | [C]  [C] |
+            }
 
-        verse:Guitar@|0|{
-            <4*>
-            | [C] - [C] - | [G] - [G] - |
-            | [Am] - [Am] - | [F] - [F] - |
-            | [C] - [C] - | [G] - [G] - |
-            | [F] - [G] - | [C] - - - |
-        }
+            verse:Guitar@|0|{
+                <4*>
+                | [C] - [C] - | [G] - [G] - |
+                | [Am] - [Am] - | [F] - [F] - |
+                | [C] - [C] - | [G] - [G] - |
+                | [F] - [G] - | [C] - - - |
+            }
 
-        verse:Bass@|0|{
-            <4*>
-            | 1_ - 1_ - | 5__ - 5__ - |
-            | 6__ - 6__ - | 4__ - 4__ - |
-            | 1_ - 1_ - | 5__ - 5__ - |
-            | 4__ - 5__ - | 1_ - - - |
-        }
+            verse:Bass@|0|{
+                <4*>
+                | 1_ - 1_ - | 5__ - 5__ - |
+                | 6__ - 6__ - | 4__ - 4__ - |
+                | 1_ - 1_ - | 5__ - 5__ - |
+                | 4__ - 5__ - | 1_ - - - |
+            }
 
-        verse:Drums@|0|{
-            <8*>
-            | X-X-X-X- | X-X-X-X- |
-            | X-X-X-X- | X-X-X-X- |
-            | X-X-X-X- | X-X-X-X- |
-            | X-X-X-X- | S-S-C--- |
-        }
+            verse:Drums@|0|{
+                <8*>
+                | X-X-X-X- | X-X-X-X- |
+                | X-X-X-X- | X-X-X-X- |
+                | X-X-X-X- | X-X-X-X- |
+                | X-X-X-X- | S-S-C--- |
+            }
 
-        -> verse ->#
-        """),
-        ("Canon", """
-        ::SCORE::
-        ** Canon in C **
-        != 108
-        ?= C
-        <4/4>
+            -> verse ->#
+            """
+        ),
+        (
+            "Canon",
+            """
+            ::SCORE::
+            ** Canon in C **
+            != 108
+            ?= C
+            <4/4>
 
-        theme:Voice1@|0|{
-            <4*>
-            | 1 2 3 1 | 1 2 3 1 |
-            | 3 4 5 - | 3 4 5 - |
-        }
+            theme:Voice1@|0|{
+                <4*>
+                | 1 2 3 1 | 1 2 3 1 |
+                | 3 4 5 - | 3 4 5 - |
+            }
 
-        theme:Voice2@|+2|{
-            <4*>
-            | 1 2 3 1 | 1 2 3 1 |
-            | 3 4 5 - | 3 4 5 - |
-        }
+            theme:Voice2@|+2|{
+                <4*>
+                | 1 2 3 1 | 1 2 3 1 |
+                | 3 4 5 - | 3 4 5 - |
+            }
 
-        theme:Cello@|0|{
-            <2*>
-            | [1] [5] | [6m] [3m] |
-            | [4] [1] | [4]  [5]  |
-            | [1] [5] | [6m] [3m] |
-        }
+            theme:Cello@|0|{
+                <2*>
+                | [1] [5] | [6m] [3m] |
+                | [4] [1] | [4]  [5]  |
+                | [1] [5] | [6m] [3m] |
+            }
 
-        -> theme ->#
-        """),
-        ("Drums", """
-        ::SCORE::
-        ** Drum Grooves **
-        != 120
-        ?= C
-        <4/4>
+            -> theme ->#
+            """
+        ),
+        (
+            "Drums",
+            """
+            ::SCORE::
+            ** Drum Grooves **
+            != 120
+            ?= C
+            <4/4>
 
-        beat:Drums@|0|{
-            <8*>
-            | X-X-X-X- |
-            | B-S-B-S- |
-            | B--BS-B- |
-            | SSSSC--- |
-        }
+            beat:Drums@|0|{
+                <8*>
+                | X-X-X-X- |
+                | B-S-B-S- |
+                | B--BS-B- |
+                | SSSSC--- |
+            }
 
-        beat:Percussion@|0|{
-            <8*>
-            | X-X-X-X- |
-            | X-X-X-X- |
-            | X-X-X-X- |
-            | X-X-X--- |
-        }
+            beat:Percussion@|0|{
+                <8*>
+                | X-X-X-X- |
+                | X-X-X-X- |
+                | X-X-X-X- |
+                | X-X-X--- |
+            }
 
-        -> beat ->#
-        """),
-        ("ProgramLyrics", """
-        ::SCORE::
-        ** 月光小夜曲 **
-        != 96
-        ?= G
-        <4/4>
-        ~ "詞：阿怪"
-        ~ "曲：阿怪"
-        ~ "編：TMD"
+            -> beat ->#
+            """
+        ),
+        (
+            "ProgramLyrics",
+            """
+            ::SCORE::
+            ** 月光小夜曲 **
+            != 96
+            ?= G
+            <4/4>
+            ~ "詞：阿怪"
+            ~ "曲：阿怪"
+            ~ "編：TMD"
 
-        /*
-        [Program / Stage Direction]
-        Scene: A quiet night under the pale moonlight.
-        */
+            /*
+            [Program / Stage Direction]
+            Scene: A quiet night under the pale moonlight.
+            */
 
-        verse:Vocal@|0|{
-            <4*>
-            | 5_ 1 2 3 | 2 1 2 - |
-            | 3 5 6 5 | 3 - - - |
-            | 6 1^ 6 5 | 3 2 1 - |
-            | 2 3 2 1_ | 1 - - - |
-        }
+            verse:Vocal@|0|{
+                <4*>
+                | 5_ 1 2 3 | 2 1 2 - |
+                | 3 5 6 5 | 3 - - - |
+                | 6 1^ 6 5 | 3 2 1 - |
+                | 2 3 2 1_ | 1 - - - |
+            }
 
-        verse:Guitar@|0|{
-            <2*>
-            | [1] [5] | [6m] [3m] |
-            | [4] [1] | [2m] [5]  |
-            | [4] [5] | [3m] [6m] |
-            | [2m] [5] | [1]  [1]  |
-        }
+            verse:Guitar@|0|{
+                <2*>
+                | [1] [5] | [6m] [3m] |
+                | [4] [1] | [2m] [5]  |
+                | [4] [5] | [3m] [6m] |
+                | [2m] [5] | [1]  [1]  |
+            }
 
-        verse:Bass@|0|{
-            <4*>
-            | 1_ - 5__ - | 6__ - 3__ - |
-            | 4__ - 1_ - | 2__ - 5__ - |
-            | 4__ - 5__ - | 3__ - 6__ - |
-            | 2__ - 5__ - | 1_ - - - |
-        }
+            verse:Bass@|0|{
+                <4*>
+                | 1_ - 5__ - | 6__ - 3__ - |
+                | 4__ - 1_ - | 2__ - 5__ - |
+                | 4__ - 5__ - | 3__ - 6__ - |
+                | 2__ - 5__ - | 1_ - - - |
+            }
 
-        -> verse ->#
-        """)
+            -> verse ->#
+            """
+        ),
     ]
 
     for template in templates {
@@ -2207,21 +2308,25 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         #expect(!sheet.entries.isEmpty, "Template \(template.name) should have paragraphs")
         #expect(!sheet.playback.isEmpty, "Template \(template.name) should have orders")
         let issues = TMDMeasureChecker.check(source: template.content)
-        #expect(issues.isEmpty, "Template \(template.name) should not have measure discrepancy issues, found: \(issues)")
+        #expect(
+            issues.isEmpty,
+            "Template \(template.name) should not have measure discrepancy issues, found: \(issues)"
+        )
     }
 }
 
 @Test("Verify VS Code Markdown-it TMD Player configuration, command, and preview assets")
 func testVSCodeMarkdownPluginConfigurationAndFilesExist() throws {
     let repoRoot = URL(fileURLWithPath: #filePath)
-        .deletingLastPathComponent() // Tests/TmdSwiftTests
-        .deletingLastPathComponent() // Tests
-        .deletingLastPathComponent() // Project Root
+        .deletingLastPathComponent()  // Tests/TmdSwiftTests
+        .deletingLastPathComponent()  // Tests
+        .deletingLastPathComponent()  // Project Root
 
     let packageJsonURL = repoRoot.appendingPathComponent("editor/vscode/package.json")
     let data = try Data(contentsOf: packageJsonURL)
     guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-          let contributes = json["contributes"] as? [String: Any] else {
+        let contributes = json["contributes"] as? [String: Any]
+    else {
         Issue.record("Failed to parse editor/vscode/package.json contributes")
         return
     }
@@ -2229,7 +2334,8 @@ func testVSCodeMarkdownPluginConfigurationAndFilesExist() throws {
     #expect(contributes["markdown.markdownItPlugins"] as? Bool == true)
 
     guard let previewScripts = contributes["markdown.previewScripts"] as? [String],
-          let previewStyles = contributes["markdown.previewStyles"] as? [String] else {
+        let previewStyles = contributes["markdown.previewStyles"] as? [String]
+    else {
         Issue.record("Missing markdown.previewScripts or markdown.previewStyles in package.json")
         return
     }
@@ -2240,18 +2346,24 @@ func testVSCodeMarkdownPluginConfigurationAndFilesExist() throws {
     for script in previewScripts {
         let cleanPath = script.replacingOccurrences(of: "./", with: "editor/vscode/")
         let fileURL = repoRoot.appendingPathComponent(cleanPath)
-        #expect(FileManager.default.fileExists(atPath: fileURL.path), "Script asset must exist: \(fileURL.path)")
+        #expect(
+            FileManager.default.fileExists(atPath: fileURL.path),
+            "Script asset must exist: \(fileURL.path)")
     }
 
     for style in previewStyles {
         let cleanPath = style.replacingOccurrences(of: "./", with: "editor/vscode/")
         let fileURL = repoRoot.appendingPathComponent(cleanPath)
-        #expect(FileManager.default.fileExists(atPath: fileURL.path), "Style asset must exist: \(fileURL.path)")
+        #expect(
+            FileManager.default.fileExists(atPath: fileURL.path),
+            "Style asset must exist: \(fileURL.path)")
     }
 
     if let commands = contributes["commands"] as? [[String: Any]] {
         let commandNames = commands.compactMap { $0["command"] as? String }
-        #expect(commandNames.contains("tmd.openEmbeddedSnippet"), "Must register tmd.openEmbeddedSnippet command")
+        #expect(
+            commandNames.contains("tmd.openEmbeddedSnippet"),
+            "Must register tmd.openEmbeddedSnippet command")
     } else {
         Issue.record("Missing commands in package.json contributes")
     }
@@ -2260,19 +2372,19 @@ func testVSCodeMarkdownPluginConfigurationAndFilesExist() throws {
 @Test("Test multi-note dyad syntax 1+3 2+4 parsing and formatting")
 func testMultiNoteParsingAndFormatting() throws {
     let source = """
-    ::SCORE::
-    ** MultiNote **
-    != 120
-    ?= C
-    <4/4>
+        ::SCORE::
+        ** MultiNote **
+        != 120
+        ?= C
+        <4/4>
 
-    main:Piano@|0|{
-        <4*>
-        | 1+3 2+4 3+5 1^+3 |
-    }
+        main:Piano@|0|{
+            <4*>
+            | 1+3 2+4 3+5 1^+3 |
+        }
 
-    -> main ->#
-    """
+        -> main ->#
+        """
     let sheet = try TmdParser.parseThrowing(string: source)
     #expect(sheet.entries.count == 1)
     let section = sheet.entries[0].sections[0]
@@ -2297,8 +2409,10 @@ func testMultiNoteParsingAndFormatting() throws {
 
     // Check PlaybackTimeline emits both notes at the same position and duration
     let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
-    let noteEvents = timeline.events.filter { if case .note = $0.content { return true } else { return false } }
-    #expect(noteEvents.count == 8) // 4 beats * 2 notes each = 8 note events
+    let noteEvents = timeline.events.filter {
+        if case .note = $0.content { return true } else { return false }
+    }
+    #expect(noteEvents.count == 8)  // 4 beats * 2 notes each = 8 note events
     #expect(noteEvents[0].position == 0.0)
     #expect(noteEvents[1].position == 0.0)
     #expect(noteEvents[0].duration == 1.0)
@@ -2308,45 +2422,47 @@ func testMultiNoteParsingAndFormatting() throws {
 @Test("Test multi-note with tie extension")
 func testMultiNoteTieExtension() throws {
     let source = """
-    ::SCORE::
-    ** MultiNote Tie **
-    != 120
-    ?= C
-    <4/4>
+        ::SCORE::
+        ** MultiNote Tie **
+        != 120
+        ?= C
+        <4/4>
 
-    main:Piano@|0|{
-        <4*>
-        | 1+5 - - - |
-    }
+        main:Piano@|0|{
+            <4*>
+            | 1+5 - - - |
+        }
 
-    -> main ->#
-    """
+        -> main ->#
+        """
     let sheet = try TmdParser.parseThrowing(string: source)
     let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
-    let noteEvents = timeline.events.filter { if case .note = $0.content { return true } else { return false } }
+    let noteEvents = timeline.events.filter {
+        if case .note = $0.content { return true } else { return false }
+    }
     #expect(noteEvents.count == 2)
     #expect(noteEvents[0].position == 0.0)
-    #expect(noteEvents[0].duration == 4.0) // 1 sustained for 4 beats
+    #expect(noteEvents[0].duration == 4.0)  // 1 sustained for 4 beats
     #expect(noteEvents[1].position == 0.0)
-    #expect(noteEvents[1].duration == 4.0) // 5 sustained for 4 beats
+    #expect(noteEvents[1].duration == 4.0)  // 5 sustained for 4 beats
 }
 
 @Test("Test multi-note inside tuplet")
 func testMultiNoteInsideTuplet() throws {
     let source = """
-    ::SCORE::
-    ** MultiNote Tuplet **
-    != 120
-    ?= C
-    <4/4>
+        ::SCORE::
+        ** MultiNote Tuplet **
+        != 120
+        ?= C
+        <4/4>
 
-    main:Piano@|0|{
-        <4*>
-        | (1+3 2+4)%(--) 5 - |
-    }
+        main:Piano@|0|{
+            <4*>
+            | (1+3 2+4)%(--) 5 - |
+        }
 
-    -> main ->#
-    """
+        -> main ->#
+        """
     let sheet = try TmdParser.parseThrowing(string: source)
     let section = sheet.entries[0].sections[0]
     #expect(section.unitGroups.count == 3)
@@ -2360,7 +2476,9 @@ func testMultiNoteInsideTuplet() throws {
     }
 
     let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
-    let noteEvents = timeline.events.filter { if case .note = $0.content { return true } else { return false } }
+    let noteEvents = timeline.events.filter {
+        if case .note = $0.content { return true } else { return false }
+    }
     // (1+3 2+4)%(--) => 2 notes at 0.0 (dur 1.0), 2 notes at 1.0 (dur 1.0); then 5 - => 1 note at 2.0 (dur 2.0)
     #expect(noteEvents.count == 5)
     #expect(noteEvents[0].position == 0.0 && noteEvents[0].duration == 1.0)
@@ -2373,133 +2491,160 @@ func testMultiNoteInsideTuplet() throws {
 @Test("Test invalid multi-note syntax rejects or reports errors")
 func testInvalidMultiNoteSyntax() {
     let invalidScores: [(name: String, score: String)] = [
-        ("TrailingPlusAtBarEnd", """
-        ::SCORE::
-        ** TrailingPlusAtBarEnd **
-        != 120
-        ?= C
-        <4/4>
+        (
+            "TrailingPlusAtBarEnd",
+            """
+            ::SCORE::
+            ** TrailingPlusAtBarEnd **
+            != 120
+            ?= C
+            <4/4>
 
-        main:Piano@|0|{
-            <4*>
-            | 1 2 3 4+ |
-        }
+            main:Piano@|0|{
+                <4*>
+                | 1 2 3 4+ |
+            }
 
-        -> main ->#
-        """),
-        ("ConsecutivePlus", """
-        ::SCORE::
-        ** ConsecutivePlus **
-        != 120
-        ?= C
-        <4/4>
+            -> main ->#
+            """
+        ),
+        (
+            "ConsecutivePlus",
+            """
+            ::SCORE::
+            ** ConsecutivePlus **
+            != 120
+            ?= C
+            <4/4>
 
-        main:Piano@|0|{
-            <4*>
-            | 1++3 2 3 4 |
-        }
+            main:Piano@|0|{
+                <4*>
+                | 1++3 2 3 4 |
+            }
 
-        -> main ->#
-        """),
-        ("InvalidChordRHS", """
-        ::SCORE::
-        ** InvalidChordRHS **
-        != 120
-        ?= C
-        <4/4>
+            -> main ->#
+            """
+        ),
+        (
+            "InvalidChordRHS",
+            """
+            ::SCORE::
+            ** InvalidChordRHS **
+            != 120
+            ?= C
+            <4/4>
 
-        main:Piano@|0|{
-            <4*>
-            | 1+[C] 2 3 4 |
-        }
+            main:Piano@|0|{
+                <4*>
+                | 1+[C] 2 3 4 |
+            }
 
-        -> main ->#
-        """),
-        ("InvalidTieRHS", """
-        ::SCORE::
-        ** InvalidTieRHS **
-        != 120
-        ?= C
-        <4/4>
+            -> main ->#
+            """
+        ),
+        (
+            "InvalidTieRHS",
+            """
+            ::SCORE::
+            ** InvalidTieRHS **
+            != 120
+            ?= C
+            <4/4>
 
-        main:Piano@|0|{
-            <4*>
-            | 1+- 2 3 4 |
-        }
+            main:Piano@|0|{
+                <4*>
+                | 1+- 2 3 4 |
+            }
 
-        -> main ->#
-        """),
-        ("StandalonePlus", """
-        ::SCORE::
-        ** StandalonePlus **
-        != 120
-        ?= C
-        <4/4>
+            -> main ->#
+            """
+        ),
+        (
+            "StandalonePlus",
+            """
+            ::SCORE::
+            ** StandalonePlus **
+            != 120
+            ?= C
+            <4/4>
 
-        main:Piano@|0|{
-            <4*>
-            | + 1 2 3 |
-        }
+            main:Piano@|0|{
+                <4*>
+                | + 1 2 3 |
+            }
 
-        -> main ->#
-        """),
-        ("InvalidScaleDegreeRHS", """
-        ::SCORE::
-        ** InvalidScaleDegreeRHS **
-        != 120
-        ?= C
-        <4/4>
+            -> main ->#
+            """
+        ),
+        (
+            "InvalidScaleDegreeRHS",
+            """
+            ::SCORE::
+            ** InvalidScaleDegreeRHS **
+            != 120
+            ?= C
+            <4/4>
 
-        main:Piano@|0|{
-            <4*>
-            | 1+8 2 3 4 |
-        }
+            main:Piano@|0|{
+                <4*>
+                | 1+8 2 3 4 |
+            }
 
-        -> main ->#
-        """),
-        ("TrailingPlusBeforeNextMeasure", """
-        ::SCORE::
-        ** TrailingPlusBeforeNextMeasure **
-        != 120
-        ?= C
-        <4/4>
+            -> main ->#
+            """
+        ),
+        (
+            "TrailingPlusBeforeNextMeasure",
+            """
+            ::SCORE::
+            ** TrailingPlusBeforeNextMeasure **
+            != 120
+            ?= C
+            <4/4>
 
-        main:Piano@|0|{
-            <4*>
-            | 1 2 3 4+ |
-            | 1 2 3 4 |
-        }
+            main:Piano@|0|{
+                <4*>
+                | 1 2 3 4+ |
+                | 1 2 3 4 |
+            }
 
-        -> main ->#
-        """),
-        ("TrailingPlusBeforeClosingBrace", """
-        ::SCORE::
-        ** TrailingPlusBeforeClosingBrace **
-        != 120
-        ?= C
-        <4/4>
+            -> main ->#
+            """
+        ),
+        (
+            "TrailingPlusBeforeClosingBrace",
+            """
+            ::SCORE::
+            ** TrailingPlusBeforeClosingBrace **
+            != 120
+            ?= C
+            <4/4>
 
-        main:Piano@|0|{
-            <4*>
-            1 2 3 4+
-        }
+            main:Piano@|0|{
+                <4*>
+                1 2 3 4+
+            }
 
-        -> main ->#
-        """),
-        ("TrailingPlusSingleNoteBar", """
-        ::SCORE::
-        ** TrailingPlusSingleNoteBar **
-        != 120
-        ?= C
-        <4/4>
+            -> main ->#
+            """
+        ),
+        (
+            "TrailingPlusSingleNoteBar",
+            """
+            ::SCORE::
+            ** TrailingPlusSingleNoteBar **
+            != 120
+            ?= C
+            <4/4>
 
-        main:Piano@|0|{
-            <4*>
-            | 1+ |
-        }
+            main:Piano@|0|{
+                <4*>
+                | 1+ |
+            }
 
-        -> main ->#
-        """)
+            -> main ->#
+            """
+        ),
     ]
 
     for (name, score) in invalidScores {
@@ -2511,21 +2656,21 @@ func testInvalidMultiNoteSyntax() {
 
 @Test func testExplicitKeyHeaderAndInlineDirectives() throws {
     let tmd = """
-    ::SCORE::
-    ** Explicit Key Test **
-    != 120
-    ?= D
-    key= Bm
-    <4/4>
+        ::SCORE::
+        ** Explicit Key Test **
+        != 120
+        ?= D
+        key= Bm
+        <4/4>
 
-    main:Piano@|0|{
-        <4*>
-        | 1 2 3 4 |
-        | {key= F#m} 1 2 3 4 |
-    }
+        main:Piano@|0|{
+            <4*>
+            | 1 2 3 4 |
+            | {key= F#m} 1 2 3 4 |
+        }
 
-    -> main ->#
-    """
+        -> main ->#
+        """
 
     let sheet = try #require(TmdParser.parse(string: tmd))
     #expect(sheet.declaredKey == "Bm")
@@ -2534,30 +2679,31 @@ func testInvalidMultiNoteSyntax() {
     let paragraph = sheet.entries[0]
     let section = paragraph.sections[0]
     let directives = section.directives
-    #expect(directives.contains { directive in
-        if case .explicitKey(let k) = directive.kind {
-            return k == "F#m"
-        }
-        return false
-    })
+    #expect(
+        directives.contains { directive in
+            if case .explicitKey(let k) = directive.kind {
+                return k == "F#m"
+            }
+            return false
+        })
 }
 
 @Test func testDynamicsDirectivesParsing() throws {
     let tmd = """
-    ::SCORE::
-    ** Dynamics Test **
-    != 120
-    ?= C
-    <4/4>
+        ::SCORE::
+        ** Dynamics Test **
+        != 120
+        ?= C
+        <4/4>
 
-    main:Piano@|0|{
-        <4*>
-        | {p} 1 2 {f} 3 4 |
-        | {pp} 1 2 {ff} 3 4 |
-    }
+        main:Piano@|0|{
+            <4*>
+            | {p} 1 2 {f} 3 4 |
+            | {pp} 1 2 {ff} 3 4 |
+        }
 
-    -> main ->#
-    """
+        -> main ->#
+        """
 
     let sheet = try #require(TmdParser.parse(string: tmd))
     let section = sheet.entries[0].sections[0]

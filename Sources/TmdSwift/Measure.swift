@@ -2,7 +2,7 @@ import Foundation
 
 /// Standard musical notation duration representations.
 public struct NotationDuration: Equatable, Sendable {
-    public let baseDenominator: Int // 1, 2, 4, 8, 16, 32, 64
+    public let baseDenominator: Int  // 1, 2, 4, 8, 16, 32, 64
     public let isDotted: Bool
     public let quarterValue: Double
 
@@ -47,12 +47,15 @@ public struct NotationDuration: Equatable, Sendable {
             if !matched {
                 // If smaller than 64th note, append a 64th note and finish
                 if remaining > 0 {
-                    result.append(NotationDuration(baseDenominator: 64, isDotted: false, quarterValue: 0.0625))
+                    result.append(
+                        NotationDuration(baseDenominator: 64, isDotted: false, quarterValue: 0.0625)
+                    )
                 }
                 break
             }
         }
-        return result.isEmpty ? [NotationDuration(baseDenominator: 4, isDotted: false, quarterValue: 1.0)] : result
+        return result.isEmpty
+            ? [NotationDuration(baseDenominator: 4, isDotted: false, quarterValue: 1.0)] : result
     }
 }
 
@@ -120,7 +123,9 @@ public enum TMDMeasureRenderer {
     /// Renders an instrument track into an array of strictly bounded measures.
     public static func renderMeasures(sheet: Sheet, instrument: String) -> [Measure] {
         let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: instrument)
-        let defaultBeat = sheet.beat.count > 0 && sheet.beat.noteValue > 0 ? sheet.beat : Beat(count: 4, noteValue: 4)
+        let defaultBeat =
+            sheet.beat.count > 0 && sheet.beat.noteValue > 0
+            ? sheet.beat : Beat(count: 4, noteValue: 4)
         let initialMeasureDuration = Double(defaultBeat.count) * 4.0 / Double(defaultBeat.noteValue)
 
         let totalDuration = max(timeline.duration, initialMeasureDuration)
@@ -148,7 +153,8 @@ public enum TMDMeasureRenderer {
 
         while curStart < totalDuration || intervals.count < measureCount {
             while nextDirectiveIndex < timeSigDirectives.count,
-                  timeSigDirectives[nextDirectiveIndex].position <= curStart {
+                timeSigDirectives[nextDirectiveIndex].position <= curStart
+            {
                 if case .timeSignature(let b) = timeSigDirectives[nextDirectiveIndex].kind {
                     curBeat = b
                 }
@@ -195,14 +201,15 @@ public enum TMDMeasureRenderer {
                 let tieStop = isNote && (evStart < mStart)
                 let tieStart = isNote && (evEnd > mEnd)
 
-                rawMeasureEvents.append(MeasureEvent(
-                    startOffset: clStart - mStart,
-                    duration: clDur,
-                    content: event.content,
-                    tieStart: tieStart,
-                    tieStop: tieStop,
-                    state: event.state
-                ))
+                rawMeasureEvents.append(
+                    MeasureEvent(
+                        startOffset: clStart - mStart,
+                        duration: clDur,
+                        content: event.content,
+                        tieStart: tieStart,
+                        tieStop: tieStop,
+                        state: event.state
+                    ))
             }
 
             rawMeasureEvents.sort { $0.startOffset < $1.startOffset }
@@ -210,22 +217,25 @@ public enum TMDMeasureRenderer {
             // Fill gaps with rests to guarantee conservation of measure duration
             var paddedEvents: [MeasureEvent] = []
             var cursor = 0.0
-            let state = rawMeasureEvents.first?.state ?? PlaybackState(
-                tempo: sheet.speed > 0 ? sheet.speed : 120,
-                keyOffset: sheet.keySignature.semitoneOffset,
-                timeSignature: mBeat
-            )
+            let state =
+                rawMeasureEvents.first?.state
+                ?? PlaybackState(
+                    tempo: sheet.speed > 0 ? sheet.speed : 120,
+                    keyOffset: sheet.keySignature.semitoneOffset,
+                    timeSignature: mBeat
+                )
 
             let epsilon = 1e-4
             for ev in rawMeasureEvents {
                 let gap = ev.startOffset - cursor
                 if gap > epsilon {
-                    paddedEvents.append(MeasureEvent(
-                        startOffset: cursor,
-                        duration: gap,
-                        content: .rest,
-                        state: state
-                    ))
+                    paddedEvents.append(
+                        MeasureEvent(
+                            startOffset: cursor,
+                            duration: gap,
+                            content: .rest,
+                            state: state
+                        ))
                 }
                 paddedEvents.append(ev)
                 cursor = max(cursor, ev.startOffset + ev.duration)
@@ -233,24 +243,26 @@ public enum TMDMeasureRenderer {
 
             let trailingGap = mDuration - cursor
             if trailingGap > epsilon {
-                paddedEvents.append(MeasureEvent(
-                    startOffset: cursor,
-                    duration: trailingGap,
-                    content: .rest,
-                    state: state
-                ))
+                paddedEvents.append(
+                    MeasureEvent(
+                        startOffset: cursor,
+                        duration: trailingGap,
+                        content: .rest,
+                        state: state
+                    ))
             }
 
-            measures.append(Measure(
-                index: mIdx,
-                startTime: mStart,
-                nominalDuration: mDuration,
-                timeSignature: mBeat,
-                tempo: state.tempo,
-                keyOffset: state.keyOffset,
-                events: paddedEvents,
-                directives: directivesInMeasure
-            ))
+            measures.append(
+                Measure(
+                    index: mIdx,
+                    startTime: mStart,
+                    nominalDuration: mDuration,
+                    timeSignature: mBeat,
+                    tempo: state.tempo,
+                    keyOffset: state.keyOffset,
+                    events: paddedEvents,
+                    directives: directivesInMeasure
+                ))
         }
 
         return measures

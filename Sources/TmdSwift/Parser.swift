@@ -4,40 +4,40 @@ import TmdUtils
 // MARK: - Token Definitions
 
 public enum Token: Equatable, Sendable {
-    case scoreHeader                 // ::SCORE::
-    case doubleAsterisk              // **
-    case speedPrefix                 // !=
-    case relativeTempoPrefix         // !+
-    case keySignaturePrefix          // ?=
-    case explicitKeyPrefix           // key= or Key=
-    case openAngle                   // <
-    case slash                       // /
-    case asterisk                    // *
-    case closeAngle                  // >
-    case colon                       // :
-    case at                          // @
-    case pipe                        // |
-    case openBrace                   // {
-    case closeBrace                  // }
-    case openParen                   // (
-    case closeParen                  // )
-    case percentOpenParen            // %(
-    case arrow                       // ->
-    case arrowEnd                    // ->#
-    case relativeOrderPrefix         // {?
-    case absoluteOrderPrefix         // {?=
+    case scoreHeader  // ::SCORE::
+    case doubleAsterisk  // **
+    case speedPrefix  // !=
+    case relativeTempoPrefix  // !+
+    case keySignaturePrefix  // ?=
+    case explicitKeyPrefix  // key= or Key=
+    case openAngle  // <
+    case slash  // /
+    case asterisk  // *
+    case closeAngle  // >
+    case colon  // :
+    case at  // @
+    case pipe  // |
+    case openBrace  // {
+    case closeBrace  // }
+    case openParen  // (
+    case closeParen  // )
+    case percentOpenParen  // %(
+    case arrow  // ->
+    case arrowEnd  // ->#
+    case relativeOrderPrefix  // {?
+    case absoluteOrderPrefix  // {?=
 
-    case number(Int)                 // e.g. 120, 4, 16
-    case positiveNumber(Int)         // e.g. +4, +30
-    case double(Double)              // e.g. 120.0
-    case note(Note)                  // e.g. 1, 1', 1,, 1^, 1_
-    case chord(String)               // e.g. [Cmaj7], [1], [6m]
-    case percussion(String)           // e.g. XsTt
-    case metadata(String, String)     // metadata key and value
-    case programText(String)           // triple-quoted show-program body
-    case tie                         // -
-    case plus                        // +
-    case identifier(String)          // e.g. Piano, intro, C, A'
+    case number(Int)  // e.g. 120, 4, 16
+    case positiveNumber(Int)  // e.g. +4, +30
+    case double(Double)  // e.g. 120.0
+    case note(Note)  // e.g. 1, 1', 1,, 1^, 1_
+    case chord(String)  // e.g. [Cmaj7], [1], [6m]
+    case percussion(String)  // e.g. XsTt
+    case metadata(String, String)  // metadata key and value
+    case programText(String)  // triple-quoted show-program body
+    case tie  // -
+    case plus  // +
+    case identifier(String)  // e.g. Piano, intro, C, A'
     case eof
 
     public var expectedDescription: String {
@@ -123,7 +123,7 @@ public let fullwidthPunctuationMap: [String: String] = [
 ]
 
 public let fullwidthPunctuationOrder: [String] = [
-    "（", "）", "｛", "｝", "【", "】", "：", "｜", "－", "，", "、", "？", "！", "＊", "／", "＜", "＞"
+    "（", "）", "｛", "｝", "【", "】", "：", "｜", "－", "，", "、", "？", "！", "＊", "／", "＜", "＞",
 ]
 
 /// A syntax error reported by the throwing parser API.
@@ -156,17 +156,25 @@ public struct TMDParseError: Error, Equatable, CustomStringConvertible, Localize
 
         // Diagnostic Hint 1: Fullwidth punctuation typo
         if let fullwidthMatch = fullwidthPunctuationOrder.first(where: { text.contains($0) }),
-           let half = fullwidthPunctuationMap[fullwidthMatch] {
-            result.append("Hint: Fullwidth punctuation detected: `\(fullwidthMatch)` -> replace with halfwidth `\(half)`")
+            let half = fullwidthPunctuationMap[fullwidthMatch]
+        {
+            result.append(
+                "Hint: Fullwidth punctuation detected: `\(fullwidthMatch)` -> replace with halfwidth `\(half)`"
+            )
         }
 
         // Diagnostic Hint 2: Accidental typo like 1#, 7b, #, b
-        if expectedTokens.contains("note") || expectedTokens.contains("chord") || expectedTokens.contains("percussion") {
-            let isSharpOrFlatTypo = text == "#" || text == "b" ||
-                text.range(of: "^[1-7]#$", options: .regularExpression) != nil ||
-                text.range(of: "^[1-7][bB]$", options: .regularExpression) != nil
+        if expectedTokens.contains("note") || expectedTokens.contains("chord")
+            || expectedTokens.contains("percussion")
+        {
+            let isSharpOrFlatTypo =
+                text == "#" || text == "b"
+                || text.range(of: "^[1-7]#$", options: .regularExpression) != nil
+                || text.range(of: "^[1-7][bB]$", options: .regularExpression) != nil
             if isSharpOrFlatTypo {
-                result.append("Hint: For sharp/flat accidentals in TMD, use `'` for sharp (e.g. `1'`) and `,` for flat (e.g. `7,`)")
+                result.append(
+                    "Hint: For sharp/flat accidentals in TMD, use `'` for sharp (e.g. `1'`) and `,` for flat (e.g. `7,`)"
+                )
             }
         }
 
@@ -182,13 +190,19 @@ public struct TMDParseError: Error, Equatable, CustomStringConvertible, Localize
                 }
             }
             if isGridCandidate {
-                result.append("Hint: Each section inside `{ ... }` must start with a time grid directive like `<4*>` or `<8*>` before note events")
+                result.append(
+                    "Hint: Each section inside `{ ... }` must start with a time grid directive like `<4*>` or `<8*>` before note events"
+                )
             }
         }
 
         // Diagnostic Hint 4: Percussion / drum valid symbols
-        if expectedTokens.contains("percussion") && text.range(of: "[A-Za-z]", options: .regularExpression) != nil {
-            result.append("Hint: If writing percussion/drums, valid symbols are: X/x (Hi-Hat), S/s (Snare), B/b/D/d (Bass Drum), T/t (Tom), C/c (Crash), O/o (Open Hi-Hat)")
+        if expectedTokens.contains("percussion")
+            && text.range(of: "[A-Za-z]", options: .regularExpression) != nil
+        {
+            result.append(
+                "Hint: If writing percussion/drums, valid symbols are: X/x (Hi-Hat), S/s (Snare), B/b/D/d (Bass Drum), T/t (Tom), C/c (Crash), O/o (Open Hi-Hat)"
+            )
         }
 
         return result
@@ -210,7 +224,9 @@ public struct TMDParseError: Error, Equatable, CustomStringConvertible, Localize
     public func formatCodeFrame(sourceCode: String? = nil) -> String {
         let src = sourceCode ?? self.source ?? ""
         if src.isEmpty { return "" }
-        let lines = src.components(separatedBy: "\n").map { $0.hasSuffix("\r") ? String($0.dropLast()) : $0 }
+        let lines = src.components(separatedBy: "\n").map {
+            $0.hasSuffix("\r") ? String($0.dropLast()) : $0
+        }
         let errLine = range.start.line
         let errCol = range.start.column
         let tokenLen = max(1, range.length > 0 ? range.length : (text.isEmpty ? 1 : text.count))
@@ -244,14 +260,13 @@ public struct TMDParseError: Error, Equatable, CustomStringConvertible, Localize
     }
 }
 
-
 // MARK: - Lexer
 
 public final class Lexer {
     private static let metadataKeyByPrefix = [
         "詞：": "lyrics",
         "曲：": "composer",
-        "編：": "arranger"
+        "編：": "arranger",
     ]
 
     private let scalars: [UnicodeScalar]
@@ -286,12 +301,12 @@ public final class Lexer {
                 advance()
             } else if c == "/" && peek(offset: 1) == "*" {
                 // Skip block comment /* ... */
-                advance() // /
-                advance() // *
+                advance()  // /
+                advance()  // *
                 while !isAtEnd {
                     if peek() == "*" && peek(offset: 1) == "/" {
-                        advance() // *
-                        advance() // /
+                        advance()  // *
+                        advance()  // /
                         break
                     }
                     advance()
@@ -329,7 +344,10 @@ public final class Lexer {
                 column: scalars[..<start].reversed().prefix { $0 != "\n" }.count + 1
             )
             let text = String(scalars[start..<index].map { Character(String($0)) })
-            tokens.append(LexedToken(token: token, text: text, range: SourceRange(start: position, length: index - start)))
+            tokens.append(
+                LexedToken(
+                    token: token, text: text,
+                    range: SourceRange(start: position, length: index - start)))
             if token == .eof { break }
         }
         return tokens
@@ -342,12 +360,20 @@ public final class Lexer {
         }
 
         if c == "\"" && peek(offset: 1) == "\"" && peek(offset: 2) == "\"" {
-            advance(); advance(); advance()
+            advance()
+            advance()
+            advance()
             var body = ""
-            while !isAtEnd && !(peek() == "\"" && peek(offset: 1) == "\"" && peek(offset: 2) == "\"") {
+            while !isAtEnd
+                && !(peek() == "\"" && peek(offset: 1) == "\"" && peek(offset: 2) == "\"")
+            {
                 body.append(Character(advance()!))
             }
-            if !isAtEnd { advance(); advance(); advance() }
+            if !isAtEnd {
+                advance()
+                advance()
+                advance()
+            }
             return .programText(body)
         }
 
@@ -369,7 +395,12 @@ public final class Lexer {
         // `=~:__KEY__= "..."`.
         if c == "~" || (c == "=" && peek(offset: 1) == "~") {
             let named = c == "="
-            if named { advance(); advance() } else { advance() }
+            if named {
+                advance()
+                advance()
+            } else {
+                advance()
+            }
             while peek() == " " || peek() == "\t" { advance() }
             var key = "credit"
             if named {
@@ -378,7 +409,9 @@ public final class Lexer {
                 if peek() == "_" {
                     while peek() == "_" { advance() }
                     key = ""
-                    while let ch = peek(), ch != "_" && ch != "=" && ch != " " && ch != "\t" && ch != "\"" {
+                    while let ch = peek(),
+                        ch != "_" && ch != "=" && ch != " " && ch != "\t" && ch != "\""
+                    {
                         key.append(Character(advance()!))
                     }
                     while peek() == "_" { advance() }
@@ -403,10 +436,13 @@ public final class Lexer {
         // -># or ->
         if c == "-" && peek(offset: 1) == ">" {
             if peek(offset: 2) == "#" {
-                advance(); advance(); advance()
+                advance()
+                advance()
+                advance()
                 return .arrowEnd
             } else {
-                advance(); advance()
+                advance()
+                advance()
                 return .arrow
             }
         }
@@ -414,10 +450,13 @@ public final class Lexer {
         // {?= or {?
         if c == "{" && peek(offset: 1) == "?" {
             if peek(offset: 2) == "=" {
-                advance(); advance(); advance()
+                advance()
+                advance()
+                advance()
                 return .absoluteOrderPrefix
             } else {
-                advance(); advance()
+                advance()
+                advance()
                 return .relativeOrderPrefix
             }
         }
@@ -463,7 +502,9 @@ public final class Lexer {
         }
 
         // key= or Key= (optional whitespace handled by lexer)
-        if (c == "k" || c == "K") && (peek(offset: 1) == "e" || peek(offset: 1) == "E") && (peek(offset: 2) == "y" || peek(offset: 2) == "Y") {
+        if (c == "k" || c == "K") && (peek(offset: 1) == "e" || peek(offset: 1) == "E")
+            && (peek(offset: 2) == "y" || peek(offset: 2) == "Y")
+        {
             var offset = 3
             while let sc = peek(offset: offset), sc == " " || sc == "\t" {
                 offset += 1
@@ -476,7 +517,8 @@ public final class Lexer {
 
         // **
         if c == "*" && peek(offset: 1) == "*" {
-            advance(); advance()
+            advance()
+            advance()
             return .doubleAsterisk
         }
 
@@ -523,7 +565,7 @@ public final class Lexer {
             return .plus
         case "[":
             // Chord: [Cmaj7]
-            advance() // [
+            advance()  // [
             var chordContent = ""
             while !isAtEnd && peek() != "]" {
                 if let ch = advance() {
@@ -548,7 +590,8 @@ public final class Lexer {
 
             if isModifier || !isDigit {
                 advance()
-                guard let degree = ScaleDegree(rawValue: Int(c.value - UnicodeScalar("0").value)) else {
+                guard let degree = ScaleDegree(rawValue: Int(c.value - UnicodeScalar("0").value))
+                else {
                     return .identifier(String(Character(c)))
                 }
                 var accidental: Accidental = .natural
@@ -576,7 +619,9 @@ public final class Lexer {
         }
 
         // Number (integer or double) or identifier
-        if (c >= "0" && c <= "9") || (c == "+" && (peek(offset: 1).map { $0 >= "0" && $0 <= "9" } ?? false)) {
+        if (c >= "0" && c <= "9")
+            || (c == "+" && (peek(offset: 1).map { $0 >= "0" && $0 <= "9" } ?? false))
+        {
             var numStr = ""
             if c == "+" {
                 numStr.append(Character(advance()!))
@@ -649,7 +694,8 @@ public struct TmdParser {
         let lexedTokens = Lexer(string: string).tokenizeWithRanges()
         var parser = TokenParser(tokens: lexedTokens.map(\.token))
         guard let sheet = parser.parseSheet() else {
-            let index = diagnosticIndex(parser.failureIndex ?? parser.position, tokenCount: lexedTokens.count)
+            let index = diagnosticIndex(
+                parser.failureIndex ?? parser.position, tokenCount: lexedTokens.count)
             let offending = lexedTokens[index]
             throw TMDParseError(
                 message: "Unexpected token",
@@ -945,14 +991,21 @@ private struct TokenParser {
                     entries.append(entry)
                 } else {
                     if failureIndex == nil {
-                        recordFailure(at: pos, expected: [Token.colon.expectedDescription, Token.openBrace.expectedDescription])
+                        recordFailure(
+                            at: pos,
+                            expected: [
+                                Token.colon.expectedDescription,
+                                Token.openBrace.expectedDescription,
+                            ])
                     }
                     return nil
                 }
             }
         }
 
-        return Sheet(name: name, speed: speed, keySignature: keySignature, declaredKey: declaredKey, beat: beat, entries: entries, playback: playback, metadata: metadata)
+        return Sheet(
+            name: name, speed: speed, keySignature: keySignature, declaredKey: declaredKey,
+            beat: beat, entries: entries, playback: playback, metadata: metadata)
     }
 
     private mutating func parseEntry() -> Entry? {
@@ -975,7 +1028,9 @@ private struct TokenParser {
             }
 
             if case .chord(let attribute) = current {
-                if attribute.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "pitchmode=fixed" {
+                if attribute.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                    == "pitchmode=fixed"
+                {
                     pitchMode = .fixed
                     advance()
                 } else {
@@ -1040,7 +1095,9 @@ private struct TokenParser {
         if case .programText(let body) = current {
             advance()
             match(.closeBrace)
-            return Entry(name: name, assignment: instrument.isEmpty ? nil : instrument, pitchMode: pitchMode, start: start, sections: [], executionTime: executionTime, showProgram: body)
+            return Entry(
+                name: name, assignment: instrument.isEmpty ? nil : instrument, pitchMode: pitchMode,
+                start: start, sections: [], executionTime: executionTime, showProgram: body)
         }
 
         var sections: [Section] = []
@@ -1081,8 +1138,13 @@ private struct TokenParser {
                         break
                     }
 
-                    if current == .openBrace || current == .relativeOrderPrefix || current == .absoluteOrderPrefix || current == .keySignaturePrefix || current == .relativeTempoPrefix {
-                        if let directive = parseSectionDirective(position: unitGroups.reduce(0) { $0 + $1.length }) {
+                    if current == .openBrace || current == .relativeOrderPrefix
+                        || current == .absoluteOrderPrefix || current == .keySignaturePrefix
+                        || current == .relativeTempoPrefix
+                    {
+                        if let directive = parseSectionDirective(
+                            position: unitGroups.reduce(0) { $0 + $1.length })
+                        {
                             directives.append(directive)
                         } else {
                             advance()
@@ -1100,7 +1162,9 @@ private struct TokenParser {
                             if !units.isEmpty {
                                 groupUnits.append(contentsOf: units)
                             } else {
-                                recordFailure(at: pos, expected: ["note", "chord", "tie", "rest", "percussion", ")"])
+                                recordFailure(
+                                    at: pos,
+                                    expected: ["note", "chord", "tie", "rest", "percussion", ")"])
                                 return nil
                             }
                         }
@@ -1123,12 +1187,20 @@ private struct TokenParser {
                                 unitGroups.append(UnitGroup(units: [unit], length: 1))
                             }
                         } else {
-                            recordFailure(at: pos, expected: ["note", "chord", "tie", "rest", "percussion", "tuplet", "directive", "}"])
+                            recordFailure(
+                                at: pos,
+                                expected: [
+                                    "note", "chord", "tie", "rest", "percussion", "tuplet",
+                                    "directive", "}",
+                                ])
                             return nil
                         }
                     }
                 }
-                sections.append(Section(noteLength: noteLength, unitGroups: unitGroups, directives: directives, barlinePositions: barlinePositions))
+                sections.append(
+                    Section(
+                        noteLength: noteLength, unitGroups: unitGroups, directives: directives,
+                        barlinePositions: barlinePositions))
             } else {
                 recordFailure(at: pos, expected: .openAngle)
                 return nil
@@ -1141,7 +1213,9 @@ private struct TokenParser {
             return nil
         }
 
-        return Entry(name: name, assignment: instrument.isEmpty ? nil : instrument, pitchMode: pitchMode, start: start, sections: sections, executionTime: executionTime)
+        return Entry(
+            name: name, assignment: instrument.isEmpty ? nil : instrument, pitchMode: pitchMode,
+            start: start, sections: sections, executionTime: executionTime)
     }
 
     private mutating func parseUnits() -> [Unit] {
@@ -1166,9 +1240,10 @@ private struct TokenParser {
             }
         }
         if case .identifier(let value) = current, !value.isEmpty,
-           let firstNonPerc = value.first(where: { !"XxTtSsDdBbOoCc".contains($0) }),
-           firstNonPerc == "-",
-           value.allSatisfy({ "XxTtSsDdBbOoCc-".contains($0) }) {
+            let firstNonPerc = value.first(where: { !"XxTtSsDdBbOoCc".contains($0) }),
+            firstNonPerc == "-",
+            value.allSatisfy({ "XxTtSsDdBbOoCc-".contains($0) })
+        {
             // Identifier like 'x--' or 'X-x-' in percussion: split into percussion and ties
             advance()
             var units: [Unit] = []
@@ -1215,7 +1290,9 @@ private struct TokenParser {
                         if case .note(let nextNote) = current {
                             notes.append(nextNote)
                             advance()
-                        } else if case .number(let num) = current, let degree = ScaleDegree(rawValue: num) {
+                        } else if case .number(let num) = current,
+                            let degree = ScaleDegree(rawValue: num)
+                        {
                             notes.append(Note(accidental: .natural, degree: degree, octave: 0))
                             advance()
                         } else {
@@ -1252,7 +1329,8 @@ private struct TokenParser {
         case .percussion(let pattern):
             advance()
             return .percussion(pattern)
-        case .identifier(let value) where !value.isEmpty && value.allSatisfy({ "XxTtSsDdBbOoCc".contains($0) }):
+        case .identifier(let value)
+        where !value.isEmpty && value.allSatisfy({ "XxTtSsDdBbOoCc".contains($0) }):
             advance()
             return .percussion(value)
         default:
@@ -1263,7 +1341,10 @@ private struct TokenParser {
 
     private mutating func parseSectionDirective(position: Int) -> SectionDirective? {
         let startsWithBrace = match(.openBrace)
-        guard startsWithBrace || current == .relativeOrderPrefix || current == .absoluteOrderPrefix || current == .keySignaturePrefix || current == .relativeTempoPrefix else { return nil }
+        guard
+            startsWithBrace || current == .relativeOrderPrefix || current == .absoluteOrderPrefix
+                || current == .keySignaturePrefix || current == .relativeTempoPrefix
+        else { return nil }
         // `{?` and `{?=` are emitted as single lexer tokens which already
         // consume the opening brace; all directive forms still end in `}`.
         defer { match(.closeBrace) }
@@ -1332,8 +1413,13 @@ private struct TokenParser {
         case .keySignaturePrefix:
             advance()
             var value = ""
-            if case .identifier(let s) = current { value = s; advance() }
-            else if case .note(let n) = current { value = String(n.degree.rawValue); advance() }
+            if case .identifier(let s) = current {
+                value = s
+                advance()
+            } else if case .note(let n) = current {
+                value = String(n.degree.rawValue)
+                advance()
+            }
             if value.lowercased() == "fixed" {
                 recordFailure(at: position, expected: ["entry attribute [pitchMode=fixed]"])
                 return nil
@@ -1342,8 +1428,13 @@ private struct TokenParser {
         case .explicitKeyPrefix:
             advance()
             var value = ""
-            if case .identifier(let s) = current { value = s; advance() }
-            else if case .note(let n) = current { value = String(n.degree.rawValue); advance() }
+            if case .identifier(let s) = current {
+                value = s
+                advance()
+            } else if case .note(let n) = current {
+                value = String(n.degree.rawValue)
+                advance()
+            }
             if !value.isEmpty {
                 return SectionDirective(position: position, kind: .explicitKey(value))
             }
@@ -1356,13 +1447,24 @@ private struct TokenParser {
             advance()
             var count = 4
             var noteValue = 4
-            if case .number(let n) = current { count = n; advance() }
-            else if case .note(let n) = current { count = n.degree.rawValue; advance() }
+            if case .number(let n) = current {
+                count = n
+                advance()
+            } else if case .note(let n) = current {
+                count = n.degree.rawValue
+                advance()
+            }
             match(.slash)
-            if case .number(let n) = current { noteValue = n; advance() }
-            else if case .note(let n) = current { noteValue = n.degree.rawValue; advance() }
+            if case .number(let n) = current {
+                noteValue = n
+                advance()
+            } else if case .note(let n) = current {
+                noteValue = n.degree.rawValue
+                advance()
+            }
             match(.closeAngle)
-            return SectionDirective(position: position, kind: .timeSignature(Beat(count: count, noteValue: noteValue)))
+            return SectionDirective(
+                position: position, kind: .timeSignature(Beat(count: count, noteValue: noteValue)))
         default:
             break
         }

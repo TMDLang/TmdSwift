@@ -15,7 +15,7 @@ public struct TMDMIDIGenerator {
         let sheet = TMDMacroEvaluator.expand(inputSheet)
         var effectiveSheet = sheet
         if let targetParagraph {
-        let filteredParagraphs = sheet.entries.filter { $0.name == targetParagraph }
+            let filteredParagraphs = sheet.entries.filter { $0.name == targetParagraph }
             effectiveSheet = Sheet(
                 name: sheet.name,
                 speed: sheet.speed,
@@ -33,46 +33,57 @@ public struct TMDMIDIGenerator {
         }
 
         let timeline = TMDPlaybackRenderer.renderConductor(sheet: effectiveSheet)
-        var trackData = [TMDMIDIEncoder.encodeTrack(events: conductorEvents(
-            sheet: effectiveSheet, timeline: timeline, ticksPerQuarter: ticksPerQuarter
-        ))]
+        var trackData = [
+            TMDMIDIEncoder.encodeTrack(
+                events: conductorEvents(
+                    sheet: effectiveSheet, timeline: timeline, ticksPerQuarter: ticksPerQuarter
+                ))
+        ]
         var melodyChannel = 0
         for (_, instrument) in distinctInstruments.enumerated() {
             let timeline = TMDPlaybackRenderer.render(sheet: effectiveSheet, instrument: instrument)
-            guard timeline.events.contains(where: { event in
-                switch event.content {
-                case .note, .chord, .percussion: return true
-                case .rest: return false
-                }
-            }) else { continue }
+            guard
+                timeline.events.contains(where: { event in
+                    switch event.content {
+                    case .note, .chord, .percussion: return true
+                    case .rest: return false
+                    }
+                })
+            else { continue }
             let midiInstrument = MIDIInstrument.resolve(instrument)
             let channel: UInt8
             if midiInstrument.isPercussion {
                 channel = 9
             } else {
-                if melodyChannel == 9 { melodyChannel += 1 } // Skip percussion channel 10 (index 9)
+                if melodyChannel == 9 { melodyChannel += 1 }  // Skip percussion channel 10 (index 9)
                 channel = UInt8(melodyChannel % 16)
                 melodyChannel += 1
             }
-            trackData.append(TMDMIDIEncoder.encodeTrack(events: instrumentEvents(
-                timeline: timeline, instrument: instrument, midiInstrument: midiInstrument,
-                channel: channel, ticksPerQuarter: ticksPerQuarter
-            )))
+            trackData.append(
+                TMDMIDIEncoder.encodeTrack(
+                    events: instrumentEvents(
+                        timeline: timeline, instrument: instrument, midiInstrument: midiInstrument,
+                        channel: channel, ticksPerQuarter: ticksPerQuarter
+                    )))
         }
         return TMDMIDIEncoder.encodeFile(tracks: trackData, ticksPerQuarter: ticksPerQuarter)
     }
 
-    private static func conductorEvents(sheet: Sheet, timeline: PlaybackTimeline, ticksPerQuarter: UInt16) -> [MIDIEvent] {
+    private static func conductorEvents(
+        sheet: Sheet, timeline: PlaybackTimeline, ticksPerQuarter: UInt16
+    ) -> [MIDIEvent] {
         let initial = [
             MIDIEvent(tick: 0, message: .trackName(sheet.name.isEmpty ? "TMD Score" : sheet.name)),
             MIDIEvent(tick: 0, message: .tempo(sheet.speed > 0 ? sheet.speed : 120)),
-            MIDIEvent(tick: 0, message: .timeSignature(sheet.beat))
+            MIDIEvent(tick: 0, message: .timeSignature(sheet.beat)),
         ]
         let directives = timeline.directives.compactMap { directive -> MIDIEvent? in
             let tick = midiTick(directive.position, ticksPerQuarter: ticksPerQuarter)
             switch directive.kind {
-            case .tempo, .relativeTempo: return MIDIEvent(tick: tick, message: .tempo(directive.state.tempo))
-            case .timeSignature: return MIDIEvent(tick: tick, message: .timeSignature(directive.state.timeSignature))
+            case .tempo, .relativeTempo:
+                return MIDIEvent(tick: tick, message: .tempo(directive.state.tempo))
+            case .timeSignature:
+                return MIDIEvent(tick: tick, message: .timeSignature(directive.state.timeSignature))
             case .absoluteKey, .relativeKey, .explicitKey, .dynamics, .fixedPitch: return nil
             }
         }
@@ -88,13 +99,20 @@ public struct TMDMIDIGenerator {
     ) -> [MIDIEvent] {
         var events = [MIDIEvent(tick: 0, message: .trackName(instrument))]
         if !midiInstrument.isPercussion {
-            events.append(MIDIEvent(tick: 0, message: .programChange(channel: channel, program: midiInstrument.program)))
+            events.append(
+                MIDIEvent(
+                    tick: 0,
+                    message: .programChange(channel: channel, program: midiInstrument.program)))
         }
         let lower = instrument.lowercased()
         if lower.contains("left") || lower.contains("-l") {
-            events.append(MIDIEvent(tick: 0, message: .controlChange(channel: channel, controller: 10, value: 20)))
+            events.append(
+                MIDIEvent(
+                    tick: 0, message: .controlChange(channel: channel, controller: 10, value: 20)))
         } else if lower.contains("right") || lower.contains("-r") {
-            events.append(MIDIEvent(tick: 0, message: .controlChange(channel: channel, controller: 10, value: 108)))
+            events.append(
+                MIDIEvent(
+                    tick: 0, message: .controlChange(channel: channel, controller: 10, value: 108)))
         }
         for event in timeline.events {
             let start = midiTick(event.position, ticksPerQuarter: ticksPerQuarter)
@@ -102,24 +120,31 @@ public struct TMDMIDIGenerator {
             switch event.content {
             case .note(let note):
                 let baseVelocity = event.state.dynamicLevel.defaultVelocity
-                appendNote(&events, start: start, duration: duration, channel: channel, pitch: noteToMIDIPitch(note, keyOffset: event.state.keyOffset), velocity: baseVelocity)
+                appendNote(
+                    &events, start: start, duration: duration, channel: channel,
+                    pitch: noteToMIDIPitch(note, keyOffset: event.state.keyOffset),
+                    velocity: baseVelocity)
             case .chord(let chord):
-                let baseVelocity = UInt8(clamping: max(1, Int(event.state.dynamicLevel.defaultVelocity) - 8))
+                let baseVelocity = UInt8(
+                    clamping: max(1, Int(event.state.dynamicLevel.defaultVelocity) - 8))
                 chordToMIDIPitches(chord, keyOffset: event.state.keyOffset).forEach {
-                    appendNote(&events, start: start, duration: duration, channel: channel, pitch: $0, velocity: baseVelocity)
+                    appendNote(
+                        &events, start: start, duration: duration, channel: channel, pitch: $0,
+                        velocity: baseVelocity)
                 }
             case .percussion(let pattern):
                 let step = max(1, duration / UInt32(clamping: max(1, pattern.count)))
                 for (index, character) in pattern.enumerated() {
                     if let pitch = percussionMIDIPitch(for: character) {
-                        let velocity: UInt8 = switch character {
-                        case "D", "d", "B", "b": 118 // Strong Kick
-                        case "C", "c": 115           // Exploding Crash Cymbal
-                        case "S", "s": 105           // Crisp Snare
-                        case "T", "t": 100           // Tom-toms
-                        case "O", "o": 90            // Open Hi-Hat
-                        default: 78                  // Background Closed Hi-Hat
-                        }
+                        let velocity: UInt8 =
+                            switch character {
+                            case "D", "d", "B", "b": 118  // Strong Kick
+                            case "C", "c": 115  // Exploding Crash Cymbal
+                            case "S", "s": 105  // Crisp Snare
+                            case "T", "t": 100  // Tom-toms
+                            case "O", "o": 90  // Open Hi-Hat
+                            default: 78  // Background Closed Hi-Hat
+                            }
                         let offset = UInt32(clamping: index).multipliedReportingOverflow(by: step)
                         let noteStart = start.addingReportingOverflow(offset.partialValue)
                         appendNote(
@@ -139,15 +164,22 @@ public struct TMDMIDIGenerator {
         return events
     }
 
-    private static func appendNote(_ events: inout [MIDIEvent], start: UInt32, duration: UInt32, channel: UInt8, pitch: Int, velocity: UInt8) {
+    private static func appendNote(
+        _ events: inout [MIDIEvent], start: UInt32, duration: UInt32, channel: UInt8, pitch: Int,
+        velocity: UInt8
+    ) {
         guard (0...127).contains(pitch) else { return }
-        events.append(MIDIEvent(tick: start, message: .noteOn(channel: channel, note: UInt8(pitch), velocity: velocity)))
+        events.append(
+            MIDIEvent(
+                tick: start,
+                message: .noteOn(channel: channel, note: UInt8(pitch), velocity: velocity)))
         let noteOffOffset = duration > 2 ? duration - 2 : 1
         let noteOffTick = start.addingReportingOverflow(noteOffOffset)
-        events.append(MIDIEvent(
-            tick: noteOffTick.overflow ? UInt32.max : noteOffTick.partialValue,
-            message: .noteOff(channel: channel, note: UInt8(pitch))
-        ))
+        events.append(
+            MIDIEvent(
+                tick: noteOffTick.overflow ? UInt32.max : noteOffTick.partialValue,
+                message: .noteOff(channel: channel, note: UInt8(pitch))
+            ))
     }
 
     private static func midiTick(_ quarterNotes: Double, ticksPerQuarter: UInt16) -> UInt32 {
@@ -180,11 +212,11 @@ public struct TMDMIDIGenerator {
     private static func percussionMIDIPitch(for character: Character) -> Int? {
         [
             "D": 36, "d": 36, "B": 36, "b": 36,  // Bass Drum 1 (Kick)
-            "S": 38, "s": 38,                     // Acoustic Snare
-            "X": 42, "x": 42,                     // Closed Hi-Hat
-            "O": 46, "o": 46,                     // Open Hi-Hat
-            "T": 45, "t": 45,                     // Low-Mid Tom
-            "C": 49, "c": 49                      // Crash Cymbal 1
+            "S": 38, "s": 38,  // Acoustic Snare
+            "X": 42, "x": 42,  // Closed Hi-Hat
+            "O": 46, "o": 46,  // Open Hi-Hat
+            "T": 45, "t": 45,  // Low-Mid Tom
+            "C": 49, "c": 49,  // Crash Cymbal 1
         ][character]
     }
 
@@ -197,7 +229,9 @@ public struct TMDMIDIGenerator {
     public static func chordToMIDIPitches(_ chord: ChordSymbol, keyOffset: Int) -> [Int] {
         let rootPitch: Int
         if chord.root.isScaleDegree {
-            let note = Note(accidental: chord.root.accidental, degree: chord.root.degree, octave: chord.root.octave)
+            let note = Note(
+                accidental: chord.root.accidental, degree: chord.root.degree,
+                octave: chord.root.octave)
             rootPitch = noteToMIDIPitch(note, keyOffset: keyOffset) - 12
         } else {
             rootPitch = 48 + chord.root.semitoneOffset
@@ -206,7 +240,8 @@ public struct TMDMIDIGenerator {
         if let bass = chord.bass {
             let bassPitch: Int
             if bass.isScaleDegree {
-                let note = Note(accidental: bass.accidental, degree: bass.degree, octave: bass.octave)
+                let note = Note(
+                    accidental: bass.accidental, degree: bass.degree, octave: bass.octave)
                 bassPitch = noteToMIDIPitch(note, keyOffset: keyOffset) - 24
             } else {
                 bassPitch = 36 + bass.semitoneOffset

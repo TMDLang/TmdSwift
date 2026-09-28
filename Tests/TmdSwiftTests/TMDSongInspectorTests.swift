@@ -1,22 +1,23 @@
-import Testing
 import Foundation
+import Testing
+
 @testable import TmdSwift
 
 @Suite("TMD Song Profile & Inspector Tests")
 struct TMDSongInspectorTests {
     @Test func prototypeOnlyScoreDoesNotCreateInspectorPianoTrack() throws {
         let tmd = """
-        ::SCORE::
-        ** Prototype Only **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Prototype Only **
+            != 120
+            ?= C
+            <4/4>
 
-        Theme{
-            <4*>
-            1 2 3 4
-        }
-        """
+            Theme{
+                <4*>
+                1 2 3 4
+            }
+            """
         let sheet = try #require(TmdParser.parse(string: tmd))
 
         let profile = TMDSongInspector.inspect(sheet: sheet)
@@ -25,47 +26,46 @@ struct TMDSongInspectorTests {
         #expect(profile.density.sectionDensities.allSatisfy { !$0.instruments.contains("") })
     }
 
-
     @Test func testInspectSongBasicProfile() throws {
         let tmd = """
-        ::SCORE::
-        ** Inspector Test Song **
-        != 120.0
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Inspector Test Song **
+            != 120.0
+            ?= C
+            <4/4>
 
-        intro:Piano@|0|{
-            <4*>
-            1 2 3 4
-            [C] - [G] -
-        }
+            intro:Piano@|0|{
+                <4*>
+                1 2 3 4
+                [C] - [G] -
+            }
 
-        verse:Vocal@|0|{
-            <4*>
-            1 3 5 1^
-            [Am] - [F] -
-        }
+            verse:Vocal@|0|{
+                <4*>
+                1 3 5 1^
+                [Am] - [F] -
+            }
 
-        verse:Bass@|0|{
-            <4*>
-            1_ - 5_ -
-            6_ - 4_ -
-        }
+            verse:Bass@|0|{
+                <4*>
+                1_ - 5_ -
+                6_ - 4_ -
+            }
 
-        chorus:Vocal@|0|{
-            <4*>
-            5 1^ 3^ 5^
-            [C] - [G] -
-        }
+            chorus:Vocal@|0|{
+                <4*>
+                5 1^ 3^ 5^
+                [C] - [G] -
+            }
 
-        chorus:Bass@|0|{
-            <4*>
-            1_ - - -
-            5_ - - -
-        }
+            chorus:Bass@|0|{
+                <4*>
+                1_ - - -
+                5_ - - -
+            }
 
-        -> intro -> verse -> {?+2} -> chorus ->#
-        """
+            -> intro -> verse -> {?+2} -> chorus ->#
+            """
 
         let sheet = try #require(TmdParser.parse(string: tmd))
         let profile = TMDSongInspector.inspect(sheet: sheet)
@@ -99,11 +99,11 @@ struct TMDSongInspectorTests {
         //   5^ in D = 79 + 2 = 81 (A5)
         let vocalProfile = try #require(profile.vocalRange)
         #expect(vocalProfile.instrument == "Vocal")
-        #expect(vocalProfile.lowestNote.midiPitch == 60) // C4
+        #expect(vocalProfile.lowestNote.midiPitch == 60)  // C4
         #expect(vocalProfile.lowestNote.noteName == "C4")
-        #expect(vocalProfile.highestNote.midiPitch == 81) // A5
+        #expect(vocalProfile.highestNote.midiPitch == 81)  // A5
         #expect(vocalProfile.highestNote.noteName == "A5")
-        #expect(vocalProfile.spanSemitones == 21) // 81 - 60 = 21 semitones
+        #expect(vocalProfile.spanSemitones == 21)  // 81 - 60 = 21 semitones
         #expect(abs(vocalProfile.spanOctaves - 1.75) < 0.01)
         #expect(vocalProfile.highestNote.sectionName == "chorus")
         #expect(vocalProfile.difficulty == .difficult)
@@ -112,7 +112,7 @@ struct TMDSongInspectorTests {
         // 4. Track Ranges
         #expect(profile.instrumentRanges.count >= 2)
         let bassRange = try #require(profile.instrumentRanges.first { $0.instrument == "Bass" })
-        #expect(bassRange.lowestNote.midiPitch < 60) // Low bass note
+        #expect(bassRange.lowestNote.midiPitch < 60)  // Low bass note
 
         // 5. Harmony & Chords
         // Chords parsed across paragraphs: C, G, Am, F
@@ -126,8 +126,10 @@ struct TMDSongInspectorTests {
         // verse: 2 tracks (Vocal, Bass)
         // chorus: 2 tracks (Vocal, Bass)
         #expect(profile.density.maxConcurrentTracks == 2)
-        #expect(profile.density.sectionDensities.first { $0.sectionName == "intro" }?.trackCount == 1)
-        #expect(profile.density.sectionDensities.first { $0.sectionName == "verse" }?.trackCount == 2)
+        #expect(
+            profile.density.sectionDensities.first { $0.sectionName == "intro" }?.trackCount == 1)
+        #expect(
+            profile.density.sectionDensities.first { $0.sectionName == "verse" }?.trackCount == 2)
 
         // 7. Text Report Output
         let report = TMDSongInspector.generateReport(profile)
@@ -141,26 +143,26 @@ struct TMDSongInspectorTests {
 
     @Test func testInspectSongRepeatedSectionsMeasureAndTime() throws {
         let tmd = """
-        ::SCORE::
-        ** Modulation & Repeated Verse Song **
-        != 120.0
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Modulation & Repeated Verse Song **
+            != 120.0
+            ?= C
+            <4/4>
 
-        verse:Vocal@|0|{
-            <4*>
-            1 2 3 4
-            [C] - - -
-        }
+            verse:Vocal@|0|{
+                <4*>
+                1 2 3 4
+                [C] - - -
+            }
 
-        chorus:Vocal@|0|{
-            <4*>
-            5 1^ 3^ 5^
-            [G] - - -
-        }
+            chorus:Vocal@|0|{
+                <4*>
+                5 1^ 3^ 5^
+                [G] - - -
+            }
 
-        -> verse -> chorus -> {?+2} -> verse -> chorus ->#
-        """
+            -> verse -> chorus -> {?+2} -> verse -> chorus ->#
+            """
 
         let sheet = try #require(TmdParser.parse(string: tmd))
         let profile = TMDSongInspector.inspect(sheet: sheet)
@@ -192,21 +194,21 @@ struct TMDSongInspectorTests {
 
     @Test func testInspectSongDynamicTempoAndMeter() throws {
         let tmd = """
-        ::SCORE::
-        ** Inspector Tempo **
-        != 60
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Inspector Tempo **
+            != 60
+            ?= C
+            <4/4>
 
-        A:Vocal@|0|{
-            <4*>
-            1 2 3 4
-            {!=120}
-            5 6 7 1^
-        }
+            A:Vocal@|0|{
+                <4*>
+                1 2 3 4
+                {!=120}
+                5 6 7 1^
+            }
 
-        -> A ->#
-        """
+            -> A ->#
+            """
 
         let sheet = try #require(TmdParser.parse(string: tmd))
         let profile = TMDSongInspector.inspect(sheet: sheet, targetInstrument: "Vocal")
@@ -219,26 +221,26 @@ struct TMDSongInspectorTests {
 
     @Test func testInspectSongTonalityAndKeyProfile() throws {
         let tmd = """
-        ::SCORE::
-        ** Tonality Test Song **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Tonality Test Song **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Piano@|0|{
-            <4*>
-            1 3 5 1^
-            [C] - [G] -
-        }
+            verse:Piano@|0|{
+                <4*>
+                1 3 5 1^
+                [C] - [G] -
+            }
 
-        chorus:Piano@|0|{
-            <4*>
-            1 4 5 1^
-            [D] - [A] -
-        }
+            chorus:Piano@|0|{
+                <4*>
+                1 4 5 1^
+                [D] - [A] -
+            }
 
-        -> verse -> {?+2} -> chorus ->#
-        """
+            -> verse -> {?+2} -> chorus ->#
+            """
 
         let sheet = try #require(TmdParser.parse(string: tmd))
         let profile = TMDSongInspector.inspect(sheet: sheet)
@@ -281,20 +283,20 @@ struct TMDSongInspectorTests {
 
     @Test func testInspectSongChromaticismAndAmbiguousKey() throws {
         let tmd = """
-        ::SCORE::
-        ** Blues Chromatic Song **
-        != 100
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Blues Chromatic Song **
+            != 100
+            ?= C
+            <4/4>
 
-        verse:Vocal@|0|{
-            <4*>
-            1 3, 4 4' 5 7,
-            [C7] - [F7] -
-        }
+            verse:Vocal@|0|{
+                <4*>
+                1 3, 4 4' 5 7,
+                [C7] - [F7] -
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
 
         let sheet = try #require(TmdParser.parse(string: tmd))
         let profile = TMDSongInspector.inspect(sheet: sheet)
@@ -304,7 +306,9 @@ struct TMDSongInspectorTests {
 
         // Contains flat-3 (Eb), sharp-4 (F#), flat-7 (Bb)
         #expect(!verseSec.nonDiatonicNotes.isEmpty)
-        #expect(verseSec.nonDiatonicNotes.contains("D#") || verseSec.nonDiatonicNotes.contains("F#") || verseSec.nonDiatonicNotes.contains("A#"))
+        #expect(
+            verseSec.nonDiatonicNotes.contains("D#") || verseSec.nonDiatonicNotes.contains("F#")
+                || verseSec.nonDiatonicNotes.contains("A#"))
         #expect(verseSec.pitchClasses.chromaticRatio > 0.1)
 
         let report = TMDSongInspector.generateReport(profile)
@@ -313,20 +317,20 @@ struct TMDSongInspectorTests {
 
     @Test func testTonalityUsesInitialKeyOffsetOnlyOnce() throws {
         let tmd = """
-        ::SCORE::
-        ** Initial D Tonality **
-        != 120
-        ?= D
-        <4/4>
+            ::SCORE::
+            ** Initial D Tonality **
+            != 120
+            ?= D
+            <4/4>
 
-        verse:Piano@|0|{
-            <4*>
-            1 3 5 1^
-            [D] - [A] -
-        }
+            verse:Piano@|0|{
+                <4*>
+                1 3 5 1^
+                [D] - [A] -
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
 
         let sheet = try #require(TmdParser.parse(string: tmd))
         let profile = TMDSongInspector.inspect(sheet: sheet)
@@ -342,26 +346,26 @@ struct TMDSongInspectorTests {
 
     @Test func testTonalityReportsRelativeModulationFromNonCInitialKey() throws {
         let tmd = """
-        ::SCORE::
-        ** D To E Tonality **
-        != 120
-        ?= D
-        <4/4>
+            ::SCORE::
+            ** D To E Tonality **
+            != 120
+            ?= D
+            <4/4>
 
-        verse:Piano@|0|{
-            <4*>
-            1 3 5 1^
-            [D] - [A] -
-        }
+            verse:Piano@|0|{
+                <4*>
+                1 3 5 1^
+                [D] - [A] -
+            }
 
-        chorus:Piano@|0|{
-            <4*>
-            1 3 5 1^
-            [E] - [B] -
-        }
+            chorus:Piano@|0|{
+                <4*>
+                1 3 5 1^
+                [E] - [B] -
+            }
 
-        -> verse -> {?+2} -> chorus ->#
-        """
+            -> verse -> {?+2} -> chorus ->#
+            """
 
         let sheet = try #require(TmdParser.parse(string: tmd))
         let profile = TMDSongInspector.inspect(sheet: sheet)
@@ -375,26 +379,26 @@ struct TMDSongInspectorTests {
 
     @Test func testTonalityVisualizerSVGAndHTMLGeneration() throws {
         let tmd = """
-        ::SCORE::
-        ** Visualizer Test Song **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Visualizer Test Song **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Piano@|0|{
-            <4*>
-            1 3 5 1^
-            [C] - [G] -
-        }
+            verse:Piano@|0|{
+                <4*>
+                1 3 5 1^
+                [C] - [G] -
+            }
 
-        chorus:Piano@|0|{
-            <4*>
-            1 4 5 1^
-            [D] - [A] -
-        }
+            chorus:Piano@|0|{
+                <4*>
+                1 4 5 1^
+                [D] - [A] -
+            }
 
-        -> verse -> {?+2} -> chorus ->#
-        """
+            -> verse -> {?+2} -> chorus ->#
+            """
 
         let sheet = try #require(TmdParser.parse(string: tmd))
         let profile = TMDSongInspector.inspect(sheet: sheet)
@@ -416,19 +420,19 @@ struct TMDSongInspectorTests {
 
     @Test func testSongInspectorSupportsEnglishLocale() throws {
         let tmd = """
-        ::SCORE::
-        ** Localized Inspector **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Localized Inspector **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Piano@|0|{
-            <4*>
-            1 3 5 1^
-        }
+            verse:Piano@|0|{
+                <4*>
+                1 3 5 1^
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
 
         let sheet = try #require(TmdParser.parse(string: tmd))
         let profile = TMDSongInspector.inspect(sheet: sheet, locale: .en)

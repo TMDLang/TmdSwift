@@ -1,7 +1,8 @@
-import Testing
 import Foundation
-@testable import TmdSwift
+import Testing
 import TmdLilyPond
+
+@testable import TmdSwift
 
 @Suite("LilyPond Validation Tests")
 struct LilyPondValidationTests {
@@ -18,11 +19,13 @@ struct LilyPondValidationTests {
 
         let lines = ly.components(separatedBy: "\n")
         var definedVariables: [String] = []
-        let regex = try NSRegularExpression(pattern: #"^([A-Za-z][A-Za-z0-9_]*)\s*=\s*(?:\\drummode\s*)?\{"#)
+        let regex = try NSRegularExpression(
+            pattern: #"^([A-Za-z][A-Za-z0-9_]*)\s*=\s*(?:\\drummode\s*)?\{"#)
 
         for line in lines {
             let nsLine = line as NSString
-            let matches = regex.matches(in: line, range: NSRange(location: 0, length: nsLine.length))
+            let matches = regex.matches(
+                in: line, range: NSRange(location: 0, length: nsLine.length))
             if let match = matches.first {
                 let varName = nsLine.substring(with: match.range(at: 1))
                 if varName != "global" {
@@ -49,7 +52,8 @@ struct LilyPondValidationTests {
 
         let ly = TMDLilyPondGenerator.generateLilyPond(from: sheet)
 
-        let tokenRegex = try NSRegularExpression(pattern: #"(?:[a-g][a-z',]*|>|r|hh|sn|toml)(\d+)(\.*)"#)
+        let tokenRegex = try NSRegularExpression(
+            pattern: #"(?:[a-g][a-z',]*|>|r|hh|sn|toml)(\d+)(\.*)"#)
         let nsLy = ly as NSString
         let matches = tokenRegex.matches(in: ly, range: NSRange(location: 0, length: nsLy.length))
 
@@ -71,46 +75,48 @@ struct LilyPondValidationTests {
 
     @Test func testLilyPondMeasureBarlinesPresent() throws {
         let tmd = """
-        ::SCORE::
-        ** Barline Test **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Barline Test **
+            != 120
+            ?= C
+            <4/4>
 
-        A:Piano@|0|{
-            <4*>
-            1 2 3 4
-            5 6 7 1^
-        }
-        -> A ->#
-        """
+            A:Piano@|0|{
+                <4*>
+                1 2 3 4
+                5 6 7 1^
+            }
+            -> A ->#
+            """
         let sheet = try TmdParser.parseThrowing(string: tmd)
 
         let ly = TMDLilyPondGenerator.generateLilyPond(from: sheet)
         let barlineCount = ly.components(separatedBy: "|").count - 1
-        #expect(barlineCount >= 2, "Expected at least 2 barlines in multi-measure LilyPond score, got \(barlineCount)")
+        #expect(
+            barlineCount >= 2,
+            "Expected at least 2 barlines in multi-measure LilyPond score, got \(barlineCount)")
     }
 
     @Test func testLilyPondPercussionMappingAndRelativeKey() throws {
         let tmd = """
-        ::SCORE::
-        ** Percussion and Relative Key Test **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Percussion and Relative Key Test **
+            != 120
+            ?= C
+            <4/4>
 
-        A:Drums@|0|{
-            <4*>
-            | D S X O | T C B S |
-        }
-        A:Piano@|0|{
-            <4*>
-            | 1 2 3 4 |
-            {?+2}
-            | 1 2 3 4 |
-        }
-        -> A ->#
-        """
+            A:Drums@|0|{
+                <4*>
+                | D S X O | T C B S |
+            }
+            A:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
+                {?+2}
+                | 1 2 3 4 |
+            }
+            -> A ->#
+            """
         let sheet = try TmdParser.parseThrowing(string: tmd)
         let ly = TMDLilyPondGenerator.generateLilyPond(from: sheet)
 
@@ -129,20 +135,20 @@ struct LilyPondValidationTests {
     @Test func testLilyPondTempoBeatUnitBasedOnTimeSignature() throws {
         // Compound meter: 6/8 -> \tempo 4. = 80
         let tmdCompound = """
-        ::SCORE::
-        ** Compound Meter LilyPond **
-        != 120
-        ?= C
-        <6/8>
+            ::SCORE::
+            ** Compound Meter LilyPond **
+            != 120
+            ?= C
+            <6/8>
 
-        A:Piano@|0|{
-            <8*>
-            1 2 3 4 5 6
-            {!= 150}
-            1 2 3 4 5 6
-        }
-        -> A ->#
-        """
+            A:Piano@|0|{
+                <8*>
+                1 2 3 4 5 6
+                {!= 150}
+                1 2 3 4 5 6
+            }
+            -> A ->#
+            """
         let sheetCompound = try TmdParser.parseThrowing(string: tmdCompound)
         let lyCompound = TMDLilyPondGenerator.generateLilyPond(from: sheetCompound)
 
@@ -151,18 +157,18 @@ struct LilyPondValidationTests {
 
         // Cut time: 2/2 -> \tempo 2 = 60
         let tmdCutTime = """
-        ::SCORE::
-        ** Cut Time LilyPond **
-        != 120
-        ?= C
-        <2/2>
+            ::SCORE::
+            ** Cut Time LilyPond **
+            != 120
+            ?= C
+            <2/2>
 
-        A:Piano@|0|{
-            <2*>
-            1 2
-        }
-        -> A ->#
-        """
+            A:Piano@|0|{
+                <2*>
+                1 2
+            }
+            -> A ->#
+            """
         let sheetCutTime = try TmdParser.parseThrowing(string: tmdCutTime)
         let lyCutTime = TMDLilyPondGenerator.generateLilyPond(from: sheetCutTime)
 
@@ -170,18 +176,18 @@ struct LilyPondValidationTests {
 
         // 3/8 -> \tempo 8 = 240
         let tmdEighthTime = """
-        ::SCORE::
-        ** Simple Triple Eighth LilyPond **
-        != 120
-        ?= C
-        <3/8>
+            ::SCORE::
+            ** Simple Triple Eighth LilyPond **
+            != 120
+            ?= C
+            <3/8>
 
-        A:Piano@|0|{
-            <8*>
-            1 2 3
-        }
-        -> A ->#
-        """
+            A:Piano@|0|{
+                <8*>
+                1 2 3
+            }
+            -> A ->#
+            """
         let sheetEighthTime = try TmdParser.parseThrowing(string: tmdEighthTime)
         let lyEighthTime = TMDLilyPondGenerator.generateLilyPond(from: sheetEighthTime)
 
@@ -190,20 +196,20 @@ struct LilyPondValidationTests {
 
     @Test func testExplicitKeyAndDynamicsInLilyPond() throws {
         let tmd = """
-        ::SCORE::
-        ** Explicit Key & Dynamics **
-        != 120
-        ?= D
-        key= Bm
-        <4/4>
+            ::SCORE::
+            ** Explicit Key & Dynamics **
+            != 120
+            ?= D
+            key= Bm
+            <4/4>
 
-        A:Piano@|0|{
-            <4*>
-            | {p} 1 2 {f} 3 4 |
-            | {key= F#m} 1 2 3 4 |
-        }
-        -> A ->#
-        """
+            A:Piano@|0|{
+                <4*>
+                | {p} 1 2 {f} 3 4 |
+                | {key= F#m} 1 2 3 4 |
+            }
+            -> A ->#
+            """
         let sheet = try TmdParser.parseThrowing(string: tmd)
         let ly = TMDLilyPondGenerator.generateLilyPond(from: sheet)
 
@@ -218,4 +224,3 @@ struct LilyPondValidationTests {
         #expect(ly.contains("\\key fis \\minor"))
     }
 }
-

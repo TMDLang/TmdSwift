@@ -1,32 +1,33 @@
-import Testing
 import Foundation
+import Testing
+
 @testable import TmdSwift
 
 @Test func testTMDOutlineGeneration() throws {
     let source = """
-    ::SCORE::
-    ** My Song **
-    != 128
-    ?= G
-    <4/4>
+        ::SCORE::
+        ** My Song **
+        != 128
+        ?= G
+        <4/4>
 
-    intro:CHORD@|0|{
-        <4*>
-        [G] [D] [Em] [C] |
-    }
+        intro:CHORD@|0|{
+            <4*>
+            [G] [D] [Em] [C] |
+        }
 
-    intro:Piano@|0|{
-        <4*>
-        1 2 3 4 |
-    }
+        intro:Piano@|0|{
+            <4*>
+            1 2 3 4 |
+        }
 
-    verse:CHORD@|0|{
-        <4*>
-        [G] - [D] - |
-    }
+        verse:CHORD@|0|{
+            <4*>
+            [G] - [D] - |
+        }
 
-    -> intro -> verse ->#
-    """
+        -> intro -> verse ->#
+        """
 
     let nodes = TMDOutlineGenerator.generate(source: source)
 
@@ -49,7 +50,7 @@ import Foundation
         #expect(Bool(false), "Sections should have children")
         return
     }
-    #expect(sectionChildren.count == 2) // "intro" and "verse"
+    #expect(sectionChildren.count == 2)  // "intro" and "verse"
 
     let introNode = sectionChildren[0]
     #expect(introNode.name == "intro")
@@ -93,19 +94,19 @@ import Foundation
 
 @Test func testCLIOutlineCommand() throws {
     let source = """
-    ::SCORE::
-    ** CLI Outline Test **
-    != 100
-    ?= C
-    <4/4>
+        ::SCORE::
+        ** CLI Outline Test **
+        != 100
+        ?= C
+        <4/4>
 
-    intro:Piano@|0|{
-        <4*>
-        1 2 3 4 |
-    }
+        intro:Piano@|0|{
+            <4*>
+            1 2 3 4 |
+        }
 
-    -> intro ->#
-    """
+        -> intro ->#
+        """
 
     let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)

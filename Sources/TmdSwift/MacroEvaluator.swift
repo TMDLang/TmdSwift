@@ -25,7 +25,9 @@ public struct TMDMacroError: Error, LocalizedError, Equatable, Sendable {
 public enum TMDMacroEvaluator {
 
     /// Maps pitch in semitones (0-11) to ScaleDegree and Accidental.
-    public static func semitoneToDegreeAccidental(_ semi: Int) -> (degree: ScaleDegree, accidental: Accidental) {
+    public static func semitoneToDegreeAccidental(_ semi: Int) -> (
+        degree: ScaleDegree, accidental: Accidental
+    ) {
         let normalized = (semi % 12 + 12) % 12
         switch normalized {
         case 0: return (.c, .natural)
@@ -79,7 +81,9 @@ public enum TMDMacroEvaluator {
                 }
                 return UnitGroup(units: newUnits, length: group.length)
             }
-            return Section(noteLength: section.noteLength, unitGroups: newGroups, directives: section.directives, barlinePositions: section.barlinePositions)
+            return Section(
+                noteLength: section.noteLength, unitGroups: newGroups,
+                directives: section.directives, barlinePositions: section.barlinePositions)
         }
     }
 
@@ -95,11 +99,15 @@ public enum TMDMacroEvaluator {
             let count = s.unitGroups.count
             let sub = Array(allGroups[idx..<idx + count])
             idx += count
-            return Section(noteLength: s.noteLength, unitGroups: sub, directives: s.directives, barlinePositions: s.barlinePositions)
+            return Section(
+                noteLength: s.noteLength, unitGroups: sub, directives: s.directives,
+                barlinePositions: s.barlinePositions)
         }
     }
 
-    public static func invertSections(_ sections: [Section], axisPitchSemitones: Int? = nil) -> [Section] {
+    public static func invertSections(_ sections: [Section], axisPitchSemitones: Int? = nil)
+        -> [Section]
+    {
         var axis = axisPitchSemitones
         if axis == nil {
             outer: for s in sections {
@@ -144,7 +152,9 @@ public enum TMDMacroEvaluator {
                 }
                 return UnitGroup(units: newUnits, length: g.length)
             }
-            return Section(noteLength: s.noteLength, unitGroups: newGroups, directives: s.directives, barlinePositions: s.barlinePositions)
+            return Section(
+                noteLength: s.noteLength, unitGroups: newGroups, directives: s.directives,
+                barlinePositions: s.barlinePositions)
         }
     }
 
@@ -154,14 +164,20 @@ public enum TMDMacroEvaluator {
                 let newUnits = g.units.map { u -> Unit in
                     switch u {
                     case .note(let note):
-                        if (note.degree == .e || note.degree == .a || note.degree == .b) && note.accidental == .natural {
-                            return .note(Note(accidental: .flat, degree: note.degree, octave: note.octave))
+                        if (note.degree == .e || note.degree == .a || note.degree == .b)
+                            && note.accidental == .natural
+                        {
+                            return .note(
+                                Note(accidental: .flat, degree: note.degree, octave: note.octave))
                         }
                         return u
                     case .multiNote(let notes):
                         let newNotes = notes.map { note in
-                            if (note.degree == .e || note.degree == .a || note.degree == .b) && note.accidental == .natural {
-                                return Note(accidental: .flat, degree: note.degree, octave: note.octave)
+                            if (note.degree == .e || note.degree == .a || note.degree == .b)
+                                && note.accidental == .natural
+                            {
+                                return Note(
+                                    accidental: .flat, degree: note.degree, octave: note.octave)
                             }
                             return note
                         }
@@ -172,7 +188,9 @@ public enum TMDMacroEvaluator {
                 }
                 return UnitGroup(units: newUnits, length: g.length)
             }
-            return Section(noteLength: s.noteLength, unitGroups: newGroups, directives: s.directives, barlinePositions: s.barlinePositions)
+            return Section(
+                noteLength: s.noteLength, unitGroups: newGroups, directives: s.directives,
+                barlinePositions: s.barlinePositions)
         }
     }
 
@@ -182,14 +200,21 @@ public enum TMDMacroEvaluator {
                 let newUnits = g.units.map { u -> Unit in
                     switch u {
                     case .note(let note):
-                        if (note.degree == .e || note.degree == .a || note.degree == .b) && note.accidental == .flat {
-                            return .note(Note(accidental: .natural, degree: note.degree, octave: note.octave))
+                        if (note.degree == .e || note.degree == .a || note.degree == .b)
+                            && note.accidental == .flat
+                        {
+                            return .note(
+                                Note(accidental: .natural, degree: note.degree, octave: note.octave)
+                            )
                         }
                         return u
                     case .multiNote(let notes):
                         let newNotes = notes.map { note in
-                            if (note.degree == .e || note.degree == .a || note.degree == .b) && note.accidental == .flat {
-                                return Note(accidental: .natural, degree: note.degree, octave: note.octave)
+                            if (note.degree == .e || note.degree == .a || note.degree == .b)
+                                && note.accidental == .flat
+                            {
+                                return Note(
+                                    accidental: .natural, degree: note.degree, octave: note.octave)
                             }
                             return note
                         }
@@ -200,7 +225,9 @@ public enum TMDMacroEvaluator {
                 }
                 return UnitGroup(units: newUnits, length: g.length)
             }
-            return Section(noteLength: s.noteLength, unitGroups: newGroups, directives: s.directives, barlinePositions: s.barlinePositions)
+            return Section(
+                noteLength: s.noteLength, unitGroups: newGroups, directives: s.directives,
+                barlinePositions: s.barlinePositions)
         }
     }
 
@@ -208,7 +235,9 @@ public enum TMDMacroEvaluator {
     /// paragraphs and concrete order sequences.
     /// If the sheet contains no macro orders, it returns the sheet unchanged.
     public static func expand(_ sheet: Sheet) -> Sheet {
-        let hasMacro = sheet.playback.contains { if case .macro = $0 { return true } else { return false } }
+        let hasMacro = sheet.playback.contains {
+            if case .macro = $0 { return true } else { return false }
+        }
         if !hasMacro {
             return sheet
         }
@@ -262,7 +291,9 @@ public enum TMDMacroEvaluator {
 
                 if head == "transpose" {
                     guard items.count >= 3 else {
-                        throw TMDMacroError("'transpose' requires theme and semitones offset, e.g. (transpose Theme 7)")
+                        throw TMDMacroError(
+                            "'transpose' requires theme and semitones offset, e.g. (transpose Theme 7)"
+                        )
                     }
                     var target = items[1]
                     var semitones = 0
@@ -274,12 +305,16 @@ public enum TMDMacroEvaluator {
                     }
                     let sub = try getThemeSections(target)
                     let signStr = semitones >= 0 ? "+\(semitones)" : "\(semitones)"
-                    return ("\(sub.name)_tr\(signStr)", transposeSections(sub.sections, semitones: semitones))
+                    return (
+                        "\(sub.name)_tr\(signStr)",
+                        transposeSections(sub.sections, semitones: semitones)
+                    )
                 }
 
                 if head == "reverse" {
                     guard items.count >= 2 else {
-                        throw TMDMacroError("'reverse' requires a target theme, e.g. (reverse Theme)")
+                        throw TMDMacroError(
+                            "'reverse' requires a target theme, e.g. (reverse Theme)")
                     }
                     let sub = try getThemeSections(items[1])
                     return ("\(sub.name)_rev", reverseSections(sub.sections))
@@ -294,7 +329,9 @@ public enum TMDMacroEvaluator {
                         axis = a
                     }
                     let sub = try getThemeSections(items[1])
-                    return ("\(sub.name)_flip", invertSections(sub.sections, axisPitchSemitones: axis))
+                    return (
+                        "\(sub.name)_flip", invertSections(sub.sections, axisPitchSemitones: axis)
+                    )
                 }
 
                 if head == "minor" {
@@ -315,30 +352,43 @@ public enum TMDMacroEvaluator {
 
                 if head == "vary" {
                     guard items.count >= 2 else {
-                        throw TMDMacroError("'vary' requires a target theme, e.g. (vary Theme +7 reverse)")
+                        throw TMDMacroError(
+                            "'vary' requires a target theme, e.g. (vary Theme +7 reverse)")
                     }
                     var current = try getThemeSections(items[1])
                     for i in 2..<items.count {
                         let transform = items[i]
                         switch transform {
                         case .list(let tList):
-                            guard !tList.isEmpty, case .symbol(let tOpRaw) = tList[0] else { continue }
+                            guard !tList.isEmpty, case .symbol(let tOpRaw) = tList[0] else {
+                                continue
+                            }
                             let tOp = tOpRaw.lowercased()
                             if tOp == "transpose" {
                                 var semi = 0
                                 if tList.count >= 2, case .number(let n) = tList[1] { semi = n }
                                 let sign = semi >= 0 ? "+\(semi)" : "\(semi)"
-                                current = ("\(current.name)_tr\(sign)", transposeSections(current.sections, semitones: semi))
+                                current = (
+                                    "\(current.name)_tr\(sign)",
+                                    transposeSections(current.sections, semitones: semi)
+                                )
                             } else if tOp == "reverse" {
                                 current = ("\(current.name)_rev", reverseSections(current.sections))
                             } else if tOp == "flip" {
                                 var axis: Int? = nil
                                 if tList.count >= 2, case .number(let a) = tList[1] { axis = a }
-                                current = ("\(current.name)_flip", invertSections(current.sections, axisPitchSemitones: axis))
+                                current = (
+                                    "\(current.name)_flip",
+                                    invertSections(current.sections, axisPitchSemitones: axis)
+                                )
                             } else if tOp == "minor" {
-                                current = ("\(current.name)_minor", toMinorSections(current.sections))
+                                current = (
+                                    "\(current.name)_minor", toMinorSections(current.sections)
+                                )
                             } else if tOp == "major" {
-                                current = ("\(current.name)_major", toMajorSections(current.sections))
+                                current = (
+                                    "\(current.name)_major", toMajorSections(current.sections)
+                                )
                             }
                         case .symbol(let sym):
                             let lower = sym.lowercased()
@@ -347,16 +397,26 @@ public enum TMDMacroEvaluator {
                             } else if lower == "flip" {
                                 current = ("\(current.name)_flip", invertSections(current.sections))
                             } else if lower == "minor" {
-                                current = ("\(current.name)_minor", toMinorSections(current.sections))
+                                current = (
+                                    "\(current.name)_minor", toMinorSections(current.sections)
+                                )
                             } else if lower == "major" {
-                                current = ("\(current.name)_major", toMajorSections(current.sections))
+                                current = (
+                                    "\(current.name)_major", toMajorSections(current.sections)
+                                )
                             } else if let semi = Int(sym) {
                                 let sign = semi >= 0 ? "+\(semi)" : "\(semi)"
-                                current = ("\(current.name)_tr\(sign)", transposeSections(current.sections, semitones: semi))
+                                current = (
+                                    "\(current.name)_tr\(sign)",
+                                    transposeSections(current.sections, semitones: semi)
+                                )
                             }
                         case .number(let semi):
                             let sign = semi >= 0 ? "+\(semi)" : "\(semi)"
-                            current = ("\(current.name)_tr\(sign)", transposeSections(current.sections, semitones: semi))
+                            current = (
+                                "\(current.name)_tr\(sign)",
+                                transposeSections(current.sections, semitones: semi)
+                            )
                         }
                     }
                     return current
@@ -401,14 +461,16 @@ public enum TMDMacroEvaluator {
             switch op {
             case "play":
                 guard items.count == 3 || items.count == 4 || items.count == 5 else {
-                    throw TMDMacroError("'play' requires theme and instrument, e.g. (play Theme Violin)")
+                    throw TMDMacroError(
+                        "'play' requires theme and instrument, e.g. (play Theme Violin)")
                 }
                 let themeTarget = items[1]
                 let instrument = items[2].description
                 var atOffset = 0
                 if items.count == 5 {
                     guard case .symbol(let atFlag) = items[3], atFlag.lowercased() == ":at",
-                          case .number(let n) = items[4] else {
+                        case .number(let n) = items[4]
+                    else {
                         throw TMDMacroError("'play' offset must be an integer after :at")
                     }
                     atOffset = n
@@ -430,7 +492,8 @@ public enum TMDMacroEvaluator {
 
             case "loop":
                 guard items.count == 4 else {
-                    throw TMDMacroError("'loop' requires theme, instrument, and a positive integer count")
+                    throw TMDMacroError(
+                        "'loop' requires theme, instrument, and a positive integer count")
                 }
                 let themeTarget = items[1]
                 let instrument = items[2].description
@@ -446,7 +509,7 @@ public enum TMDMacroEvaluator {
 
                 let p = createSyntheticParagraph(
                     baseName: themeName,
-                            assignment: instrument,
+                    assignment: instrument,
                     startOffset: 0,
                     sections: loopedSections
                 )
@@ -454,7 +517,9 @@ public enum TMDMacroEvaluator {
 
             case "canon":
                 guard items.count == 4 else {
-                    throw TMDMacroError("'canon' requires a prototype, non-empty instrument list, and non-negative integer offset")
+                    throw TMDMacroError(
+                        "'canon' requires a prototype, non-empty instrument list, and non-negative integer offset"
+                    )
                 }
                 let themeTarget = items[1]
                 guard case .list(let instList) = items[2], !instList.isEmpty else {
@@ -472,7 +537,8 @@ public enum TMDMacroEvaluator {
                     let h = hRaw.lowercased()
                     if ["canon", "layer", "play", "loop", "seq"].contains(h) { return true }
                     if ["reverse", "flip", "minor", "major", "vary", "transpose"].contains(h) {
-                        return (subItems.count >= 2 && isSubExpr(subItems[1])) || (subItems.count >= 3 && isSubExpr(subItems[2]))
+                        return (subItems.count >= 2 && isSubExpr(subItems[1]))
+                            || (subItems.count >= 3 && isSubExpr(subItems[2]))
                     }
                     return false
                 }
@@ -482,7 +548,8 @@ public enum TMDMacroEvaluator {
                     let innerParagraphs = concreteParagraphs.filter { innerNames.contains($0.name) }
 
                     var innerDistinctInsts: [String] = []
-                    for ip in innerParagraphs where !innerDistinctInsts.contains(ip.assignment ?? "") {
+                    for ip in innerParagraphs
+                    where !innerDistinctInsts.contains(ip.assignment ?? "") {
                         innerDistinctInsts.append(ip.assignment ?? "")
                     }
 
@@ -491,22 +558,26 @@ public enum TMDMacroEvaluator {
 
                     if !instruments.isEmpty {
                         for ip in innerParagraphs {
-                            let instIdx = innerDistinctInsts.firstIndex(of: ip.assignment ?? "") ?? -1
-                            let mappedInst = (instIdx >= 0 && instIdx < instruments.count) ? instruments[instIdx] : (ip.assignment ?? "")
+                            let instIdx =
+                                innerDistinctInsts.firstIndex(of: ip.assignment ?? "") ?? -1
+                            let mappedInst =
+                                (instIdx >= 0 && instIdx < instruments.count)
+                                ? instruments[instIdx] : (ip.assignment ?? "")
 
                             let outerP = createSyntheticParagraph(
                                 baseName: ip.name,
-            assignment: mappedInst,
+                                assignment: mappedInst,
                                 startOffset: ip.start + offsetBars,
                                 sections: ip.sections
                             )
                             concreteParagraphs.removeAll { $0.name == outerP.name }
-                    concreteParagraphs.append(Entry(
-                                name: outerCanonSectionName,
-                    assignment: mappedInst,
-                                start: ip.start + offsetBars,
-                                sections: ip.sections
-                            ))
+                            concreteParagraphs.append(
+                                Entry(
+                                    name: outerCanonSectionName,
+                                    assignment: mappedInst,
+                                    start: ip.start + offsetBars,
+                                    sections: ip.sections
+                                ))
                         }
                     }
 
@@ -514,7 +585,7 @@ public enum TMDMacroEvaluator {
                         if innerNames.contains(concreteParagraphs[i].name) {
                             concreteParagraphs[i] = Entry(
                                 name: outerCanonSectionName,
-assignment: concreteParagraphs[i].assignment,
+                                assignment: concreteParagraphs[i].assignment,
                                 start: concreteParagraphs[i].start,
                                 sections: concreteParagraphs[i].sections
                             )
@@ -527,20 +598,27 @@ assignment: concreteParagraphs[i].assignment,
                 let (themeName, sections) = try getThemeSections(themeTarget)
                 let prototypeQuarterDuration = sections.reduce(0.0) { total, section in
                     let unitDuration = 4.0 / Double(max(1, section.noteLength))
-                    return total + section.unitGroups.reduce(0.0) { $0 + Double(max(0, $1.length)) * unitDuration }
+                    return total
+                        + section.unitGroups.reduce(0.0) {
+                            $0 + Double(max(0, $1.length)) * unitDuration
+                        }
                 }
-                let prototypeBars = prototypeQuarterDuration / TMDPlaybackRenderer.measureDuration(for: sheet.beat)
-                if let lastIndex = instruments.indices.last, Double(lastIndex * offsetBars) > prototypeBars {
-                    throw TMDMacroError("Canon voice \(lastIndex + 1) enters after the combined prototype ends")
+                let prototypeBars =
+                    prototypeQuarterDuration / TMDPlaybackRenderer.measureDuration(for: sheet.beat)
+                if let lastIndex = instruments.indices.last,
+                    Double(lastIndex * offsetBars) > prototypeBars
+                {
+                    throw TMDMacroError(
+                        "Canon voice \(lastIndex + 1) enters after the combined prototype ends")
                 }
                 genCounter += 1
                 let canonSectionName = "__canon_\(themeName)_\(genCounter)"
 
                 for (idx, inst) in instruments.enumerated() {
                     let startOffset = idx * offsetBars
-            let p = Entry(
+                    let p = Entry(
                         name: canonSectionName,
-            assignment: inst,
+                        assignment: inst,
                         start: startOffset,
                         sections: sections
                     )
@@ -563,9 +641,9 @@ assignment: concreteParagraphs[i].assignment,
                 let layerSectionName = "__layer_\(genCounter)"
                 for i in 0..<concreteParagraphs.count {
                     if childNames.contains(concreteParagraphs[i].name) {
-                            concreteParagraphs[i] = Entry(
+                        concreteParagraphs[i] = Entry(
                             name: layerSectionName,
-assignment: concreteParagraphs[i].assignment,
+                            assignment: concreteParagraphs[i].assignment,
                             start: concreteParagraphs[i].start,
                             sections: concreteParagraphs[i].sections
                         )
@@ -586,14 +664,15 @@ assignment: concreteParagraphs[i].assignment,
 
             case "reverse":
                 guard items.count >= 2 else {
-                    throw TMDMacroError("'reverse' requires a target theme or expression, e.g. (reverse Theme)")
+                    throw TMDMacroError(
+                        "'reverse' requires a target theme or expression, e.g. (reverse Theme)")
                 }
                 let innerNames = try evalExpr(items[1])
                 for i in 0..<concreteParagraphs.count {
                     if innerNames.contains(concreteParagraphs[i].name) {
-                            concreteParagraphs[i] = Entry(
+                        concreteParagraphs[i] = Entry(
                             name: concreteParagraphs[i].name,
-assignment: concreteParagraphs[i].assignment,
+                            assignment: concreteParagraphs[i].assignment,
                             start: concreteParagraphs[i].start,
                             sections: reverseSections(concreteParagraphs[i].sections)
                         )
@@ -603,18 +682,20 @@ assignment: concreteParagraphs[i].assignment,
 
             case "flip":
                 guard items.count >= 2 else {
-                    throw TMDMacroError("'flip' requires a target theme or expression, e.g. (flip Theme)")
+                    throw TMDMacroError(
+                        "'flip' requires a target theme or expression, e.g. (flip Theme)")
                 }
                 var axis: Int? = nil
                 if items.count >= 3, case .number(let a) = items[2] { axis = a }
                 let innerNames = try evalExpr(items[1])
                 for i in 0..<concreteParagraphs.count {
                     if innerNames.contains(concreteParagraphs[i].name) {
-                            concreteParagraphs[i] = Entry(
+                        concreteParagraphs[i] = Entry(
                             name: concreteParagraphs[i].name,
-assignment: concreteParagraphs[i].assignment,
+                            assignment: concreteParagraphs[i].assignment,
                             start: concreteParagraphs[i].start,
-                            sections: invertSections(concreteParagraphs[i].sections, axisPitchSemitones: axis)
+                            sections: invertSections(
+                                concreteParagraphs[i].sections, axisPitchSemitones: axis)
                         )
                     }
                 }
@@ -622,14 +703,15 @@ assignment: concreteParagraphs[i].assignment,
 
             case "minor":
                 guard items.count >= 2 else {
-                    throw TMDMacroError("'minor' requires a target theme or expression, e.g. (minor Theme)")
+                    throw TMDMacroError(
+                        "'minor' requires a target theme or expression, e.g. (minor Theme)")
                 }
                 let innerNames = try evalExpr(items[1])
                 for i in 0..<concreteParagraphs.count {
                     if innerNames.contains(concreteParagraphs[i].name) {
-                            concreteParagraphs[i] = Entry(
+                        concreteParagraphs[i] = Entry(
                             name: concreteParagraphs[i].name,
-assignment: concreteParagraphs[i].assignment,
+                            assignment: concreteParagraphs[i].assignment,
                             start: concreteParagraphs[i].start,
                             sections: toMinorSections(concreteParagraphs[i].sections)
                         )
@@ -639,14 +721,15 @@ assignment: concreteParagraphs[i].assignment,
 
             case "major":
                 guard items.count >= 2 else {
-                    throw TMDMacroError("'major' requires a target theme or expression, e.g. (major Theme)")
+                    throw TMDMacroError(
+                        "'major' requires a target theme or expression, e.g. (major Theme)")
                 }
                 let innerNames = try evalExpr(items[1])
                 for i in 0..<concreteParagraphs.count {
                     if innerNames.contains(concreteParagraphs[i].name) {
-                            concreteParagraphs[i] = Entry(
+                        concreteParagraphs[i] = Entry(
                             name: concreteParagraphs[i].name,
-assignment: concreteParagraphs[i].assignment,
+                            assignment: concreteParagraphs[i].assignment,
                             start: concreteParagraphs[i].start,
                             sections: toMajorSections(concreteParagraphs[i].sections)
                         )
@@ -656,7 +739,8 @@ assignment: concreteParagraphs[i].assignment,
 
             case "transpose":
                 guard items.count >= 3 else {
-                    throw TMDMacroError("'transpose' requires theme and semitones offset, e.g. (transpose Theme 7)")
+                    throw TMDMacroError(
+                        "'transpose' requires theme and semitones offset, e.g. (transpose Theme 7)")
                 }
                 var target = items[1]
                 var semitones = 0
@@ -669,11 +753,12 @@ assignment: concreteParagraphs[i].assignment,
                 let innerNames = try evalExpr(target)
                 for i in 0..<concreteParagraphs.count {
                     if innerNames.contains(concreteParagraphs[i].name) {
-                            concreteParagraphs[i] = Entry(
+                        concreteParagraphs[i] = Entry(
                             name: concreteParagraphs[i].name,
-assignment: concreteParagraphs[i].assignment,
+                            assignment: concreteParagraphs[i].assignment,
                             start: concreteParagraphs[i].start,
-                            sections: transposeSections(concreteParagraphs[i].sections, semitones: semitones)
+                            sections: transposeSections(
+                                concreteParagraphs[i].sections, semitones: semitones)
                         )
                     }
                 }
@@ -681,7 +766,9 @@ assignment: concreteParagraphs[i].assignment,
 
             case "vary":
                 guard items.count >= 2 else {
-                    throw TMDMacroError("'vary' requires a target theme or expression, e.g. (vary Theme +7 reverse)")
+                    throw TMDMacroError(
+                        "'vary' requires a target theme or expression, e.g. (vary Theme +7 reverse)"
+                    )
                 }
                 let innerNames = try evalExpr(items[1])
                 for i in 2..<items.count {
@@ -693,19 +780,22 @@ assignment: concreteParagraphs[i].assignment,
                         if tOp == "transpose" {
                             var semi = 0
                             if tList.count >= 2, case .number(let n) = tList[1] { semi = n }
-                            for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
+                            for idx in 0..<concreteParagraphs.count
+                            where innerNames.contains(concreteParagraphs[idx].name) {
                                 concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
-assignment: concreteParagraphs[idx].assignment,
+                                    assignment: concreteParagraphs[idx].assignment,
                                     start: concreteParagraphs[idx].start,
-                                    sections: transposeSections(concreteParagraphs[idx].sections, semitones: semi)
+                                    sections: transposeSections(
+                                        concreteParagraphs[idx].sections, semitones: semi)
                                 )
                             }
                         } else if tOp == "reverse" {
-                            for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
+                            for idx in 0..<concreteParagraphs.count
+                            where innerNames.contains(concreteParagraphs[idx].name) {
                                 concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
-assignment: concreteParagraphs[idx].assignment,
+                                    assignment: concreteParagraphs[idx].assignment,
                                     start: concreteParagraphs[idx].start,
                                     sections: reverseSections(concreteParagraphs[idx].sections)
                                 )
@@ -713,28 +803,32 @@ assignment: concreteParagraphs[idx].assignment,
                         } else if tOp == "flip" {
                             var axis: Int? = nil
                             if tList.count >= 2, case .number(let a) = tList[1] { axis = a }
-                            for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
+                            for idx in 0..<concreteParagraphs.count
+                            where innerNames.contains(concreteParagraphs[idx].name) {
                                 concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
-assignment: concreteParagraphs[idx].assignment,
+                                    assignment: concreteParagraphs[idx].assignment,
                                     start: concreteParagraphs[idx].start,
-                                    sections: invertSections(concreteParagraphs[idx].sections, axisPitchSemitones: axis)
+                                    sections: invertSections(
+                                        concreteParagraphs[idx].sections, axisPitchSemitones: axis)
                                 )
                             }
                         } else if tOp == "minor" {
-                            for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
+                            for idx in 0..<concreteParagraphs.count
+                            where innerNames.contains(concreteParagraphs[idx].name) {
                                 concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
-assignment: concreteParagraphs[idx].assignment,
+                                    assignment: concreteParagraphs[idx].assignment,
                                     start: concreteParagraphs[idx].start,
                                     sections: toMinorSections(concreteParagraphs[idx].sections)
                                 )
                             }
                         } else if tOp == "major" {
-                            for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
+                            for idx in 0..<concreteParagraphs.count
+                            where innerNames.contains(concreteParagraphs[idx].name) {
                                 concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
-assignment: concreteParagraphs[idx].assignment,
+                                    assignment: concreteParagraphs[idx].assignment,
                                     start: concreteParagraphs[idx].start,
                                     sections: toMajorSections(concreteParagraphs[idx].sections)
                                 )
@@ -743,58 +837,66 @@ assignment: concreteParagraphs[idx].assignment,
                     case .symbol(let sym):
                         let lower = sym.lowercased()
                         if lower == "reverse" {
-                            for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
+                            for idx in 0..<concreteParagraphs.count
+                            where innerNames.contains(concreteParagraphs[idx].name) {
                                 concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
-assignment: concreteParagraphs[idx].assignment,
+                                    assignment: concreteParagraphs[idx].assignment,
                                     start: concreteParagraphs[idx].start,
                                     sections: reverseSections(concreteParagraphs[idx].sections)
                                 )
                             }
                         } else if lower == "flip" {
-                            for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
+                            for idx in 0..<concreteParagraphs.count
+                            where innerNames.contains(concreteParagraphs[idx].name) {
                                 concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
-assignment: concreteParagraphs[idx].assignment,
+                                    assignment: concreteParagraphs[idx].assignment,
                                     start: concreteParagraphs[idx].start,
                                     sections: invertSections(concreteParagraphs[idx].sections)
                                 )
                             }
                         } else if lower == "minor" {
-                            for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
+                            for idx in 0..<concreteParagraphs.count
+                            where innerNames.contains(concreteParagraphs[idx].name) {
                                 concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
-assignment: concreteParagraphs[idx].assignment,
+                                    assignment: concreteParagraphs[idx].assignment,
                                     start: concreteParagraphs[idx].start,
                                     sections: toMinorSections(concreteParagraphs[idx].sections)
                                 )
                             }
                         } else if lower == "major" {
-                            for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
+                            for idx in 0..<concreteParagraphs.count
+                            where innerNames.contains(concreteParagraphs[idx].name) {
                                 concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
-assignment: concreteParagraphs[idx].assignment,
+                                    assignment: concreteParagraphs[idx].assignment,
                                     start: concreteParagraphs[idx].start,
                                     sections: toMajorSections(concreteParagraphs[idx].sections)
                                 )
                             }
                         } else if let semi = Int(sym) {
-                            for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
+                            for idx in 0..<concreteParagraphs.count
+                            where innerNames.contains(concreteParagraphs[idx].name) {
                                 concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
-assignment: concreteParagraphs[idx].assignment,
+                                    assignment: concreteParagraphs[idx].assignment,
                                     start: concreteParagraphs[idx].start,
-                                    sections: transposeSections(concreteParagraphs[idx].sections, semitones: semi)
+                                    sections: transposeSections(
+                                        concreteParagraphs[idx].sections, semitones: semi)
                                 )
                             }
                         }
                     case .number(let semi):
-                        for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
-                                concreteParagraphs[idx] = Entry(
+                        for idx in 0..<concreteParagraphs.count
+                        where innerNames.contains(concreteParagraphs[idx].name) {
+                            concreteParagraphs[idx] = Entry(
                                 name: concreteParagraphs[idx].name,
-assignment: concreteParagraphs[idx].assignment,
+                                assignment: concreteParagraphs[idx].assignment,
                                 start: concreteParagraphs[idx].start,
-                                sections: transposeSections(concreteParagraphs[idx].sections, semitones: semi)
+                                sections: transposeSections(
+                                    concreteParagraphs[idx].sections, semitones: semi)
                             )
                         }
                     }
@@ -839,7 +941,9 @@ assignment: concreteParagraphs[idx].assignment,
 
     /// Throwing variant of expand.
     public static func expandThrowing(_ sheet: Sheet) throws -> Sheet {
-        let hasMacro = sheet.playback.contains { if case .macro = $0 { return true } else { return false } }
+        let hasMacro = sheet.playback.contains {
+            if case .macro = $0 { return true } else { return false }
+        }
         if !hasMacro {
             return sheet
         }
@@ -892,7 +996,9 @@ assignment: concreteParagraphs[idx].assignment,
 
                 if head == "transpose" {
                     guard items.count >= 3 else {
-                        throw TMDMacroError("'transpose' requires theme and semitones offset, e.g. (transpose Theme 7)")
+                        throw TMDMacroError(
+                            "'transpose' requires theme and semitones offset, e.g. (transpose Theme 7)"
+                        )
                     }
                     var target = items[1]
                     var semitones = 0
@@ -904,12 +1010,16 @@ assignment: concreteParagraphs[idx].assignment,
                     }
                     let sub = try getThemeSections(target)
                     let signStr = semitones >= 0 ? "+\(semitones)" : "\(semitones)"
-                    return ("\(sub.name)_tr\(signStr)", transposeSections(sub.sections, semitones: semitones))
+                    return (
+                        "\(sub.name)_tr\(signStr)",
+                        transposeSections(sub.sections, semitones: semitones)
+                    )
                 }
 
                 if head == "reverse" {
                     guard items.count >= 2 else {
-                        throw TMDMacroError("'reverse' requires a target theme, e.g. (reverse Theme)")
+                        throw TMDMacroError(
+                            "'reverse' requires a target theme, e.g. (reverse Theme)")
                     }
                     let sub = try getThemeSections(items[1])
                     return ("\(sub.name)_rev", reverseSections(sub.sections))
@@ -924,7 +1034,9 @@ assignment: concreteParagraphs[idx].assignment,
                         axis = a
                     }
                     let sub = try getThemeSections(items[1])
-                    return ("\(sub.name)_flip", invertSections(sub.sections, axisPitchSemitones: axis))
+                    return (
+                        "\(sub.name)_flip", invertSections(sub.sections, axisPitchSemitones: axis)
+                    )
                 }
 
                 if head == "minor" {
@@ -945,30 +1057,43 @@ assignment: concreteParagraphs[idx].assignment,
 
                 if head == "vary" {
                     guard items.count >= 2 else {
-                        throw TMDMacroError("'vary' requires a target theme, e.g. (vary Theme +7 reverse)")
+                        throw TMDMacroError(
+                            "'vary' requires a target theme, e.g. (vary Theme +7 reverse)")
                     }
                     var current = try getThemeSections(items[1])
                     for i in 2..<items.count {
                         let transform = items[i]
                         switch transform {
                         case .list(let tList):
-                            guard !tList.isEmpty, case .symbol(let tOpRaw) = tList[0] else { continue }
+                            guard !tList.isEmpty, case .symbol(let tOpRaw) = tList[0] else {
+                                continue
+                            }
                             let tOp = tOpRaw.lowercased()
                             if tOp == "transpose" {
                                 var semi = 0
                                 if tList.count >= 2, case .number(let n) = tList[1] { semi = n }
                                 let sign = semi >= 0 ? "+\(semi)" : "\(semi)"
-                                current = ("\(current.name)_tr\(sign)", transposeSections(current.sections, semitones: semi))
+                                current = (
+                                    "\(current.name)_tr\(sign)",
+                                    transposeSections(current.sections, semitones: semi)
+                                )
                             } else if tOp == "reverse" {
                                 current = ("\(current.name)_rev", reverseSections(current.sections))
                             } else if tOp == "flip" {
                                 var axis: Int? = nil
                                 if tList.count >= 2, case .number(let a) = tList[1] { axis = a }
-                                current = ("\(current.name)_flip", invertSections(current.sections, axisPitchSemitones: axis))
+                                current = (
+                                    "\(current.name)_flip",
+                                    invertSections(current.sections, axisPitchSemitones: axis)
+                                )
                             } else if tOp == "minor" {
-                                current = ("\(current.name)_minor", toMinorSections(current.sections))
+                                current = (
+                                    "\(current.name)_minor", toMinorSections(current.sections)
+                                )
                             } else if tOp == "major" {
-                                current = ("\(current.name)_major", toMajorSections(current.sections))
+                                current = (
+                                    "\(current.name)_major", toMajorSections(current.sections)
+                                )
                             }
                         case .symbol(let sym):
                             let lower = sym.lowercased()
@@ -977,16 +1102,26 @@ assignment: concreteParagraphs[idx].assignment,
                             } else if lower == "flip" {
                                 current = ("\(current.name)_flip", invertSections(current.sections))
                             } else if lower == "minor" {
-                                current = ("\(current.name)_minor", toMinorSections(current.sections))
+                                current = (
+                                    "\(current.name)_minor", toMinorSections(current.sections)
+                                )
                             } else if lower == "major" {
-                                current = ("\(current.name)_major", toMajorSections(current.sections))
+                                current = (
+                                    "\(current.name)_major", toMajorSections(current.sections)
+                                )
                             } else if let semi = Int(sym) {
                                 let sign = semi >= 0 ? "+\(semi)" : "\(semi)"
-                                current = ("\(current.name)_tr\(sign)", transposeSections(current.sections, semitones: semi))
+                                current = (
+                                    "\(current.name)_tr\(sign)",
+                                    transposeSections(current.sections, semitones: semi)
+                                )
                             }
                         case .number(let semi):
                             let sign = semi >= 0 ? "+\(semi)" : "\(semi)"
-                            current = ("\(current.name)_tr\(sign)", transposeSections(current.sections, semitones: semi))
+                            current = (
+                                "\(current.name)_tr\(sign)",
+                                transposeSections(current.sections, semitones: semi)
+                            )
                         }
                     }
                     return current
@@ -1030,7 +1165,8 @@ assignment: concreteParagraphs[idx].assignment,
             switch op {
             case "play":
                 guard items.count >= 3 else {
-                    throw TMDMacroError("'play' requires theme and instrument, e.g. (play Theme Violin)")
+                    throw TMDMacroError(
+                        "'play' requires theme and instrument, e.g. (play Theme Violin)")
                 }
                 let themeTarget = items[1]
                 let instrument = items[2].description
@@ -1039,7 +1175,8 @@ assignment: concreteParagraphs[idx].assignment,
                     throw TMDMacroError("'play' requires exactly one optional integer offset")
                 } else if items.count == 5 {
                     guard case .symbol(let atFlag) = items[3], atFlag.lowercased() == ":at",
-                          case .number(let n) = items[4] else {
+                        case .number(let n) = items[4]
+                    else {
                         throw TMDMacroError("'play' offset must be an integer after :at")
                     }
                     atOffset = n
@@ -1053,7 +1190,7 @@ assignment: concreteParagraphs[idx].assignment,
                 let (themeName, sections) = try getThemeSections(themeTarget)
                 let p = createSyntheticParagraph(
                     baseName: themeName,
-                                assignment: instrument,
+                    assignment: instrument,
                     startOffset: atOffset,
                     sections: sections
                 )
@@ -1061,11 +1198,14 @@ assignment: concreteParagraphs[idx].assignment,
 
             case "loop":
                 guard items.count >= 3 else {
-                    throw TMDMacroError("'loop' requires theme and instrument (or theme and times), e.g. (loop B 10) or (loop Theme Cello 4)")
+                    throw TMDMacroError(
+                        "'loop' requires theme and instrument (or theme and times), e.g. (loop B 10) or (loop Theme Cello 4)"
+                    )
                 }
                 let themeTarget = items[1]
                 guard items.count == 4 else {
-                    throw TMDMacroError("'loop' requires theme, instrument, and a positive integer count")
+                    throw TMDMacroError(
+                        "'loop' requires theme, instrument, and a positive integer count")
                 }
                 let instrument = items[2].description
                 guard case .number(let times) = items[3], times > 0 else {
@@ -1080,7 +1220,7 @@ assignment: concreteParagraphs[idx].assignment,
 
                 let p = createSyntheticParagraph(
                     baseName: themeName,
-        assignment: instrument,
+                    assignment: instrument,
                     startOffset: 0,
                     sections: loopedSections
                 )
@@ -1088,7 +1228,9 @@ assignment: concreteParagraphs[idx].assignment,
 
             case "canon":
                 guard items.count == 4 else {
-                    throw TMDMacroError("'canon' requires a prototype, non-empty instrument list, and non-negative integer offset")
+                    throw TMDMacroError(
+                        "'canon' requires a prototype, non-empty instrument list, and non-negative integer offset"
+                    )
                 }
                 let themeTarget = items[1]
                 guard case .list(let instList) = items[2], !instList.isEmpty else {
@@ -1105,7 +1247,8 @@ assignment: concreteParagraphs[idx].assignment,
                     let h = hRaw.lowercased()
                     if ["canon", "layer", "play", "loop", "seq"].contains(h) { return true }
                     if ["reverse", "flip", "minor", "major", "vary", "transpose"].contains(h) {
-                        return (subItems.count >= 2 && isSubExpr(subItems[1])) || (subItems.count >= 3 && isSubExpr(subItems[2]))
+                        return (subItems.count >= 2 && isSubExpr(subItems[1]))
+                            || (subItems.count >= 3 && isSubExpr(subItems[2]))
                     }
                     return false
                 }
@@ -1115,7 +1258,8 @@ assignment: concreteParagraphs[idx].assignment,
                     let innerParagraphs = concreteParagraphs.filter { innerNames.contains($0.name) }
 
                     var innerDistinctInsts: [String] = []
-                    for ip in innerParagraphs where !innerDistinctInsts.contains(ip.assignment ?? "") {
+                    for ip in innerParagraphs
+                    where !innerDistinctInsts.contains(ip.assignment ?? "") {
                         innerDistinctInsts.append(ip.assignment ?? "")
                     }
 
@@ -1124,22 +1268,26 @@ assignment: concreteParagraphs[idx].assignment,
 
                     if !instruments.isEmpty {
                         for ip in innerParagraphs {
-                            let instIdx = innerDistinctInsts.firstIndex(of: ip.assignment ?? "") ?? -1
-                            let mappedInst = (instIdx >= 0 && instIdx < instruments.count) ? instruments[instIdx] : (ip.assignment ?? "")
+                            let instIdx =
+                                innerDistinctInsts.firstIndex(of: ip.assignment ?? "") ?? -1
+                            let mappedInst =
+                                (instIdx >= 0 && instIdx < instruments.count)
+                                ? instruments[instIdx] : (ip.assignment ?? "")
 
                             let outerP = createSyntheticParagraph(
                                 baseName: ip.name,
-                            assignment: mappedInst,
+                                assignment: mappedInst,
                                 startOffset: ip.start + offsetBars,
                                 sections: ip.sections
                             )
                             concreteParagraphs.removeAll { $0.name == outerP.name }
-                            concreteParagraphs.append(Entry(
-                                name: outerCanonSectionName,
-                                assignment: mappedInst,
-                                start: ip.start + offsetBars,
-                                sections: ip.sections
-                            ))
+                            concreteParagraphs.append(
+                                Entry(
+                                    name: outerCanonSectionName,
+                                    assignment: mappedInst,
+                                    start: ip.start + offsetBars,
+                                    sections: ip.sections
+                                ))
                         }
                     }
 
@@ -1147,7 +1295,7 @@ assignment: concreteParagraphs[idx].assignment,
                         if innerNames.contains(concreteParagraphs[i].name) {
                             concreteParagraphs[i] = Entry(
                                 name: outerCanonSectionName,
-assignment: concreteParagraphs[i].assignment,
+                                assignment: concreteParagraphs[i].assignment,
                                 start: concreteParagraphs[i].start,
                                 sections: concreteParagraphs[i].sections
                             )
@@ -1160,20 +1308,27 @@ assignment: concreteParagraphs[i].assignment,
                 let (themeName, sections) = try getThemeSections(themeTarget)
                 let prototypeQuarterDuration = sections.reduce(0.0) { total, section in
                     let unitDuration = 4.0 / Double(max(1, section.noteLength))
-                    return total + section.unitGroups.reduce(0.0) { $0 + Double(max(0, $1.length)) * unitDuration }
+                    return total
+                        + section.unitGroups.reduce(0.0) {
+                            $0 + Double(max(0, $1.length)) * unitDuration
+                        }
                 }
-                let prototypeBars = prototypeQuarterDuration / TMDPlaybackRenderer.measureDuration(for: sheet.beat)
-                if let lastIndex = instruments.indices.last, Double(lastIndex * offsetBars) > prototypeBars {
-                    throw TMDMacroError("Canon voice \(lastIndex + 1) enters after the combined prototype ends")
+                let prototypeBars =
+                    prototypeQuarterDuration / TMDPlaybackRenderer.measureDuration(for: sheet.beat)
+                if let lastIndex = instruments.indices.last,
+                    Double(lastIndex * offsetBars) > prototypeBars
+                {
+                    throw TMDMacroError(
+                        "Canon voice \(lastIndex + 1) enters after the combined prototype ends")
                 }
                 genCounter += 1
                 let canonSectionName = "__canon_\(themeName)_\(genCounter)"
 
                 for (idx, inst) in instruments.enumerated() {
                     let startOffset = idx * offsetBars
-            let p = Entry(
+                    let p = Entry(
                         name: canonSectionName,
-                    assignment: inst,
+                        assignment: inst,
                         start: startOffset,
                         sections: sections
                     )
@@ -1196,9 +1351,9 @@ assignment: concreteParagraphs[i].assignment,
                 let layerSectionName = "__layer_\(genCounter)"
                 for i in 0..<concreteParagraphs.count {
                     if childNames.contains(concreteParagraphs[i].name) {
-                            concreteParagraphs[i] = Entry(
+                        concreteParagraphs[i] = Entry(
                             name: layerSectionName,
-assignment: concreteParagraphs[i].assignment,
+                            assignment: concreteParagraphs[i].assignment,
                             start: concreteParagraphs[i].start,
                             sections: concreteParagraphs[i].sections
                         )
@@ -1219,14 +1374,15 @@ assignment: concreteParagraphs[i].assignment,
 
             case "reverse":
                 guard items.count >= 2 else {
-                    throw TMDMacroError("'reverse' requires a target theme or expression, e.g. (reverse Theme)")
+                    throw TMDMacroError(
+                        "'reverse' requires a target theme or expression, e.g. (reverse Theme)")
                 }
                 let innerNames = try evalExpr(items[1])
                 for i in 0..<concreteParagraphs.count {
                     if innerNames.contains(concreteParagraphs[i].name) {
-                            concreteParagraphs[i] = Entry(
+                        concreteParagraphs[i] = Entry(
                             name: concreteParagraphs[i].name,
-assignment: concreteParagraphs[i].assignment,
+                            assignment: concreteParagraphs[i].assignment,
                             start: concreteParagraphs[i].start,
                             sections: reverseSections(concreteParagraphs[i].sections)
                         )
@@ -1236,18 +1392,20 @@ assignment: concreteParagraphs[i].assignment,
 
             case "flip":
                 guard items.count >= 2 else {
-                    throw TMDMacroError("'flip' requires a target theme or expression, e.g. (flip Theme)")
+                    throw TMDMacroError(
+                        "'flip' requires a target theme or expression, e.g. (flip Theme)")
                 }
                 var axis: Int? = nil
                 if items.count >= 3, case .number(let a) = items[2] { axis = a }
                 let innerNames = try evalExpr(items[1])
                 for i in 0..<concreteParagraphs.count {
                     if innerNames.contains(concreteParagraphs[i].name) {
-                            concreteParagraphs[i] = Entry(
+                        concreteParagraphs[i] = Entry(
                             name: concreteParagraphs[i].name,
-assignment: concreteParagraphs[i].assignment,
+                            assignment: concreteParagraphs[i].assignment,
                             start: concreteParagraphs[i].start,
-                            sections: invertSections(concreteParagraphs[i].sections, axisPitchSemitones: axis)
+                            sections: invertSections(
+                                concreteParagraphs[i].sections, axisPitchSemitones: axis)
                         )
                     }
                 }
@@ -1255,14 +1413,15 @@ assignment: concreteParagraphs[i].assignment,
 
             case "minor":
                 guard items.count >= 2 else {
-                    throw TMDMacroError("'minor' requires a target theme or expression, e.g. (minor Theme)")
+                    throw TMDMacroError(
+                        "'minor' requires a target theme or expression, e.g. (minor Theme)")
                 }
                 let innerNames = try evalExpr(items[1])
                 for i in 0..<concreteParagraphs.count {
                     if innerNames.contains(concreteParagraphs[i].name) {
-                            concreteParagraphs[i] = Entry(
+                        concreteParagraphs[i] = Entry(
                             name: concreteParagraphs[i].name,
-assignment: concreteParagraphs[i].assignment,
+                            assignment: concreteParagraphs[i].assignment,
                             start: concreteParagraphs[i].start,
                             sections: toMinorSections(concreteParagraphs[i].sections)
                         )
@@ -1272,14 +1431,15 @@ assignment: concreteParagraphs[i].assignment,
 
             case "major":
                 guard items.count >= 2 else {
-                    throw TMDMacroError("'major' requires a target theme or expression, e.g. (major Theme)")
+                    throw TMDMacroError(
+                        "'major' requires a target theme or expression, e.g. (major Theme)")
                 }
                 let innerNames = try evalExpr(items[1])
                 for i in 0..<concreteParagraphs.count {
                     if innerNames.contains(concreteParagraphs[i].name) {
-                            concreteParagraphs[i] = Entry(
+                        concreteParagraphs[i] = Entry(
                             name: concreteParagraphs[i].name,
-assignment: concreteParagraphs[i].assignment,
+                            assignment: concreteParagraphs[i].assignment,
                             start: concreteParagraphs[i].start,
                             sections: toMajorSections(concreteParagraphs[i].sections)
                         )
@@ -1289,7 +1449,8 @@ assignment: concreteParagraphs[i].assignment,
 
             case "transpose":
                 guard items.count >= 3 else {
-                    throw TMDMacroError("'transpose' requires theme and semitones offset, e.g. (transpose Theme 7)")
+                    throw TMDMacroError(
+                        "'transpose' requires theme and semitones offset, e.g. (transpose Theme 7)")
                 }
                 var target = items[1]
                 var semitones = 0
@@ -1302,11 +1463,12 @@ assignment: concreteParagraphs[i].assignment,
                 let innerNames = try evalExpr(target)
                 for i in 0..<concreteParagraphs.count {
                     if innerNames.contains(concreteParagraphs[i].name) {
-                            concreteParagraphs[i] = Entry(
+                        concreteParagraphs[i] = Entry(
                             name: concreteParagraphs[i].name,
-assignment: concreteParagraphs[i].assignment,
+                            assignment: concreteParagraphs[i].assignment,
                             start: concreteParagraphs[i].start,
-                            sections: transposeSections(concreteParagraphs[i].sections, semitones: semitones)
+                            sections: transposeSections(
+                                concreteParagraphs[i].sections, semitones: semitones)
                         )
                     }
                 }
@@ -1314,7 +1476,9 @@ assignment: concreteParagraphs[i].assignment,
 
             case "vary":
                 guard items.count >= 2 else {
-                    throw TMDMacroError("'vary' requires a target theme or expression, e.g. (vary Theme +7 reverse)")
+                    throw TMDMacroError(
+                        "'vary' requires a target theme or expression, e.g. (vary Theme +7 reverse)"
+                    )
                 }
                 let innerNames = try evalExpr(items[1])
                 for i in 2..<items.count {
@@ -1326,19 +1490,22 @@ assignment: concreteParagraphs[i].assignment,
                         if tOp == "transpose" {
                             var semi = 0
                             if tList.count >= 2, case .number(let n) = tList[1] { semi = n }
-                            for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
+                            for idx in 0..<concreteParagraphs.count
+                            where innerNames.contains(concreteParagraphs[idx].name) {
                                 concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
-assignment: concreteParagraphs[idx].assignment,
+                                    assignment: concreteParagraphs[idx].assignment,
                                     start: concreteParagraphs[idx].start,
-                                    sections: transposeSections(concreteParagraphs[idx].sections, semitones: semi)
+                                    sections: transposeSections(
+                                        concreteParagraphs[idx].sections, semitones: semi)
                                 )
                             }
                         } else if tOp == "reverse" {
-                            for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
+                            for idx in 0..<concreteParagraphs.count
+                            where innerNames.contains(concreteParagraphs[idx].name) {
                                 concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
-assignment: concreteParagraphs[idx].assignment,
+                                    assignment: concreteParagraphs[idx].assignment,
                                     start: concreteParagraphs[idx].start,
                                     sections: reverseSections(concreteParagraphs[idx].sections)
                                 )
@@ -1346,28 +1513,32 @@ assignment: concreteParagraphs[idx].assignment,
                         } else if tOp == "flip" {
                             var axis: Int? = nil
                             if tList.count >= 2, case .number(let a) = tList[1] { axis = a }
-                            for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
+                            for idx in 0..<concreteParagraphs.count
+                            where innerNames.contains(concreteParagraphs[idx].name) {
                                 concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
-assignment: concreteParagraphs[idx].assignment,
+                                    assignment: concreteParagraphs[idx].assignment,
                                     start: concreteParagraphs[idx].start,
-                                    sections: invertSections(concreteParagraphs[idx].sections, axisPitchSemitones: axis)
+                                    sections: invertSections(
+                                        concreteParagraphs[idx].sections, axisPitchSemitones: axis)
                                 )
                             }
                         } else if tOp == "minor" {
-                            for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
+                            for idx in 0..<concreteParagraphs.count
+                            where innerNames.contains(concreteParagraphs[idx].name) {
                                 concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
-assignment: concreteParagraphs[idx].assignment,
+                                    assignment: concreteParagraphs[idx].assignment,
                                     start: concreteParagraphs[idx].start,
                                     sections: toMinorSections(concreteParagraphs[idx].sections)
                                 )
                             }
                         } else if tOp == "major" {
-                            for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
+                            for idx in 0..<concreteParagraphs.count
+                            where innerNames.contains(concreteParagraphs[idx].name) {
                                 concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
-assignment: concreteParagraphs[idx].assignment,
+                                    assignment: concreteParagraphs[idx].assignment,
                                     start: concreteParagraphs[idx].start,
                                     sections: toMajorSections(concreteParagraphs[idx].sections)
                                 )
@@ -1376,58 +1547,66 @@ assignment: concreteParagraphs[idx].assignment,
                     case .symbol(let sym):
                         let lower = sym.lowercased()
                         if lower == "reverse" {
-                            for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
+                            for idx in 0..<concreteParagraphs.count
+                            where innerNames.contains(concreteParagraphs[idx].name) {
                                 concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
-assignment: concreteParagraphs[idx].assignment,
+                                    assignment: concreteParagraphs[idx].assignment,
                                     start: concreteParagraphs[idx].start,
                                     sections: reverseSections(concreteParagraphs[idx].sections)
                                 )
                             }
                         } else if lower == "flip" {
-                            for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
+                            for idx in 0..<concreteParagraphs.count
+                            where innerNames.contains(concreteParagraphs[idx].name) {
                                 concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
-assignment: concreteParagraphs[idx].assignment,
+                                    assignment: concreteParagraphs[idx].assignment,
                                     start: concreteParagraphs[idx].start,
                                     sections: invertSections(concreteParagraphs[idx].sections)
                                 )
                             }
                         } else if lower == "minor" {
-                            for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
+                            for idx in 0..<concreteParagraphs.count
+                            where innerNames.contains(concreteParagraphs[idx].name) {
                                 concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
-assignment: concreteParagraphs[idx].assignment,
+                                    assignment: concreteParagraphs[idx].assignment,
                                     start: concreteParagraphs[idx].start,
                                     sections: toMinorSections(concreteParagraphs[idx].sections)
                                 )
                             }
                         } else if lower == "major" {
-                            for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
+                            for idx in 0..<concreteParagraphs.count
+                            where innerNames.contains(concreteParagraphs[idx].name) {
                                 concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
-assignment: concreteParagraphs[idx].assignment,
+                                    assignment: concreteParagraphs[idx].assignment,
                                     start: concreteParagraphs[idx].start,
                                     sections: toMajorSections(concreteParagraphs[idx].sections)
                                 )
                             }
                         } else if let semi = Int(sym) {
-                            for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
+                            for idx in 0..<concreteParagraphs.count
+                            where innerNames.contains(concreteParagraphs[idx].name) {
                                 concreteParagraphs[idx] = Entry(
                                     name: concreteParagraphs[idx].name,
-assignment: concreteParagraphs[idx].assignment,
+                                    assignment: concreteParagraphs[idx].assignment,
                                     start: concreteParagraphs[idx].start,
-                                    sections: transposeSections(concreteParagraphs[idx].sections, semitones: semi)
+                                    sections: transposeSections(
+                                        concreteParagraphs[idx].sections, semitones: semi)
                                 )
                             }
                         }
                     case .number(let semi):
-                        for idx in 0..<concreteParagraphs.count where innerNames.contains(concreteParagraphs[idx].name) {
+                        for idx in 0..<concreteParagraphs.count
+                        where innerNames.contains(concreteParagraphs[idx].name) {
                             concreteParagraphs[idx] = Entry(
                                 name: concreteParagraphs[idx].name,
-assignment: concreteParagraphs[idx].assignment,
+                                assignment: concreteParagraphs[idx].assignment,
                                 start: concreteParagraphs[idx].start,
-                                sections: transposeSections(concreteParagraphs[idx].sections, semitones: semi)
+                                sections: transposeSections(
+                                    concreteParagraphs[idx].sections, semitones: semi)
                             )
                         }
                     }

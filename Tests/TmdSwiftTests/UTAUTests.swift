@@ -1,7 +1,8 @@
-import Testing
 import Foundation
-@testable import TmdSwift
+import Testing
+
 @testable import TmdMIDI
+@testable import TmdSwift
 @testable import TmdUTAU
 
 @Suite("UTAU Exporter Tests")
@@ -10,21 +11,22 @@ struct UTAUTests {
     @Test("Test basic UTAU (.ust) generation domain invariants")
     func testBasicUSTGeneration() throws {
         let tmdContent = """
-        ::SCORE::
-        ** Kasane Teto Song **
-        != 120
-        ?= C
-        <4/4>
-        Intro:Vocal@|0|{
-            <4*>
-            1 2 3 4
-            [あ い う え]
-        }
-        """
+            ::SCORE::
+            ** Kasane Teto Song **
+            != 120
+            ?= C
+            <4/4>
+            Intro:Vocal@|0|{
+                <4*>
+                1 2 3 4
+                [あ い う え]
+            }
+            """
         let sheet = try TmdParser.parseThrowing(string: tmdContent)
         let ust = TMDUSTGenerator.generateUST(
             from: sheet,
-            options: USTExportOptions(projectName: "Kasane Teto Song", lyrics: ["あ", "い", "う", "え"])
+            options: USTExportOptions(
+                projectName: "Kasane Teto Song", lyrics: ["あ", "い", "う", "え"])
         )
 
         // Verify Header invariants
@@ -60,18 +62,19 @@ struct UTAUTests {
     @Test("Test UTAU rest insertion and sustained notes")
     func testUSTWithRestsAndTies() throws {
         let tmdContent = """
-        ::SCORE::
-        != 130
-        ?= G
-        <4/4>
-        Melody:Sing@|0|{
-            <4*>
-            1 - 0 1
-            [お _ _ か]
-        }
-        """
+            ::SCORE::
+            != 130
+            ?= G
+            <4/4>
+            Melody:Sing@|0|{
+                <4*>
+                1 - 0 1
+                [お _ _ か]
+            }
+            """
         let sheet = try TmdParser.parseThrowing(string: tmdContent)
-        let ust = TMDUSTGenerator.generateUST(from: sheet, options: USTExportOptions(lyrics: ["お", "か"]))
+        let ust = TMDUSTGenerator.generateUST(
+            from: sheet, options: USTExportOptions(lyrics: ["お", "か"]))
 
         #expect(ust.contains("Tempo=130.00"))
 
@@ -99,22 +102,22 @@ struct UTAUTests {
     @Test("Test UTAU mid-score tempo changes")
     func testUSTMidScoreTempoChange() throws {
         let tmdContent = """
-        ::SCORE::
-        != 100
-        ?= C
-        <4/4>
-        PartA:Voice@|0|{
-            <4*>
-            1 2
-            [a b]
-        }
-        PartB:Voice@|0|{
-            <4*>
-            {!=150}
-            3 4
-            [c d]
-        }
-        """
+            ::SCORE::
+            != 100
+            ?= C
+            <4/4>
+            PartA:Voice@|0|{
+                <4*>
+                1 2
+                [a b]
+            }
+            PartB:Voice@|0|{
+                <4*>
+                {!=150}
+                3 4
+                [c d]
+            }
+            """
         let sheet = try TmdParser.parseThrowing(string: tmdContent)
         let ust = TMDUSTGenerator.generateUST(from: sheet)
 

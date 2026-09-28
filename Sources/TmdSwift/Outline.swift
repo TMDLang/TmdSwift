@@ -26,7 +26,7 @@ public struct TMDOutlineRange: Codable, Equatable, Sendable {
 public struct TMDOutlineNode: Codable, Equatable, Sendable {
     public let name: String
     public let detail: String?
-    public let kind: String // "file", "class", "namespace", "field", "method", "event", etc.
+    public let kind: String  // "file", "class", "namespace", "field", "method", "event", etc.
     public let range: TMDOutlineRange
     public let selectionRange: TMDOutlineRange
     public let children: [TMDOutlineNode]?
@@ -109,7 +109,9 @@ public struct TMDOutlineGenerator {
             if tok.token == .doubleAsterisk && scoreName.isEmpty {
                 _ = advance()
                 var parts: [String] = []
-                while pos < tokens.count && current()?.token != .doubleAsterisk && current()?.token != .eof {
+                while pos < tokens.count && current()?.token != .doubleAsterisk
+                    && current()?.token != .eof
+                {
                     if let t = advance() {
                         parts.append(t.text)
                     }
@@ -125,9 +127,13 @@ public struct TMDOutlineGenerator {
             if tok.token == .speedPrefix {
                 _ = advance()
                 if let next = advance() {
-                    if case .double(let d) = next.token { scoreSpeed = d }
-                    else if case .number(let n) = next.token { scoreSpeed = Double(n) }
-                    else if case .positiveNumber(let n) = next.token { scoreSpeed = Double(n) }
+                    if case .double(let d) = next.token {
+                        scoreSpeed = d
+                    } else if case .number(let n) = next.token {
+                        scoreSpeed = Double(n)
+                    } else if case .positiveNumber(let n) = next.token {
+                        scoreSpeed = Double(n)
+                    }
                 }
                 continue
             }
@@ -142,7 +148,9 @@ public struct TMDOutlineGenerator {
 
             if tok.token == .openAngle {
                 // Check if <c/n> beat
-                if pos + 4 < tokens.count && tokens[pos + 2].token == .slash && tokens[pos + 4].token == .closeAngle {
+                if pos + 4 < tokens.count && tokens[pos + 2].token == .slash
+                    && tokens[pos + 4].token == .closeAngle
+                {
                     let c = tokens[pos + 1].text
                     let n = tokens[pos + 3].text
                     scoreBeat = "\(c)/\(n)"
@@ -153,10 +161,11 @@ public struct TMDOutlineGenerator {
 
             // Paragraph header: identifier:identifier@...{ ... } or abstract prototype: identifier { ... }
             if case .identifier(let secName) = tok.token,
-               pos + 1 < tokens.count, tokens[pos + 1].token == .colon {
+                pos + 1 < tokens.count, tokens[pos + 1].token == .colon
+            {
                 let paraStartTok = tok
-                _ = advance() // secName
-                _ = advance() // :
+                _ = advance()  // secName
+                _ = advance()  // :
 
                 var instName = "Track"
                 var instTok = current()
@@ -216,7 +225,8 @@ public struct TMDOutlineGenerator {
                 let selEnd = SourcePosition(
                     offset: (instTok?.range.endOffset) ?? pEnd.offset,
                     line: instTok?.range.start.line ?? pEnd.line,
-                    column: (instTok?.range.start.column ?? pEnd.column) + (instTok?.range.length ?? 0)
+                    column: (instTok?.range.start.column ?? pEnd.column)
+                        + (instTok?.range.length ?? 0)
                 )
                 let selectionRange = TMDOutlineRange(start: selStart, end: selEnd)
 
@@ -225,22 +235,24 @@ public struct TMDOutlineGenerator {
                     detail = "@|\(startOffsetStr)|"
                 }
 
-                trackOccurrences.append(TrackOccurrence(
-                    sectionName: secName,
-                    assignment: instName,
-                    range: range,
-                    selectionRange: selectionRange,
-                    detail: detail
-                ))
+                trackOccurrences.append(
+                    TrackOccurrence(
+                        sectionName: secName,
+                        assignment: instName,
+                        range: range,
+                        selectionRange: selectionRange,
+                        detail: detail
+                    ))
                 continue
             }
 
             // Abstract prototype header: identifier { ... }
             if case .identifier(let secName) = tok.token,
-               pos + 1 < tokens.count, tokens[pos + 1].token == .openBrace {
+                pos + 1 < tokens.count, tokens[pos + 1].token == .openBrace
+            {
                 let paraStartTok = tok
-                _ = advance() // secName
-                _ = advance() // {
+                _ = advance()  // secName
+                _ = advance()  // {
 
                 var braceCount = 1
                 var paraEndTok = paraStartTok
@@ -271,13 +283,14 @@ public struct TMDOutlineGenerator {
                     )
                 )
 
-                trackOccurrences.append(TrackOccurrence(
-                    sectionName: secName,
-                    assignment: "",
-                    range: range,
-                    selectionRange: selectionRange,
-                    detail: "Theme"
-                ))
+                trackOccurrences.append(
+                    TrackOccurrence(
+                        sectionName: secName,
+                        assignment: "",
+                        range: range,
+                        selectionRange: selectionRange,
+                        detail: "Theme"
+                    ))
                 continue
             }
 
@@ -313,10 +326,14 @@ public struct TMDOutlineGenerator {
                             orderItems.append(OrderItem(name: orderSec, range: oRange))
                             orderEndPos = oRange.endPosition(from: secTok)
                         }
-                    } else if next.token == .relativeOrderPrefix || next.token == .absoluteOrderPrefix {
+                    } else if next.token == .relativeOrderPrefix
+                        || next.token == .absoluteOrderPrefix
+                    {
                         var bracketStr = next.token == .relativeOrderPrefix ? "{?" : "{?="
                         _ = advance()
-                        while pos < tokens.count && current()?.token != .closeBrace && current()?.token != .eof {
+                        while pos < tokens.count && current()?.token != .closeBrace
+                            && current()?.token != .eof
+                        {
                             if let piece = advance() {
                                 bracketStr += piece.text
                             }
@@ -389,7 +406,8 @@ public struct TMDOutlineGenerator {
         let songName = scoreName.isEmpty ? "Untitled" : scoreName
         var scoreDetails: [String] = []
         if let s = scoreSpeed {
-            scoreDetails.append("!= \(s.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(s)) : String(s))")
+            scoreDetails.append(
+                "!= \(s.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(s)) : String(s))")
         }
         if let k = scoreKey {
             scoreDetails.append("?= \(k)")
@@ -403,13 +421,14 @@ public struct TMDOutlineGenerator {
         let scoreEnd = scoreHeaderEnd ?? SourcePosition(offset: 0, line: 1, column: 1)
         let scoreRange = TMDOutlineRange(start: scoreStart, end: scoreEnd)
 
-        result.append(TMDOutlineNode(
-            name: "Score: \(songName)",
-            detail: scoreDetailStr,
-            kind: "class",
-            range: scoreRange,
-            selectionRange: scoreRange
-        ))
+        result.append(
+            TMDOutlineNode(
+                name: "Score: \(songName)",
+                detail: scoreDetailStr,
+                kind: "class",
+                range: scoreRange,
+                selectionRange: scoreRange
+            ))
 
         // 2. Sections Node
         // Group tracks by section name in original appearance order
@@ -429,7 +448,8 @@ public struct TMDOutlineGenerator {
             let minCol = tracks.first?.range.startColumn ?? 1
             let maxLine = tracks.map(\.range.endLine).max() ?? 1
             let maxCol = tracks.last?.range.endColumn ?? 1
-            let secRange = TMDOutlineRange(startLine: minLine, startColumn: minCol, endLine: maxLine, endColumn: maxCol)
+            let secRange = TMDOutlineRange(
+                startLine: minLine, startColumn: minCol, endLine: maxLine, endColumn: maxCol)
 
             let trackNodes = tracks.map { track in
                 TMDOutlineNode(
@@ -441,14 +461,15 @@ public struct TMDOutlineGenerator {
                 )
             }
 
-            sectionNodes.append(TMDOutlineNode(
-                name: secName,
-                detail: "\(trackNodes.count) track\(trackNodes.count == 1 ? "" : "s")",
-                kind: "namespace",
-                range: secRange,
-                selectionRange: secRange,
-                children: trackNodes
-            ))
+            sectionNodes.append(
+                TMDOutlineNode(
+                    name: secName,
+                    detail: "\(trackNodes.count) track\(trackNodes.count == 1 ? "" : "s")",
+                    kind: "namespace",
+                    range: secRange,
+                    selectionRange: secRange,
+                    children: trackNodes
+                ))
         }
 
         if !sectionNodes.isEmpty {
@@ -458,14 +479,15 @@ public struct TMDOutlineGenerator {
                 endLine: sectionNodes.last?.range.endLine ?? 1,
                 endColumn: sectionNodes.last?.range.endColumn ?? 1
             )
-            result.append(TMDOutlineNode(
-                name: "Sections",
-                detail: "\(sectionNodes.count) section\(sectionNodes.count == 1 ? "" : "s")",
-                kind: "namespace",
-                range: sRange,
-                selectionRange: sRange,
-                children: sectionNodes
-            ))
+            result.append(
+                TMDOutlineNode(
+                    name: "Sections",
+                    detail: "\(sectionNodes.count) section\(sectionNodes.count == 1 ? "" : "s")",
+                    kind: "namespace",
+                    range: sRange,
+                    selectionRange: sRange,
+                    children: sectionNodes
+                ))
         }
 
         // 3. Playback Node
@@ -485,14 +507,15 @@ public struct TMDOutlineGenerator {
             }
 
             let fullSnippet = orderSnippet.joined(separator: " ")
-            result.append(TMDOutlineNode(
-                name: "Playback",
-                detail: fullSnippet.isEmpty ? nil : fullSnippet,
-                kind: "event",
-                range: ordersRange,
-                selectionRange: ordersRange,
-                children: orderChildNodes
-            ))
+            result.append(
+                TMDOutlineNode(
+                    name: "Playback",
+                    detail: fullSnippet.isEmpty ? nil : fullSnippet,
+                    kind: "event",
+                    range: ordersRange,
+                    selectionRange: ordersRange,
+                    children: orderChildNodes
+                ))
         }
 
         return result
@@ -502,15 +525,16 @@ public struct TMDOutlineGenerator {
     public static func extractSectionNames(source: String) -> [String] {
         let nodes = generate(source: source)
         guard let sectionsNode = nodes.first(where: { $0.name == "Sections" }),
-              let children = sectionsNode.children else {
+            let children = sectionsNode.children
+        else {
             return []
         }
         return children.map(\.name)
     }
 }
 
-private extension TMDOutlineRange {
-    func endPosition(from tok: LexedToken) -> SourcePosition {
+extension TMDOutlineRange {
+    fileprivate func endPosition(from tok: LexedToken) -> SourcePosition {
         SourcePosition(
             offset: tok.range.endOffset,
             line: tok.range.start.line,

@@ -12,7 +12,8 @@ internal enum TMDLocalizationCatalog {
             "report.measuresTotal": "measures total",
             "report.playbackBase": "Movable-do base",
             "report.keyAndTempo": "Key & Tempo",
-            "report.analysisScope": "Analysis scope:     Inferred tonality from sounding note and chord evidence; playback context is reported separately",
+            "report.analysisScope":
+                "Analysis scope:     Inferred tonality from sounding note and chord evidence; playback context is reported separately",
             "report.structure": "Structure",
             "report.density": "Density",
             "report.tracksConcurrently": "tracks concurrently",
@@ -42,17 +43,22 @@ internal enum TMDLocalizationCatalog {
             "tonality.modulation.start": "Starts in {0} {1}",
             "tonality.modulation.step": "[{0}] to {1} ({2} semitones / {3} fifths)",
             "tonality.summary.stable": "{0} {1} ({2}, no inferred modulation)",
-            "tonality.summary.modulating": "{0} {1} (inferred modulation through {2} transition(s))",
+            "tonality.summary.modulating":
+                "{0} {1} (inferred modulation through {2} transition(s))",
             "tonality.summary.clean": "clean major tonality",
             "tonality.summary.color": "contemporary major color",
             "tonality.summary.cleanMinor": "clean minor tonality",
             "tonality.summary.colorMinor": "contemporary minor color",
             "tonality.mood.cleanMajor": "Clean major tonality (bright, singable, and memorable)",
-            "tonality.mood.contemporaryMajor": "Contemporary major tonality (with chord tones and secondary-dominant color)",
-            "tonality.mood.cleanMinor": "Clean minor tonality (focused, lyrical, and without strong chromatic color)",
-            "tonality.mood.contemporaryMinor": "Contemporary minor tonality (with chord tones and secondary-dominant color)",
+            "tonality.mood.contemporaryMajor":
+                "Contemporary major tonality (with chord tones and secondary-dominant color)",
+            "tonality.mood.cleanMinor":
+                "Clean minor tonality (focused, lyrical, and without strong chromatic color)",
+            "tonality.mood.contemporaryMinor":
+                "Contemporary minor tonality (with chord tones and secondary-dominant color)",
             "tonality.mood.modal": "Modal or blues-influenced color (rich chromatic tension)",
-            "tonality.mood.insufficient": "Insufficient musical evidence for a reliable tonality inference",
+            "tonality.mood.insufficient":
+                "Insufficient musical evidence for a reliable tonality inference",
             "visualizer.circleOfFifths": "Circle of Fifths Trajectory",
             "visualizer.pitchClassDistribution": "12-Tone Pitch Class Distribution",
             "visualizer.timeline": "Playback Keyscape Ribbon",
@@ -64,7 +70,7 @@ internal enum TMDLocalizationCatalog {
             "visualizer.inferredTonality": "Inferred Tonality",
             "visualizer.confidence": "Confidence",
             "visualizer.diatonicEvidence": "Sounding diatonic ratio",
-            "visualizer.ambiguous": "Ambiguous"
+            "visualizer.ambiguous": "Ambiguous",
         ],
         "zh-Hant": [
             "report.title": "TMD Song Profile",
@@ -124,7 +130,7 @@ internal enum TMDLocalizationCatalog {
             "visualizer.inferredTonality": "調性推論",
             "visualizer.confidence": "可信度",
             "visualizer.diatonicEvidence": "發聲音高的自然音比例",
-            "visualizer.ambiguous": "調性不明確"
-        ]
+            "visualizer.ambiguous": "調性不明確",
+        ],
     ]
 }

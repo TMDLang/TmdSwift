@@ -37,15 +37,18 @@ public struct TMDChordProGenerator: Sendable {
             lines.append("{artist: \(artist)}")
         }
         if let composer = sheet.metadata["composer"] {
-            let comp = composer.replacingOccurrences(of: #"^曲[：:]\s*"#, with: "", options: .regularExpression)
+            let comp = composer.replacingOccurrences(
+                of: #"^曲[：:]\s*"#, with: "", options: .regularExpression)
             lines.append("{composer: \(comp)}")
         }
         if let lyricist = sheet.metadata["lyricist"] ?? sheet.metadata["lyrics"] {
-            let lyr = lyricist.replacingOccurrences(of: #"^詞[：:]\s*"#, with: "", options: .regularExpression)
+            let lyr = lyricist.replacingOccurrences(
+                of: #"^詞[：:]\s*"#, with: "", options: .regularExpression)
             lines.append("{lyricist: \(lyr)}")
         }
         if let arranger = sheet.metadata["arranger"] {
-            let arr = arranger.replacingOccurrences(of: #"^編[：:]\s*"#, with: "", options: .regularExpression)
+            let arr = arranger.replacingOccurrences(
+                of: #"^編[：:]\s*"#, with: "", options: .regularExpression)
             lines.append("{arranger: \(arr)}")
         }
 
@@ -61,10 +64,12 @@ public struct TMDChordProGenerator: Sendable {
 
         // Determine target track: pick guitar/chords instrument or first instrument
         let distinctInstruments = sheet.distinctInstruments(fallbackToDefault: false)
-        let regex = try? NSRegularExpression(pattern: "guitar|chord|lead|piano", options: .caseInsensitive)
-        let targetInstrument = distinctInstruments.first { inst in
-            regex?.firstMatch(in: inst, range: NSRange(inst.startIndex..., in: inst)) != nil
-        } ?? distinctInstruments.first ?? "Piano"
+        let regex = try? NSRegularExpression(
+            pattern: "guitar|chord|lead|piano", options: .caseInsensitive)
+        let targetInstrument =
+            distinctInstruments.first { inst in
+                regex?.firstMatch(in: inst, range: NSRange(inst.startIndex..., in: inst)) != nil
+            } ?? distinctInstruments.first ?? "Piano"
 
         // Group sections by order
         var seenNames = Set<String>()
@@ -75,7 +80,8 @@ public struct TMDChordProGenerator: Sendable {
             }
         }
 
-        let orders: [Playback] = !sheet.playback.isEmpty
+        let orders: [Playback] =
+            !sheet.playback.isEmpty
             ? sheet.playback
             : uniqueParagraphNames.map { .name($0) }
 
@@ -111,8 +117,10 @@ public struct TMDChordProGenerator: Sendable {
                 metadata: sheet.metadata
             )
 
-            let sectionInstruments = Array(Set(sectionParagraphs.compactMap { $0.assignment })).sorted()
-            let instToRender = sectionInstruments.contains(targetInstrument)
+            let sectionInstruments = Array(Set(sectionParagraphs.compactMap { $0.assignment }))
+                .sorted()
+            let instToRender =
+                sectionInstruments.contains(targetInstrument)
                 ? targetInstrument
                 : (sectionInstruments.first { inst in
                     regex?.firstMatch(in: inst, range: NSRange(inst.startIndex..., in: inst)) != nil
@@ -138,7 +146,8 @@ public struct TMDChordProGenerator: Sendable {
                 var chordsInMeasure: [String] = []
                 for ev in m.events {
                     if case .chord(let chord) = ev.content {
-                        chordsInMeasure.append("[\(chordText(chord, keyOffset: ev.state.keyOffset))]")
+                        chordsInMeasure.append(
+                            "[\(chordText(chord, keyOffset: ev.state.keyOffset))]")
                     }
                 }
 
@@ -165,7 +174,9 @@ public struct TMDChordProGenerator: Sendable {
         return lines.joined(separator: "\n") + "\n"
     }
 
-    private static let chromaticNames = ["C", "C'", "D", "D'", "E", "F", "F'", "G", "G'", "A", "A'", "B"]
+    private static let chromaticNames = [
+        "C", "C'", "D", "D'", "E", "F", "F'", "G", "G'", "A", "A'", "B",
+    ]
 
     private static func keySignature(for offset: Int) -> KeySignature {
         let normalized = ((offset % 12) + 12) % 12
@@ -173,13 +184,17 @@ public struct TMDChordProGenerator: Sendable {
     }
 
     private static func chordText(_ chord: ChordSymbol, keyOffset: Int) -> String {
-        let root = chord.root.isScaleDegree
+        let root =
+            chord.root.isScaleDegree
             ? chromaticNames[((keyOffset + chord.root.semitoneOffset) % 12 + 12) % 12]
             : chord.root.description
         let suffix = String(chord.description.dropFirst(chord.root.description.count))
         guard let bass = chord.bass else { return root + suffix }
-        let qualitySuffix = suffix.split(separator: "/", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? ""
-        let bassText = bass.isScaleDegree
+        let qualitySuffix =
+            suffix.split(separator: "/", maxSplits: 1, omittingEmptySubsequences: false).first.map(
+                String.init) ?? ""
+        let bassText =
+            bass.isScaleDegree
             ? chromaticNames[((keyOffset + bass.semitoneOffset) % 12 + 12) % 12]
             : bass.description
         return root + qualitySuffix + "/" + bassText

@@ -186,7 +186,8 @@ public enum MIDIInstrument: Equatable {
         }
         for prefix in ["prog:", "program:", "prg:", "p:", "prog", "program", "prg"] {
             if trimmed.hasPrefix(prefix) {
-                let suffix = trimmed.dropFirst(prefix.count).trimmingCharacters(in: .whitespacesAndNewlines)
+                let suffix = trimmed.dropFirst(prefix.count).trimmingCharacters(
+                    in: .whitespacesAndNewlines)
                 if let prog = UInt8(suffix), prog <= 127 {
                     return .generic(program: prog)
                 }
@@ -194,7 +195,10 @@ public enum MIDIInstrument: Equatable {
         }
 
         // 2. Percussion channel check
-        let drumAliases = ["drum", "drums", "groove", "percussion", "beat", "drumkit", "cajon", "snare", "kick", "hihat"]
+        let drumAliases = [
+            "drum", "drums", "groove", "percussion", "beat", "drumkit", "cajon", "snare", "kick",
+            "hihat",
+        ]
         if drumAliases.contains(where: { trimmed.contains($0) }) {
             return .percussion
         }
@@ -324,7 +328,10 @@ public enum MIDIInstrument: Equatable {
             // Guitar (24-31)
             (.guitarHarmonics, ["guitarharmonics"]),
             (.distortionGuitar, ["distortion", "dist", "fuzz", "heavy", "metal"]),
-            (.overdriveGuitar, ["overdrive", "od", "rockguitar", "electricguitar", "electric-guitar"]),
+            (
+                .overdriveGuitar,
+                ["overdrive", "od", "rockguitar", "electricguitar", "electric-guitar"]
+            ),
             (.cleanGuitar, ["cleanguitar", "electricclean"]),
             (.mutedGuitar, ["mutedguitar"]),
             (.jazzGuitar, ["jazzguitar"]),
@@ -358,7 +365,7 @@ public enum MIDIInstrument: Equatable {
             (.brightAcousticPiano, ["brightpiano", "brightacoustic"]),
             (.electricGrandPiano, ["electricgrand"]),
             (.clavinet, ["clavinet", "clavi"]),
-            (.piano, ["piano", "keyboard", "grand"])
+            (.piano, ["piano", "keyboard", "grand"]),
         ]
 
         return aliases.first { _, terms in terms.contains { trimmed.contains($0) } }?.0 ?? .unknown

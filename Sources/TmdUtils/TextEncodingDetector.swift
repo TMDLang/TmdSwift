@@ -52,7 +52,8 @@ public enum TextEncodingDetector {
                 ?? String(data: data, encoding: .isoLatin1)
             {
                 let actualEncoding: String.Encoding =
-                    String(data: data, encoding: .windowsCP1252) != nil ? .windowsCP1252 : .isoLatin1
+                    String(data: data, encoding: .windowsCP1252) != nil
+                    ? .windowsCP1252 : .isoLatin1
                 return TextReadResult(content: fallbackString, encoding: actualEncoding)
             }
             return nil
@@ -108,7 +109,9 @@ public enum TextEncodingDetector {
         }
 
         // UTF-32 LE BOM: FF FE 00 00
-        if bytes.count >= 4 && bytes[0] == 0xFF && bytes[1] == 0xFE && bytes[2] == 0x00 && bytes[3] == 0x00 {
+        if bytes.count >= 4 && bytes[0] == 0xFF && bytes[1] == 0xFE && bytes[2] == 0x00
+            && bytes[3] == 0x00
+        {
             let contentData = data.dropFirst(4)
             if let content = String(data: contentData, encoding: .utf32LittleEndian) {
                 return TextReadResult(content: content, encoding: .utf32LittleEndian)
@@ -116,7 +119,9 @@ public enum TextEncodingDetector {
         }
 
         // UTF-32 BE BOM: 00 00 FE FF
-        if bytes.count >= 4 && bytes[0] == 0x00 && bytes[1] == 0x00 && bytes[2] == 0xFE && bytes[3] == 0xFF {
+        if bytes.count >= 4 && bytes[0] == 0x00 && bytes[1] == 0x00 && bytes[2] == 0xFE
+            && bytes[3] == 0xFF
+        {
             let contentData = data.dropFirst(4)
             if let content = String(data: contentData, encoding: .utf32BigEndian) {
                 return TextReadResult(content: content, encoding: .utf32BigEndian)

@@ -1,7 +1,8 @@
-import Testing
 import Foundation
-@testable import TmdSwift
+import Testing
+
 @testable import TmdMIDI
+@testable import TmdSwift
 @testable import TmdVocaloid
 
 @Suite("VOCALOID Exporter Tests")
@@ -23,18 +24,19 @@ struct VocaloidTests {
     @Test("Test VOCALOID2 (.vsq) SMF Format 1 generation")
     func testVSQGeneration() throws {
         let tmdContent = """
-        ::SCORE::
-        ** Miku Song **
-        != 120
-        ?= C
-        <4/4>
-        Intro:Vocal@|0|{
-            <4*>
-            1 2 3 4
-        }
-        """
+            ::SCORE::
+            ** Miku Song **
+            != 120
+            ?= C
+            <4/4>
+            Intro:Vocal@|0|{
+                <4*>
+                1 2 3 4
+            }
+            """
         let sheet = try TmdParser.parseThrowing(string: tmdContent)
-        let vsqData = TMDVSQGenerator.generateVSQ(from: sheet, options: VocaloidExportOptions(singerName: "Miku"))
+        let vsqData = TMDVSQGenerator.generateVSQ(
+            from: sheet, options: VocaloidExportOptions(singerName: "Miku"))
 
         #expect(vsqData.count > 100)
         // Check MIDI header "MThd"
@@ -49,18 +51,19 @@ struct VocaloidTests {
     @Test("Test VOCALOID3/4 (.vsqx) XML structure generation")
     func testVSQXGeneration() throws {
         let tmdContent = """
-        ::SCORE::
-        ** Miku Vocaloid Song **
-        != 135
-        ?= D
-        <4/4>
-        Verse:Vocal@|0|{
-            <4*>
-            1 3 5 1^
-        }
-        """
+            ::SCORE::
+            ** Miku Vocaloid Song **
+            != 135
+            ?= D
+            <4/4>
+            Verse:Vocal@|0|{
+                <4*>
+                1 3 5 1^
+            }
+            """
         let sheet = try TmdParser.parseThrowing(string: tmdContent)
-        let vsqx = TMDVSQXGenerator.generateVSQX(from: sheet, options: VocaloidExportOptions(singerName: "Hatsune Miku"))
+        let vsqx = TMDVSQXGenerator.generateVSQX(
+            from: sheet, options: VocaloidExportOptions(singerName: "Hatsune Miku"))
 
         #expect(vsqx.contains("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>"))
         #expect(vsqx.contains("<vsq4 xmlns=\"http://www.yamaha.co.jp/vocaloid/schema/vsq4/\""))

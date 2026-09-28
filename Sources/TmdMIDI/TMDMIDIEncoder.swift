@@ -28,7 +28,8 @@ public struct MIDIEvent: Equatable, Sendable {
 public final class TMDMIDIEncoder {
     public static func encodeFile(tracks: [Data], ticksPerQuarter: UInt16) -> Data {
         let encodedTracks = tracks.prefix(Int(UInt16.max))
-        let header = Data("MThd".utf8)
+        let header =
+            Data("MThd".utf8)
             + Data(UInt32(6).bigEndianBytes)
             + Data(UInt16(1).bigEndianBytes)
             + Data(UInt16(encodedTracks.count).bigEndianBytes)
@@ -59,11 +60,14 @@ public final class TMDMIDIEncoder {
             return metaEvent(type: 0x03, data: Data(name.utf8))
         case .tempo(let bpm):
             let mpqn = clampedUInt32(60_000_000.0 / max(1, bpm))
-            let data = Data([UInt8((mpqn >> 16) & 0xFF), UInt8((mpqn >> 8) & 0xFF), UInt8(mpqn & 0xFF)])
+            let data = Data([
+                UInt8((mpqn >> 16) & 0xFF), UInt8((mpqn >> 8) & 0xFF), UInt8(mpqn & 0xFF),
+            ])
             return metaEvent(type: 0x51, data: data)
         case .timeSignature(let beat):
             let denominator = UInt8(round(log2(Double(max(1, beat.noteValue)))))
-            return metaEvent(type: 0x58, data: Data([UInt8(clamping: max(1, beat.count)), denominator, 24, 8]))
+            return metaEvent(
+                type: 0x58, data: Data([UInt8(clamping: max(1, beat.count)), denominator, 24, 8]))
         case .endOfTrack:
             return metaEvent(type: 0x2F, data: Data())
         case .text(let text):
@@ -101,8 +105,8 @@ public final class TMDMIDIEncoder {
     }
 }
 
-private extension FixedWidthInteger {
-    var bigEndianBytes: [UInt8] {
+extension FixedWidthInteger {
+    fileprivate var bigEndianBytes: [UInt8] {
         var value = bigEndian
         return withUnsafeBytes(of: &value) { Array($0) }
     }

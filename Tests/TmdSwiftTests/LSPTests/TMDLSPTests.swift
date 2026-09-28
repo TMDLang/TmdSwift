@@ -1,14 +1,16 @@
-import Testing
 import Foundation
-@testable import TmdSwift
+import Testing
+
 @testable import TmdLSP
+@testable import TmdSwift
 
 @Suite("TMD LSP Protocol & Completion Tests")
 struct TMDLSPTests {
 
     @Test("Parses JSON-RPC messages with Content-Length header")
     func testJSONRPCMessageParsing() throws {
-        let raw = "Content-Length: 46\r\n\r\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\"}"
+        let raw =
+            "Content-Length: 46\r\n\r\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\"}"
         // Test helper will decode JSON-RPC frame
         let frames = TMDJSONRPCCodec.decode(raw)
         #expect(frames.count == 1)
@@ -28,29 +30,29 @@ struct TMDLSPTests {
     @Test("Provides section name completions after '-> ' in playback orders")
     func testCompletionSectionNames() throws {
         let source = """
-        ::SCORE::
-        ** Test Score **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Test Score **
+            != 120
+            ?= C
+            <4/4>
 
-        intro:Piano@|0|{
-            <4*>
-            1 2 3 4
-        }
+            intro:Piano@|0|{
+                <4*>
+                1 2 3 4
+            }
 
-        verse:Piano@|0|{
-            <4*>
-            1 2 3 4
-        }
+            verse:Piano@|0|{
+                <4*>
+                1 2 3 4
+            }
 
-        Theme {
-            <4*>
-            1 2 3 4
-        }
+            Theme {
+                <4*>
+                1 2 3 4
+            }
 
-        -> 
-        """
+            -> 
+            """
         // Position at line 21 (0-based index: 21), column 3
         let items = TMDLSPCompletionEngine.complete(
             source: source,
@@ -65,19 +67,19 @@ struct TMDLSPTests {
     @Test("Provides S-expression macro snippets after '-> (' in playback orders")
     func testCompletionSExprMacros() throws {
         let source = """
-        ::SCORE::
-        ** Test Score **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Test Score **
+            != 120
+            ?= C
+            <4/4>
 
-        Theme {
-            <4*>
-            1 2 3 4
-        }
+            Theme {
+                <4*>
+                1 2 3 4
+            }
 
-        -> (
-        """
+            -> (
+            """
         let items = TMDLSPCompletionEngine.complete(
             source: source,
             position: TMDLSPPosition(line: 11, character: 4)
@@ -99,22 +101,22 @@ struct TMDLSPTests {
 
         // Also test when editor auto-closed ')' so line is "-> (|)"
         let sourceWithAutoClose = """
-        ::SCORE::
-        ** Test Score **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Test Score **
+            != 120
+            ?= C
+            <4/4>
 
-        Theme {
-            <4*>
-            1 2 3 4
-        }
+            Theme {
+                <4*>
+                1 2 3 4
+            }
 
-        -> ()
-        """
+            -> ()
+            """
         let itemsWithAutoClose = TMDLSPCompletionEngine.complete(
             source: sourceWithAutoClose,
-            position: TMDLSPPosition(line: 11, character: 4) // cursor between ( and )
+            position: TMDLSPPosition(line: 11, character: 4)  // cursor between ( and )
         )
         let canonAutoClose = itemsWithAutoClose.first(where: { $0.label == "canon" })
         #expect(canonAutoClose?.insertText?.hasSuffix(")") == false)
@@ -123,10 +125,10 @@ struct TMDLSPTests {
     @Test("Provides all section directives and filters typed directive prefixes")
     func testCompletionSectionDirectives() throws {
         let source = """
-        A:Piano@|0|{
-            <4*>
-            {
-        """
+            A:Piano@|0|{
+                <4*>
+                {
+            """
         let all = TMDLSPCompletionEngine.complete(
             source: source,
             position: TMDLSPPosition(line: 2, character: 5)
@@ -145,10 +147,10 @@ struct TMDLSPTests {
         #expect(labels.contains("<4/4>"))
 
         let partial = """
-        A:Piano@|0|{
-            <4*>
-            {key
-        """
+            A:Piano@|0|{
+                <4*>
+                {key
+            """
         let keyItems = TMDLSPCompletionEngine.complete(
             source: partial,
             position: TMDLSPPosition(line: 2, character: 8)
@@ -156,10 +158,10 @@ struct TMDLSPTests {
         #expect(keyItems.map(\.label) == ["key= Bm"])
 
         let sourceWithAutoClose = """
-        A:Piano@|0|{
-            <4*>
-            {}
-        """
+            A:Piano@|0|{
+                <4*>
+                {}
+            """
         let autoCloseItems = TMDLSPCompletionEngine.complete(
             source: sourceWithAutoClose,
             position: TMDLSPPosition(line: 2, character: 5)
@@ -171,14 +173,14 @@ struct TMDLSPTests {
     @Test("Provides General MIDI 128 instrument names after colon in paragraph header")
     func testCompletionGeneralMIDIInstruments() throws {
         let source = """
-        ::SCORE::
-        ** Test Score **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Test Score **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:
-        """
+            verse:
+            """
         let items = TMDLSPCompletionEngine.complete(
             source: source,
             position: TMDLSPPosition(line: 6, character: 6)
@@ -189,7 +191,8 @@ struct TMDLSPTests {
         #expect(labels.contains("Cello"))
         #expect(labels.contains("Bass") || labels.contains("ElectricBassFinger"))
         #expect(labels.contains("Drums"))
-        #expect(items.first(where: { $0.label == "Piano" })?.detail == "General MIDI Assignment: Piano")
+        #expect(
+            items.first(where: { $0.label == "Piano" })?.detail == "General MIDI Assignment: Piano")
     }
 
     @Test("Provides canonical fixed-pitch entry attributes")
@@ -205,17 +208,17 @@ struct TMDLSPTests {
     @Test("Provides diatonic and scale-degree chords when opening bracket '[' inside paragraph")
     func testCompletionDiatonicChords() throws {
         let source = """
-        ::SCORE::
-        ** Test Score **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Test Score **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Piano@|0|{
-            <4*>
-            [
-        }
-        """
+            verse:Piano@|0|{
+                <4*>
+                [
+            }
+            """
         let items = TMDLSPCompletionEngine.complete(
             source: source,
             position: TMDLSPPosition(line: 8, character: 5)
@@ -247,18 +250,18 @@ struct TMDLSPTests {
     @Test("Publishes diagnostics on beat discrepancies in measures")
     func testPublishDiagnostics() throws {
         let source = """
-        ::SCORE::
-        ** Measure Error Score **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Measure Error Score **
+            != 120
+            ?= C
+            <4/4>
 
-        intro:Piano@|0|{
-            <4*>
-            | 1 2 3 4 5 |
-        }
-        -> intro ->#
-        """
+            intro:Piano@|0|{
+                <4*>
+                | 1 2 3 4 5 |
+            }
+            -> intro ->#
+            """
         let diagnostics = TMDLSPDiagnosticEngine.diagnose(source: source)
         #expect(!diagnostics.isEmpty)
         let msg = diagnostics[0].message
@@ -281,25 +284,26 @@ struct TMDLSPTests {
 
         // 2. Open document
         let source = """
-        ::SCORE::
-        ** Test **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Test **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Piano@|0|{
-            <4*>
-            1 2 3 4
-        }
-        -> 
-        """
+            verse:Piano@|0|{
+                <4*>
+                1 2 3 4
+            }
+            -> 
+            """
         let openParams: [String: Any] = [
             "textDocument": [
                 "uri": "file:///test.tmd",
-                "text": source
+                "text": source,
             ]
         ]
-        server.handle(message: TMDJSONRPCFrame(id: nil, method: "textDocument/didOpen", params: openParams))
+        server.handle(
+            message: TMDJSONRPCFrame(id: nil, method: "textDocument/didOpen", params: openParams))
         // Expect diagnostics notification sent
         #expect(sentMessages.count >= 2)
         #expect(sentMessages.last?.contains("textDocument/publishDiagnostics") == true)
@@ -307,9 +311,10 @@ struct TMDLSPTests {
         // 3. Completion request
         let compParams: [String: Any] = [
             "textDocument": ["uri": "file:///test.tmd"],
-            "position": ["line": 10, "character": 3]
+            "position": ["line": 10, "character": 3],
         ]
-        server.handle(message: TMDJSONRPCFrame(id: 2, method: "textDocument/completion", params: compParams))
+        server.handle(
+            message: TMDJSONRPCFrame(id: 2, method: "textDocument/completion", params: compParams))
         let compResponse = sentMessages.last ?? ""
         #expect(compResponse.contains("verse"))
     }
@@ -322,31 +327,34 @@ struct TMDLSPTests {
         }
 
         let source = """
-        ::SCORE::
-        ** Test Score **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Test Score **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Piano@|0|{
-            <4*>
-            1 2 3 4
-        }
-        -> verse ->#
-        """
+            verse:Piano@|0|{
+                <4*>
+                1 2 3 4
+            }
+            -> verse ->#
+            """
         let openParams: [String: Any] = [
             "textDocument": [
                 "uri": "file:///test.tmd",
-                "text": source
+                "text": source,
             ]
         ]
-        server.handle(message: TMDJSONRPCFrame(id: nil, method: "textDocument/didOpen", params: openParams))
+        server.handle(
+            message: TMDJSONRPCFrame(id: nil, method: "textDocument/didOpen", params: openParams))
 
         // 1. Formatting
         let formatParams: [String: Any] = [
             "textDocument": ["uri": "file:///test.tmd"]
         ]
-        server.handle(message: TMDJSONRPCFrame(id: 10, method: "textDocument/formatting", params: formatParams))
+        server.handle(
+            message: TMDJSONRPCFrame(
+                id: 10, method: "textDocument/formatting", params: formatParams))
         let formatResp = sentMessages.last ?? ""
         #expect(formatResp.contains("newText"))
 
@@ -354,7 +362,9 @@ struct TMDLSPTests {
         let symbolParams: [String: Any] = [
             "textDocument": ["uri": "file:///test.tmd"]
         ]
-        server.handle(message: TMDJSONRPCFrame(id: 11, method: "textDocument/documentSymbol", params: symbolParams))
+        server.handle(
+            message: TMDJSONRPCFrame(
+                id: 11, method: "textDocument/documentSymbol", params: symbolParams))
         let symbolResp = sentMessages.last ?? ""
         #expect(symbolResp.contains("Test Score") || symbolResp.contains("verse"))
     }

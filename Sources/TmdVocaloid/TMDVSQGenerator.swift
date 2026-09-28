@@ -1,6 +1,6 @@
 import Foundation
-import TmdSwift
 import TmdMIDI
+import TmdSwift
 
 /// Options for configuring VOCALOID format exports.
 public struct VocaloidExportOptions: Sendable, Equatable {
@@ -41,9 +41,11 @@ public struct TMDVSQGenerator: Sendable {
         // Track 0: Conductor Track (Tempo & Time Signature)
         let tempo = sheet.speed > 0 ? sheet.speed : 120.0
         let conductorTrackData = TMDMIDIEncoder.encodeTrack(events: [
-            MIDIEvent(tick: 0, message: .trackName(sheet.name.isEmpty ? "TMD VOCALOID Score" : sheet.name)),
+            MIDIEvent(
+                tick: 0, message: .trackName(sheet.name.isEmpty ? "TMD VOCALOID Score" : sheet.name)
+            ),
             MIDIEvent(tick: 0, message: .tempo(tempo)),
-            MIDIEvent(tick: 0, message: .timeSignature(sheet.beat))
+            MIDIEvent(tick: 0, message: .timeSignature(sheet.beat)),
         ])
 
         // Track 1: Vocal Track (MIDI Notes + INI Text chunks)
@@ -53,7 +55,8 @@ public struct TMDVSQGenerator: Sendable {
             options: options
         )
 
-        return TMDMIDIEncoder.encodeFile(tracks: [conductorTrackData, vsqTrackData], ticksPerQuarter: ticksPerQuarter)
+        return TMDMIDIEncoder.encodeFile(
+            tracks: [conductorTrackData, vsqTrackData], ticksPerQuarter: ticksPerQuarter)
     }
 
     private static func resolveTargetInstrument(sheet: Sheet, requested: String?) -> String {
@@ -85,7 +88,8 @@ public struct TMDVSQGenerator: Sendable {
             guard (0...127).contains(pitch) else { continue }
             let lyric = options.defaultLyric
             let phoneme = VocaloidPhoneme.resolvePhoneme(for: lyric)
-            noteItems.append(NoteItem(tick: tick, dur: dur, pitch: UInt8(pitch), lyric: lyric, phoneme: phoneme))
+            noteItems.append(
+                NoteItem(tick: tick, dur: dur, pitch: UInt8(pitch), lyric: lyric, phoneme: phoneme))
         }
 
         // Build INI content
@@ -164,7 +168,9 @@ public struct TMDVSQGenerator: Sendable {
         while offset < iniBytes.count {
             let end = min(offset + chunkSize, iniBytes.count)
             let chunkData = Data(iniBytes[offset..<end])
-            if let chunkStr = String(data: chunkData, encoding: .isoLatin1) ?? String(data: chunkData, encoding: .utf8) {
+            if let chunkStr = String(data: chunkData, encoding: .isoLatin1)
+                ?? String(data: chunkData, encoding: .utf8)
+            {
                 midiEvents.append(MIDIEvent(tick: 0, message: .text(chunkStr)))
             }
             offset += chunkSize
@@ -172,9 +178,12 @@ public struct TMDVSQGenerator: Sendable {
 
         // Add standard MIDI Note On / Note Off events
         for note in noteItems {
-            midiEvents.append(MIDIEvent(tick: note.tick, message: .noteOn(channel: 0, note: note.pitch, velocity: 64)))
+            midiEvents.append(
+                MIDIEvent(
+                    tick: note.tick, message: .noteOn(channel: 0, note: note.pitch, velocity: 64)))
             let offTick = note.tick + note.dur
-            midiEvents.append(MIDIEvent(tick: offTick, message: .noteOff(channel: 0, note: note.pitch)))
+            midiEvents.append(
+                MIDIEvent(tick: offTick, message: .noteOff(channel: 0, note: note.pitch)))
         }
 
         return TMDMIDIEncoder.encodeTrack(events: midiEvents)

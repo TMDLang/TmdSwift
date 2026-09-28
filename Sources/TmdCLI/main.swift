@@ -1,25 +1,26 @@
-import Foundation
 import ArgumentParser
-import TmdSwift
+import Foundation
+import TmdABC
+import TmdAudio
+import TmdChordPro
+import TmdLSP
+import TmdLilyPond
 import TmdMIDI
 import TmdMusicXML
-import TmdLilyPond
-import TmdAudio
-import TmdABC
-import TmdChordPro
 import TmdReaper
 import TmdSkill
-import TmdVocaloid
+import TmdSwift
 import TmdUTAU
 import TmdUtils
-import TmdLSP
+import TmdVocaloid
 
 // MARK: - Format Subcommand
 
 struct TmdCheckCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "check",
-        abstract: "Check measure consistency and report incorrect beat counts between bar lines '|'."
+        abstract:
+            "Check measure consistency and report incorrect beat counts between bar lines '|'."
     )
 
     @Argument(help: "Path to the .tmd file to check.")
@@ -38,7 +39,9 @@ struct TmdCheckCommand: ParsableCommand {
         if issues.isEmpty {
             print("✅ All measures in \(inputPath) conform to expected time signatures.")
         } else {
-            print("❌ Found \(issues.count) measure discrepancy issue\(issues.count == 1 ? "" : "s") in \(inputPath):\n")
+            print(
+                "❌ Found \(issues.count) measure discrepancy issue\(issues.count == 1 ? "" : "s") in \(inputPath):\n"
+            )
             for issue in issues {
                 print(issue)
             }
@@ -50,7 +53,8 @@ struct TmdCheckCommand: ParsableCommand {
 struct TmdLSPCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "lsp",
-        abstract: "Run the TMD Language Server Protocol (LSP) daemon communicating over standard I/O (JSON-RPC)."
+        abstract:
+            "Run the TMD Language Server Protocol (LSP) daemon communicating over standard I/O (JSON-RPC)."
     )
 
     func run() throws {
@@ -104,7 +108,8 @@ struct TmdOutlineCommand: ParsableCommand {
         if json {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted]
-            if let data = try? encoder.encode(nodes), let str = String(data: data, encoding: .utf8) {
+            if let data = try? encoder.encode(nodes), let str = String(data: data, encoding: .utf8)
+            {
                 print(str)
             } else {
                 print("[]")
@@ -116,7 +121,8 @@ struct TmdOutlineCommand: ParsableCommand {
                 if let detail = node.detail, !detail.isEmpty {
                     line += " (\(detail))"
                 }
-                line += " [L\(node.range.startLine):C\(node.range.startColumn) - L\(node.range.endLine):C\(node.range.endColumn)]"
+                line +=
+                    " [L\(node.range.startLine):C\(node.range.startColumn) - L\(node.range.endLine):C\(node.range.endColumn)]"
                 print(line)
                 if let children = node.children {
                     for child in children {
@@ -135,7 +141,8 @@ struct TmdOutlineCommand: ParsableCommand {
 struct TmdInspectCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "inspect",
-        abstract: "Inspect full song musical profile, vocal tessitura, key modulations, and arrangement density."
+        abstract:
+            "Inspect full song musical profile, vocal tessitura, key modulations, and arrangement density."
     )
 
     @Argument(help: "Path to the .tmd file to inspect.")
@@ -150,7 +157,9 @@ struct TmdInspectCommand: ParsableCommand {
     @Flag(name: [.customLong("html")], help: "Output tonality report and dashboard as HTML.")
     var html: Bool = false
 
-    @Option(name: [.customLong("locale")], help: "Localization to use for generated profile text (en or zh-Hant).")
+    @Option(
+        name: [.customLong("locale")],
+        help: "Localization to use for generated profile text (en or zh-Hant).")
     var locale: String?
 
     func run() throws {
@@ -175,7 +184,9 @@ struct TmdInspectCommand: ParsableCommand {
         if json {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted]
-            if let data = try? encoder.encode(profile), let str = String(data: data, encoding: .utf8) {
+            if let data = try? encoder.encode(profile),
+                let str = String(data: data, encoding: .utf8)
+            {
                 print(str)
             } else {
                 print("{}")
@@ -198,7 +209,8 @@ struct TmdInspectCommand: ParsableCommand {
 struct TmdFormatCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "format",
-        abstract: "Format a TMD file with standardized indentation, spacing, and comments preserved."
+        abstract:
+            "Format a TMD file with standardized indentation, spacing, and comments preserved."
     )
 
     @Argument(help: "Path to the .tmd file to format.")
@@ -441,7 +453,9 @@ struct TmdRefactorDoubleGrid: ParsableCommand {
             throw ExitCode.failure
         }
 
-        let target = (section != nil || instrument != nil) ? TMDRefactorTarget(section: section, instrument: instrument) : nil
+        let target =
+            (section != nil || instrument != nil)
+            ? TMDRefactorTarget(section: section, instrument: instrument) : nil
         let result: String
         do {
             result = try TMDRefactor.doubleGrid(source: content, target: target)
@@ -502,7 +516,9 @@ struct TmdRefactorHalveGrid: ParsableCommand {
             throw ExitCode.failure
         }
 
-        let target = (section != nil || instrument != nil) ? TMDRefactorTarget(section: section, instrument: instrument) : nil
+        let target =
+            (section != nil || instrument != nil)
+            ? TMDRefactorTarget(section: section, instrument: instrument) : nil
         let result: String
         do {
             result = try TMDRefactor.halveGrid(source: content, target: target)
@@ -734,7 +750,8 @@ struct TmdRefactorInlineOrders: ParsableCommand {
 struct TmdRefactorOptimizeGrid: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "optimize-grid",
-        abstract: "Automatically simplify grid resolution to the minimal divisible scale without altering rhythm."
+        abstract:
+            "Automatically simplify grid resolution to the minimal divisible scale without altering rhythm."
     )
 
     @Argument(help: "Path to the .tmd file.")
@@ -761,7 +778,9 @@ struct TmdRefactorOptimizeGrid: ParsableCommand {
             throw ExitCode.failure
         }
 
-        let target = (section != nil || instrument != nil) ? TMDRefactorTarget(section: section, instrument: instrument) : nil
+        let target =
+            (section != nil || instrument != nil)
+            ? TMDRefactorTarget(section: section, instrument: instrument) : nil
         let result = TMDRefactor.optimizeGrid(source: content, target: target)
 
         if inPlace {
@@ -789,19 +808,24 @@ struct TmdRefactorOptimizeGrid: ParsableCommand {
 struct TmdRefactorTranspose: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "transpose",
-        abstract: "Transpose notes, chords, and key signatures by semitones or diatonic scale steps."
+        abstract:
+            "Transpose notes, chords, and key signatures by semitones or diatonic scale steps."
     )
 
     @Argument(help: "Path to the .tmd file.")
     var inputPath: String
 
-    @Option(name: [.short, .customLong("semitones")], help: "Pitch shift in semitones (e.g. +2, -3).")
+    @Option(
+        name: [.short, .customLong("semitones")], help: "Pitch shift in semitones (e.g. +2, -3).")
     var semitones: Int?
 
-    @Option(name: [.short, .customLong("diatonic")], help: "Diatonic scale step shift (e.g. +2, -1).")
+    @Option(
+        name: [.short, .customLong("diatonic")], help: "Diatonic scale step shift (e.g. +2, -1).")
     var diatonic: Int?
 
-    @Flag(name: [.customShort("k"), .customLong("update-key")], help: "Also update score {!K:...} key signatures when transposing semitones.")
+    @Flag(
+        name: [.customShort("k"), .customLong("update-key")],
+        help: "Also update score {!K:...} key signatures when transposing semitones.")
     var updateKey: Bool = false
 
     @Option(name: .long, help: "Optional section filter.")
@@ -830,7 +854,9 @@ struct TmdRefactorTranspose: ParsableCommand {
             throw ExitCode.failure
         }
 
-        let target = (section != nil || instrument != nil) ? TMDRefactorTarget(section: section, instrument: instrument) : nil
+        let target =
+            (section != nil || instrument != nil)
+            ? TMDRefactorTarget(section: section, instrument: instrument) : nil
         let result = TMDRefactor.transpose(
             source: content,
             semitones: semitones ?? 0,
@@ -864,7 +890,8 @@ struct TmdRefactorTranspose: ParsableCommand {
 struct TmdRefactorCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "refactor",
-        abstract: "Music score refactoring tools (rename, extract, grid scale, harmony, unroll orders).",
+        abstract:
+            "Music score refactoring tools (rename, extract, grid scale, harmony, unroll orders).",
         subcommands: [
             TmdRefactorRenameInstrument.self,
             TmdRefactorRenameSection.self,
@@ -875,7 +902,7 @@ struct TmdRefactorCommand: ParsableCommand {
             TmdRefactorTranspose.self,
             TmdRefactorDuplicateTrack.self,
             TmdRefactorGenerateHarmony.self,
-            TmdRefactorInlineOrders.self
+            TmdRefactorInlineOrders.self,
         ]
     )
 }
@@ -886,14 +913,15 @@ struct TmdCLICommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "tmd",
         abstract: "A compiler and toolkit for the TMD (Timebase Mark Down) music markup language.",
-        discussion: "In memory of Chen, Chih-Han / aguai (阿怪, 1974–2019).\nOriginal project: https://github.com/aguai/TMDLang",
+        discussion:
+            "In memory of Chen, Chih-Han / aguai (阿怪, 1974–2019).\nOriginal project: https://github.com/aguai/TMDLang",
         version: TmdVersion.current,
         subcommands: [
             TmdCheckCommand.self,
             TmdInspectCommand.self,
             TmdFormatCommand.self,
             TmdOutlineCommand.self,
-            TmdRefactorCommand.self
+            TmdRefactorCommand.self,
         ]
     )
 
@@ -903,52 +931,75 @@ struct TmdCLICommand: ParsableCommand {
     @Flag(name: [.short, .long], help: "Only parse and display the score structure summary.")
     var parseOnly: Bool = false
 
-    @Flag(name: [.customLong("inspect")], help: "Inspect full song musical profile, vocal range, and orchestration density.")
+    @Flag(
+        name: [.customLong("inspect")],
+        help: "Inspect full song musical profile, vocal range, and orchestration density.")
     var inspectSong: Bool = false
 
     @Flag(name: [.long], help: "Play the score using the macOS default sound bank.")
     var play: Bool = false
 
-    @Flag(name: [.long], help: "Install TMD skill definitions to local AI agent skill directories (Codex, Antigravity, Claude, etc.).")
+    @Flag(
+        name: [.long],
+        help:
+            "Install TMD skill definitions to local AI agent skill directories (Codex, Antigravity, Claude, etc.)."
+    )
     var installSkills: Bool = false
 
     @Option(name: [.short, .long], help: "Export to MIDI file at the specified path.")
     var midiOutput: String?
 
-    @Option(name: [.customShort("r"), .long, .customLong("rpp-output")], help: "Export to REAPER project (.rpp) file at the specified path.")
+    @Option(
+        name: [.customShort("r"), .long, .customLong("rpp-output")],
+        help: "Export to REAPER project (.rpp) file at the specified path.")
     var reaperOutput: String?
 
-    @Option(name: [.customShort("x"), .long], help: "Export to MusicXML file at the specified path.")
+    @Option(
+        name: [.customShort("x"), .long], help: "Export to MusicXML file at the specified path.")
     var musicxmlOutput: String?
 
-    @Option(name: [.customShort("l"), .long], help: "Export to LilyPond (.ly) file at the specified path.")
+    @Option(
+        name: [.customShort("l"), .long],
+        help: "Export to LilyPond (.ly) file at the specified path.")
     var lilypondOutput: String?
 
-    @Option(name: [.customShort("a"), .long], help: "Export to ABC notation (.abc) file at the specified path.")
+    @Option(
+        name: [.customShort("a"), .long],
+        help: "Export to ABC notation (.abc) file at the specified path.")
     var abcOutput: String?
 
-    @Option(name: [.customShort("c"), .customLong("chordpro-output"), .customLong("cho-output")], help: "Export to ChordPro (.cho) file at the specified path.")
+    @Option(
+        name: [.customShort("c"), .customLong("chordpro-output"), .customLong("cho-output")],
+        help: "Export to ChordPro (.cho) file at the specified path.")
     var chordproOutput: String?
 
     @Option(name: [.long], help: "Render PDF score using lilypond compiler.")
     var pdfOutput: String?
 
-    @Option(name: [.customShort("w"), .long], help: "Render to WAV audio file at the specified path.")
+    @Option(
+        name: [.customShort("w"), .long], help: "Render to WAV audio file at the specified path.")
     var wavOutput: String?
 
-    @Option(name: [.customLong("vsq-output")], help: "Export vocal track to VOCALOID2 (.vsq) file at the specified path.")
+    @Option(
+        name: [.customLong("vsq-output")],
+        help: "Export vocal track to VOCALOID2 (.vsq) file at the specified path.")
     var vsqOutput: String?
 
-    @Option(name: [.customLong("vsqx-output")], help: "Export vocal track to VOCALOID3/4 (.vsqx) XML file at the specified path.")
+    @Option(
+        name: [.customLong("vsqx-output")],
+        help: "Export vocal track to VOCALOID3/4 (.vsqx) XML file at the specified path.")
     var vsqxOutput: String?
 
-    @Option(name: [.customShort("u"), .customLong("ust-output")], help: "Export vocal track to UTAU / OpenUtau (.ust) file at the specified path.")
+    @Option(
+        name: [.customShort("u"), .customLong("ust-output")],
+        help: "Export vocal track to UTAU / OpenUtau (.ust) file at the specified path.")
     var ustOutput: String?
 
     @Option(name: [.long], help: "Vocaloid singer name (defaults to Miku).")
     var singer: String = "Miku"
 
-    @Option(name: [.long], help: "Optional SoundFont (.sf2) or DLS soundbank path for audio rendering.")
+    @Option(
+        name: [.long], help: "Optional SoundFont (.sf2) or DLS soundbank path for audio rendering.")
     var soundfont: String?
 
     @Option(name: .long, help: "Optional section filter for MIDI export or playback.")
@@ -978,15 +1029,19 @@ struct TmdCLICommand: ParsableCommand {
 
         guard let inputPath = inputPath else {
             print("Error: Missing expected argument '<input-path>'")
-            print("Use --help for usage information, or --install-skills to install AI agent skills.")
+            print(
+                "Use --help for usage information, or --install-skills to install AI agent skills.")
             throw ExitCode.failure
         }
 
-        print("TmdSwift v\(TmdVersion.current) - In memory of Chen, Chih-Han / aguai (阿怪, 1974–2019).")
+        print(
+            "TmdSwift v\(TmdVersion.current) - In memory of Chen, Chih-Han / aguai (阿怪, 1974–2019)."
+        )
 
         let fileContent: String
         do {
-            fileContent = try String(contentsOfFile: FilePathNormalizer.fileURLToPath(inputPath), encoding: .utf8)
+            fileContent = try String(
+                contentsOfFile: FilePathNormalizer.fileURLToPath(inputPath), encoding: .utf8)
         } catch {
             print("Error: Could not read file at \(inputPath): \(error.localizedDescription)")
             throw ExitCode.failure
@@ -1008,20 +1063,25 @@ struct TmdCLICommand: ParsableCommand {
             throw ExitCode.failure
         }
 
-        let isExporting = (midiOutput != nil || reaperOutput != nil || musicxmlOutput != nil ||
-                           lilypondOutput != nil || abcOutput != nil || chordproOutput != nil ||
-                           pdfOutput != nil || wavOutput != nil || vsqOutput != nil ||
-                           vsqxOutput != nil || ustOutput != nil)
+        let isExporting =
+            (midiOutput != nil || reaperOutput != nil || musicxmlOutput != nil
+                || lilypondOutput != nil || abcOutput != nil || chordproOutput != nil
+                || pdfOutput != nil || wavOutput != nil || vsqOutput != nil || vsqxOutput != nil
+                || ustOutput != nil)
 
         if isExporting && !force {
             let issues = TMDMeasureChecker.check(source: fileContent)
             if !issues.isEmpty {
-                print("❌ Export aborted: Found \(issues.count) measure discrepancy issue\(issues.count == 1 ? "" : "s") in \(inputPath):")
+                print(
+                    "❌ Export aborted: Found \(issues.count) measure discrepancy issue\(issues.count == 1 ? "" : "s") in \(inputPath):"
+                )
                 for issue in issues.prefix(10) {
                     print("  - \(issue)")
                 }
                 if issues.count > 10 {
-                    print("  ... and \(issues.count - 10) more issues. Run `tmd check \(inputPath)` to see all.")
+                    print(
+                        "  ... and \(issues.count - 10) more issues. Run `tmd check \(inputPath)` to see all."
+                    )
                 }
                 print("\nUse --force (-f) to ignore measure errors and force export.")
                 throw ExitCode.failure
@@ -1070,7 +1130,9 @@ struct TmdCLICommand: ParsableCommand {
             let outURL = URL(fileURLWithPath: rppPath)
             do {
                 try rppString.write(to: outURL, atomically: true, encoding: .utf8)
-                print("REAPER project exported successfully to \(rppPath) (\(rppString.utf8.count) bytes)")
+                print(
+                    "REAPER project exported successfully to \(rppPath) (\(rppString.utf8.count) bytes)"
+                )
             } catch {
                 print("Error saving REAPER project to \(rppPath): \(error.localizedDescription)")
                 throw ExitCode.failure
@@ -1083,7 +1145,8 @@ struct TmdCLICommand: ParsableCommand {
             let outURL = URL(fileURLWithPath: xmlPath)
             do {
                 try xmlString.write(to: outURL, atomically: true, encoding: .utf8)
-                print("MusicXML exported successfully to \(xmlPath) (\(xmlString.utf8.count) bytes)")
+                print(
+                    "MusicXML exported successfully to \(xmlPath) (\(xmlString.utf8.count) bytes)")
             } catch {
                 print("Error saving MusicXML to \(xmlPath): \(error.localizedDescription)")
                 throw ExitCode.failure
@@ -1105,7 +1168,8 @@ struct TmdCLICommand: ParsableCommand {
 
         // Render to PDF using lilypond command line if requested
         if let pdfPath = pdfOutput {
-            let tempLyURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString + ".ly")
+            let tempLyURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(
+                UUID().uuidString + ".ly")
             let lyString = TMDLilyPondGenerator.generateLilyPond(from: sheet)
             try? lyString.write(to: tempLyURL, atomically: true, encoding: .utf8)
 
@@ -1120,10 +1184,14 @@ struct TmdCLICommand: ParsableCommand {
                 if process.terminationStatus == 0 {
                     print("PDF rendered successfully via LilyPond to \(pdfPath)")
                 } else {
-                    print("Warning: lilypond exited with status \(process.terminationStatus). Make sure lilypond is installed (e.g. `brew install lilypond`).")
+                    print(
+                        "Warning: lilypond exited with status \(process.terminationStatus). Make sure lilypond is installed (e.g. `brew install lilypond`)."
+                    )
                 }
             } catch {
-                print("Could not invoke lilypond: \(error.localizedDescription). You can export the .ly file directly using `-l`.")
+                print(
+                    "Could not invoke lilypond: \(error.localizedDescription). You can export the .ly file directly using `-l`."
+                )
             }
             try? FileManager.default.removeItem(at: tempLyURL)
         }
@@ -1134,7 +1202,9 @@ struct TmdCLICommand: ParsableCommand {
             let outURL = URL(fileURLWithPath: abcPath)
             do {
                 try abcString.write(to: outURL, atomically: true, encoding: .utf8)
-                print("ABC notation exported successfully to \(abcPath) (\(abcString.utf8.count) bytes)")
+                print(
+                    "ABC notation exported successfully to \(abcPath) (\(abcString.utf8.count) bytes)"
+                )
             } catch {
                 print("Error saving ABC notation: \(error.localizedDescription)")
                 throw ExitCode.failure
@@ -1147,7 +1217,8 @@ struct TmdCLICommand: ParsableCommand {
             let outURL = URL(fileURLWithPath: choPath)
             do {
                 try choString.write(to: outURL, atomically: true, encoding: .utf8)
-                print("ChordPro exported successfully to \(choPath) (\(choString.utf8.count) bytes)")
+                print(
+                    "ChordPro exported successfully to \(choPath) (\(choString.utf8.count) bytes)")
             } catch {
                 print("Error saving ChordPro file: \(error.localizedDescription)")
                 throw ExitCode.failure
@@ -1180,7 +1251,8 @@ struct TmdCLICommand: ParsableCommand {
             let outURL = URL(fileURLWithPath: vsqPath)
             do {
                 try vsqData.write(to: outURL)
-                print("VOCALOID2 (.vsq) exported successfully to \(vsqPath) (\(vsqData.count) bytes)")
+                print(
+                    "VOCALOID2 (.vsq) exported successfully to \(vsqPath) (\(vsqData.count) bytes)")
             } catch {
                 print("Error saving VSQ file: \(error.localizedDescription)")
                 throw ExitCode.failure
@@ -1194,7 +1266,9 @@ struct TmdCLICommand: ParsableCommand {
             let outURL = URL(fileURLWithPath: vsqxPath)
             do {
                 try vsqxString.write(to: outURL, atomically: true, encoding: .utf8)
-                print("VOCALOID3/4 (.vsqx) exported successfully to \(vsqxPath) (\(vsqxString.utf8.count) bytes)")
+                print(
+                    "VOCALOID3/4 (.vsqx) exported successfully to \(vsqxPath) (\(vsqxString.utf8.count) bytes)"
+                )
             } catch {
                 print("Error saving VSQX file: \(error.localizedDescription)")
                 throw ExitCode.failure
@@ -1208,7 +1282,9 @@ struct TmdCLICommand: ParsableCommand {
             let outURL = URL(fileURLWithPath: ustPath)
             do {
                 try ustString.write(to: outURL, atomically: true, encoding: .utf8)
-                print("UTAU (.ust) exported successfully to \(ustPath) (\(ustString.utf8.count) bytes)")
+                print(
+                    "UTAU (.ust) exported successfully to \(ustPath) (\(ustString.utf8.count) bytes)"
+                )
             } catch {
                 print("Error saving UST file: \(error.localizedDescription)")
                 throw ExitCode.failure
@@ -1216,53 +1292,57 @@ struct TmdCLICommand: ParsableCommand {
         }
     }
 
-    private func play(sheet: Sheet, targetParagraph: String? = nil, targetInstrument: String? = nil) throws {
-#if os(macOS)
-        let soundBankURL = soundfont.map { URL(fileURLWithPath: $0) }
-        let wavData: Data
-        do {
-            wavData = try TMDWAVRenderer.renderWAV(
-                from: sheet,
-                soundBankURL: soundBankURL,
-                targetParagraph: targetParagraph,
-                targetInstrument: targetInstrument
-            )
-        } catch {
-            print("Error rendering audio for playback: \(error.localizedDescription)")
-            throw ExitCode.failure
-        }
-
-        let tempURL = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("tmd-\(UUID().uuidString).wav")
-        defer { try? FileManager.default.removeItem(at: tempURL) }
-
-        do {
-            try wavData.write(to: tempURL)
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/afplay")
-            process.arguments = [tempURL.path]
-            try process.run()
-            process.waitUntilExit()
-            guard process.terminationStatus == 0 else {
-                print("Error: afplay exited with status \(process.terminationStatus).")
+    private func play(sheet: Sheet, targetParagraph: String? = nil, targetInstrument: String? = nil)
+        throws
+    {
+        #if os(macOS)
+            let soundBankURL = soundfont.map { URL(fileURLWithPath: $0) }
+            let wavData: Data
+            do {
+                wavData = try TMDWAVRenderer.renderWAV(
+                    from: sheet,
+                    soundBankURL: soundBankURL,
+                    targetParagraph: targetParagraph,
+                    targetInstrument: targetInstrument
+                )
+            } catch {
+                print("Error rendering audio for playback: \(error.localizedDescription)")
                 throw ExitCode.failure
             }
-        } catch let error as ExitCode {
-            throw error
-        } catch {
-            print("Error playing audio: \(error.localizedDescription)")
+
+            let tempURL = URL(fileURLWithPath: NSTemporaryDirectory())
+                .appendingPathComponent("tmd-\(UUID().uuidString).wav")
+            defer { try? FileManager.default.removeItem(at: tempURL) }
+
+            do {
+                try wavData.write(to: tempURL)
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/usr/bin/afplay")
+                process.arguments = [tempURL.path]
+                try process.run()
+                process.waitUntilExit()
+                guard process.terminationStatus == 0 else {
+                    print("Error: afplay exited with status \(process.terminationStatus).")
+                    throw ExitCode.failure
+                }
+            } catch let error as ExitCode {
+                throw error
+            } catch {
+                print("Error playing audio: \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        #else
+            print("Error: --play is currently supported only on macOS.")
             throw ExitCode.failure
-        }
-#else
-        print("Error: --play is currently supported only on macOS.")
-        throw ExitCode.failure
-#endif
+        #endif
     }
 }
 
 // Route subcommand dispatch manually if first argument matches a subcommand
 let rawArgs = Array(CommandLine.arguments.dropFirst())
-if let first = rawArgs.first, ["lsp", "check", "inspect", "outline", "format", "refactor"].contains(first) {
+if let first = rawArgs.first,
+    ["lsp", "check", "inspect", "outline", "format", "refactor"].contains(first)
+{
     if first == "lsp" {
         TmdLSPCommand.main(Array(rawArgs.dropFirst()))
     } else if first == "check" {

@@ -48,7 +48,7 @@ private struct WAVFile {
             Data(format.blockAlign.littleEndianBytes),
             Data(format.bitsPerSample.littleEndianBytes),
             Data("data".utf8),
-            Data(dataSize.littleEndianBytes)
+            Data(dataSize.littleEndianBytes),
         ]
         let header = chunks.reduce(into: Data()) { result, chunk in
             result.append(chunk)
@@ -57,8 +57,8 @@ private struct WAVFile {
     }
 }
 
-private extension FixedWidthInteger {
-    var littleEndianBytes: [UInt8] {
+extension FixedWidthInteger {
+    fileprivate var littleEndianBytes: [UInt8] {
         var value = littleEndian
         return withUnsafeBytes(of: &value) { Array($0) }
     }

@@ -15,7 +15,8 @@ public struct PlaybackState: Equatable, Sendable {
     public let timeSignature: Beat
     public let dynamicLevel: DynamicMark
 
-    public init(tempo: Double, keyOffset: Int, timeSignature: Beat, dynamicLevel: DynamicMark = .mf) {
+    public init(tempo: Double, keyOffset: Int, timeSignature: Beat, dynamicLevel: DynamicMark = .mf)
+    {
         self.tempo = tempo
         self.keyOffset = keyOffset
         self.timeSignature = timeSignature
@@ -55,10 +56,14 @@ public struct PlaybackTimeline: Equatable, Sendable {
 
     public var track: PlaybackTrack? {
         guard let assignment else { return nil }
-        return PlaybackTrack(assignment: assignment, events: events, directives: directives, duration: duration)
+        return PlaybackTrack(
+            assignment: assignment, events: events, directives: directives, duration: duration)
     }
 
-    public init(events: [PlaybackEvent], directives: [PlaybackDirectiveEvent], duration: Double, assignment: String? = nil) {
+    public init(
+        events: [PlaybackEvent], directives: [PlaybackDirectiveEvent], duration: Double,
+        assignment: String? = nil
+    ) {
         self.events = events
         self.directives = directives
         self.duration = duration
@@ -93,10 +98,13 @@ public enum TMDPlaybackRenderer {
         }
         let grouped = Dictionary(grouping: directives) { $0.position }
         return grouped.compactMap { position, values in
-            let tempos = Array(Set(values.compactMap { directive -> Double? in
-                if case .tempo(let value) = directive.kind { return value }
-                return nil
-            })).sorted()
+            let tempos = Array(
+                Set(
+                    values.compactMap { directive -> Double? in
+                        if case .tempo(let value) = directive.kind { return value }
+                        return nil
+                    })
+            ).sorted()
             guard tempos.count > 1 else { return nil }
             return PlaybackTempoConflict(position: position, tempos: tempos)
         }.sorted { $0.position < $1.position }
@@ -116,13 +124,16 @@ public enum TMDPlaybackRenderer {
                     let second = entries[otherIndex]
                     let firstRange = range(of: first, beat: sheet.beat)
                     let secondRange = range(of: second, beat: sheet.beat)
-                    if max(firstRange.lowerBound, secondRange.lowerBound) < min(firstRange.upperBound, secondRange.upperBound) {
-                        issues.append(PlaybackValidationIssue(
-                            sectionName: first.name,
-                            assignment: first.assignment ?? "",
-                            firstOffset: first.start,
-                            secondOffset: second.start
-                        ))
+                    if max(firstRange.lowerBound, secondRange.lowerBound)
+                        < min(firstRange.upperBound, secondRange.upperBound)
+                    {
+                        issues.append(
+                            PlaybackValidationIssue(
+                                sectionName: first.name,
+                                assignment: first.assignment ?? "",
+                                firstOffset: first.start,
+                                secondOffset: second.start
+                            ))
                     }
                 }
             }
@@ -133,7 +144,8 @@ public enum TMDPlaybackRenderer {
     private static func range(of entry: Entry, beat: Beat) -> Range<Double> {
         let duration = entry.sections.reduce(0.0) { total, section in
             let unitDuration = 4.0 / Double(max(1, section.noteLength))
-            return total + section.unitGroups.reduce(0.0) { $0 + Double(max(0, $1.length)) * unitDuration }
+            return total
+                + section.unitGroups.reduce(0.0) { $0 + Double(max(0, $1.length)) * unitDuration }
         }
         let start = Double(entry.start) * measureDuration(for: beat)
         return start..<start + duration
@@ -145,7 +157,8 @@ public enum TMDPlaybackRenderer {
         let paragraphs = sheet.entries.filter {
             $0.assignment?.caseInsensitiveCompare(instrument) == .orderedSame
         }
-        let orders = sheet.playback.isEmpty
+        let orders =
+            sheet.playback.isEmpty
             ? sheet.entries.map(\.name).reduce(into: [String]()) { names, name in
                 if !names.contains(name) { names.append(name) }
             }.map(Playback.name)
@@ -163,11 +176,15 @@ public enum TMDPlaybackRenderer {
             switch order {
             case .relative(let value):
                 if let delta = Int(value.replacingOccurrences(of: "+", with: "")) {
-                    state = PlaybackState(tempo: state.tempo, keyOffset: state.keyOffset + delta, timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
+                    state = PlaybackState(
+                        tempo: state.tempo, keyOffset: state.keyOffset + delta,
+                        timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
                 }
             case .absolute(let value):
                 let keyOffset = KeySignature(string: value).semitoneOffset
-                state = PlaybackState(tempo: state.tempo, keyOffset: keyOffset, timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
+                state = PlaybackState(
+                    tempo: state.tempo, keyOffset: keyOffset, timeSignature: state.timeSignature,
+                    dynamicLevel: state.dynamicLevel)
             case .name(let name):
                 let matchingParagraphs = paragraphs.filter { $0.name == name }
                 let paragraphDuration = duration(of: name, in: sheet, beat: state.timeSignature)
@@ -177,9 +194,14 @@ public enum TMDPlaybackRenderer {
                 }
 
                 for paragraph in matchingParagraphs {
-                    let start = timelinePosition + Double(paragraph.start) * measureDuration(for: state.timeSignature)
-                    let paragraphState = paragraph.pitchMode == .fixed
-                        ? PlaybackState(tempo: state.tempo, keyOffset: 0, timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
+                    let start =
+                        timelinePosition + Double(paragraph.start)
+                        * measureDuration(for: state.timeSignature)
+                    let paragraphState =
+                        paragraph.pitchMode == .fixed
+                        ? PlaybackState(
+                            tempo: state.tempo, keyOffset: 0, timeSignature: state.timeSignature,
+                            dynamicLevel: state.dynamicLevel)
                         : state
                     let rendered = render(
                         paragraph: paragraph,
@@ -191,7 +213,8 @@ public enum TMDPlaybackRenderer {
                     directives.append(contentsOf: rendered.directives)
                     state = PlaybackState(
                         tempo: rendered.state.tempo,
-                        keyOffset: paragraph.pitchMode == .fixed ? state.keyOffset : rendered.state.keyOffset,
+                        keyOffset: paragraph.pitchMode == .fixed
+                            ? state.keyOffset : rendered.state.keyOffset,
                         timeSignature: state.timeSignature,
                         dynamicLevel: rendered.state.dynamicLevel
                     )
@@ -245,7 +268,9 @@ public enum TMDPlaybackRenderer {
 
         for timeline in sourceTimelines {
             for directive in timeline.directives.sorted(by: { $0.position < $1.position }) {
-                if merged.contains(where: { $0.position == directive.position && $0.kind == directive.kind }) {
+                if merged.contains(where: {
+                    $0.position == directive.position && $0.kind == directive.kind
+                }) {
                     continue
                 }
                 merged.append(directive)
@@ -267,7 +292,8 @@ public enum TMDPlaybackRenderer {
             .map(\.element)
             .map { directive in
                 state = apply(directive.kind, to: state)
-                return PlaybackDirectiveEvent(position: directive.position, kind: directive.kind, state: state)
+                return PlaybackDirectiveEvent(
+                    position: directive.position, kind: directive.kind, state: state)
             }
 
         return PlaybackTimeline(
@@ -282,7 +308,10 @@ public enum TMDPlaybackRenderer {
         start: Double,
         state initialState: PlaybackState,
         fixedPitch: Bool
-    ) -> (events: [PlaybackEvent], directives: [PlaybackDirectiveEvent], state: PlaybackState, duration: Double) {
+    ) -> (
+        events: [PlaybackEvent], directives: [PlaybackDirectiveEvent], state: PlaybackState,
+        duration: Double
+    ) {
         var state = initialState
         var events: [PlaybackEvent] = []
         var directives: [PlaybackDirectiveEvent] = []
@@ -296,14 +325,16 @@ public enum TMDPlaybackRenderer {
 
             for group in section.unitGroups {
                 while directiveIndex < sortedDirectives.count,
-                      sortedDirectives[directiveIndex].position <= sectionPosition {
+                    sortedDirectives[directiveIndex].position <= sectionPosition
+                {
                     let directive = sortedDirectives[directiveIndex]
                     state = apply(directive.kind, to: state, fixedPitch: fixedPitch)
-                    directives.append(PlaybackDirectiveEvent(
-                        position: position,
-                        kind: directive.kind,
-                        state: state
-                    ))
+                    directives.append(
+                        PlaybackDirectiveEvent(
+                            position: position,
+                            kind: directive.kind,
+                            state: state
+                        ))
                     directiveIndex += 1
                 }
 
@@ -329,7 +360,10 @@ public enum TMDPlaybackRenderer {
                         }
                     } else {
                         // Leading tie with no preceding note acts as rest
-                        events.append(PlaybackEvent(position: position, duration: groupDuration, content: .rest, state: state))
+                        events.append(
+                            PlaybackEvent(
+                                position: position, duration: groupDuration, content: .rest,
+                                state: state))
                     }
                 } else {
                     let baseSlotDuration = groupDuration / Double(max(1, group.units.count))
@@ -364,12 +398,13 @@ public enum TMDPlaybackRenderer {
                                 }
                                 currentEventIndices = extendedIndices
                             } else {
-                                events.append(PlaybackEvent(
-                                    position: position + Double(idx) * baseSlotDuration,
-                                    duration: baseSlotDuration,
-                                    content: .rest,
-                                    state: state
-                                ))
+                                events.append(
+                                    PlaybackEvent(
+                                        position: position + Double(idx) * baseSlotDuration,
+                                        duration: baseSlotDuration,
+                                        content: .rest,
+                                        state: state
+                                    ))
                                 currentEventIndices = [events.count - 1]
                             }
                         } else {
@@ -378,22 +413,24 @@ public enum TMDPlaybackRenderer {
                             switch unit {
                             case .multiNote(let notes):
                                 for note in notes {
-                                    events.append(PlaybackEvent(
-                                        position: slotPosition,
-                                        duration: baseSlotDuration,
-                                        content: .note(note),
-                                        state: state
-                                    ))
+                                    events.append(
+                                        PlaybackEvent(
+                                            position: slotPosition,
+                                            duration: baseSlotDuration,
+                                            content: .note(note),
+                                            state: state
+                                        ))
                                     newIndices.append(events.count - 1)
                                 }
                             default:
                                 if let content = content(of: unit) {
-                                    events.append(PlaybackEvent(
-                                        position: slotPosition,
-                                        duration: baseSlotDuration,
-                                        content: content,
-                                        state: state
-                                    ))
+                                    events.append(
+                                        PlaybackEvent(
+                                            position: slotPosition,
+                                            duration: baseSlotDuration,
+                                            content: content,
+                                            state: state
+                                        ))
                                     newIndices.append(events.count - 1)
                                 }
                             }
@@ -408,7 +445,8 @@ public enum TMDPlaybackRenderer {
             while directiveIndex < sortedDirectives.count {
                 let directive = sortedDirectives[directiveIndex]
                 state = apply(directive.kind, to: state)
-                directives.append(PlaybackDirectiveEvent(position: position, kind: directive.kind, state: state))
+                directives.append(
+                    PlaybackDirectiveEvent(position: position, kind: directive.kind, state: state))
                 directiveIndex += 1
             }
         }
@@ -427,31 +465,49 @@ public enum TMDPlaybackRenderer {
         }
     }
 
-    private static func apply(_ kind: SectionDirectiveKind, to state: PlaybackState) -> PlaybackState {
+    private static func apply(_ kind: SectionDirectiveKind, to state: PlaybackState)
+        -> PlaybackState
+    {
         return switch kind {
         case .tempo(let value):
-            PlaybackState(tempo: max(1, value), keyOffset: state.keyOffset, timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
+            PlaybackState(
+                tempo: max(1, value), keyOffset: state.keyOffset,
+                timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
         case .relativeTempo(let value):
-            PlaybackState(tempo: max(1, state.tempo + value), keyOffset: state.keyOffset, timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
+            PlaybackState(
+                tempo: max(1, state.tempo + value), keyOffset: state.keyOffset,
+                timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
         case .absoluteKey(let value):
-            PlaybackState(tempo: state.tempo, keyOffset: KeySignature(string: value).semitoneOffset, timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
+            PlaybackState(
+                tempo: state.tempo, keyOffset: KeySignature(string: value).semitoneOffset,
+                timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
         case .relativeKey(let value):
-            PlaybackState(tempo: state.tempo, keyOffset: state.keyOffset + value, timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
+            PlaybackState(
+                tempo: state.tempo, keyOffset: state.keyOffset + value,
+                timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
         case .explicitKey:
             // `key=` is notation metadata only. Unlike `?=` and relative
             // movable-do directives, it must not alter the sounding pitch
             // context.
             state
         case .dynamics(let mark):
-            PlaybackState(tempo: state.tempo, keyOffset: state.keyOffset, timeSignature: state.timeSignature, dynamicLevel: mark)
+            PlaybackState(
+                tempo: state.tempo, keyOffset: state.keyOffset, timeSignature: state.timeSignature,
+                dynamicLevel: mark)
         case .fixedPitch:
-            PlaybackState(tempo: state.tempo, keyOffset: 0, timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
+            PlaybackState(
+                tempo: state.tempo, keyOffset: 0, timeSignature: state.timeSignature,
+                dynamicLevel: state.dynamicLevel)
         case .timeSignature(let beat):
-            PlaybackState(tempo: state.tempo, keyOffset: state.keyOffset, timeSignature: beat, dynamicLevel: state.dynamicLevel)
+            PlaybackState(
+                tempo: state.tempo, keyOffset: state.keyOffset, timeSignature: beat,
+                dynamicLevel: state.dynamicLevel)
         }
     }
 
-    private static func apply(_ kind: SectionDirectiveKind, to state: PlaybackState, fixedPitch: Bool) -> PlaybackState {
+    private static func apply(
+        _ kind: SectionDirectiveKind, to state: PlaybackState, fixedPitch: Bool
+    ) -> PlaybackState {
         if fixedPitch {
             switch kind {
             case .absoluteKey, .relativeKey, .fixedPitch:
@@ -474,7 +530,10 @@ public enum TMDPlaybackRenderer {
             let startBeats = Double(paragraph.start) * measureDuration(for: effectiveBeat)
             let noteDuration = paragraph.sections.reduce(0.0) { total, section in
                 let unitDuration = 4.0 / Double(max(1, section.noteLength))
-                return total + section.unitGroups.reduce(0.0) { $0 + Double(max(0, $1.length)) * unitDuration }
+                return total
+                    + section.unitGroups.reduce(0.0) {
+                        $0 + Double(max(0, $1.length)) * unitDuration
+                    }
             }
             return startBeats + noteDuration
         }
@@ -489,7 +548,8 @@ public enum TMDPlaybackRenderer {
     /// Calculates the global negative offset across all instruments in the score orders,
     /// ensuring all tracks share the exact same temporal alignment.
     public static func globalEarliestPosition(in sheet: Sheet) -> Double {
-        let orders = sheet.playback.isEmpty
+        let orders =
+            sheet.playback.isEmpty
             ? sheet.entries.map(\.name).reduce(into: [String]()) { names, name in
                 if !names.contains(name) { names.append(name) }
             }.map(Playback.name)
@@ -506,16 +566,21 @@ public enum TMDPlaybackRenderer {
             switch order {
             case .relative(let value):
                 if let delta = Int(value.replacingOccurrences(of: "+", with: "")) {
-                    state = PlaybackState(tempo: state.tempo, keyOffset: state.keyOffset + delta, timeSignature: state.timeSignature)
+                    state = PlaybackState(
+                        tempo: state.tempo, keyOffset: state.keyOffset + delta,
+                        timeSignature: state.timeSignature)
                 }
             case .absolute(let value):
                 let keyOffset = KeySignature(string: value).semitoneOffset
-                state = PlaybackState(tempo: state.tempo, keyOffset: keyOffset, timeSignature: state.timeSignature)
+                state = PlaybackState(
+                    tempo: state.tempo, keyOffset: keyOffset, timeSignature: state.timeSignature)
             case .name(let name):
                 let matchingParagraphs = sheet.entries.filter { $0.name == name }
                 let paragraphDuration = duration(of: name, in: sheet, beat: state.timeSignature)
                 for paragraph in matchingParagraphs {
-                    let start = timelinePosition + Double(paragraph.start) * measureDuration(for: state.timeSignature)
+                    let start =
+                        timelinePosition + Double(paragraph.start)
+                        * measureDuration(for: state.timeSignature)
                     if start < minPosition {
                         minPosition = start
                     }

@@ -1,30 +1,31 @@
-import Testing
 import Foundation
-@testable import TmdSwift
+import Testing
 import TmdChordPro
+
+@testable import TmdSwift
 
 @Suite("ChordPro Validation Tests")
 struct ChordProValidationTests {
 
     @Test func testStandardChordProMetadataDirectives() throws {
         let tmd = """
-        ::SCORE::
-        ** Amazing Grace **
-        != 80
-        ?= G
-        <3/4>
-        ~ "詞：John Newton"
-        ~ "曲：Traditional"
-        ~ "編：Arranger Person"
-        =~:__artist__= "Traditional Artist"
-        =~:__subtitle__= "Folk Hymn"
+            ::SCORE::
+            ** Amazing Grace **
+            != 80
+            ?= G
+            <3/4>
+            ~ "詞：John Newton"
+            ~ "曲：Traditional"
+            ~ "編：Arranger Person"
+            =~:__artist__= "Traditional Artist"
+            =~:__subtitle__= "Folk Hymn"
 
-        A:Guitar@|0|{
-            <4*>
-            [G] . .
-        }
-        -> A ->#
-        """
+            A:Guitar@|0|{
+                <4*>
+                [G] . .
+            }
+            -> A ->#
+            """
         let sheet = try TmdParser.parseThrowing(string: tmd)
         let cho = TMDChordProGenerator.generateChordPro(from: sheet)
 
@@ -41,20 +42,20 @@ struct ChordProValidationTests {
 
     @Test func testRenderChordProgressionWithMeasureBars() throws {
         let tmd = """
-        ::SCORE::
-        ** 12 Bar Blues **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** 12 Bar Blues **
+            != 120
+            ?= C
+            <4/4>
 
-        Verse:Guitar@|0|{
-            <4*>
-            [C] - - -
-            [F] - - -
-            [C] - [G] -
-        }
-        -> Verse ->#
-        """
+            Verse:Guitar@|0|{
+                <4*>
+                [C] - - -
+                [F] - - -
+                [C] - [G] -
+            }
+            -> Verse ->#
+            """
         let sheet = try TmdParser.parseThrowing(string: tmd)
         let cho = TMDChordProGenerator.generateChordPro(from: sheet)
 
@@ -64,24 +65,24 @@ struct ChordProValidationTests {
 
     @Test func testSectionsAndOrderSequencing() throws {
         let tmd = """
-        ::SCORE::
-        ** Structure Demo **
-        != 100
-        ?= D
-        <4/4>
+            ::SCORE::
+            ** Structure Demo **
+            != 100
+            ?= D
+            <4/4>
 
-        Intro:Guitar@|0|{
-            <4*>
-            [D] . . .
-        }
+            Intro:Guitar@|0|{
+                <4*>
+                [D] . . .
+            }
 
-        Chorus:Guitar@|0|{
-            <4*>
-            [G] . [A] .
-        }
+            Chorus:Guitar@|0|{
+                <4*>
+                [G] . [A] .
+            }
 
-        -> Intro -> Chorus -> Intro ->#
-        """
+            -> Intro -> Chorus -> Intro ->#
+            """
         let sheet = try TmdParser.parseThrowing(string: tmd)
         let cho = TMDChordProGenerator.generateChordPro(from: sheet)
 
@@ -93,18 +94,18 @@ struct ChordProValidationTests {
 
     @Test func testRepeatedSectionChordsFollowOrderModulation() throws {
         let tmd = """
-        ::SCORE::
-        ** Modulated ChordPro **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Modulated ChordPro **
+            != 120
+            ?= C
+            <4/4>
 
-        Verse:Guitar@|0|{
-            <4*>
-            [1] - - -
-        }
-        -> Verse -> {?+2} -> Verse ->#
-        """
+            Verse:Guitar@|0|{
+                <4*>
+                [1] - - -
+            }
+            -> Verse -> {?+2} -> Verse ->#
+            """
         let sheet = try TmdParser.parseThrowing(string: tmd)
         let cho = TMDChordProGenerator.generateChordPro(from: sheet)
 
@@ -114,51 +115,52 @@ struct ChordProValidationTests {
 
     @Test func testCustomMeasuresPerLine() throws {
         let tmd = """
-        ::SCORE::
-        ** Long Progression **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Long Progression **
+            != 120
+            ?= C
+            <4/4>
 
-        Verse:Guitar@|0|{
-            <4*>
-            [C] - - -
-            [Dm] - - -
-            [Em] - - -
-            [F] - - -
-            [G] - - -
-        }
-        -> Verse ->#
-        """
+            Verse:Guitar@|0|{
+                <4*>
+                [C] - - -
+                [Dm] - - -
+                [Em] - - -
+                [F] - - -
+                [G] - - -
+            }
+            -> Verse ->#
+            """
         let sheet = try TmdParser.parseThrowing(string: tmd)
         let options = ChordProOptions(measuresPerLine: 4)
         let cho = TMDChordProGenerator.generateChordPro(from: sheet, options: options)
 
         let measureLines = cho.split(separator: "\n").filter { $0.hasPrefix("|") }
         #expect(measureLines.count == 2)
-        #expect(measureLines[0].trimmingCharacters(in: .whitespaces) == "| [C] | [Dm] | [Em] | [F] |")
+        #expect(
+            measureLines[0].trimmingCharacters(in: .whitespaces) == "| [C] | [Dm] | [Em] | [F] |")
         #expect(measureLines[1].trimmingCharacters(in: .whitespaces) == "| [G] |")
     }
 
     @Test func testTargetInstrumentSelectionPrioritizesChordsOrGuitar() throws {
         let tmd = """
-        ::SCORE::
-        ** Multi Track **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Multi Track **
+            != 120
+            ?= C
+            <4/4>
 
-        Verse:Drums@|0|{
-            <4*>
-            Xs . . .
-        }
+            Verse:Drums@|0|{
+                <4*>
+                Xs . . .
+            }
 
-        Verse:AcousticGuitar@|0|{
-            <4*>
-            [C] - - -
-        }
-        -> Verse ->#
-        """
+            Verse:AcousticGuitar@|0|{
+                <4*>
+                [C] - - -
+            }
+            -> Verse ->#
+            """
         let sheet = try TmdParser.parseThrowing(string: tmd)
         let cho = TMDChordProGenerator.generateChordPro(from: sheet)
 
@@ -167,7 +169,8 @@ struct ChordProValidationTests {
     }
 
     @Test func testCLIExportChordPro() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -175,20 +178,21 @@ struct ChordProValidationTests {
         let choFile = tempDir.appendingPathComponent("test.cho")
 
         let tmdContent = """
-        ::SCORE::
-        ** CLI Test Song **
-        != 90
-        ?= F
-        <4/4>
-        Verse:Guitar@|0|{
-            <4*>
-            [F] . [C] .
-        }
-        -> Verse ->#
-        """
+            ::SCORE::
+            ** CLI Test Song **
+            != 90
+            ?= F
+            <4/4>
+            Verse:Guitar@|0|{
+                <4*>
+                [F] . [C] .
+            }
+            -> Verse ->#
+            """
         try tmdContent.write(to: tmdFile, atomically: true, encoding: .utf8)
 
-        let testBundleDir = URL(fileURLWithPath: ProcessInfo.processInfo.arguments[0]).deletingLastPathComponent()
+        let testBundleDir = URL(fileURLWithPath: ProcessInfo.processInfo.arguments[0])
+            .deletingLastPathComponent()
         let tmdURL = testBundleDir.appendingPathComponent("tmd")
         guard FileManager.default.isExecutableFile(atPath: tmdURL.path) else {
             return

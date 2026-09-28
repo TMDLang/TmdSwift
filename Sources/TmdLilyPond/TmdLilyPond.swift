@@ -11,29 +11,30 @@ public struct TMDLilyPondGenerator {
     public static func generateLilyPond(from inputSheet: Sheet) -> String {
         let sheet = TMDMacroEvaluator.expand(inputSheet)
         let composer = sheet.metadata["composer"] ?? "TMD"
-        let initialTempoCommand = resolveTempo(beat: sheet.beat, quarterBPM: sheet.speed > 0 ? sheet.speed : 120)
+        let initialTempoCommand = resolveTempo(
+            beat: sheet.beat, quarterBPM: sheet.speed > 0 ? sheet.speed : 120)
         let effectiveKey = sheet.declaredKey ?? sheet.keySignature.description
         var ly = """
-        \\version "2.24.0"
+            \\version "2.24.0"
 
-        \\header {
-          title = "\(escapeLilyPond(sheet.name.isEmpty ? "Untitled" : sheet.name))"
-          composer = "\(escapeLilyPond(composer))"
-          tagline = "Engraved by TmdSwift LilyPond Exporter"
-        }
+            \\header {
+              title = "\(escapeLilyPond(sheet.name.isEmpty ? "Untitled" : sheet.name))"
+              composer = "\(escapeLilyPond(composer))"
+              tagline = "Engraved by TmdSwift LilyPond Exporter"
+            }
 
-        \\paper {
-          indent = 1.5\\cm
-          short-indent = 0.5\\cm
-        }
+            \\paper {
+              indent = 1.5\\cm
+              short-indent = 0.5\\cm
+            }
 
-        global = {
-          \\time \(sheet.beat.count)/\(sheet.beat.noteValue)
-          \(initialTempoCommand)
-          \\key \(lilyPondKey(effectiveKey))
-        }
+            global = {
+              \\time \(sheet.beat.count)/\(sheet.beat.noteValue)
+              \(initialTempoCommand)
+              \\key \(lilyPondKey(effectiveKey))
+            }
 
-        """
+            """
 
         let instruments = sheet.distinctInstruments(fallbackToDefault: false)
 
@@ -42,7 +43,9 @@ public struct TMDLilyPondGenerator {
         for (idx, inst) in instruments.enumerated() {
             var name = sanitizeIdentifier(inst, index: idx)
             if usedNames.contains(name) {
-                let numberWords = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"]
+                let numberWords = [
+                    "Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+                ]
                 let suffix = idx < 10 ? numberWords[idx] : "N\(idx)"
                 name += suffix
             }
@@ -68,14 +71,14 @@ public struct TMDLilyPondGenerator {
             let isDrum = paragraphsContainPercussion(sheet.entries, instrument: inst)
             let staffType = isDrum ? "DrumStaff" : "Staff"
             ly += """
-                \\new \(staffType) = "\(escapeLilyPond(inst))" \\with {
-                  instrumentName = "\(escapeLilyPond(inst))"
-                  shortInstrumentName = "\(escapeLilyPond(inst.prefix(3).description))"
-                } {
-                  \\\(varName)
-                }
+                    \\new \(staffType) = "\(escapeLilyPond(inst))" \\with {
+                      instrumentName = "\(escapeLilyPond(inst))"
+                      shortInstrumentName = "\(escapeLilyPond(inst.prefix(3).description))"
+                    } {
+                      \\\(varName)
+                    }
 
-            """
+                """
         }
         ly += "  >>\n"
         ly += "  \\layout { }\n"
@@ -132,7 +135,8 @@ public struct TMDLilyPondGenerator {
     private static func formatDirective(_ directive: PlaybackDirectiveEvent) -> String {
         switch directive.kind {
         case .tempo, .relativeTempo:
-            let cmd = resolveTempo(beat: directive.state.timeSignature, quarterBPM: directive.state.tempo)
+            let cmd = resolveTempo(
+                beat: directive.state.timeSignature, quarterBPM: directive.state.tempo)
             return "\(cmd) "
         case .timeSignature(let beat):
             return "\\time \(beat.count)/\(beat.noteValue) "
@@ -187,11 +191,12 @@ public struct TMDLilyPondGenerator {
                 "S": "sn", "s": "sn",
                 "D": "bd", "d": "bd",
                 "B": "bd", "b": "bd",
-                "C": "cymc", "c": "cymc"
+                "C": "cymc", "c": "cymc",
             ]
             let names = pattern.compactMap { percMap[String($0)] }
             if names.isEmpty {
-                return decomposed.map { d in "r\(d.baseDenominator)\(d.isDotted ? "." : "")" }.joined(separator: " ")
+                return decomposed.map { d in "r\(d.baseDenominator)\(d.isDotted ? "." : "")" }
+                    .joined(separator: " ")
             }
             return decomposed.map { d in
                 let durStr = "\(d.baseDenominator)\(d.isDotted ? "." : "")"
@@ -200,14 +205,19 @@ public struct TMDLilyPondGenerator {
         }
     }
 
-    private static func paragraphsContainPercussion(_ entries: [Entry], instrument: String) -> Bool {
-        entries.filter { ($0.assignment ?? "").caseInsensitiveCompare(instrument) == .orderedSame }.contains { paragraph in
-            paragraph.sections.contains { section in
-                section.unitGroups.contains { group in
-                    group.units.contains { if case .percussion = $0 { return true }; return false }
+    private static func paragraphsContainPercussion(_ entries: [Entry], instrument: String) -> Bool
+    {
+        entries.filter { ($0.assignment ?? "").caseInsensitiveCompare(instrument) == .orderedSame }
+            .contains { paragraph in
+                paragraph.sections.contains { section in
+                    section.unitGroups.contains { group in
+                        group.units.contains {
+                            if case .percussion = $0 { return true }
+                            return false
+                        }
+                    }
                 }
             }
-        }
     }
 
     // MARK: - Pitch & Duration Helpers
@@ -237,7 +247,8 @@ public struct TMDLilyPondGenerator {
     private static func chordToLilyPondPitches(_ chord: ChordSymbol, keyOffset: Int) -> [String] {
         let root: Int
         if chord.root.isScaleDegree {
-            root = 60 + keyOffset + chord.root.degree.semitoneOffset
+            root =
+                60 + keyOffset + chord.root.degree.semitoneOffset
                 + chord.root.accidental.semitoneOffset
         } else {
             root = 48 + chord.root.semitoneOffset
@@ -246,7 +257,9 @@ public struct TMDLilyPondGenerator {
         if let bass = chord.bass {
             let bassPitch: Int
             if bass.isScaleDegree {
-                bassPitch = 36 + keyOffset + bass.degree.semitoneOffset + bass.accidental.semitoneOffset + (bass.octave * 12)
+                bassPitch =
+                    36 + keyOffset + bass.degree.semitoneOffset + bass.accidental.semitoneOffset
+                    + (bass.octave * 12)
             } else {
                 bassPitch = 36 + bass.semitoneOffset
             }
@@ -260,7 +273,7 @@ public struct TMDLilyPondGenerator {
     private static func midiPitchToLilyPond(_ pitch: Int) -> String {
         // LilyPond base: c' is Middle C (MIDI 60)
         let semitone = ((pitch % 12) + 12) % 12
-        let octave = (pitch / 12) - 1 // Middle C is octave 4 in standard convention, octave 3 in LilyPond reference
+        let octave = (pitch / 12) - 1  // Middle C is octave 4 in standard convention, octave 3 in LilyPond reference
 
         var name = PitchMapping.lilyPondNames[semitone]
         if octave > 3 {
@@ -293,7 +306,9 @@ public struct TMDLilyPondGenerator {
     }
 
     private static func sanitizeIdentifier(_ string: String, index: Int) -> String {
-        let numberWords = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"]
+        let numberWords = [
+            "Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+        ]
         var converted = ""
         for ch in string {
             if ch.isLetter {

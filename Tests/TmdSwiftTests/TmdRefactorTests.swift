@@ -1,27 +1,28 @@
-import Testing
 import Foundation
+import Testing
+
 @testable import TmdSwift
 
 @Suite("TMD Refactor Tests")
 struct TmdRefactorTests {
     @Test func testFormatTMDDocumentPreservesCommentsAndFormatting() throws {
         let input = """
-        ::SCORE::
-        /* Header Comment */
-        ** My Song **
-        !=   120
-        ?=  C
-        <4/4>
+            ::SCORE::
+            /* Header Comment */
+            ** My Song **
+            !=   120
+            ?=  C
+            <4/4>
 
-        intro:Piano@|0|{
-        <4*>
-        |[1]  -   |   -  [7,]   |  /* bar comment */
-        1   2   3   4
-        (1' 2,  3^ 4_)%(--)
-        }
+            intro:Piano@|0|{
+            <4*>
+            |[1]  -   |   -  [7,]   |  /* bar comment */
+            1   2   3   4
+            (1' 2,  3^ 4_)%(--)
+            }
 
-        -> intro   ->#
-        """
+            -> intro   ->#
+            """
 
         let formatted = TMDRefactor.format(input)
         #expect(formatted.contains("/* Header Comment */"))
@@ -43,61 +44,62 @@ struct TmdRefactorTests {
 
     @Test func testFormatMultiLineBlockCommentsWithConsistentIndentation() throws {
         let input = """
-        ::SCORE::
-        /*
-         * Header multi-line comment
-         * line 2
-         */
-        ** My Song **
-        != 120
-        ?= C
-        <4/4>
-
-        intro:Piano@|0|{
-        <4*>
+            ::SCORE::
             /*
-             * Section multi-line comment
+             * Header multi-line comment
              * line 2
              */
-        1 2 3 4
-        }
+            ** My Song **
+            != 120
+            ?= C
+            <4/4>
 
-        -> intro ->#
-        """
+            intro:Piano@|0|{
+            <4*>
+                /*
+                 * Section multi-line comment
+                 * line 2
+                 */
+            1 2 3 4
+            }
+
+            -> intro ->#
+            """
 
         let formatted = TMDRefactor.format(input)
         // At root level, comments should not have leading indentation on any line
         #expect(formatted.contains("/*\n * Header multi-line comment\n * line 2\n */"))
 
         // Inside paragraph (indentLevel = 1, 4 spaces), every line of comment should be indented with 4 spaces
-        #expect(formatted.contains("    /*\n     * Section multi-line comment\n     * line 2\n     */"))
+        #expect(
+            formatted.contains("    /*\n     * Section multi-line comment\n     * line 2\n     */"))
     }
 
     @Test func testRenameInstrumentInTMDDocument() throws {
         let input = """
-        ::SCORE::
-        ** Test Song **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Test Song **
+            != 120
+            ?= C
+            <4/4>
 
-        intro:Piano@|0|{
-        <4*>
-        1 2 3 4
-        }
+            intro:Piano@|0|{
+            <4*>
+            1 2 3 4
+            }
 
-        verse:Guitar@|0|{
-        <4*>
-        [C] - - -
-        }
+            verse:Guitar@|0|{
+            <4*>
+            [C] - - -
+            }
 
-        outro:Piano@|0|{
-        <4*>
-        5 6 7 1^
-        }
+            outro:Piano@|0|{
+            <4*>
+            5 6 7 1^
+            }
 
-        -> intro -> verse -> outro ->#
-        """
+            -> intro -> verse -> outro ->#
+            """
 
         let result = try TMDRefactor.renameInstrument(in: input, from: "Piano", to: "GrandPiano")
         #expect(result.contains("intro:GrandPiano@|0|{"))
@@ -114,29 +116,29 @@ struct TmdRefactorTests {
 
     @Test func testRenameSectionInTMDDocumentUpdatesParagraphsAndOrders() throws {
         let input = """
-        ::SCORE::
-        ** Test Song **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Test Song **
+            != 120
+            ?= C
+            <4/4>
 
-        intro:Piano@|0|{
-        <4*>
-        1 2 3 4
-        }
+            intro:Piano@|0|{
+            <4*>
+            1 2 3 4
+            }
 
-        verse:Piano@|0|{
-        <4*>
-        1 3 5 1^
-        }
+            verse:Piano@|0|{
+            <4*>
+            1 3 5 1^
+            }
 
-        verse:Bass@|0|{
-        <4*>
-        1_ - - -
-        }
+            verse:Bass@|0|{
+            <4*>
+            1_ - - -
+            }
 
-        -> intro -> verse -> {?+2} -> verse ->#
-        """
+            -> intro -> verse -> {?+2} -> verse ->#
+            """
 
         let result = try TMDRefactor.renameSection(in: input, from: "verse", to: "A")
         #expect(result.contains("intro:Piano@|0|{"))
@@ -154,35 +156,35 @@ struct TmdRefactorTests {
 
     @Test func testExtractInstrumentFromTMDDocument() throws {
         let input = """
-        ::SCORE::
-        ** Full Band Song **
-        != 130
-        ?= G
-        <4/4>
-        ~ "Composer: Alice"
+            ::SCORE::
+            ** Full Band Song **
+            != 130
+            ?= G
+            <4/4>
+            ~ "Composer: Alice"
 
-        intro:Piano@|0|{
-        <4*>
-        1 2 3 4
-        }
+            intro:Piano@|0|{
+            <4*>
+            1 2 3 4
+            }
 
-        intro:Bass@|0|{
-        <4*>
-        1_ - - -
-        }
+            intro:Bass@|0|{
+            <4*>
+            1_ - - -
+            }
 
-        verse:Piano@|0|{
-        <4*>
-        3 4 5 6
-        }
+            verse:Piano@|0|{
+            <4*>
+            3 4 5 6
+            }
 
-        verse:Drums@|0|{
-        <4*>
-        XsTt
-        }
+            verse:Drums@|0|{
+            <4*>
+            XsTt
+            }
 
-        -> intro -> verse ->#
-        """
+            -> intro -> verse ->#
+            """
 
         let extracted = try TMDRefactor.extractInstrument(from: input, instrument: "Piano")
         #expect(extracted.contains("** Full Band Song **"))
@@ -203,7 +205,8 @@ struct TmdRefactorTests {
     }
 
     @Test func testCLISubcommandsFormatAndRefactor() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -212,24 +215,24 @@ struct TmdRefactorTests {
         let extractedOutput = tempDir.appendingPathComponent("extracted.tmd")
 
         let content = """
-        ::SCORE::
-        ** Subcommand Test **
-        !=   100
-        ?=  D
-        <4/4>
+            ::SCORE::
+            ** Subcommand Test **
+            !=   100
+            ?=  D
+            <4/4>
 
-        verse:Violin@|0|{
-        <4*>
-        1   2   3   4
-        }
+            verse:Violin@|0|{
+            <4*>
+            1   2   3   4
+            }
 
-        verse:Cello@|0|{
-        <4*>
-        1_  -   -   -
-        }
+            verse:Cello@|0|{
+            <4*>
+            1_  -   -   -
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
         try content.write(to: sampleTmd, atomically: true, encoding: .utf8)
 
         guard let tmdURL = TmdTestHelper.findTmdExecutable() else {
@@ -251,7 +254,10 @@ struct TmdRefactorTests {
         // 2. Test `tmd refactor rename-instrument --from Violin --to Fiddle -i`
         let renameInstProc = Process()
         renameInstProc.executableURL = tmdURL
-        renameInstProc.arguments = ["refactor", "rename-instrument", sampleTmd.path, "--from", "Violin", "--to", "Fiddle", "-i"]
+        renameInstProc.arguments = [
+            "refactor", "rename-instrument", sampleTmd.path, "--from", "Violin", "--to", "Fiddle",
+            "-i",
+        ]
         try renameInstProc.run()
         renameInstProc.waitUntilExit()
         #expect(renameInstProc.terminationStatus == 0)
@@ -262,7 +268,9 @@ struct TmdRefactorTests {
         // 3. Test `tmd refactor rename-section --from verse --to Chorus -i`
         let renameSecProc = Process()
         renameSecProc.executableURL = tmdURL
-        renameSecProc.arguments = ["refactor", "rename-section", sampleTmd.path, "--from", "verse", "--to", "Chorus", "-i"]
+        renameSecProc.arguments = [
+            "refactor", "rename-section", sampleTmd.path, "--from", "verse", "--to", "Chorus", "-i",
+        ]
         try renameSecProc.run()
         renameSecProc.waitUntilExit()
         #expect(renameSecProc.terminationStatus == 0)
@@ -274,7 +282,10 @@ struct TmdRefactorTests {
         // 4. Test `tmd refactor extract-instrument --instrument Cello -o <out>`
         let extractProc = Process()
         extractProc.executableURL = tmdURL
-        extractProc.arguments = ["refactor", "extract-instrument", sampleTmd.path, "--instrument", "Cello", "-o", extractedOutput.path]
+        extractProc.arguments = [
+            "refactor", "extract-instrument", sampleTmd.path, "--instrument", "Cello", "-o",
+            extractedOutput.path,
+        ]
         try extractProc.run()
         extractProc.waitUntilExit()
         #expect(extractProc.terminationStatus == 0)
@@ -315,20 +326,20 @@ struct TmdRefactorTests {
 
     @Test func testDoubleGridAndHalveGridResolution() throws {
         let input = """
-        ::SCORE::
-        ** Grid Test **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Grid Test **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Piano@|0|{
-            <4*>
-            | 1 2 3 4 |
-            | [C] - 0 D |
-        }
+            verse:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
+                | [C] - 0 D |
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
 
         let doubled = try TMDRefactor.doubleGrid(source: input)
         #expect(doubled.contains("<8*>"))
@@ -349,19 +360,19 @@ struct TmdRefactorTests {
 
     @Test func testDoubleAndHalveGridWithTupletsAndSpacedSyntax() throws {
         let input = """
-        ::SCORE::
-        ** Tuplet Grid Test **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Tuplet Grid Test **
+            != 120
+            ?= C
+            <4/4>
 
-        Intro:vocal@|0|{
-            <4*>
-            | 1 2 3 1 | 1 2 (3 1) % (-) 1 |
-        }
+            Intro:vocal@|0|{
+                <4*>
+                | 1 2 3 1 | 1 2 (3 1) % (-) 1 |
+            }
 
-        -> Intro ->#
-        """
+            -> Intro ->#
+            """
 
         let doubled = try TMDRefactor.doubleGrid(source: input)
         #expect(doubled.contains("<8*>"))
@@ -378,19 +389,19 @@ struct TmdRefactorTests {
 
     @Test func testHalveGridThrowsErrorOnIndivisibleMeasure() throws {
         let input = """
-        ::SCORE::
-        ** Indivisible Test **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Indivisible Test **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Piano@|0|{
-            <8*>
-            | 1 2 3 4 5 6 7 8 |
-        }
+            verse:Piano@|0|{
+                <8*>
+                | 1 2 3 4 5 6 7 8 |
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
 
         #expect(throws: Error.self) {
             _ = try TMDRefactor.halveGrid(source: input)
@@ -399,19 +410,19 @@ struct TmdRefactorTests {
 
     @Test func testDuplicateTrack() throws {
         let input = """
-        ::SCORE::
-        ** Dup Test **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Dup Test **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Lead@|0|{
-            <4*>
-            | 1 2 3 5 |
-        }
+            verse:Lead@|0|{
+                <4*>
+                | 1 2 3 5 |
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
 
         let duped = try TMDRefactor.duplicateTrack(
             source: input,
@@ -429,24 +440,24 @@ struct TmdRefactorTests {
 
     @Test func testDuplicateTrackRestrictedToSection() throws {
         let input = """
-        ::SCORE::
-        ** Multi-Section Dup Test **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Multi-Section Dup Test **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Lead@|0|{
-            <4*>
-            | 1 2 3 4 |
-        }
+            verse:Lead@|0|{
+                <4*>
+                | 1 2 3 4 |
+            }
 
-        chorus:Lead@|0|{
-            <4*>
-            | 5 6 7 1^ |
-        }
+            chorus:Lead@|0|{
+                <4*>
+                | 5 6 7 1^ |
+            }
 
-        -> verse -> chorus ->#
-        """
+            -> verse -> chorus ->#
+            """
 
         let duped = try TMDRefactor.duplicateTrack(
             source: input,
@@ -465,19 +476,19 @@ struct TmdRefactorTests {
 
     @Test func testGenerateHarmony() throws {
         let input = """
-        ::SCORE::
-        ** Harmony Test **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Harmony Test **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Vocal@|0|{
-            <4*>
-            | 1 2 3 1 | [C] - - - |
-        }
+            verse:Vocal@|0|{
+                <4*>
+                | 1 2 3 1 | [C] - - - |
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
 
         let harmonized = try TMDRefactor.generateHarmony(
             source: input,
@@ -497,24 +508,24 @@ struct TmdRefactorTests {
 
     @Test func testInlineOrders() throws {
         let input = """
-        ::SCORE::
-        ** Unroll Test **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Unroll Test **
+            != 120
+            ?= C
+            <4/4>
 
-        intro:Piano@|0|{
-            <4*>
-            | 1 2 3 4 |
-        }
+            intro:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
+            }
 
-        verse:Piano@|0|{
-            <4*>
-            | 5 6 7 1^ |
-        }
+            verse:Piano@|0|{
+                <4*>
+                | 5 6 7 1^ |
+            }
 
-        -> intro -> verse -> intro ->#
-        """
+            -> intro -> verse -> intro ->#
+            """
 
         let inlined = try TMDRefactor.inlineOrders(source: input)
         #expect(inlined.contains("linear:Piano@|0|{"))
@@ -529,22 +540,23 @@ struct TmdRefactorTests {
 
     @Test func testDuplicateTrackPreservesComments() throws {
         let input = """
-        ::SCORE::
-        /* Header comment */
-        ** My Song **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            /* Header comment */
+            ** My Song **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Lead@|0|{
-            <4*>
-            | 1 2 3 4 | /* bar comment */
-        }
+            verse:Lead@|0|{
+                <4*>
+                | 1 2 3 4 | /* bar comment */
+            }
 
-        -> verse -># /* order comment */
-        """
+            -> verse -># /* order comment */
+            """
 
-        let duped = try TMDRefactor.duplicateTrack(source: input, sourceInstrument: "Lead", targetInstrument: "Synth", octaveShift: 1)
+        let duped = try TMDRefactor.duplicateTrack(
+            source: input, sourceInstrument: "Lead", targetInstrument: "Synth", octaveShift: 1)
         #expect(duped.contains("/* Header comment */"))
         #expect(duped.contains("/* bar comment */"))
         #expect(duped.contains("/* order comment */"))
@@ -558,22 +570,24 @@ struct TmdRefactorTests {
 
     @Test func testGenerateHarmonyPreservesComments() throws {
         let input = """
-        ::SCORE::
-        /* Header comment */
-        ** Harmony Song **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            /* Header comment */
+            ** Harmony Song **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Vocal@|0|{
-            <4*>
-            | 1 2 3 1 | /* bar comment */
-        }
+            verse:Vocal@|0|{
+                <4*>
+                | 1 2 3 1 | /* bar comment */
+            }
 
-        -> verse -># /* order comment */
-        """
+            -> verse -># /* order comment */
+            """
 
-        let harmonized = try TMDRefactor.generateHarmony(source: input, sourceInstrument: "Vocal", harmonyInstrument: "Backing", intervalSteps: 2)
+        let harmonized = try TMDRefactor.generateHarmony(
+            source: input, sourceInstrument: "Vocal", harmonyInstrument: "Backing", intervalSteps: 2
+        )
         #expect(harmonized.contains("/* Header comment */"))
         #expect(harmonized.contains("/* bar comment */"))
         #expect(harmonized.contains("/* order comment */"))
@@ -587,30 +601,30 @@ struct TmdRefactorTests {
 
     @Test func testExtractInstrumentPreservesComments() throws {
         let input = """
-        ::SCORE::
-        /* Header Comment */
-        ** Full Song **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            /* Header Comment */
+            ** Full Song **
+            != 120
+            ?= C
+            <4/4>
 
-        intro:Piano@|0|{
-            <4*>
-            | 1 2 3 4 | /* piano comment */
-        }
+            intro:Piano@|0|{
+                <4*>
+                | 1 2 3 4 | /* piano comment */
+            }
 
-        intro:Bass@|0|{
-            <4*>
-            | 1_ - - - | /* bass comment */
-        }
+            intro:Bass@|0|{
+                <4*>
+                | 1_ - - - | /* bass comment */
+            }
 
-        verse:Piano@|0|{
-            <4*>
-            | 5 6 7 1^ | /* verse piano */
-        }
+            verse:Piano@|0|{
+                <4*>
+                | 5 6 7 1^ | /* verse piano */
+            }
 
-        -> intro -> verse -># /* order comment */
-        """
+            -> intro -> verse -># /* order comment */
+            """
 
         let extracted = try TMDRefactor.extractInstrument(from: input, instrument: "Piano")
         #expect(extracted.contains("/* Header Comment */"))
@@ -625,22 +639,22 @@ struct TmdRefactorTests {
 
     @Test func testOptimizeGridRepeatedlyUntilMinimalResolution() throws {
         let input = """
-        ::SCORE::
-        ** Optimize Grid Test **
-        != 120
-        ? = E
-        <4/4>
+            ::SCORE::
+            ** Optimize Grid Test **
+            != 120
+            ? = E
+            <4/4>
 
-        b1:Bass@|0| {
-            <4*>
-            | 4__ - - - | 5__ - - - | 3__ - - - | 6__ - - - |
-            | 2__ - - - | 5__ - - - | 1_ - - - | 5__ - - - |
-            | 4__ - - - | 5__ - - - | 3__ - - - | 6__ - - - |
-            | 2__ - - - | 5__ - - - | 6__ - - - | - - - - |
-        }
+            b1:Bass@|0| {
+                <4*>
+                | 4__ - - - | 5__ - - - | 3__ - - - | 6__ - - - |
+                | 2__ - - - | 5__ - - - | 1_ - - - | 5__ - - - |
+                | 4__ - - - | 5__ - - - | 3__ - - - | 6__ - - - |
+                | 2__ - - - | 5__ - - - | 6__ - - - | - - - - |
+            }
 
-        -> b1 ->#
-        """
+            -> b1 ->#
+            """
 
         let optimized = TMDRefactor.optimizeGrid(source: input)
         #expect(optimized.contains("<1*>"))
@@ -655,26 +669,27 @@ struct TmdRefactorTests {
 
     @Test func testOptimizeGridRestrictedToSectionOrInstrument() throws {
         let input = """
-        ::SCORE::
-        ** Multi-Track Optimize Test **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Multi-Track Optimize Test **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Bass@|0|{
-            <4*>
-            | 1_ - - - | 5__ - - - |
-        }
+            verse:Bass@|0|{
+                <4*>
+                | 1_ - - - | 5__ - - - |
+            }
 
-        verse:Lead@|0|{
-            <4*>
-            | 1 2 3 4 | 5 6 7 1^ |
-        }
+            verse:Lead@|0|{
+                <4*>
+                | 1 2 3 4 | 5 6 7 1^ |
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
 
-        let optBass = TMDRefactor.optimizeGrid(source: input, target: TMDRefactorTarget(instrument: "Bass"))
+        let optBass = TMDRefactor.optimizeGrid(
+            source: input, target: TMDRefactorTarget(instrument: "Bass"))
         #expect(optBass.contains("<1*>"))
         #expect(optBass.contains("| 1_ | 5__ |"))
         #expect(optBass.contains("<4*>"))
@@ -684,24 +699,24 @@ struct TmdRefactorTests {
 
     @Test func testOptimizeGridGlobalAcrossMultipleParagraphs() throws {
         let input = """
-        ::SCORE::
-        ** Global Optimize Test **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Global Optimize Test **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Bass@|0|{
-            <4*>
-            | 1_ - - - | 5__ - - - |
-        }
+            verse:Bass@|0|{
+                <4*>
+                | 1_ - - - | 5__ - - - |
+            }
 
-        verse:Lead@|0|{
-            <4*>
-            | 1 2 3 4 | 5 6 7 1^ |
-        }
+            verse:Lead@|0|{
+                <4*>
+                | 1 2 3 4 | 5 6 7 1^ |
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
 
         let optGlobal = TMDRefactor.optimizeGrid(source: input)
         #expect(optGlobal.contains("verse:Bass@|0|{"))
@@ -738,23 +753,24 @@ struct TmdRefactorTests {
 
     @Test func testTransposeCompleteScoreAndUpdateKeySignature() throws {
         let input = """
-        ::SCORE::
-        /* My intro comment */
-        ** Transpose Song **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            /* My intro comment */
+            ** Transpose Song **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Lead@|0|{
-            <4*>
-            | 1 2 3 1 | /* bar comment */
-            | [C] - [G] - |
-        }
+            verse:Lead@|0|{
+                <4*>
+                | 1 2 3 1 | /* bar comment */
+                | [C] - [G] - |
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
 
-        let transposed = TMDRefactor.transpose(source: input, semitones: 2, updateKeySignature: true)
+        let transposed = TMDRefactor.transpose(
+            source: input, semitones: 2, updateKeySignature: true)
         #expect(transposed.contains("?= D"))
         #expect(transposed.contains("/* My intro comment */"))
         #expect(transposed.contains("/* bar comment */"))
@@ -767,29 +783,29 @@ struct TmdRefactorTests {
 
     @Test func testTransposeRestrictedToSectionAndInstrument() throws {
         let input = """
-        ::SCORE::
-        ** Multi-Track Score **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Multi-Track Score **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Lead@|0|{
-            <4*>
-            | 1 2 3 4 |
-        }
+            verse:Lead@|0|{
+                <4*>
+                | 1 2 3 4 |
+            }
 
-        verse:Bass@|0|{
-            <4*>
-            | 1_ - 5_ - |
-        }
+            verse:Bass@|0|{
+                <4*>
+                | 1_ - 5_ - |
+            }
 
-        chorus:Lead@|0|{
-            <4*>
-            | 5 6 7 1^ |
-        }
+            chorus:Lead@|0|{
+                <4*>
+                | 5 6 7 1^ |
+            }
 
-        -> verse -> chorus ->#
-        """
+            -> verse -> chorus ->#
+            """
 
         let transposed = TMDRefactor.transpose(
             source: input,

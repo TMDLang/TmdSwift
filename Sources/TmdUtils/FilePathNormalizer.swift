@@ -6,7 +6,8 @@ public enum FilePathNormalizer {
     public static func isFileURL(_ text: String) -> Bool {
         var trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.hasPrefix("<") && trimmed.hasSuffix(">") {
-            trimmed = String(trimmed.dropFirst().dropLast()).trimmingCharacters(in: .whitespacesAndNewlines)
+            trimmed = String(trimmed.dropFirst().dropLast()).trimmingCharacters(
+                in: .whitespacesAndNewlines)
         }
         return trimmed.lowercased().hasPrefix("file://") || trimmed.lowercased().hasPrefix("file:")
     }
@@ -25,11 +26,11 @@ public enum FilePathNormalizer {
         // Standardize file prefix
         let lower = str.lowercased()
         if lower.hasPrefix("file://localhost/") {
-            str = String(str.dropFirst(16)) // keeps leading "/"
+            str = String(str.dropFirst(16))  // keeps leading "/"
         } else if lower.hasPrefix("file://localhost") {
             str = String(str.dropFirst(16))
         } else if lower.hasPrefix("file:///") {
-            str = String(str.dropFirst(7)) // keeps leading "/"
+            str = String(str.dropFirst(7))  // keeps leading "/"
         } else if lower.hasPrefix("file://") {
             let withoutScheme = String(str.dropFirst(7))
             str = withoutScheme
@@ -56,7 +57,9 @@ public enum FilePathNormalizer {
 
     /// Parses a path or file URL and extracts line and column anchors
     /// (e.g. `#L42`, `#L42C10`, `#L42:10`, `:42:10`, or `:42`).
-    public static func parseLocation(from text: String) -> (filePath: String, line: Int?, column: Int?) {
+    public static func parseLocation(from text: String) -> (
+        filePath: String, line: Int?, column: Int?
+    ) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
             return ("", nil, nil)
@@ -68,7 +71,8 @@ public enum FilePathNormalizer {
 
         // 1. Check for URL fragment / anchor '#...'
         if let hashIdx = working.lastIndex(of: "#") {
-            let anchorPart = String(working[working.index(after: hashIdx)...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let anchorPart = String(working[working.index(after: hashIdx)...]).trimmingCharacters(
+                in: .whitespacesAndNewlines)
             let pathPart = String(working[..<hashIdx])
             if let (line, col) = parseAnchorLineAndColumn(anchorPart) {
                 targetLine = line
@@ -115,7 +119,9 @@ public enum FilePathNormalizer {
         return nil
     }
 
-    private static func parseColonLineAndColumn(_ input: String) -> (cleanPath: String, line: Int?, column: Int?) {
+    private static func parseColonLineAndColumn(_ input: String) -> (
+        cleanPath: String, line: Int?, column: Int?
+    ) {
         let parts = input.components(separatedBy: ":")
         if parts.count == 2 {
             if parts[0].count == 1, let firstChar = parts[0].first, firstChar.isLetter {
@@ -128,7 +134,8 @@ public enum FilePathNormalizer {
         } else if parts.count >= 3 {
             // Check if last two parts are integers: path:line:col
             if let line = Int(parts[parts.count - 2]), line > 0,
-               let col = Int(parts[parts.count - 1]), col > 0 {
+                let col = Int(parts[parts.count - 1]), col > 0
+            {
                 let cleanPath = parts[0..<(parts.count - 2)].joined(separator: ":")
                 return (cleanPath, line, col)
             }

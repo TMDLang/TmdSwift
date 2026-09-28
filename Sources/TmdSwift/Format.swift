@@ -17,7 +17,9 @@ extension Sheet {
         for (idx, p) in entries.enumerated() {
             let secCount = p.sections.count
             let totalUnits = p.sections.reduce(0) { $0 + $1.unitGroups.count }
-            lines.append("  [\(idx + 1)] \(p.name) (Assignment: \(p.assignment ?? ""), Start: \(p.start), Sections: \(secCount), UnitGroups: \(totalUnits))")
+            lines.append(
+                "  [\(idx + 1)] \(p.name) (Assignment: \(p.assignment ?? ""), Start: \(p.start), Sections: \(secCount), UnitGroups: \(totalUnits))"
+            )
         }
         lines.append("Playback:     \(playback.count)")
         for (idx, order) in playback.enumerated() {
@@ -42,7 +44,8 @@ extension Sheet {
         var result = ""
         result += "::SCORE::\n"
         result += "** \(name) **\n"
-        result += "!=\(speed.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(speed)) : String(speed))\n"
+        result +=
+            "!=\(speed.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(speed)) : String(speed))\n"
         result += "?=\(keySignature)\n"
         if let declaredKey {
             result += "key= \(declaredKey)\n"
@@ -149,7 +152,9 @@ extension Section {
         var directiveIndex = 0
         let sortedDirectives = directives.sorted { $0.position < $1.position }
         func appendDirectives(at position: Int, to result: inout String) {
-            while directiveIndex < sortedDirectives.count && sortedDirectives[directiveIndex].position == position {
+            while directiveIndex < sortedDirectives.count
+                && sortedDirectives[directiveIndex].position == position
+            {
                 result += "\(sortedDirectives[directiveIndex].format()) "
                 directiveIndex += 1
             }

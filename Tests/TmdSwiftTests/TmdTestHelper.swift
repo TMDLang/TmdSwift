@@ -27,7 +27,7 @@ public enum TmdTestHelper {
         // 2. Walk up directory hierarchy from test runner or current working directory
         let searchBases = [
             FileManager.default.currentDirectoryPath,
-            procURL.deletingLastPathComponent().path
+            procURL.deletingLastPathComponent().path,
         ]
 
         let candidates = [
@@ -38,7 +38,7 @@ public enum TmdTestHelper {
             ".build/debug/tmd.exe",
             ".build/release/tmd",
             ".build/release/tmd.exe",
-            "/usr/local/bin/tmd"
+            "/usr/local/bin/tmd",
         ]
 
         for base in searchBases {
@@ -52,8 +52,12 @@ public enum TmdTestHelper {
         }
 
         // 3. Search under .build recursively for executable named "tmd" or "tmd.exe"
-        let buildDir = URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent(".build")
-        if let enumerator = FileManager.default.enumerator(at: buildDir, includingPropertiesForKeys: [.isExecutableKey], options: [.skipsHiddenFiles]) {
+        let buildDir = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            .appendingPathComponent(".build")
+        if let enumerator = FileManager.default.enumerator(
+            at: buildDir, includingPropertiesForKeys: [.isExecutableKey],
+            options: [.skipsHiddenFiles])
+        {
             for case let fileURL as URL in enumerator {
                 let last = fileURL.lastPathComponent.lowercased()
                 if last == "tmd" || last == "tmd.exe" {

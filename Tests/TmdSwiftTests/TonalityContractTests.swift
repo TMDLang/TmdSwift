@@ -1,4 +1,5 @@
 import Testing
+
 @testable import TmdSwift
 
 struct TonalityContractTests {
@@ -40,20 +41,20 @@ struct TonalityContractTests {
 
     @Test func keepsDeclaredKeySeparateFromMovableDoContext() throws {
         let tmd = """
-        ::SCORE::
-        ** Explicit Key Context **
-        != 120
-        ?= D
-        key= Bm
-        <4/4>
+            ::SCORE::
+            ** Explicit Key Context **
+            != 120
+            ?= D
+            key= Bm
+            <4/4>
 
-        verse:Vocal@|0|{
-            <4*>
-            6 1 3 6
-        }
+            verse:Vocal@|0|{
+                <4*>
+                6 1 3 6
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
         let sheet = try #require(TmdParser.parse(string: tmd))
         let tonality = try #require(TMDSongInspector.inspect(sheet: sheet).tonality)
 
@@ -65,19 +66,19 @@ struct TonalityContractTests {
 
     @Test func reportsInsufficientEvidenceWithoutForcingMajor() throws {
         let tmd = """
-        ::SCORE::
-        ** Empty Tonality **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Empty Tonality **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Piano@|0|{
-            <4*>
-            0 - - -
-        }
+            verse:Piano@|0|{
+                <4*>
+                0 - - -
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
         let sheet = try #require(TmdParser.parse(string: tmd))
         let tonality = try #require(TMDSongInspector.inspect(sheet: sheet).tonality)
 
@@ -87,7 +88,8 @@ struct TonalityContractTests {
     }
 
     @Test func keepsPlaybackTranspositionSeparateFromInferredModulation() throws {
-        let sheet = try #require(TmdParser.parse(string: inferentialScore("C", playback: "-> verse -> {?+2}")))
+        let sheet = try #require(
+            TmdParser.parse(string: inferentialScore("C", playback: "-> verse -> {?+2}")))
         let tonality = try #require(TMDSongInspector.inspect(sheet: sheet).tonality)
 
         #expect(tonality.playbackTranspositionPath == [0, 2])
@@ -96,46 +98,46 @@ struct TonalityContractTests {
 
     @Test func reportsModulationOnlyWhenSectionInferenceChanges() throws {
         let tmd = """
-        ::SCORE::
-        ** Inferred Section Change **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Inferred Section Change **
+            != 120
+            ?= C
+            <4/4>
 
-        major:Vocal@|0|{
-            <4*>
-            1 2 3 4
-            5 6 7 1^
-            1 2 3 4
-            5 6 7 1^
-        }
+            major:Vocal@|0|{
+                <4*>
+                1 2 3 4
+                5 6 7 1^
+                1 2 3 4
+                5 6 7 1^
+            }
 
-        major:CHORD@|0|{
-            <4*>
-            [C] - [F] -
-            [G] - [C] -
-            [C] - [F] -
-            [G] - [C] -
-        }
+            major:CHORD@|0|{
+                <4*>
+                [C] - [F] -
+                [G] - [C] -
+                [C] - [F] -
+                [G] - [C] -
+            }
 
-        minor:Vocal@|0|{
-            <4*>
-            6 7 1 2
-            3 4 5 6
-            6 7 1 2
-            3 4 5 6
-        }
+            minor:Vocal@|0|{
+                <4*>
+                6 7 1 2
+                3 4 5 6
+                6 7 1 2
+                3 4 5 6
+            }
 
-        minor:CHORD@|0|{
-            <4*>
-            [Am] - [Dm] -
-            [E] - [Am] -
-            [Am] - [Dm] -
-            [E] - [Am] -
-        }
+            minor:CHORD@|0|{
+                <4*>
+                [Am] - [Dm] -
+                [E] - [Am] -
+                [Am] - [Dm] -
+                [E] - [Am] -
+            }
 
-        -> major -> minor ->#
-        """
+            -> major -> minor ->#
+            """
         let sheet = try #require(TmdParser.parse(string: tmd))
         let tonality = try #require(TMDSongInspector.inspect(sheet: sheet).tonality)
 

@@ -1,31 +1,32 @@
-import Testing
 import Foundation
-@testable import TmdSwift
+import Testing
 import TmdMIDI
 import TmdReaper
+
+@testable import TmdSwift
 
 @Suite("TMDReaperGenerator Tests")
 struct TMDReaperGeneratorTests {
 
     @Test func testBasicProjectHeaderAndMarkers() throws {
         let tmd = """
-        ::SCORE::
-        ** REAPER Demo **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** REAPER Demo **
+            != 120
+            ?= C
+            <4/4>
 
-        Intro:Piano@|0|{
-            <4*>
-            1 - - -
-        }
+            Intro:Piano@|0|{
+                <4*>
+                1 - - -
+            }
 
-        Verse:Piano@|0|{
-            <4*>
-            3 - - -
-        }
-        -> Intro -> Verse ->#
-        """
+            Verse:Piano@|0|{
+                <4*>
+                3 - - -
+            }
+            -> Intro -> Verse ->#
+            """
         let sheet = try TmdParser.parseThrowing(string: tmd)
         let rpp = TMDReaperGenerator.generateRPP(from: sheet)
 
@@ -35,65 +36,73 @@ struct TMDReaperGeneratorTests {
 
         // Tempo envelope with 120 BPM and 4/4 time signature ((4 << 16) | 4 = 262148)
         #expect(rpp.contains("<TEMPOENVEX"))
-        #expect(rpp.range(of: #"PT 0\.00000000 120(\.0+)? 0 262148"#, options: .regularExpression) != nil)
+        #expect(
+            rpp.range(of: #"PT 0\.00000000 120(\.0+)? 0 262148"#, options: .regularExpression)
+                != nil)
 
         // Section markers on timeline
         // Intro at 0s, Verse at measure 1 (4 quarter notes at 120 BPM = 2.0s)
-        #expect(rpp.range(of: #"MARKER 1 0\.00000000 "Intro" 0"#, options: .regularExpression) != nil)
-        #expect(rpp.range(of: #"MARKER 2 2\.00000000 "Verse" 0"#, options: .regularExpression) != nil)
+        #expect(
+            rpp.range(of: #"MARKER 1 0\.00000000 "Intro" 0"#, options: .regularExpression) != nil)
+        #expect(
+            rpp.range(of: #"MARKER 2 2\.00000000 "Verse" 0"#, options: .regularExpression) != nil)
     }
 
     @Test func testDynamicTempoChangesWithoutHardcodedBPM() throws {
         let tmd = """
-        ::SCORE::
-        ** Dynamic Tempo Demo **
-        != 60
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Dynamic Tempo Demo **
+            != 60
+            ?= C
+            <4/4>
 
-        A:Piano@|0|{
-            <4*>
-            1 - - -
-            {!=120} 2 - - -
-        }
-        -> A ->#
-        """
+            A:Piano@|0|{
+                <4*>
+                1 - - -
+                {!=120} 2 - - -
+            }
+            -> A ->#
+            """
         let sheet = try TmdParser.parseThrowing(string: tmd)
         let rpp = TMDReaperGenerator.generateRPP(from: sheet)
 
         // Initial tempo: 60 BPM at 0.0s
-        #expect(rpp.range(of: #"PT 0\.00000000 60(\.0+)? 0 262148"#, options: .regularExpression) != nil)
+        #expect(
+            rpp.range(of: #"PT 0\.00000000 60(\.0+)? 0 262148"#, options: .regularExpression) != nil
+        )
 
         // Measure 1 is 4 quarter notes at 60 BPM = 4.0 seconds
         // At 4.0s, tempo changes to 120 BPM
-        #expect(rpp.range(of: #"PT 4\.00000000 120(\.0+)? 0 262148"#, options: .regularExpression) != nil)
+        #expect(
+            rpp.range(of: #"PT 4\.00000000 120(\.0+)? 0 262148"#, options: .regularExpression)
+                != nil)
     }
 
     @Test func testMarkersUseMeterStateForParagraphStartOffsets() throws {
         let tmd = """
-        ::SCORE::
-        ** Meter-Aware Markers **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Meter-Aware Markers **
+            != 120
+            ?= C
+            <4/4>
 
-        A:Piano@|0|{
-            <4*>
-            1 - - -
-            {<3/4>}
-        }
+            A:Piano@|0|{
+                <4*>
+                1 - - -
+                {<3/4>}
+            }
 
-        B:Piano@|1|{
-            <4*>
-            1 - - -
-        }
+            B:Piano@|1|{
+                <4*>
+                1 - - -
+            }
 
-        C:Piano@|0|{
-            <4*>
-            1 - - -
-        }
-        -> A -> B -> C ->#
-        """
+            C:Piano@|0|{
+                <4*>
+                1 - - -
+            }
+            -> A -> B -> C ->#
+            """
         let sheet = try TmdParser.parseThrowing(string: tmd)
         let rpp = TMDReaperGenerator.generateRPP(from: sheet)
 
@@ -104,28 +113,28 @@ struct TMDReaperGeneratorTests {
 
     @Test func testTrackConfigurationPanningColorsAndInlineMIDI() throws {
         let tmd = """
-        ::SCORE::
-        ** Multi-track Demo **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Multi-track Demo **
+            != 120
+            ?= C
+            <4/4>
 
-        A:Piano-L@|0|{
-            <4*>
-            1 2 3 4
-        }
+            A:Piano-L@|0|{
+                <4*>
+                1 2 3 4
+            }
 
-        A:Piano-R@|0|{
-            <4*>
-            5 6 7 1^
-        }
+            A:Piano-R@|0|{
+                <4*>
+                5 6 7 1^
+            }
 
-        A:Drums@|0|{
-            <4*>
-            D S - -
-        }
-        -> A ->#
-        """
+            A:Drums@|0|{
+                <4*>
+                D S - -
+            }
+            -> A ->#
+            """
         let sheet = try TmdParser.parseThrowing(string: tmd)
         let rpp = TMDReaperGenerator.generateRPP(from: sheet)
 
@@ -136,13 +145,25 @@ struct TMDReaperGeneratorTests {
 
         // Stereo Panning
         // Piano-L: -0.8 (left), Piano-R: 0.8 (right), Drums: 0.0 (center)
-        #expect(rpp.range(of: #"NAME "Piano-L"[\s\S]*?VOLPAN 1(\.0+)? -0\.80*"#, options: .regularExpression) != nil)
-        #expect(rpp.range(of: #"NAME "Piano-R"[\s\S]*?VOLPAN 1(\.0+)? 0\.80*"#, options: .regularExpression) != nil)
-        #expect(rpp.range(of: #"NAME "Drums"[\s\S]*?VOLPAN 1(\.0+)? 0(\.0+)? 1 -1 1"#, options: .regularExpression) != nil)
+        #expect(
+            rpp.range(
+                of: #"NAME "Piano-L"[\s\S]*?VOLPAN 1(\.0+)? -0\.80*"#, options: .regularExpression)
+                != nil)
+        #expect(
+            rpp.range(
+                of: #"NAME "Piano-R"[\s\S]*?VOLPAN 1(\.0+)? 0\.80*"#, options: .regularExpression)
+                != nil)
+        #expect(
+            rpp.range(
+                of: #"NAME "Drums"[\s\S]*?VOLPAN 1(\.0+)? 0(\.0+)? 1 -1 1"#,
+                options: .regularExpression) != nil)
 
         // Instrument colors (PEAKCOL)
-        #expect(rpp.range(of: #"NAME "Drums"[\s\S]*?PEAKCOL \d+"#, options: .regularExpression) != nil)
-        #expect(rpp.range(of: #"NAME "Piano-L"[\s\S]*?PEAKCOL \d+"#, options: .regularExpression) != nil)
+        #expect(
+            rpp.range(of: #"NAME "Drums"[\s\S]*?PEAKCOL \d+"#, options: .regularExpression) != nil)
+        #expect(
+            rpp.range(of: #"NAME "Piano-L"[\s\S]*?PEAKCOL \d+"#, options: .regularExpression) != nil
+        )
 
         // Inline MIDI item chunks with 960 PPQ
         #expect(rpp.contains("<SOURCE MIDI"))
@@ -160,18 +181,18 @@ struct TMDReaperGeneratorTests {
 
     @Test func testRestOnlyAssignmentsDoNotCreateReaperTracks() throws {
         let tmd = """
-        ::SCORE::
-        ** Rest Only Reaper **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Rest Only Reaper **
+            != 120
+            ?= C
+            <4/4>
 
-        A:Piano@|0|{
-            <4*>
-            0 0 0 0
-        }
-        -> A ->#
-        """
+            A:Piano@|0|{
+                <4*>
+                0 0 0 0
+            }
+            -> A ->#
+            """
         let sheet = try TmdParser.parseThrowing(string: tmd)
         let rpp = TMDReaperGenerator.generateRPP(from: sheet)
 

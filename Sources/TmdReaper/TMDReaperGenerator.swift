@@ -1,6 +1,6 @@
 import Foundation
-import TmdSwift
 import TmdMIDI
+import TmdSwift
 
 private struct TempoSegment {
     var quarterStart: Double
@@ -42,12 +42,13 @@ public struct TMDReaperGenerator {
                     let deltaQuarters = directive.position - last.quarterStart
                     let deltaSeconds = deltaQuarters * (60.0 / last.bpm)
                     let secondStart = last.secondStart + deltaSeconds
-                    segments.append(TempoSegment(
-                        quarterStart: directive.position,
-                        secondStart: secondStart,
-                        bpm: directive.state.tempo,
-                        timeSignature: directive.state.timeSignature
-                    ))
+                    segments.append(
+                        TempoSegment(
+                            quarterStart: directive.position,
+                            secondStart: secondStart,
+                            bpm: directive.state.tempo,
+                            timeSignature: directive.state.timeSignature
+                        ))
                 } else if directive.position == last.quarterStart {
                     segments[segments.count - 1].bpm = directive.state.tempo
                     segments[segments.count - 1].timeSignature = directive.state.timeSignature
@@ -71,7 +72,8 @@ public struct TMDReaperGenerator {
         }
 
         // Section markers
-        let orders: [Playback] = !sheet.playback.isEmpty
+        let orders: [Playback] =
+            !sheet.playback.isEmpty
             ? sheet.playback
             : sheet.entries.map(\.name).reduce(into: [String]()) { names, name in
                 if !names.contains(name) { names.append(name) }
@@ -86,15 +88,18 @@ public struct TMDReaperGenerator {
         for order in orders {
             if case .name(let name) = order {
                 while markerDirectiveIndex < sortedDirectives.count,
-                      sortedDirectives[markerDirectiveIndex].position <= currentQuarter {
+                    sortedDirectives[markerDirectiveIndex].position <= currentQuarter
+                {
                     if case .timeSignature(let beat) = sortedDirectives[markerDirectiveIndex].kind {
                         markerTimeSignature = beat
                     }
                     markerDirectiveIndex += 1
                 }
-                let paragraphDuration = TMDPlaybackRenderer.duration(of: name, in: sheet, beat: markerTimeSignature)
+                let paragraphDuration = TMDPlaybackRenderer.duration(
+                    of: name, in: sheet, beat: markerTimeSignature)
                 let secondPos = quarterToSeconds(currentQuarter)
-                markerLines.append(String(format: "  MARKER %d %.8f \"%@\" 0", markerId, secondPos, name))
+                markerLines.append(
+                    String(format: "  MARKER %d %.8f \"%@\" 0", markerId, secondPos, name))
                 markerId += 1
                 currentQuarter += paragraphDuration
             }
@@ -104,7 +109,8 @@ public struct TMDReaperGenerator {
         var ptLines: [String] = []
         for seg in segments {
             let timesigEncoded = (seg.timeSignature.noteValue << 16) | seg.timeSignature.count
-            ptLines.append(String(format: "    PT %.8f %.8f 0 %d", seg.secondStart, seg.bpm, timesigEncoded))
+            ptLines.append(
+                String(format: "    PT %.8f %.8f 0 %d", seg.secondStart, seg.bpm, timesigEncoded))
         }
 
         // Build Tracks
@@ -113,12 +119,14 @@ public struct TMDReaperGenerator {
 
         for instrument in distinctInstruments {
             let instTimeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: instrument)
-            guard instTimeline.events.contains(where: { event in
-                switch event.content {
-                case .note, .chord, .percussion: return true
-                case .rest: return false
-                }
-            }) else { continue }
+            guard
+                instTimeline.events.contains(where: { event in
+                    switch event.content {
+                    case .note, .chord, .percussion: return true
+                    case .rest: return false
+                    }
+                })
+            else { continue }
             let midiInst = MIDIInstrument.resolve(instrument)
             let channel: UInt8
             if midiInst.isPercussion {
@@ -237,39 +245,71 @@ public struct TMDReaperGenerator {
     }
 
     private static func getTrackColor(_ midiInst: MIDIInstrument) -> UInt32 {
-        var r: UInt32 = 120, g: UInt32 = 140, b: UInt32 = 160
+        var r: UInt32 = 120
+        var g: UInt32 = 140
+        var b: UInt32 = 160
         if midiInst.isPercussion {
-            r = 230; g = 80; b = 50
+            r = 230
+            g = 80
+            b = 50
         } else {
             switch midiInst.program {
-            case 0...7: // Piano & Keys
-                r = 150; g = 70; b = 210
-            case 8...15, 112...119: // Chromatic Percussion & Percussive
-                r = 230; g = 80; b = 50
-            case 16...23: // Organ
-                r = 150; g = 70; b = 210
-            case 24...31: // Guitar
-                r = 50; g = 180; b = 80
-            case 32...39: // Bass
-                r = 30; g = 130; b = 230
-            case 40...51: // Strings & Ensemble
-                r = 230; g = 160; b = 30
-            case 52...55: // Choir & Voices
-                r = 220; g = 100; b = 180
-            case 56...63: // Brass
-                r = 230; g = 200; b = 30
-            case 64...71: // Reeds
-                r = 30; g = 180; b = 180
-            case 72...79: // Pipes
-                r = 30; g = 180; b = 180
-            case 80...87: // Synth Lead
-                r = 240; g = 80; b = 160
-            case 88...95: // Synth Pad
-                r = 220; g = 100; b = 180
-            case 96...103, 120...127: // FX & Sound FX
-                r = 100; g = 200; b = 220
-            case 104...111: // Ethnic
-                r = 200; g = 140; b = 60
+            case 0...7:  // Piano & Keys
+                r = 150
+                g = 70
+                b = 210
+            case 8...15, 112...119:  // Chromatic Percussion & Percussive
+                r = 230
+                g = 80
+                b = 50
+            case 16...23:  // Organ
+                r = 150
+                g = 70
+                b = 210
+            case 24...31:  // Guitar
+                r = 50
+                g = 180
+                b = 80
+            case 32...39:  // Bass
+                r = 30
+                g = 130
+                b = 230
+            case 40...51:  // Strings & Ensemble
+                r = 230
+                g = 160
+                b = 30
+            case 52...55:  // Choir & Voices
+                r = 220
+                g = 100
+                b = 180
+            case 56...63:  // Brass
+                r = 230
+                g = 200
+                b = 30
+            case 64...71:  // Reeds
+                r = 30
+                g = 180
+                b = 180
+            case 72...79:  // Pipes
+                r = 30
+                g = 180
+                b = 180
+            case 80...87:  // Synth Lead
+                r = 240
+                g = 80
+                b = 160
+            case 88...95:  // Synth Pad
+                r = 220
+                g = 100
+                b = 180
+            case 96...103, 120...127:  // FX & Sound FX
+                r = 100
+                g = 200
+                b = 220
+            case 104...111:  // Ethnic
+                r = 200
+                g = 140
+                b = 60
             default:
                 break
             }

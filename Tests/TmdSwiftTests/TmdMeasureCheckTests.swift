@@ -1,24 +1,25 @@
-import Testing
 import Foundation
+import Testing
+
 @testable import TmdSwift
 
 @Suite("TMD Measure Check Tests")
 struct TmdMeasureCheckTests {
     @Test func testTimeSignatureChangeMustStartAtMeasureBoundary() throws {
         let input = """
-        ::SCORE::
-        ** Mid-Measure Time Signature **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Mid-Measure Time Signature **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Piano@|0|{
-            <4*>
-            | 1 2 {<3/4>} 3 4 |
-        }
+            verse:Piano@|0|{
+                <4*>
+                | 1 2 {<3/4>} 3 4 |
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
 
         let issues = TMDMeasureChecker.check(source: input)
         #expect(issues.contains { $0.snippet.contains("Time signature directive") })
@@ -26,19 +27,19 @@ struct TmdMeasureCheckTests {
 
     @Test func testTimeSignatureChangeAtMeasureBoundaryUpdatesExpectedLength() throws {
         let input = """
-        ::SCORE::
-        ** Boundary Time Signature **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Boundary Time Signature **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Piano@|0|{
-            <4*>
-            | 1 2 3 4 | {<3/4>} | 1 2 3 |
-        }
+            verse:Piano@|0|{
+                <4*>
+                | 1 2 3 4 | {<3/4>} | 1 2 3 |
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
 
         let issues = TMDMeasureChecker.check(source: input)
         #expect(issues.isEmpty)
@@ -46,19 +47,19 @@ struct TmdMeasureCheckTests {
 
     @Test func testTempoAndDynamicsMayChangeWithinMeasure() throws {
         let input = """
-        ::SCORE::
-        ** Inline Tempo and Dynamics **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Inline Tempo and Dynamics **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Piano@|0|{
-            <4*>
-            | 1 {!= 140} 2 {p} 3 4 |
-        }
+            verse:Piano@|0|{
+                <4*>
+                | 1 {!= 140} 2 {p} 3 4 |
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
 
         let issues = TMDMeasureChecker.check(source: input)
         #expect(issues.isEmpty)
@@ -66,21 +67,21 @@ struct TmdMeasureCheckTests {
 
     @Test func testValidMeasuresReportNoErrors() throws {
         let input = """
-        ::SCORE::
-        ** Valid Song **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Valid Song **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Piano@|0|{
-            <4*>
-            | 1 2 3 4 |
-            | 1 2 3 4 |
-            | [C] - - - |
-        }
+            verse:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
+                | 1 2 3 4 |
+                | [C] - - - |
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
 
         let issues = TMDMeasureChecker.check(source: input)
         #expect(issues.isEmpty)
@@ -88,21 +89,21 @@ struct TmdMeasureCheckTests {
 
     @Test func testMeasureWithIncorrectBeatsReportsIssue() throws {
         let input = """
-        ::SCORE::
-        ** Mismatched Measure Song **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Mismatched Measure Song **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Piano@|0|{
-            <4*>
-            | 1 2 3 4 |
-            | 1 2 3 |
-            | 1 2 3 4 5 |
-        }
+            verse:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
+                | 1 2 3 |
+                | 1 2 3 4 5 |
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
 
         let issues = TMDMeasureChecker.check(source: input)
         #expect(issues.count == 2)
@@ -122,21 +123,21 @@ struct TmdMeasureCheckTests {
 
     @Test func testPickupMeasureAtStartAllowed() throws {
         let input = """
-        ::SCORE::
-        ** Song with Pickup **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Song with Pickup **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Piano@|-1|{
-            <4*>
-            | 5 |
-            | 1 2 3 4 |
-            | 1 2 3 4 |
-        }
+            verse:Piano@|-1|{
+                <4*>
+                | 5 |
+                | 1 2 3 4 |
+                | 1 2 3 4 |
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
 
         let issues = TMDMeasureChecker.check(source: input)
         #expect(issues.isEmpty)
@@ -144,20 +145,20 @@ struct TmdMeasureCheckTests {
 
     @Test func testSixteenthNoteGridMeasureCheck() throws {
         let input = """
-        ::SCORE::
-        ** 16th Note Song **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** 16th Note Song **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Piano@|0|{
-            <16*>
-            | 1- 1- 1- 1- 1- 1- 1- 1- |
-            | 1 2 3 4 |
-        }
+            verse:Piano@|0|{
+                <16*>
+                | 1- 1- 1- 1- 1- 1- 1- 1- |
+                | 1 2 3 4 |
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
 
         let issues = TMDMeasureChecker.check(source: input)
         // Measure 1 has 16 sixteenth units: valid
@@ -169,24 +170,25 @@ struct TmdMeasureCheckTests {
     }
 
     @Test func testCLICheckCommand() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let badTmd = tempDir.appendingPathComponent("bad.tmd")
         let badContent = """
-        ::SCORE::
-        ** Bad Measure Song **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Bad Measure Song **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Piano@|0|{
-            <4*>
-            | 1 2 3 |
-        }
-        -> verse ->#
-        """
+            verse:Piano@|0|{
+                <4*>
+                | 1 2 3 |
+            }
+            -> verse ->#
+            """
         try badContent.write(to: badTmd, atomically: true, encoding: .utf8)
 
         guard let tmdURL = TmdTestHelper.findTmdExecutable() else {
@@ -212,33 +214,33 @@ struct TmdMeasureCheckTests {
 
     @Test func testSectionInstrumentLengthAllowsStaggeredEntrancesAndEarlyExits() throws {
         let input = """
-        ::SCORE::
-        ** Layered Section Song **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Layered Section Song **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Piano@|0|{
-            <4*>
-            | 1 2 3 4 |
-            | 1 2 3 4 |
-            | 1 2 3 4 |
-            | 1 2 3 4 |
-        }
+            verse:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
+                | 1 2 3 4 |
+                | 1 2 3 4 |
+                | 1 2 3 4 |
+            }
 
-        verse:Bass@|0|{
-            <4*>
-            | 1 - - - |
-            | 1 - - - |
-        }
+            verse:Bass@|0|{
+                <4*>
+                | 1 - - - |
+                | 1 - - - |
+            }
 
-        verse:Chorus@|+2|{
-            <4*>
-            | 1 2 3 4 |
-        }
+            verse:Chorus@|+2|{
+                <4*>
+                | 1 2 3 4 |
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
 
         // Bass exits early (2 measures out of 4), Chorus enters at +2 and exits at 3.
         // In TMD, these are valid staggered entrances / early exits without reporting error.
@@ -248,28 +250,28 @@ struct TmdMeasureCheckTests {
 
     @Test func testSectionInstrumentLengthWithDelayedStartMatches() throws {
         let input = """
-        ::SCORE::
-        ** Delayed Start Section Song **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Delayed Start Section Song **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Piano@|0|{
-            <4*>
-            | 1 2 3 4 |
-            | 1 2 3 4 |
-            | 1 2 3 4 |
-            | 1 2 3 4 |
-        }
+            verse:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
+                | 1 2 3 4 |
+                | 1 2 3 4 |
+                | 1 2 3 4 |
+            }
 
-        verse:Chorus@|+2|{
-            <4*>
-            | 1 2 3 4 |
-            | 1 2 3 4 |
-        }
+            verse:Chorus@|+2|{
+                <4*>
+                | 1 2 3 4 |
+                | 1 2 3 4 |
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
 
         let issues = TMDMeasureChecker.check(source: input)
         // verse:Piano ends at 0 + 4 = 4 measures.
@@ -280,31 +282,31 @@ struct TmdMeasureCheckTests {
 
     @Test func testSectionInstrumentLengthWithPickupMatches() throws {
         let input = """
-        ::SCORE::
-        ** Pickup Section Song **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Pickup Section Song **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Vocal@|-1|{
-            <4*>
-            | 5 |
-            | 1 2 3 4 |
-            | 1 2 3 4 |
-            | 1 2 3 4 |
-            | 1 2 3 4 |
-        }
+            verse:Vocal@|-1|{
+                <4*>
+                | 5 |
+                | 1 2 3 4 |
+                | 1 2 3 4 |
+                | 1 2 3 4 |
+                | 1 2 3 4 |
+            }
 
-        verse:Piano@|0|{
-            <4*>
-            | 1 2 3 4 |
-            | 1 2 3 4 |
-            | 1 2 3 4 |
-            | 1 2 3 4 |
-        }
+            verse:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
+                | 1 2 3 4 |
+                | 1 2 3 4 |
+                | 1 2 3 4 |
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
 
         let issues = TMDMeasureChecker.check(source: input)
         // Both end at positive measure 4, so no mismatch.
@@ -313,26 +315,26 @@ struct TmdMeasureCheckTests {
 
     @Test func testRecognizesPercussionTokensAndGroups() throws {
         let input = """
-        ::SCORE::
-        ** Drum Song **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Drum Song **
+            != 120
+            ?= C
+            <4/4>
 
-        v2:Drum-Kick@|0| {
-            <4*>
-            | D - - - | D - - - | D - - - | D - - - |
-            | D - - - | D - - - | D - - - | D - x X |
-        }
+            v2:Drum-Kick@|0| {
+                <4*>
+                | D - - - | D - - - | D - - - | D - - - |
+                | D - - - | D - - - | D - - - | D - x X |
+            }
 
-        intro:Drum@|0| {
-            <4*>
-            | - - - - |
-            | (xxxx) - - - |
-        }
+            intro:Drum@|0| {
+                <4*>
+                | - - - - |
+                | (xxxx) - - - |
+            }
 
-        -> v2 ->#
-        """
+            -> v2 ->#
+            """
 
         let issues = TMDMeasureChecker.check(source: input)
         #expect(issues.isEmpty)
@@ -340,19 +342,19 @@ struct TmdMeasureCheckTests {
 
     @Test func testReportsIssueWhenExecutionOrderRefersToUndefinedSection() throws {
         let input = """
-        ::SCORE::
-        ** Undefined Order Section Song **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Undefined Order Section Song **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Piano@|0|{
-            <4*>
-            | 1 2 3 4 |
-        }
+            verse:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
+            }
 
-        -> verse -> chorus -> #
-        """
+            -> verse -> chorus -> #
+            """
 
         let issues = TMDMeasureChecker.check(source: input)
         // 'chorus' is undefined, but '#' should be considered valid terminator and not reported!
@@ -366,17 +368,17 @@ struct TmdMeasureCheckTests {
 
     @Test func testReportsIssueWhenPlaybackOrderIsMissing() throws {
         let input = """
-        ::SCORE::
-        ** No Order Song **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** No Order Song **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Piano@|0|{
-            <4*>
-            | 1 2 3 4 |
-        }
-        """
+            verse:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
+            }
+            """
 
         let issues = TMDMeasureChecker.check(source: input)
         #expect(issues.count == 1)
@@ -387,19 +389,19 @@ struct TmdMeasureCheckTests {
 
     @Test func testReportsIssueWhenPlaybackOrderDoesNotEndWithHash() throws {
         let input = """
-        ::SCORE::
-        ** Unterminated Order Song **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Unterminated Order Song **
+            != 120
+            ?= C
+            <4/4>
 
-        verse:Piano@|0|{
-            <4*>
-            | 1 2 3 4 |
-        }
+            verse:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
+            }
 
-        -> verse
-        """
+            -> verse
+            """
 
         let issues = TMDMeasureChecker.check(source: input)
         #expect(issues.count == 1)
@@ -410,25 +412,25 @@ struct TmdMeasureCheckTests {
 
     @Test func testAccuratelyChecksPipelessMeasuresAndMixedPipeParagraphs() throws {
         let code = """
-        ::SCORE::
-        ** Pipeless Measure Test **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Pipeless Measure Test **
+            != 120
+            ?= C
+            <4/4>
 
-        intro:CHORD@|0|{
-        <2*>
-        |[1] - | - [7,] |
-        |[1] - | - [7,] |
-        |[1] - | - [7,] |
-        |[1] - | - [7,] |
+            intro:CHORD@|0|{
+            <2*>
+            |[1] - | - [7,] |
+            |[1] - | - [7,] |
+            |[1] - | - [7,] |
+            |[1] - | - [7,] |
 
-        <4*>
-        | 1 2 3 4 | 5 6 7 1 |
-        }
+            <4*>
+            | 1 2 3 4 | 5 6 7 1 |
+            }
 
-        -> intro ->#
-        """
+            -> intro ->#
+            """
         // intro:CHORD has 8 measures of <2*> (16 half notes = 32 quarter notes = 8 measures)
         // plus 2 measures of <4*> (8 quarter notes = 2 measures)
         // total 10 measures. Should have 0 issues.
@@ -438,107 +440,111 @@ struct TmdMeasureCheckTests {
 
     @Test func testRequiresExplicitBarlinesForMultiMeasureSection() throws {
         let source = """
-        ::SCORE::
-        <4/4>
-        intro:Piano@|0|{
-        <4*>
-        1 2 3 4 5 6 7 1
-        }
-        -> intro ->#
-        """
+            ::SCORE::
+            <4/4>
+            intro:Piano@|0|{
+            <4*>
+            1 2 3 4 5 6 7 1
+            }
+            -> intro ->#
+            """
         let issues = TMDMeasureChecker.check(source: source)
-        #expect(issues.contains { $0.snippet.contains("explicit barlines") && $0.description.contains("explicit barlines") })
+        #expect(
+            issues.contains {
+                $0.snippet.contains("explicit barlines")
+                    && $0.description.contains("explicit barlines")
+            })
     }
 
     @Test func testAcceptsLayeredIntroPatternWithoutFalseErrors() throws {
         let code = """
-        ::SCORE::
-        ** 三天三夜 Intro Test **
-        != 133
-        ?= A'
-        <4/4>
+            ::SCORE::
+            ** 三天三夜 Intro Test **
+            != 133
+            ?= A'
+            <4/4>
 
-        intro:CHORD@|0|{
-        <2*>
-        |[1] - | - [7,] |
-        |[1] - | - [7,] |
-        |[1] - | - [7,] |
-        |[1] - | - [7,] |
+            intro:CHORD@|0|{
+            <2*>
+            |[1] - | - [7,] |
+            |[1] - | - [7,] |
+            |[1] - | - [7,] |
+            |[1] - | - [7,] |
 
-        <4*>
-        | 1 2 3 4 | 5 6 7 1 |
-        }
-        intro:Chorus-1@|+4|{
-        <16*>
-        | 1_- 1_ - 1_ - - 1_ - 1_ - 1_ 1_ - - - |
-        1_- 1_ - 1_ - - 1_ - 1_ - 1_ 1_ - - - |
-        1_- 1_ - 1_ - - 1_ - 1_ - 1_ 1_ - - -
-        1_- 1_ - 1_ - - 1_ - 1_ - 1_ 1_ - - -
-        }
+            <4*>
+            | 1 2 3 4 | 5 6 7 1 |
+            }
+            intro:Chorus-1@|+4|{
+            <16*>
+            | 1_- 1_ - 1_ - - 1_ - 1_ - 1_ 1_ - - - |
+            1_- 1_ - 1_ - - 1_ - 1_ - 1_ 1_ - - - |
+            1_- 1_ - 1_ - - 1_ - 1_ - 1_ 1_ - - -
+            1_- 1_ - 1_ - - 1_ - 1_ - 1_ 1_ - - -
+            }
 
-        intro:Chorus-2@|+6|{
-        <16*>
-        | 3_- 3_ - 3_ - - 3_ - 3_ - 3_ 3_ - - - |
-        3_- 3_ - 3_ - - 3_ - 3_ - 3_ 3_ - - -
-        3_- 3_ - 3_ - - 3_ - 3_ - 3_ 3_ - - -
-        }
-        intro:Chorus-3@|+8|{
-        <16*>
-        | 5_- 5_ - 5_ - - 5_ - 5_ - 5_ 5_ - - - |
-        5_- 5_ - 5_ - - 5_ - 5_ - 5_ 5_ - - -
-        }
+            intro:Chorus-2@|+6|{
+            <16*>
+            | 3_- 3_ - 3_ - - 3_ - 3_ - 3_ 3_ - - - |
+            3_- 3_ - 3_ - - 3_ - 3_ - 3_ 3_ - - -
+            3_- 3_ - 3_ - - 3_ - 3_ - 3_ 3_ - - -
+            }
+            intro:Chorus-3@|+8|{
+            <16*>
+            | 5_- 5_ - 5_ - - 5_ - 5_ - 5_ 5_ - - - |
+            5_- 5_ - 5_ - - 5_ - 5_ - 5_ 5_ - - -
+            }
 
-        intro:Guitar@{
-        <16*>
-        | (7,1)%(--) 1 (7,1)%(--) 1 (7,1)%(--)1 (7,1)%(--) 6 7, 6 7, 6 |
-        (7,1)%(--) 1 (7,1)%(--) 1 (7,1)%(--)1 (7,1)%(--) 6 7, 6 7, 6  
-        (7,1)%(--) 1 (7,1)%(--) 1 (7,1)%(--)1 (7,1)%(--) 6 7, 6 7, 6 
-        (7,1)%(--) 1 (7,1)%(--) 1 (7,1)%(--)1 (7,1)%(--) 6 7, 6 7, 6 
-        }
+            intro:Guitar@{
+            <16*>
+            | (7,1)%(--) 1 (7,1)%(--) 1 (7,1)%(--)1 (7,1)%(--) 6 7, 6 7, 6 |
+            (7,1)%(--) 1 (7,1)%(--) 1 (7,1)%(--)1 (7,1)%(--) 6 7, 6 7, 6  
+            (7,1)%(--) 1 (7,1)%(--) 1 (7,1)%(--)1 (7,1)%(--) 6 7, 6 7, 6 
+            (7,1)%(--) 1 (7,1)%(--) 1 (7,1)%(--)1 (7,1)%(--) 6 7, 6 7, 6 
+            }
 
-        -> intro ->#
-        """
+            -> intro ->#
+            """
         let issues = TMDMeasureChecker.check(source: code)
         #expect(issues.isEmpty)
     }
 
     @Test func testMeasureCheckCountsMultiDigitNumbersAsMultipleUnits() throws {
         let code = """
-        ::SCORE::
-        ** Multi-digit Jianpu Test **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Multi-digit Jianpu Test **
+            != 120
+            ?= C
+            <4/4>
 
-        intro:Piano@|0|{
-            <4*>
-            | 1234 | 5671 | 0000 | 1020 |
-        }
-        -> intro ->#
-        """
+            intro:Piano@|0|{
+                <4*>
+                | 1234 | 5671 | 0000 | 1020 |
+            }
+            -> intro ->#
+            """
         let issues = TMDMeasureChecker.check(source: code)
         #expect(issues.isEmpty)
     }
 
     @Test func testUnclosedParagraphDetectedWhenArrowOrNextParagraphEncountered() throws {
         let code = """
-        ::SCORE::
-        ** Unclosed Section Song **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Unclosed Section Song **
+            != 120
+            ?= C
+            <4/4>
 
-        intro:Piano@|0|{
-            <4*>
-            | 1 2 3 4 |
+            intro:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
 
-        verse:Piano@|0|{
-            <4*>
-            | 5 6 7 1 |
-        }
+            verse:Piano@|0|{
+                <4*>
+                | 5 6 7 1 |
+            }
 
-        -> intro -> verse ->#
-        """
+            -> intro -> verse ->#
+            """
         let issues = TMDMeasureChecker.check(source: code)
         let unclosed = issues.filter { $0.snippet.contains("Unclosed entry") }
         #expect(!unclosed.isEmpty)
