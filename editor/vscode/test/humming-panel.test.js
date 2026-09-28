@@ -20,6 +20,8 @@ test('extension wires a dedicated humming webview and editor insertion messages'
   assert.match(extension, /createWebviewPanel\(\s*['"]tmdHummingPanel['"]/);
   assert.match(extension, /message\.command === ['"]insertHummingTmd['"]/);
   assert.match(extension, /humming-panel\.js/);
+  assert.match(extension, /! = 120/);
+  assert.match(extension, /\? = \$\{key\}/);
 });
 
 test('humming webview assets expose recording and result actions', () => {

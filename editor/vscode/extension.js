@@ -715,7 +715,7 @@ function activate(context) {
                 if (!message.tmd || !message.tmd.trim()) return;
                 const tempPath = path.join(os.tmpdir(), `tmd_humming_preview_${Date.now()}.tmd`);
                 const key = getActiveKeySignature();
-                const preview = `::SCORE::\n** Hummed Preview **\n!= 120\n?= ${key}\n<4/4>\n\n${message.tmd}\n\n-> hummed ->#\n`;
+                const preview = `::SCORE::\n** Hummed Preview **\n! = 120\n? = ${key}\n<4/4>\n\n${message.tmd}\n\n-> hummed ->#\n`;
                 fs.writeFileSync(tempPath, preview, 'utf8');
                 execFile(getTmdExecutable(), [tempPath, '-p'], (error, stdout, stderr) => {
                     try { fs.unlinkSync(tempPath); } catch (_) {}
