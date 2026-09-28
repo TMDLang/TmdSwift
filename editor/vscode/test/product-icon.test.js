@@ -11,9 +11,8 @@ test('VS Code product icon is the monochrome brace-and-note mark', () => {
   const extension = fs.readFileSync(path.join(root, 'extension.js'), 'utf8');
 
   assert.match(icon, /<svg[^>]+viewBox="0 0 64 64"/);
-  assert.match(icon, /#000000/);
-  assert.match(icon, /#ffffff/);
-  assert.doesNotMatch(icon, /gradient|#58a6ff|#bc8cff|#2ea043/);
+  assert.match(icon, /currentColor/);
+  assert.doesNotMatch(icon, /<rect|gradient|#58a6ff|#bc8cff|#2ea043/);
   assert.equal(packageJson.contributes.viewsContainers.activitybar[0].icon, './media/tmd.svg');
   assert.equal(packageJson.contributes.viewsContainers.panel[0].icon, './media/tmd.svg');
   assert.doesNotMatch(extension, /media', 'player\.svg/);
