@@ -142,7 +142,7 @@ type BasicPitchModule = {
   function startRecording(): void {
     const begin = () => {
       vscode.postMessage({ command: 'startHummingRecording' });
-      recording = true; recordButton.textContent = '⏹ Stop and transcribe';
+      recording = true; recordButton.disabled = false; recordButton.textContent = '⏹ Stop and transcribe';
       setStatus('Recording… hum or sing a melody, then stop.'); startMetronome();
     };
     if ($('hum-count-in').checked) {

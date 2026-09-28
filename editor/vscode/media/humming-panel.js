@@ -128,6 +128,7 @@
         const begin = () => {
             vscode.postMessage({ command: 'startHummingRecording' });
             recording = true;
+            recordButton.disabled = false;
             recordButton.textContent = '⏹ Stop and transcribe';
             setStatus('Recording… hum or sing a melody, then stop.');
             startMetronome();

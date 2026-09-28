@@ -24,3 +24,8 @@ test('panel delegates recording to the extension host instead of getUserMedia', 
   assert.match(source, /stopHummingRecording/);
   assert.doesNotMatch(source, /getUserMedia/);
 });
+
+test('panel re-enables Stop after the host recording starts', () => {
+  const source = fs.readFileSync(path.join(root, 'media', 'humming-panel.ts'), 'utf8');
+  assert.match(source, /postMessage\(\{ command: 'startHummingRecording' \}\);\s*recording = true;\s*recordButton\.disabled = false;/);
+});
