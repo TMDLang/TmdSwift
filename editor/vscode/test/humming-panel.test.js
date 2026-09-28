@@ -44,3 +44,12 @@ test('humming webview assets expose recording and result actions', () => {
   assert.match(script, /hum-record/);
   assert.match(css, /\.hum-panel/);
 });
+
+test('humming panel wraps content inside a narrow Panel', () => {
+  const css = fs.readFileSync(path.join(root, 'media', 'humming-panel.css'), 'utf8');
+  assert.match(css, /\.hum-panel[\s\S]*min-width:\s*0/);
+  assert.match(css, /\.hum-grid[\s\S]*min-width:\s*0/);
+  assert.match(css, /\.hum-field[\s\S]*min-width:\s*0/);
+  assert.match(css, /overflow-wrap:\s*anywhere/);
+  assert.match(css, /\.hum-actions button[\s\S]*max-width:\s*100%/);
+});

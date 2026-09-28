@@ -3,14 +3,18 @@
   background: var(--vscode-editor-background);
   font-family: var(--vscode-font-family);
   padding: 16px;
+  width: 100%;
   max-width: 760px;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-x: hidden;
   margin: 0 auto;
 }
-.hum-header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 16px; }
+.hum-header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; min-width: 0; }
 .hum-header h1 { font-size: 20px; margin: 0; }
-.hum-status { color: var(--vscode-descriptionForeground); min-height: 20px; }
-.hum-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
-.hum-field { display: flex; flex-direction: column; gap: 5px; }
+.hum-status { color: var(--vscode-descriptionForeground); min-height: 20px; min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
+.hum-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: 12px; min-width: 0; }
+.hum-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .hum-field label { color: var(--vscode-descriptionForeground); font-size: 12px; }
 .hum-field input, .hum-field select, .hum-result {
   color: var(--vscode-input-foreground);
@@ -18,12 +22,16 @@
   border: 1px solid var(--vscode-input-border, transparent);
   padding: 6px;
   font: inherit;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
-.hum-options { display: flex; flex-wrap: wrap; gap: 12px; margin: 14px 0; color: var(--vscode-descriptionForeground); }
-.hum-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
-.hum-actions button { padding: 7px 12px; cursor: pointer; }
+.hum-options { display: flex; flex-wrap: wrap; gap: 12px; margin: 14px 0; color: var(--vscode-descriptionForeground); min-width: 0; }
+.hum-options label { min-width: 0; overflow-wrap: anywhere; }
+.hum-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; min-width: 0; }
+.hum-actions button { padding: 7px 12px; cursor: pointer; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .hum-actions .primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border: 0; }
 .hum-actions button:disabled { opacity: .55; cursor: default; }
-.hum-result { width: 100%; min-height: 210px; box-sizing: border-box; resize: vertical; font-family: var(--vscode-editor-font-family); }
-.hum-meta { display: flex; gap: 16px; color: var(--vscode-descriptionForeground); min-height: 20px; }
+.hum-result { width: 100%; min-height: 210px; box-sizing: border-box; resize: vertical; font-family: var(--vscode-editor-font-family); overflow-wrap: anywhere; word-break: break-word; }
+.hum-meta { display: flex; gap: 16px; color: var(--vscode-descriptionForeground); min-height: 20px; min-width: 0; flex-wrap: wrap; overflow-wrap: anywhere; word-break: break-word; }
 .hum-error { color: var(--vscode-errorForeground); }
