@@ -25,6 +25,15 @@ function getTmdExecutable() {
     return 'tmd';
 }
 
+function getHummingRecorder() {
+    const config = vscode.workspace.getConfiguration('tmd.humming');
+    return createHummingRecorder({
+        ffmpegPath: config.get('ffmpegPath') || undefined,
+        inputDevice: config.get('inputDevice') || undefined,
+        linuxInputFormat: config.get('linuxInputFormat') || undefined
+    });
+}
+
 /**
  * Generate client-side localization script for Webviews
  */
@@ -714,7 +723,7 @@ function activate(context) {
             }
             if (message.command === 'startHummingRecording') {
                 if (hummingRecorder) return;
-                hummingRecorder = createHummingRecorder();
+                hummingRecorder = getHummingRecorder();
                 try {
                     await hummingRecorder.start();
                     await webview.postMessage({ command: 'hummingRecordingStarted' });

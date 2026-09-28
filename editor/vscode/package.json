@@ -619,6 +619,25 @@
           "type": "boolean",
           "default": true,
           "description": "%tmd.config.checkOnChange%"
+        },
+        "tmd.humming.ffmpegPath": {
+          "type": "string",
+          "default": "",
+          "description": "%tmd.config.humming.ffmpegPath%"
+        },
+        "tmd.humming.inputDevice": {
+          "type": "string",
+          "default": "",
+          "description": "%tmd.config.humming.inputDevice%"
+        },
+        "tmd.humming.linuxInputFormat": {
+          "type": "string",
+          "enum": [
+            "pulse",
+            "alsa"
+          ],
+          "default": "pulse",
+          "description": "%tmd.config.humming.linuxInputFormat%"
         }
       }
     },
