@@ -282,7 +282,7 @@
         {
           "id": "tmdHummingPanel",
           "title": "%tmd.viewsContainers.tmdHummingPanel%",
-          "icon": "./media/player.svg"
+          "icon": "./media/tmd.svg"
         }
       ],
       "activitybar": [

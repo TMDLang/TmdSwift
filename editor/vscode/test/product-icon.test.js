@@ -15,6 +15,7 @@ test('VS Code product icon is the monochrome brace-and-note mark', () => {
   assert.match(icon, /#ffffff/);
   assert.doesNotMatch(icon, /gradient|#58a6ff|#bc8cff|#2ea043/);
   assert.equal(packageJson.contributes.viewsContainers.activitybar[0].icon, './media/tmd.svg');
+  assert.equal(packageJson.contributes.viewsContainers.panel[0].icon, './media/tmd.svg');
   assert.doesNotMatch(extension, /media', 'player\.svg/);
   assert.match(extension, /media', 'tmd\.svg/);
 });
