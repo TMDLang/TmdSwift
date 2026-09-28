@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-09-28
+
+### Changed
+- Aligned macro parsing and playback semantics with the current TMD specification.
+- Explicit `key=` directives now remain notation metadata and do not transpose sounding pitches.
+- Prototype-only macro sources, strict macro arguments, canon duration bounds, and canonical entry-offset syntax are enforced.
+- Legacy inline fixed-pitch directives are rejected in favor of `[pitchMode=fixed]`.
+
 ## [0.1.6] - 2026-09-19
 
 ### Added
