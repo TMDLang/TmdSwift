@@ -18,6 +18,9 @@
   "scripts": {
     "build:humming": "tsc -p tsconfig.json && tsc -p tsconfig.humming-panel.json"
   },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  },
   "activationEvents": [
     "onLanguage:tmd",
     "onLanguage:markdown",
