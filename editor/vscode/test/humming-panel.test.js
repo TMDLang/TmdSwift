@@ -53,3 +53,13 @@ test('humming panel wraps content inside a narrow Panel', () => {
   assert.match(css, /overflow-wrap:\s*anywhere/);
   assert.match(css, /\.hum-actions button[\s\S]*max-width:\s*100%/);
 });
+
+test('humming panel places controls left and result right when wide', () => {
+  const css = fs.readFileSync(path.join(root, 'media', 'humming-panel.css'), 'utf8');
+  assert.match(css, /grid-template-columns:\s*minmax\(220px,\s*\.75fr\)\s+minmax\(300px,\s*1\.25fr\)/);
+  assert.match(css, /\.hum-grid[\s\S]*grid-area:\s*settings/);
+  assert.match(css, /\.hum-options[\s\S]*grid-area:\s*options/);
+  assert.match(css, /\.hum-actions[\s\S]*grid-area:\s*actions/);
+  assert.match(css, /\.hum-result[\s\S]*grid-area:\s*result/);
+  assert.match(css, /@media \(max-width:\s*700px\)[\s\S]*display:\s*block/);
+});
