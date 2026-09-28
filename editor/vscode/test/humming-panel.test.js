@@ -20,7 +20,7 @@ test('declares the humming panel command and editor entry point', () => {
   assert.deepEqual(panelViews.find((view) => view.id === 'tmdHummingView'), {
     type: 'webview',
     id: 'tmdHummingView',
-    name: 'Hum to TMD',
+    name: '%tmd.viewsContainers.tmdHummingPanel%',
   });
 });
 
@@ -66,4 +66,30 @@ test('humming panel places controls left and result right when wide', () => {
   assert.match(css, /\.hum-actions[\s\S]*grid-area:\s*actions/);
   assert.match(css, /\.hum-result[\s\S]*grid-area:\s*result/);
   assert.match(css, /@media \(max-width:\s*700px\)[\s\S]*display:\s*block/);
+});
+
+test('humming panel localization keys are complete in every locale', () => {
+  const keys = [
+    'Hum to TMD', 'Humming settings', 'Reference tempo (BPM)', 'Time grid',
+    'Quarter notes', 'Eighth notes', 'Sixteenth notes', 'Expected key', 'Auto-detect',
+    'Section name', 'Instrument', 'Snap to natural diatonic scale', 'Metronome',
+    'Four-beat count-in', 'Start recording', 'Stop and transcribe', 'Preview TMD audio',
+    'Insert into editor', 'Close', 'Processing stays local to the webview.', 'Detected key: {0}',
+    'Transcribing with Spotify Basic Pitch…', 'Transcribed successfully. Review the TMD before inserting it.',
+    'Recording… hum or sing a melody, then stop.', 'Count-in: beat {0}', 'Microphone unavailable: {0}',
+    'Permission denied.', 'Recording or transcription error: {0}', 'Generated TMD',
+    'Click Start recording and hum a melody (2–8 measures recommended).',
+    'Hummed TMD section inserted.', 'No active microphone recording.',
+  ];
+  for (const locale of ['bundle.l10n.json', 'bundle.l10n.zh-tw.json', 'bundle.l10n.zh-hant.json']) {
+    const messages = JSON.parse(fs.readFileSync(path.join(root, 'l10n', locale), 'utf8'));
+    for (const key of keys) assert.equal(typeof messages[key], 'string', `${locale} is missing ${key}`);
+  }
+});
+
+test('humming Webview receives its localized runtime dictionary', () => {
+  const panel = fs.readFileSync(path.join(root, 'media', 'humming-panel.ts'), 'utf8');
+  assert.match(extension, /__TMD_HUM_L10N__/);
+  assert.match(panel, /__TMD_HUM_L10N__/);
+  assert.match(panel, /t\('Transcribing with Spotify Basic Pitch…'\)/);
 });

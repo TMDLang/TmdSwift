@@ -76,6 +76,22 @@ function getWebviewL10nScript() {
 </script>`;
 }
 
+function getHummingWebviewL10nScript(nonce) {
+    const keys = [
+        'Hum to TMD', 'Humming settings', 'Reference tempo (BPM)', 'Time grid',
+        'Quarter notes', 'Eighth notes', 'Sixteenth notes', 'Expected key', 'Auto-detect',
+        'Section name', 'Instrument', 'Snap to natural diatonic scale', 'Metronome',
+        'Four-beat count-in', 'Start recording', 'Stop and transcribe', 'Preview TMD audio',
+        'Insert into editor', 'Close', 'Processing stays local to the webview.', 'Detected key: {0}',
+        'Transcribing with Spotify Basic Pitch…', 'Transcribed successfully. Review the TMD before inserting it.',
+        'Recording… hum or sing a melody, then stop.', 'Count-in: beat {0}', 'Microphone unavailable: {0}',
+        'Permission denied.', 'Recording or transcription error: {0}', 'Generated TMD'
+    ];
+    const dictionary = {};
+    for (const key of keys) dictionary[key] = vscode.l10n.t(key);
+    return `<script nonce="${nonce}">window.__TMD_HUM_L10N__ = ${JSON.stringify(dictionary)};</script>`;
+}
+
 function getTmdInspectLocale() {
     const language = (vscode.env.language || 'en').toLowerCase();
     return language.startsWith('zh') ? 'zh-Hant' : 'en';
@@ -648,33 +664,34 @@ function activate(context) {
 <body>
   <main class="hum-panel">
     <header class="hum-header">
-      <div><h1>🎤 Hum to TMD</h1><div id="hum-status" class="hum-status"></div></div>
-      <span id="hum-key-badge" class="hum-status">Detected key: C</span>
+      <div><h1>🎤 ${vscode.l10n.t('Hum to TMD')}</h1><div id="hum-status" class="hum-status"></div></div>
+      <span id="hum-key-badge" class="hum-status">${vscode.l10n.t('Detected key: {0}', 'C')}</span>
     </header>
-    <section class="hum-grid" aria-label="Humming settings">
-      <div class="hum-field"><label for="hum-bpm">Reference tempo (BPM)</label><input id="hum-bpm" type="number" min="20" max="300" value="120"></div>
-      <div class="hum-field"><label for="hum-grid">Time grid</label><select id="hum-grid"><option value="4">Quarter notes</option><option value="8" selected>Eighth notes</option><option value="16">Sixteenth notes</option></select></div>
-      <div class="hum-field"><label for="hum-key">Expected key</label><select id="hum-key"><option value="AUTO">Auto-detect</option><option>C</option><option>G</option><option>D</option><option>F</option><option>A</option><option>Bb</option><option>Eb</option></select></div>
-      <div class="hum-field"><label for="hum-section">Section name</label><input id="hum-section" value="hummed"></div>
-      <div class="hum-field"><label for="hum-instrument">Instrument</label><input id="hum-instrument" value="Vocal"></div>
+    <section class="hum-grid" aria-label="${vscode.l10n.t('Humming settings')}">
+      <div class="hum-field"><label for="hum-bpm">${vscode.l10n.t('Reference tempo (BPM)')}</label><input id="hum-bpm" type="number" min="20" max="300" value="120"></div>
+      <div class="hum-field"><label for="hum-grid">${vscode.l10n.t('Time grid')}</label><select id="hum-grid"><option value="4">${vscode.l10n.t('Quarter notes')}</option><option value="8" selected>${vscode.l10n.t('Eighth notes')}</option><option value="16">${vscode.l10n.t('Sixteenth notes')}</option></select></div>
+      <div class="hum-field"><label for="hum-key">${vscode.l10n.t('Expected key')}</label><select id="hum-key"><option value="AUTO">${vscode.l10n.t('Auto-detect')}</option><option>C</option><option>G</option><option>D</option><option>F</option><option>A</option><option>Bb</option><option>Eb</option></select></div>
+      <div class="hum-field"><label for="hum-section">${vscode.l10n.t('Section name')}</label><input id="hum-section" value="hummed"></div>
+      <div class="hum-field"><label for="hum-instrument">${vscode.l10n.t('Instrument')}</label><input id="hum-instrument" value="Vocal"></div>
     </section>
     <section class="hum-options">
-      <label><input id="hum-snap" type="checkbox" checked> Snap to natural diatonic scale</label>
-      <label><input id="hum-metronome" type="checkbox" checked> Metronome</label>
-      <label><input id="hum-count-in" type="checkbox" checked> Four-beat count-in</label>
+      <label><input id="hum-snap" type="checkbox" checked> ${vscode.l10n.t('Snap to natural diatonic scale')}</label>
+      <label><input id="hum-metronome" type="checkbox" checked> ${vscode.l10n.t('Metronome')}</label>
+      <label><input id="hum-count-in" type="checkbox" checked> ${vscode.l10n.t('Four-beat count-in')}</label>
     </section>
     <div class="hum-actions">
-      <button id="hum-record" class="primary">🎙️ Start recording</button>
-      <button id="hum-preview" disabled>Preview TMD audio</button>
-      <button id="hum-apply" class="primary" disabled>Insert into editor</button>
-      <button id="hum-cancel">Close</button>
+      <button id="hum-record" class="primary">🎙️ ${vscode.l10n.t('Start recording')}</button>
+      <button id="hum-preview" disabled>${vscode.l10n.t('Preview TMD audio')}</button>
+      <button id="hum-apply" class="primary" disabled>${vscode.l10n.t('Insert into editor')}</button>
+      <button id="hum-cancel">${vscode.l10n.t('Close')}</button>
     </div>
-    <div class="hum-meta"><span>Processing stays local to the webview.</span></div>
-    <textarea id="hum-result" class="hum-result" spellcheck="false" aria-label="Generated TMD"></textarea>
+    <div class="hum-meta"><span>${vscode.l10n.t('Processing stays local to the webview.')}</span></div>
+    <textarea id="hum-result" class="hum-result" spellcheck="false" aria-label="${vscode.l10n.t('Generated TMD')}"></textarea>
   </main>
   <script nonce="${nonce}">var __tmdQuantizerExports = {}; var exports = __tmdQuantizerExports;</script>
   <script nonce="${nonce}" src="${quantizerUri}"></script>
   <script nonce="${nonce}">window.TMDHummingQuantizer = __tmdQuantizerExports;</script>
+  ${getHummingWebviewL10nScript(nonce)}
   <script nonce="${nonce}" src="${panelUri}"></script>
 </body>
 </html>`;
@@ -710,7 +727,7 @@ function activate(context) {
             }
             if (message.command === 'stopHummingRecording') {
                 if (!hummingRecorder) {
-                    await webview.postMessage({ command: 'hummingRecordingError', error: 'No active microphone recording.' });
+                    await webview.postMessage({ command: 'hummingRecordingError', error: vscode.l10n.t('No active microphone recording.') });
                     return;
                 }
                 try {
@@ -732,7 +749,7 @@ function activate(context) {
                 }
                 const insertion = `\n${message.tmd.trim()}\n`;
                 await targetEditor.edit((editBuilder) => editBuilder.insert(targetEditor.selection.active, insertion));
-                vscode.window.showInformationMessage('Hummed TMD section inserted.');
+                vscode.window.showInformationMessage(vscode.l10n.t('Hummed TMD section inserted.'));
             }
             if (message.command === 'previewHummingTmd') {
                 if (!message.tmd || !message.tmd.trim()) return;

@@ -36,6 +36,7 @@
   "tmd.commands.openKeyboard": "Open Virtual Keyboard",
   "tmd.commands.refreshOutline": "Refresh Outline",
   "tmd.viewsContainers.tmdStudio": "TMD Studio",
+  "tmd.viewsContainers.tmdHummingPanel": "Hum to TMD",
   "tmd.views.tmdKeyboardView": "Virtual Keyboard",
   "tmd.views.tmdInspectorView": "Song Inspector",
   "tmd.views.tmdOutlineView": "Outline & Player",

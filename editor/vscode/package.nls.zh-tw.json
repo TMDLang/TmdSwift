@@ -36,6 +36,7 @@
   "tmd.commands.openKeyboard": "開啟虛擬鍵盤",
   "tmd.commands.refreshOutline": "重新整理大綱",
   "tmd.viewsContainers.tmdStudio": "TMD 工作室",
+  "tmd.viewsContainers.tmdHummingPanel": "哼唱產生 TMD",
   "tmd.views.tmdKeyboardView": "虛擬鍵盤",
   "tmd.views.tmdInspectorView": "歌曲分析器",
   "tmd.views.tmdOutlineView": "大綱與播放控制",

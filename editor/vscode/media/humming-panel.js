@@ -12,6 +12,11 @@
     let countInTimer = null;
     let metronomeTimer = null;
     let clickContext = null;
+    function t(key, ...args) {
+        let message = window.__TMD_HUM_L10N__?.[key] || key;
+        args.forEach((arg, index) => { message = message.replace(`{${index}}`, String(arg)); });
+        return message;
+    }
     function setStatus(message, error = false) {
         if (status)
             status.textContent = message;
@@ -57,7 +62,7 @@
         if (recording)
             vscode.postMessage({ command: 'stopHummingRecording' });
         recording = false;
-        recordButton.textContent = '🎙️ Start recording';
+        recordButton.textContent = `🎙️ ${t('Start recording')}`;
     }
     async function resampleAudioBuffer(buffer, targetRate = 22050) {
         if (buffer.sampleRate === targetRate)
@@ -96,7 +101,7 @@
         return output;
     }
     async function transcribe(blob) {
-        setStatus('Transcribing with Spotify Basic Pitch…');
+        setStatus(t('Transcribing with Spotify Basic Pitch…'));
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const decoded = await audioContext.decodeAudioData(await blob.arrayBuffer());
         const audio = await resampleAudioBuffer(decoded);
@@ -115,27 +120,27 @@
         const notes = basicPitchModule.outputToNotesPoly(frames, onsets, 0.5, 0.35, 11);
         const events = toMonophonic(basicPitchModule.noteFramesToTime(notes));
         const selectedKey = $('hum-key').value === 'AUTO' ? window.TMDHummingQuantizer.detectTonicAndScale(events) : $('hum-key').value;
-        keyBadge.textContent = `Detected key: ${selectedKey}`;
+        keyBadge.textContent = t('Detected key: {0}', selectedKey);
         result.value = window.TMDHummingQuantizer.quantizeNoteEventsToTmdSection(events, {
             sectionName: $('hum-section').value.trim() || 'hummed', instrument: $('hum-instrument').value.trim() || 'Vocal',
             bpm: bpm(), grid: Number($('hum-grid').value), key: selectedKey, snapToScale: $('hum-snap').checked, beatsPerMeasure: beatsPerMeasure(),
         });
         applyButton.disabled = false;
         previewButton.disabled = false;
-        setStatus('Transcribed successfully. Review the TMD before inserting it.');
+        setStatus(t('Transcribed successfully. Review the TMD before inserting it.'));
     }
     function startRecording() {
         const begin = () => {
             vscode.postMessage({ command: 'startHummingRecording' });
             recording = true;
             recordButton.disabled = false;
-            recordButton.textContent = '⏹ Stop and transcribe';
-            setStatus('Recording… hum or sing a melody, then stop.');
+            recordButton.textContent = `⏹ ${t('Stop and transcribe')}`;
+            setStatus(t('Recording… hum or sing a melody, then stop.'));
             startMetronome();
         };
         if ($('hum-count-in').checked) {
             let count = 1;
-            const tick = () => { clickSound(count === 1); setStatus(`Count-in: beat ${count}`); if (count++ < 4)
+            const tick = () => { clickSound(count === 1); setStatus(t('Count-in: beat {0}', count)); if (count++ < 4)
                 countInTimer = setTimeout(tick, 60000 / bpm());
             else
                 countInTimer = setTimeout(begin, 60000 / bpm()); };
@@ -150,8 +155,8 @@
             stopTimers();
             recording = false;
             recordButton.disabled = false;
-            recordButton.textContent = '🎙️ Start recording';
-            setStatus(`Microphone unavailable: ${message.error || 'Permission denied.'}`, true);
+            recordButton.textContent = `🎙️ ${t('Start recording')}`;
+            setStatus(t('Microphone unavailable: {0}', message.error || t('Permission denied.')), true);
         }
         if (message.command === 'hummingRecordingReady' && message.audioBase64) {
             recording = false;
@@ -159,7 +164,7 @@
             const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
             const audioBuffer = bytes.buffer;
             void transcribe(new Blob([audioBuffer], { type: 'audio/wav' }))
-                .catch((error) => setStatus(`Recording or transcription error: ${error.message || error}`, true))
+                .catch((error) => setStatus(t('Recording or transcription error: {0}', error.message || error), true))
                 .finally(() => { recordButton.disabled = false; });
         }
     });
@@ -175,5 +180,5 @@
     previewButton.addEventListener('click', () => vscode.postMessage({ command: 'previewHummingTmd', tmd: result.value }));
     applyButton.addEventListener('click', () => vscode.postMessage({ command: 'insertHummingTmd', tmd: result.value }));
     window.addEventListener('beforeunload', stopRecording);
-    setStatus('Click Start recording and hum a melody (2–8 measures recommended).');
+    setStatus(t('Click Start recording and hum a melody (2–8 measures recommended).'));
 })();
