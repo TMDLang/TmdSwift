@@ -73,7 +73,13 @@ function quantizeNoteEventsToTmdSection(events, options = {}) {
         return emptySection(sectionName, instrument, grid);
     const minimumDuration = Math.max(0.1, slotDuration * 0.4);
     const validEvents = events
-        .filter((event) => event.amplitude > 0.15 && event.durationSeconds >= minimumDuration)
+        .filter((event) => Number.isFinite(event.startTimeSeconds)
+        && Number.isFinite(event.durationSeconds)
+        && Number.isFinite(event.pitchMidi)
+        && Number.isFinite(event.amplitude)
+        && event.startTimeSeconds >= 0
+        && event.amplitude > 0.15
+        && event.durationSeconds >= minimumDuration)
         .sort((a, b) => a.startTimeSeconds - b.startTimeSeconds);
     if (!validEvents.length)
         return emptySection(sectionName, instrument, grid);

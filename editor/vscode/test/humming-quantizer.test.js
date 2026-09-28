@@ -50,3 +50,13 @@ test('returns a rest section for empty or unusable input', () => {
   assert.match(tmd, /<4\*>/);
   assert.match(tmd, /\n    0\n/);
 });
+
+test('returns a rest section instead of allocating on invalid note input', () => {
+  const tmd = quantizeNoteEventsToTmdSection([
+    { startTimeSeconds: 0, durationSeconds: Infinity, pitchMidi: 60, amplitude: 0.9 },
+    { startTimeSeconds: NaN, durationSeconds: 0.5, pitchMidi: 60, amplitude: 0.9 },
+  ], { sectionName: 'invalid', bpm: 120, grid: 8 });
+
+  assert.match(tmd, /^invalid:Vocal@\|0\|\{/);
+  assert.match(tmd, /\n    0\n/);
+});
