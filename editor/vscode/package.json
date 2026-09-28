@@ -15,6 +15,9 @@
     "vscode": "^1.90.0"
   },
   "main": "./extension.js",
+  "scripts": {
+    "build:humming": "tsc -p tsconfig.json && tsc -p tsconfig.humming-panel.json"
+  },
   "activationEvents": [
     "onLanguage:tmd",
     "onLanguage:markdown",
