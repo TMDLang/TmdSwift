@@ -1,5 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 
 const {
   detectTonicAndScale,
@@ -59,4 +63,14 @@ test('returns a rest section instead of allocating on invalid note input', () =>
 
   assert.match(tmd, /^invalid:Vocal@\|0\|\{/);
   assert.match(tmd, /\n    0\n/);
+});
+
+test('generated TMD passes the existing measure checker', () => {
+  const tmd = quantizeNoteEventsToTmdSection([
+    { startTimeSeconds: 0, durationSeconds: 0.5, pitchMidi: 60, amplitude: 0.9 },
+  ], { sectionName: 'checked', bpm: 120, grid: 8, key: 'C' });
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'tmd-humming-test-'));
+  const file = path.join(directory, 'checked.tmd');
+  fs.writeFileSync(file, `::SCORE::\n\n-> checked -> #\n\n${tmd}\n`);
+  assert.doesNotThrow(() => execFileSync('tmd', ['-p', file], { stdio: 'pipe' }));
 });
