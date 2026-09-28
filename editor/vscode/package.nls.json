@@ -17,6 +17,7 @@
   "tmd.commands.formatDocument": "Format Document",
   "tmd.commands.checkMeasures": "Check Measure Consistency",
   "tmd.commands.inspectSong": "Open Song Inspector (Profile & Vocal Range)",
+  "tmd.commands.openHummingPanel": "Hum to TMD",
   "tmd.commands.refactorDoubleGrid": "Refactor: Double Grid Resolution (<4*> -> <8*>)",
   "tmd.commands.refactorHalveGrid": "Refactor: Halve Grid Resolution (<8*> -> <4*>)",
   "tmd.commands.refactorOptimizeGrid": "Refactor: Optimize Grid Resolution (Minimal Redundant Grid)",

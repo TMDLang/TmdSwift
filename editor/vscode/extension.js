@@ -628,6 +628,108 @@ function activate(context) {
 
     // Webview MIDI Player Panel tracking
     let currentMidiPanel = null;
+    let currentHummingPanel = null;
+    let hummingTargetEditor = null;
+
+    function getHummingWebviewContent(webview, extensionUri) {
+        const cssUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'humming-panel.css'));
+        const quantizerUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'humming-quantizer.js'));
+        const panelUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'humming-panel.js'));
+        const nonce = String(Date.now());
+        return `<!DOCTYPE html>
+<html lang="${vscode.env.language || 'en'}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} https://esm.sh https://unpkg.com 'nonce-${nonce}'; connect-src ${webview.cspSource} https://esm.sh https://unpkg.com https://storage.googleapis.com; media-src ${webview.cspSource} blob:;">
+  <link rel="stylesheet" href="${cssUri}">
+</head>
+<body>
+  <main class="hum-panel">
+    <header class="hum-header">
+      <div><h1>🎤 Hum to TMD</h1><div id="hum-status" class="hum-status"></div></div>
+      <span id="hum-key-badge" class="hum-status">Detected key: C</span>
+    </header>
+    <section class="hum-grid" aria-label="Humming settings">
+      <div class="hum-field"><label for="hum-bpm">Reference tempo (BPM)</label><input id="hum-bpm" type="number" min="20" max="300" value="120"></div>
+      <div class="hum-field"><label for="hum-grid">Time grid</label><select id="hum-grid"><option value="4">Quarter notes</option><option value="8" selected>Eighth notes</option><option value="16">Sixteenth notes</option></select></div>
+      <div class="hum-field"><label for="hum-key">Expected key</label><select id="hum-key"><option value="AUTO">Auto-detect</option><option>C</option><option>G</option><option>D</option><option>F</option><option>A</option><option>Bb</option><option>Eb</option></select></div>
+      <div class="hum-field"><label for="hum-section">Section name</label><input id="hum-section" value="hummed"></div>
+      <div class="hum-field"><label for="hum-instrument">Instrument</label><input id="hum-instrument" value="Vocal"></div>
+    </section>
+    <section class="hum-options">
+      <label><input id="hum-snap" type="checkbox" checked> Snap to natural diatonic scale</label>
+      <label><input id="hum-metronome" type="checkbox" checked> Metronome</label>
+      <label><input id="hum-count-in" type="checkbox" checked> Four-beat count-in</label>
+    </section>
+    <div class="hum-actions">
+      <button id="hum-record" class="primary">🎙️ Start recording</button>
+      <button id="hum-preview" disabled>Preview TMD audio</button>
+      <button id="hum-apply" class="primary" disabled>Insert into editor</button>
+      <button id="hum-cancel">Close</button>
+    </div>
+    <div class="hum-meta"><span>Processing stays local to the webview.</span></div>
+    <textarea id="hum-result" class="hum-result" spellcheck="false" aria-label="Generated TMD"></textarea>
+  </main>
+  <script nonce="${nonce}" src="${quantizerUri}"></script>
+  <script nonce="${nonce}" src="${panelUri}"></script>
+</body>
+</html>`;
+    }
+
+    function openHummingPanel() {
+        const column = vscode.ViewColumn.Beside;
+        hummingTargetEditor = vscode.window.activeTextEditor || hummingTargetEditor;
+        if (currentHummingPanel) {
+            currentHummingPanel.reveal(column);
+            return;
+        }
+        currentHummingPanel = vscode.window.createWebviewPanel(
+            'tmdHummingPanel',
+            'Hum to TMD',
+            column,
+            {
+                enableScripts: true,
+                retainContextWhenHidden: true,
+                localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'media')]
+            }
+        );
+        currentHummingPanel.webview.html = getHummingWebviewContent(currentHummingPanel.webview, context.extensionUri);
+        currentHummingPanel.webview.onDidReceiveMessage(async (message) => {
+            if (message.command === 'closeHummingPanel') {
+                currentHummingPanel.dispose();
+                return;
+            }
+            if (message.command === 'insertHummingTmd') {
+                const editor = vscode.window.activeTextEditor;
+                const targetEditor = hummingTargetEditor || editor;
+                if (!targetEditor || (targetEditor.document.languageId !== 'tmd' && !targetEditor.document.fileName.endsWith('.tmd'))) {
+                    vscode.window.showErrorMessage('Open a TMD document before inserting the hummed section.');
+                    return;
+                }
+                const insertion = `\n${message.tmd.trim()}\n`;
+                await targetEditor.edit((editBuilder) => editBuilder.insert(targetEditor.selection.active, insertion));
+                vscode.window.showInformationMessage('Hummed TMD section inserted.');
+            }
+            if (message.command === 'previewHummingTmd') {
+                if (!message.tmd || !message.tmd.trim()) return;
+                const tempPath = path.join(os.tmpdir(), `tmd_humming_preview_${Date.now()}.tmd`);
+                const key = getActiveKeySignature();
+                const preview = `::SCORE::\n** Hummed Preview **\n! = 120\n? = ${key}\n<4/4>\n\n${message.tmd}\n\n-> hummed ->#\n`;
+                fs.writeFileSync(tempPath, preview, 'utf8');
+                execFile(getTmdExecutable(), [tempPath, '-p'], (error, stdout, stderr) => {
+                    try { fs.unlinkSync(tempPath); } catch (_) {}
+                    if (error) vscode.window.showErrorMessage(`TMD humming preview failed: ${(stderr || error.message).trim()}`);
+                });
+            }
+        }, null, context.subscriptions);
+        currentHummingPanel.onDidDispose(() => {
+            currentHummingPanel = null;
+            hummingTargetEditor = null;
+        }, null, context.subscriptions);
+    }
+
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.openHummingPanel', openHummingPanel));
 
     function getMidiWebviewContent(webview, extensionUri) {
         const jzzUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'JZZ.js'));

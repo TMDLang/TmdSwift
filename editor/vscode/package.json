@@ -15,12 +15,19 @@
     "vscode": "^1.90.0"
   },
   "main": "./extension.js",
+  "scripts": {
+    "build:humming": "tsc -p tsconfig.json && tsc -p tsconfig.humming-panel.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  },
   "activationEvents": [
     "onLanguage:tmd",
     "onLanguage:markdown",
     "onCommand:tmd.openMidiPlayer",
     "onCommand:tmd.openKeyboard",
     "onCommand:tmd.inspectSong",
+    "onCommand:tmd.openHummingPanel",
     "onCommand:tmd.newFromTemplate",
     "onView:tmdKeyboardView",
     "onView:tmdInspectorView"
@@ -154,6 +161,12 @@
         "category": "TMD",
         "icon": "$(pulse)",
         "enablement": "editorLangId == tmd"
+      },
+      {
+        "command": "tmd.openHummingPanel",
+        "title": "%tmd.commands.openHummingPanel%",
+        "category": "TMD",
+        "icon": "$(mic)"
       },
       {
         "command": "tmd.openEmbeddedSnippet",
@@ -329,6 +342,11 @@
       ],
       "editor/context": [
         {
+          "command": "tmd.openHummingPanel",
+          "when": "editorLangId == tmd",
+          "group": "tmd_create@1"
+        },
+        {
           "command": "tmd.openMidiPlayer",
           "when": "editorLangId == tmd",
           "group": "tmd_preview@1"
@@ -445,6 +463,11 @@
         }
       ],
       "editor/title": [
+        {
+          "command": "tmd.openHummingPanel",
+          "when": "editorLangId == tmd",
+          "group": "navigation@0"
+        },
         {
           "command": "tmd.openMidiPlayer",
           "when": "editorLangId == tmd",
