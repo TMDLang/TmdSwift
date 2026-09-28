@@ -10,6 +10,8 @@ const extension = fs.readFileSync(path.join(root, 'extension.js'), 'utf8');
 test('declares the humming panel command and editor entry point', () => {
   const commands = packageJson.contributes.commands.map((command) => command.command);
   assert.ok(commands.includes('tmd.openHummingPanel'));
+  const hummingCommand = packageJson.contributes.commands.find((command) => command.command === 'tmd.openHummingPanel');
+  assert.equal(hummingCommand.enablement, undefined, 'the independent panel must remain visible in the command palette');
   assert.ok(packageJson.contributes.menus['editor/title'].some((item) => item.command === 'tmd.openHummingPanel'));
   assert.ok(packageJson.activationEvents.includes('onCommand:tmd.openHummingPanel'));
 });

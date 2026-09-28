@@ -163,8 +163,7 @@
         "command": "tmd.openHummingPanel",
         "title": "%tmd.commands.openHummingPanel%",
         "category": "TMD",
-        "icon": "$(mic)",
-        "enablement": "editorLangId == tmd"
+        "icon": "$(mic)"
       },
       {
         "command": "tmd.openEmbeddedSnippet",
