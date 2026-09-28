@@ -12,9 +12,9 @@
   grid-template-columns: minmax(220px, .75fr) minmax(300px, 1.25fr);
   grid-template-areas:
     "header header"
+    "actions result"
     "settings result"
     "options result"
-    "actions result"
     "meta result";
   grid-template-rows: auto auto auto auto 1fr;
   column-gap: 20px;

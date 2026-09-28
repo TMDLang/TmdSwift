@@ -68,6 +68,14 @@ test('humming panel places controls left and result right when wide', () => {
   assert.match(css, /@media \(max-width:\s*700px\)[\s\S]*display:\s*block/);
 });
 
+test('humming panel puts recording actions before settings', () => {
+  const actionsStart = extension.indexOf('<div class="hum-actions">');
+  const settingsStart = extension.indexOf('<section class="hum-grid"');
+  assert.ok(actionsStart >= 0);
+  assert.ok(settingsStart >= 0);
+  assert.ok(actionsStart < settingsStart, 'recording actions should be visible before the settings form');
+});
+
 test('humming panel localization keys are complete in every locale', () => {
   const keys = [
     'Hum to TMD', 'Humming settings', 'Reference tempo (BPM)', 'Time grid',

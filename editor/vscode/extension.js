@@ -667,6 +667,12 @@ function activate(context) {
       <div><h1>🎤 ${vscode.l10n.t('Hum to TMD')}</h1><div id="hum-status" class="hum-status"></div></div>
       <span id="hum-key-badge" class="hum-status">${vscode.l10n.t('Detected key: {0}', 'C')}</span>
     </header>
+    <div class="hum-actions">
+      <button id="hum-record" class="primary">🎙️ ${vscode.l10n.t('Start recording')}</button>
+      <button id="hum-preview" disabled>${vscode.l10n.t('Preview TMD audio')}</button>
+      <button id="hum-apply" class="primary" disabled>${vscode.l10n.t('Insert into editor')}</button>
+      <button id="hum-cancel">${vscode.l10n.t('Close')}</button>
+    </div>
     <section class="hum-grid" aria-label="${vscode.l10n.t('Humming settings')}">
       <div class="hum-field"><label for="hum-bpm">${vscode.l10n.t('Reference tempo (BPM)')}</label><input id="hum-bpm" type="number" min="20" max="300" value="120"></div>
       <div class="hum-field"><label for="hum-grid">${vscode.l10n.t('Time grid')}</label><select id="hum-grid"><option value="4">${vscode.l10n.t('Quarter notes')}</option><option value="8" selected>${vscode.l10n.t('Eighth notes')}</option><option value="16">${vscode.l10n.t('Sixteenth notes')}</option></select></div>
@@ -679,12 +685,6 @@ function activate(context) {
       <label><input id="hum-metronome" type="checkbox" checked> ${vscode.l10n.t('Metronome')}</label>
       <label><input id="hum-count-in" type="checkbox" checked> ${vscode.l10n.t('Four-beat count-in')}</label>
     </section>
-    <div class="hum-actions">
-      <button id="hum-record" class="primary">🎙️ ${vscode.l10n.t('Start recording')}</button>
-      <button id="hum-preview" disabled>${vscode.l10n.t('Preview TMD audio')}</button>
-      <button id="hum-apply" class="primary" disabled>${vscode.l10n.t('Insert into editor')}</button>
-      <button id="hum-cancel">${vscode.l10n.t('Close')}</button>
-    </div>
     <div class="hum-meta"><span>${vscode.l10n.t('Processing stays local to the webview.')}</span></div>
     <textarea id="hum-result" class="hum-result" spellcheck="false" aria-label="${vscode.l10n.t('Generated TMD')}"></textarea>
   </main>
