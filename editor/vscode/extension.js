@@ -893,7 +893,7 @@ function activate(context) {
                     }
                 );
 
-                currentMidiPanel.iconPath = vscode.Uri.joinPath(context.extensionUri, 'media', 'player.svg');
+                currentMidiPanel.iconPath = vscode.Uri.joinPath(context.extensionUri, 'media', 'tmd.svg');
                 currentMidiPanel.webview.html = getMidiWebviewContent(currentMidiPanel.webview, context.extensionUri);
 
                 currentMidiPanel.webview.onDidReceiveMessage((message) => {
@@ -2556,7 +2556,7 @@ I am ready to help you compose, check, or format TMD music scores!
             }
         });
 
-        participant.iconPath = vscode.Uri.joinPath(context.extensionUri, 'media', 'player.svg');
+        participant.iconPath = vscode.Uri.joinPath(context.extensionUri, 'media', 'tmd.svg');
         context.subscriptions.push(participant);
     }
 
