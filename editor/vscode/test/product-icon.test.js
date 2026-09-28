@@ -18,4 +18,5 @@ test('VS Code product icon is the monochrome brace-and-note mark', () => {
   assert.equal(packageJson.contributes.viewsContainers.panel[0].icon, './media/tmd.svg');
   assert.doesNotMatch(extension, /media', 'player\.svg/);
   assert.match(extension, /media', 'tmd\.svg/);
+  assert.match(extension, /class="hum-brand-icon"/);
 });

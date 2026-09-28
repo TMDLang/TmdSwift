@@ -659,6 +659,7 @@ function activate(context) {
 
     function getHummingWebviewContent(webview, extensionUri) {
         const cssUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'humming-panel.css'));
+        const iconUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'tmd.svg'));
         const quantizerUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'humming-quantizer.js'));
         const panelUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'humming-panel.js'));
         const nonce = String(Date.now());
@@ -667,13 +668,13 @@ function activate(context) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} https://esm.sh https://unpkg.com 'nonce-${nonce}'; connect-src ${webview.cspSource} https://esm.sh https://unpkg.com https://storage.googleapis.com; media-src ${webview.cspSource} blob:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} https://esm.sh https://unpkg.com 'nonce-${nonce}'; connect-src ${webview.cspSource} https://esm.sh https://unpkg.com https://storage.googleapis.com; media-src ${webview.cspSource} blob:;">
   <link rel="stylesheet" href="${cssUri}">
 </head>
 <body>
   <main class="hum-panel">
     <header class="hum-header">
-      <div><h1>🎤 ${vscode.l10n.t('Hum to TMD')}</h1><div id="hum-status" class="hum-status"></div></div>
+      <div><h1><img class="hum-brand-icon" src="${iconUri}" alt="TMD"> ${vscode.l10n.t('Hum to TMD')}</h1><div id="hum-status" class="hum-status"></div></div>
       <span id="hum-key-badge" class="hum-status">${vscode.l10n.t('Detected key: {0}', 'C')}</span>
     </header>
     <div class="hum-actions">

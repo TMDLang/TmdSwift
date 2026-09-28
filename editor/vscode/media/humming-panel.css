@@ -21,7 +21,8 @@
   align-items: start;
 }
 .hum-header { display: flex; grid-area: header; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; min-width: 0; width: 100%; }
-.hum-header h1 { font-size: 20px; margin: 0; }
+.hum-header h1 { font-size: 20px; margin: 0; display: flex; align-items: center; gap: 8px; }
+.hum-brand-icon { width: 24px; height: 24px; flex: 0 0 auto; }
 .hum-status { color: var(--vscode-descriptionForeground); min-height: 20px; min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
 .hum-grid { display: grid; grid-area: settings; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: 12px; min-width: 0; width: 100%; }
 .hum-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
