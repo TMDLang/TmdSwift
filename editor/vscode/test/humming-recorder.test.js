@@ -29,3 +29,19 @@ test('panel re-enables Stop after the host recording starts', () => {
   const source = fs.readFileSync(path.join(root, 'media', 'humming-panel.ts'), 'utf8');
   assert.match(source, /postMessage\(\{ command: 'startHummingRecording' \}\);\s*recording = true;\s*recordButton\.disabled = false;/);
 });
+
+test('panel reports recognition failures and restores the record control', () => {
+  const source = fs.readFileSync(path.join(root, 'media', 'humming-panel.ts'), 'utf8');
+  assert.match(source, /void transcribe\(new Blob\(\[audioBuffer\]/);
+  assert.match(source, /\.catch\(\(error\) => setStatus\(`Recording or transcription error:/);
+  assert.match(source, /setStatus\(`Recording or transcription error:/);
+  assert.match(source, /\.finally\(\(\) => \{ recordButton\.disabled = false; \}/);
+});
+
+test('recorded audio crosses the Webview boundary as JSON-safe Base64', () => {
+  const extension = fs.readFileSync(path.join(root, 'extension.js'), 'utf8');
+  const panel = fs.readFileSync(path.join(root, 'media', 'humming-panel.ts'), 'utf8');
+  assert.match(extension, /audioBase64:\s*Buffer\.from\(audio\)\.toString\(['"]base64['"]\)/);
+  assert.match(panel, /audioBase64\?: string/);
+  assert.match(panel, /atob\(message\.audioBase64\)/);
+});

@@ -713,7 +713,7 @@ function activate(context) {
                 }
                 try {
                     const audio = await hummingRecorder.stop();
-                    await webview.postMessage({ command: 'hummingRecordingReady', audio });
+                    await webview.postMessage({ command: 'hummingRecordingReady', audioBase64: Buffer.from(audio).toString('base64') });
                 } catch (error) {
                     await webview.postMessage({ command: 'hummingRecordingError', error: error.message || String(error) });
                 } finally {

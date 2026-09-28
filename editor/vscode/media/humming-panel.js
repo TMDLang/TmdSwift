@@ -153,17 +153,14 @@
             recordButton.textContent = '🎙️ Start recording';
             setStatus(`Microphone unavailable: ${message.error || 'Permission denied.'}`, true);
         }
-        if (message.command === 'hummingRecordingReady' && message.audio) {
+        if (message.command === 'hummingRecordingReady' && message.audioBase64) {
             recording = false;
-            try {
-                const bytes = message.audio instanceof Uint8Array ? message.audio : new Uint8Array(message.audio);
-                const audioBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-                void transcribe(new Blob([audioBuffer], { type: 'audio/wav' }));
-            }
-            catch (error) {
-                setStatus(`Recording or transcription error: ${error.message || error}`, true);
-                recordButton.disabled = false;
-            }
+            const binary = atob(message.audioBase64);
+            const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+            const audioBuffer = bytes.buffer;
+            void transcribe(new Blob([audioBuffer], { type: 'audio/wav' }))
+                .catch((error) => setStatus(`Recording or transcription error: ${error.message || error}`, true))
+                .finally(() => { recordButton.disabled = false; });
         }
     });
     recordButton.addEventListener('click', async () => {
