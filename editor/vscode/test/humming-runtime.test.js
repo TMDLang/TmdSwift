@@ -5,7 +5,7 @@ const Module = require('node:module');
 test('activated extension opens the humming webview through the real command handler', async () => {
   const registeredCommands = new Map();
   const subscriptions = [];
-  const panels = [];
+  const views = [];
   const disposable = () => ({ dispose() {} });
   const generic = new Proxy(function GenericVSCodeValue() {}, {
     apply: () => generic,
@@ -27,7 +27,7 @@ test('activated extension opens the humming webview through the real command han
     },
     commands: {
       registerCommand(id, handler) { registeredCommands.set(id, handler); return disposable(); },
-      executeCommand() { return Promise.resolve(); },
+      executeCommand(command) { return Promise.resolve(command); },
     },
     env: { language: 'en' },
     l10n: { t: (message) => message },
@@ -35,31 +35,12 @@ test('activated extension opens the humming webview through the real command han
       joinPath: (...parts) => parts.join('/'),
       file: (filePath) => filePath,
     },
-    ViewColumn: { Beside: 2 },
     ProgressLocation: { Notification: 15 },
     DiagnosticSeverity: { Warning: 1 },
     window: {
       activeTextEditor: null,
       terminals: [],
-      createWebviewPanel(viewType, title, column, options) {
-        const messageHandlers = [];
-        const panel = {
-          viewType, title, column, options,
-          webview: {
-            cspSource: 'vscode-resource-test',
-            asWebviewUri: (uri) => String(uri),
-            onDidReceiveMessage(handler) { messageHandlers.push(handler); return disposable(); },
-            get messageHandlers() { return messageHandlers; },
-            html: '',
-          },
-          reveal() {},
-          dispose() {},
-          onDidDispose: () => disposable(),
-        };
-        panels.push(panel);
-        return panel;
-      },
-      registerWebviewViewProvider: () => disposable(),
+      registerWebviewViewProvider(viewId, provider) { views.push({ viewId, provider }); return disposable(); },
       registerTreeDataProvider: () => disposable(),
       onDidChangeActiveTextEditor: () => disposable(),
       onDidChangeTextEditorSelection: () => disposable(),
@@ -112,11 +93,22 @@ test('activated extension opens the humming webview through the real command han
     assert.ok(registeredCommands.has('tmd.openHummingPanel'));
     await registeredCommands.get('tmd.openHummingPanel')();
 
-    assert.equal(panels.length, 1);
-    assert.equal(panels[0].title, 'Hum to TMD');
-    assert.match(panels[0].webview.html, /humming-panel\.js/);
-    assert.match(panels[0].webview.html, /Basic Pitch|humming-quantizer/);
-    assert.equal(panels[0].webview.messageHandlers.length, 1);
+    const hummingView = views.find((view) => view.viewId === 'tmdHummingView');
+    assert.ok(hummingView);
+    const messageHandlers = [];
+    const webviewView = {
+      webview: {
+        cspSource: 'vscode-resource-test',
+        asWebviewUri: (uri) => String(uri),
+        onDidReceiveMessage(handler) { messageHandlers.push(handler); return disposable(); },
+        html: '',
+      },
+      onDidDispose: () => disposable(),
+    };
+    hummingView.provider.resolveWebviewView(webviewView);
+    assert.match(webviewView.webview.html, /humming-panel\.js/);
+    assert.match(webviewView.webview.html, /Basic Pitch|humming-quantizer/);
+    assert.equal(messageHandlers.length, 1);
   } finally {
     extension?.deactivate();
     Module._load = originalLoad;

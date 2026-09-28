@@ -29,6 +29,7 @@
     "onCommand:tmd.inspectSong",
     "onCommand:tmd.openHummingPanel",
     "onCommand:tmd.newFromTemplate",
+    "onView:tmdHummingView",
     "onView:tmdKeyboardView",
     "onView:tmdInspectorView"
   ],
@@ -277,6 +278,13 @@
       }
     ],
     "viewsContainers": {
+      "panel": [
+        {
+          "id": "tmdHummingPanel",
+          "title": "Hum to TMD",
+          "icon": "./media/player.svg"
+        }
+      ],
       "activitybar": [
         {
           "id": "tmdStudio",
@@ -286,6 +294,13 @@
       ]
     },
     "views": {
+      "tmdHummingPanel": [
+        {
+          "type": "webview",
+          "id": "tmdHummingView",
+          "name": "Hum to TMD"
+        }
+      ],
       "tmdStudio": [
         {
           "type": "webview",

@@ -628,7 +628,7 @@ function activate(context) {
 
     // Webview MIDI Player Panel tracking
     let currentMidiPanel = null;
-    let currentHummingPanel = null;
+    let currentHummingView = null;
     let hummingTargetEditor = null;
 
     function getHummingWebviewContent(webview, extensionUri) {
@@ -677,27 +677,16 @@ function activate(context) {
 </html>`;
     }
 
-    function openHummingPanel() {
-        const column = vscode.ViewColumn.Beside;
-        hummingTargetEditor = vscode.window.activeTextEditor || hummingTargetEditor;
-        if (currentHummingPanel) {
-            currentHummingPanel.reveal(column);
-            return;
-        }
-        currentHummingPanel = vscode.window.createWebviewPanel(
-            'tmdHummingPanel',
-            'Hum to TMD',
-            column,
-            {
-                enableScripts: true,
-                retainContextWhenHidden: true,
-                localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'media')]
-            }
-        );
-        currentHummingPanel.webview.html = getHummingWebviewContent(currentHummingPanel.webview, context.extensionUri);
-        currentHummingPanel.webview.onDidReceiveMessage(async (message) => {
+    function configureHummingWebview(webview, view) {
+        webview.options = {
+            enableScripts: true,
+            retainContextWhenHidden: true,
+            localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'media')]
+        };
+        webview.html = getHummingWebviewContent(webview, context.extensionUri);
+        webview.onDidReceiveMessage(async (message) => {
             if (message.command === 'closeHummingPanel') {
-                currentHummingPanel.dispose();
+                await vscode.commands.executeCommand('workbench.action.closePanel');
                 return;
             }
             if (message.command === 'insertHummingTmd') {
@@ -723,10 +712,25 @@ function activate(context) {
                 });
             }
         }, null, context.subscriptions);
-        currentHummingPanel.onDidDispose(() => {
-            currentHummingPanel = null;
+        currentHummingView = view;
+        view.onDidDispose(() => {
+            currentHummingView = null;
             hummingTargetEditor = null;
         }, null, context.subscriptions);
+    }
+
+    const hummingViewProvider = {
+        resolveWebviewView: (webviewView) => {
+            configureHummingWebview(webviewView.webview, webviewView);
+        }
+    };
+    context.subscriptions.push(
+        vscode.window.registerWebviewViewProvider('tmdHummingView', hummingViewProvider)
+    );
+
+    function openHummingPanel() {
+        hummingTargetEditor = vscode.window.activeTextEditor || hummingTargetEditor;
+        return vscode.commands.executeCommand('workbench.view.extension.tmdHummingPanel');
     }
 
     context.subscriptions.push(vscode.commands.registerCommand('tmd.openHummingPanel', openHummingPanel));
