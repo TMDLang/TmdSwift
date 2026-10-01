@@ -98,9 +98,17 @@ if [ ! -f "${EXTENSION_SRC}/package.json" ]; then
     exit 1
 fi
 
+EXT_NAME=$(grep -m 1 '"name"' "${EXTENSION_SRC}/package.json" | tr -s ' ' | cut -d '"' -f 4)
+EXT_PUBLISHER=$(grep -m 1 '"publisher"' "${EXTENSION_SRC}/package.json" | tr -s ' ' | cut -d '"' -f 4)
 EXT_VERSION=$(grep -m 1 '"version"' "${EXTENSION_SRC}/package.json" | tr -s ' ' | cut -d '"' -f 4)
+
+# VS Code requires extensions in ~/.vscode/extensions to match <publisher>.<name>-<version>
+FULL_EXTENSION_FOLDER="${EXT_PUBLISHER:-zonble}.${EXT_NAME:-tmd-vscode}-${EXT_VERSION:-0.1.0}"
+LEGACY_EXTENSION_FOLDER="${EXT_NAME:-tmd-vscode}"
+
 echo "=== TMD VS Code Extension Local Installer ==="
-echo "Extension: ${EXTENSION_NAME} (v${EXT_VERSION:-0.1.0})"
+echo "Extension: ${EXT_PUBLISHER}.${EXT_NAME} (v${EXT_VERSION:-0.1.0})"
+echo "Folder:    ${FULL_EXTENSION_FOLDER}"
 echo "Source:    ${EXTENSION_SRC}"
 echo "Mode:      ${MODE}"
 echo ""
@@ -154,25 +162,27 @@ fi
 # Action: Uninstall
 # ------------------------------------------------------------------------------
 if [ "${MODE}" = "uninstall" ]; then
-    echo "Uninstalling ${EXTENSION_NAME}..."
+    echo "Uninstalling ${EXT_PUBLISHER}.${EXT_NAME}..."
     for i in "${!DETECTED_NAMES[@]}"; do
         name="${DETECTED_NAMES[$i]}"
-        ext_dir="${DETECTED_DIRS[$i]}/${EXTENSION_NAME}"
+        ext_dir="${DETECTED_DIRS[$i]}/${FULL_EXTENSION_FOLDER}"
+        legacy_dir="${DETECTED_DIRS[$i]}/${LEGACY_EXTENSION_FOLDER}"
         cli="${DETECTED_CLIS[$i]}"
 
-        if [ -e "${ext_dir}" ] || [ -L "${ext_dir}" ]; then
-            echo "  [$name] Removing: ${ext_dir}"
-            if [ $DRY_RUN -eq 0 ]; then
-                rm -rf "${ext_dir}"
+        for target in "${ext_dir}" "${legacy_dir}"; do
+            if [ -e "${target}" ] || [ -L "${target}" ]; then
+                echo "  [$name] Removing: ${target}"
+                if [ $DRY_RUN -eq 0 ]; then
+                    rm -rf "${target}"
+                fi
             fi
-        else
-            echo "  [$name] Not installed in ${ext_dir}"
-        fi
+        done
 
         # Also attempt CLI uninstall if available
         if command -v "${cli}" >/dev/null 2>&1; then
             if [ $DRY_RUN -eq 0 ]; then
-                "${cli}" --uninstall-extension "${EXTENSION_NAME}" 2>/dev/null || true
+                "${cli}" --uninstall-extension "${EXT_PUBLISHER}.${EXT_NAME}" 2>/dev/null || true
+                "${cli}" --uninstall-extension "${EXT_NAME}" 2>/dev/null || true
             fi
         fi
     done
@@ -230,16 +240,19 @@ fi
 for i in "${!DETECTED_NAMES[@]}"; do
     name="${DETECTED_NAMES[$i]}"
     target_base="${DETECTED_DIRS[$i]}"
-    target_ext="${target_base}/${EXTENSION_NAME}"
+    target_ext="${target_base}/${FULL_EXTENSION_FOLDER}"
+    legacy_ext="${target_base}/${LEGACY_EXTENSION_FOLDER}"
 
     echo "[$name] Target directory: ${target_ext}"
 
     if [ $DRY_RUN -eq 0 ]; then
         mkdir -p "${target_base}"
-        if [ -e "${target_ext}" ] || [ -L "${target_ext}" ]; then
-            echo "  Removing existing installation..."
-            rm -rf "${target_ext}"
-        fi
+        for old_dir in "${target_ext}" "${legacy_ext}"; do
+            if [ -e "${old_dir}" ] || [ -L "${old_dir}" ]; then
+                echo "  Removing existing installation (${old_dir})..."
+                rm -rf "${old_dir}"
+            fi
+        done
     fi
 
     if [ "${MODE}" = "link" ]; then

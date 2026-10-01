@@ -297,7 +297,11 @@ The repository includes an official VS Code extension in [`editor/vscode`](edito
 
 To install locally:
 ```bash
-ln -s "$(pwd)/editor/vscode" ~/.vscode/extensions/tmd-vscode
+# Option 1: Use the installation helper script (supports VS Code, Cursor, Insiders, VSCodium)
+./scripts/install-vscode-extension.sh
+
+# Option 2: Symlink directly into VS Code's extension directory using <publisher>.<name>-<version>
+ln -s "$(pwd)/editor/vscode" ~/.vscode/extensions/zonble.tmd-vscode-0.2.1
 ```
 
 ### 2. zago (Terminal Editor with Native TMD Integration)
