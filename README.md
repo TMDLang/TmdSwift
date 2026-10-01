@@ -108,12 +108,11 @@ Requires Swift 6.0+ / Xcode 16+.
 ### Install on macOS / Linux from Homebrew tap
 
 ```bash
-brew tap zonble/tmd
-brew tap --trust zonble/tmd  # allow this third-party tap
+brew tap TMDLang/tmd
 brew install tmd
 ```
 
-If Homebrew refuses to install from an untrusted third-party tap, run the `brew tap --trust zonble/tmd` line and install again.
+If Homebrew refuses to install from an untrusted third-party tap, run `brew tap --trust TMDLang/tmd` and install again.
 
 On Linux, the Homebrew formula builds `tmd` with Homebrew's `swift` package (`brew install swift`). Without Homebrew, install Swift 6 from your distribution or Swift.org.
 
@@ -122,13 +121,13 @@ On Linux, the Homebrew formula builds `tmd` with Homebrew's `swift` package (`br
 You can install the `tmd` CLI tool via [Mint](https://github.com/yonaskolb/Mint):
 
 ```bash
-mint install zonble/TmdSwift
+mint install TMDLang/TmdSwift
 ```
 
 ### Build from Source
 
 ```bash
-git clone https://github.com/zonble/TmdSwift.git
+git clone https://github.com/TMDLang/TmdSwift.git
 cd TmdSwift
 swift build -c release
 ```
@@ -222,7 +221,7 @@ Add `TmdSwift` to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/zonble/TmdSwift.git", branch: "main")
+    .package(url: "https://github.com/TMDLang/TmdSwift.git", branch: "main")
 ]
 ```
 

@@ -6,10 +6,10 @@
   "publisher": "zonble",
   "author": "zonble",
   "license": "MIT",
-  "homepage": "https://github.com/zonble/TmdSwift",
+  "homepage": "https://github.com/TMDLang/TmdSwift",
   "repository": {
     "type": "git",
-    "url": "https://github.com/zonble/TmdSwift.git"
+    "url": "https://github.com/TMDLang/TmdSwift.git"
   },
   "engines": {
     "vscode": "^1.90.0"
