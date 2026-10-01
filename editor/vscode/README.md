@@ -1,4 +1,4 @@
-# TMD Language Support for VS Code
+# TMD Music Language for VS Code
 
 Official Visual Studio Code extension providing language support, syntax highlighting, and snippets for the **TMD (Timebase Mark Down)** format.
 
@@ -76,3 +76,18 @@ You can install or symlink this extension directly into VS Code, VS Code Insider
 ```
 
 After running the script, open VS Code, press `Cmd+Shift+P` (or `Ctrl+Shift+P`), select **Developer: Reload Window**, and open any `.tmd` file (such as `sample/basic/三天三夜.tmd`) to enjoy syntax highlighting, playback, and visual inspectors!
+
+### Packaging & Publishing
+
+To package into a redistributable `.vsix` archive or publish:
+
+```bash
+# Build .vsix to dist/ (auto compiles TypeScript & bundles assets):
+./scripts/package-vscode-extension.sh
+
+# Publish directly to Visual Studio Marketplace:
+./scripts/package-vscode-extension.sh --publish
+
+# Publish to Open VSX Registry:
+./scripts/package-vscode-extension.sh --open-vsx
+```

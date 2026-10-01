@@ -1,5 +1,5 @@
 {
-  "tmd.displayName": "TMD Language Support",
+  "tmd.displayName": "TMD Music Language",
   "tmd.description": "Syntax highlighting, snippets, and language configuration for TMD (Timebase Mark Down)",
   "tmd.commands.newFromTemplate": "New from template",
   "tmd.commands.exportMIDI": "Export to MIDI (.mid)",

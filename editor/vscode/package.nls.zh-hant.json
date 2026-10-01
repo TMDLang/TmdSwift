@@ -1,5 +1,5 @@
 {
-  "tmd.displayName": "TMD 樂譜語言支援",
+  "tmd.displayName": "TMD 音樂語言",
   "tmd.description": "TMD (Timebase Mark Down) 語法突顯、程式碼片段與語言支援",
   "tmd.commands.newFromTemplate": "從範本建立新樂譜",
   "tmd.commands.exportMIDI": "匯出為 MIDI (.mid)",

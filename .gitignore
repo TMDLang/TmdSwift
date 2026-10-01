@@ -9,3 +9,5 @@ DerivedData/
 .swiftpm/xcode/package.xcworkspace/xcuserdata/
 .vscode/
 .netrc
+/dist/
+*.vsix

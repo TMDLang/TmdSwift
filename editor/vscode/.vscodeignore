@@ -1,0 +1,8 @@
+# Development / testing files
+test/
+**/*.test.js
+tsconfig*.json
+*.ts
+media/**/*.ts
+.DS_Store
+*.vsix
