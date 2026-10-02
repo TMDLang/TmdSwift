@@ -224,27 +224,140 @@ struct TMDLSPTests {
             position: TMDLSPPosition(line: 8, character: 5)
         )
         let labels = items.map(\.label)
-        // Scale degree chords (1, 4, 5, 3m, 6m, 4maj7, 5/4, etc.)
+        // Scale degree chords (triads, secondary dominants, modal mixture, sevenths, extended, slash)
         #expect(labels.contains("1"))
         #expect(labels.contains("2m"))
         #expect(labels.contains("3m"))
         #expect(labels.contains("4"))
         #expect(labels.contains("5"))
         #expect(labels.contains("6m"))
+        #expect(labels.contains("7dim"))
+        #expect(labels.contains("2"))
+        #expect(labels.contains("3"))
+        #expect(labels.contains("6"))
+        #expect(labels.contains("4m"))
+        #expect(labels.contains("1maj7"))
+        #expect(labels.contains("2m7"))
+        #expect(labels.contains("3m7"))
         #expect(labels.contains("4maj7"))
         #expect(labels.contains("57"))
-        #expect(labels.contains("3m7"))
         #expect(labels.contains("6m7"))
+        #expect(labels.contains("2m7-5"))
+        #expect(labels.contains("1sus4"))
+        #expect(labels.contains("5sus4"))
+        #expect(labels.contains("1add9"))
         #expect(labels.contains("5/4"))
         #expect(labels.contains("4/5"))
+        #expect(labels.contains("1/3"))
+        #expect(labels.contains("6m/5"))
 
-        // Absolute letter diatonic chords
+        // Absolute letter diatonic chords in C
         #expect(labels.contains("C"))
         #expect(labels.contains("Dm"))
         #expect(labels.contains("Em"))
         #expect(labels.contains("F"))
         #expect(labels.contains("G"))
         #expect(labels.contains("Am"))
+        #expect(labels.contains("Bdim"))
+        #expect(labels.contains("Cmaj7"))
+        #expect(labels.contains("G7"))
+        #expect(labels.contains("C/E"))
+    }
+
+    @Test("Filters chords when typing prefix inside bracket '[6' or '[F'")
+    func testChordCompletionPrefixFiltering() throws {
+        let source = """
+            ::SCORE::
+            ** Prefix Score **
+            ?= C
+            <4/4>
+
+            verse:Piano@|0|{
+                <4*>
+                [6
+            }
+            """
+        let items = TMDLSPCompletionEngine.complete(
+            source: source,
+            position: TMDLSPPosition(line: 7, character: 6)
+        )
+        let labels = items.map(\.label)
+        #expect(labels.contains("6m"))
+        #expect(labels.contains("6m7"))
+        #expect(labels.contains("6"))
+        #expect(labels.contains("6m/5"))
+        #expect(!labels.contains("1"))
+        #expect(!labels.contains("4maj7"))
+    }
+
+    @Test("Provides correct diatonic chords for other major and minor keys (e.g. E major, Eb major, Am)")
+    func testChordCompletionAcrossVariousKeys() throws {
+        // E Major
+        let sourceE = """
+            ::SCORE::
+            ** E Major **
+            ?= E
+            <4/4>
+
+            verse:Piano@|0|{
+                <4*>
+                [
+            }
+            """
+        let itemsE = TMDLSPCompletionEngine.complete(
+            source: sourceE,
+            position: TMDLSPPosition(line: 7, character: 5)
+        )
+        let labelsE = itemsE.map(\.label)
+        #expect(labelsE.contains("E"))
+        #expect(labelsE.contains("F#m"))
+        #expect(labelsE.contains("G#m"))
+        #expect(labelsE.contains("A"))
+        #expect(labelsE.contains("B"))
+        #expect(labelsE.contains("C#m"))
+        #expect(labelsE.contains("D#dim"))
+        #expect(labelsE.contains("B7"))
+
+        // Eb Major
+        let sourceEb = """
+            ::SCORE::
+            ** Eb Major **
+            ?= Eb
+            <4/4>
+
+            verse:Piano@|0|{
+                <4*>
+                [
+            }
+            """
+        let itemsEb = TMDLSPCompletionEngine.complete(
+            source: sourceEb,
+            position: TMDLSPPosition(line: 7, character: 5)
+        )
+        let labelsEb = itemsEb.map(\.label)
+        #expect(labelsEb.contains("Eb"))
+        #expect(labelsEb.contains("Fm"))
+        #expect(labelsEb.contains("Gm"))
+        #expect(labelsEb.contains("Ab"))
+        #expect(labelsEb.contains("Bb"))
+        #expect(labelsEb.contains("Cm"))
+        #expect(labelsEb.contains("Ddim"))
+    }
+
+    @Test("Does not append closing ']' if next character is already ']'")
+    func testChordCompletionAvoidsDuplicateClosingBracket() throws {
+        let source = """
+            verse:Piano@|0|{
+                <4*>
+                []
+            }
+            """
+        let items = TMDLSPCompletionEngine.complete(
+            source: source,
+            position: TMDLSPPosition(line: 2, character: 5)
+        )
+        let chordItem = items.first(where: { $0.label == "1" })
+        #expect(chordItem?.insertText == "1")
     }
 
     @Test("Publishes diagnostics on beat discrepancies in measures")
