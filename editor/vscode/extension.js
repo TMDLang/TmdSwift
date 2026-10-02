@@ -56,20 +56,72 @@ function getTmdExecutable() {
     if (customPath && customPath.trim().length > 0) {
         return customPath.trim();
     }
-    const candidates = [
-        '/usr/local/bin/tmd',
-        '/opt/homebrew/bin/tmd',
-        path.join(os.homedir(), '.local/bin/tmd')
-    ];
+
+    const candidates = [];
+
     if (isWindows) {
+        const home = os.homedir();
+        const localAppData = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
+        const appData = process.env.APPDATA || path.join(home, 'AppData', 'Roaming');
+        const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
+        const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+
+        // 1. Native .exe executables (Swift / Rust / Go / Scoop / Chocolatey / Volta)
         candidates.push(
-            path.join(process.env.APPDATA || '', 'npm', 'tmd.cmd'),
-            'C:\\nvm4w\\nodejs\\tmd.cmd',
-            path.join(os.homedir(), 'AppData', 'Roaming', 'npm', 'tmd.cmd')
+            path.join(home, '.local', 'bin', 'tmd.exe'),
+            path.join(localAppData, 'Programs', 'tmd', 'tmd.exe'),
+            path.join(programFiles, 'tmd', 'tmd.exe'),
+            path.join(programFilesX86, 'tmd', 'tmd.exe'),
+            path.join(home, 'scoop', 'shims', 'tmd.exe'),
+            path.join(process.env.ProgramData || 'C:\\ProgramData', 'chocolatey', 'bin', 'tmd.exe'),
+            path.join(process.env.VOLTA_HOME || path.join(home, '.volta'), 'bin', 'tmd.exe'),
+            path.join(localAppData, 'pnpm', 'tmd.exe'),
+            path.join(process.env.FNM_MULTISHELL_PATH || '', 'tmd.exe'),
+            'C:\\nvm4w\\nodejs\\tmd.exe'
         );
+
+        // 2. npm / nvm / pnpm / yarn batch wrappers (.cmd)
+        candidates.push(
+            path.join(appData, 'npm', 'tmd.cmd'),
+            path.join(localAppData, 'pnpm', 'tmd.cmd'),
+            path.join(localAppData, 'Yarn', 'bin', 'tmd.cmd'),
+            path.join(process.env.VOLTA_HOME || path.join(home, '.volta'), 'bin', 'tmd.cmd'),
+            path.join(process.env.FNM_MULTISHELL_PATH || '', 'tmd.cmd'),
+            'C:\\nvm4w\\nodejs\\tmd.cmd',
+            path.join(programFiles, 'nodejs', 'tmd.cmd'),
+            path.join(programFilesX86, 'nodejs', 'tmd.cmd')
+        );
+
+        // 3. Workspace local Swift builds (if developing TmdSwift on Windows)
+        const folders = vscode.workspace.workspaceFolders || [];
+        for (const folder of folders) {
+            candidates.push(
+                path.join(folder.uri.fsPath, '.build', 'release', 'tmd.exe'),
+                path.join(folder.uri.fsPath, '.build', 'debug', 'tmd.exe')
+            );
+        }
+    } else {
+        const home = os.homedir();
+        candidates.push(
+            '/usr/local/bin/tmd',
+            '/opt/homebrew/bin/tmd',
+            path.join(home, '.local', 'bin', 'tmd'),
+            path.join(home, '.cargo', 'bin', 'tmd'),
+            path.join(process.env.VOLTA_HOME || path.join(home, '.volta'), 'bin', 'tmd')
+        );
+
+        // Workspace local Swift builds
+        const folders = vscode.workspace.workspaceFolders || [];
+        for (const folder of folders) {
+            candidates.push(
+                path.join(folder.uri.fsPath, '.build', 'release', 'tmd'),
+                path.join(folder.uri.fsPath, '.build', 'debug', 'tmd')
+            );
+        }
     }
+
     for (const c of candidates) {
-        if (fs.existsSync(c)) return c;
+        if (c && fs.existsSync(c)) return c;
     }
     return 'tmd';
 }
