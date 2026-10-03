@@ -5,6 +5,48 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
+const isWindows = process.platform === 'win32';
+
+function runCliFile(command, args, options, callback) {
+    if (typeof options === 'function') {
+        callback = options;
+        options = {};
+    }
+    const opts = Object.assign({}, options);
+    let finalArgs = args;
+    if (isWindows) {
+        opts.shell = true;
+        if (Array.isArray(args)) {
+            finalArgs = args.map(a => (typeof a === 'string' && a.includes(' ') && !a.startsWith('"') ? `"${a}"` : a));
+        }
+    }
+    return execFile(command, finalArgs, opts, callback);
+}
+
+function runCliFileSync(command, args, options) {
+    const opts = Object.assign({}, options);
+    let finalArgs = args;
+    if (isWindows) {
+        opts.shell = true;
+        if (Array.isArray(args)) {
+            finalArgs = args.map(a => (typeof a === 'string' && a.includes(' ') && !a.startsWith('"') ? `"${a}"` : a));
+        }
+    }
+    return execFileSync(command, finalArgs, opts);
+}
+
+function spawnCli(command, args, options) {
+    const opts = Object.assign({}, options);
+    let finalArgs = args;
+    if (isWindows) {
+        opts.shell = true;
+        if (Array.isArray(args)) {
+            finalArgs = args.map(a => (typeof a === 'string' && a.includes(' ') && !a.startsWith('"') ? `"${a}"` : a));
+        }
+    }
+    return spawn(command, finalArgs, opts);
+}
+
 /**
  * Get configured or discovered path to tmd binary.
  */
@@ -14,13 +56,72 @@ function getTmdExecutable() {
     if (customPath && customPath.trim().length > 0) {
         return customPath.trim();
     }
-    const candidates = [
-        '/usr/local/bin/tmd',
-        '/opt/homebrew/bin/tmd',
-        path.join(os.homedir(), '.local/bin/tmd')
-    ];
+
+    const candidates = [];
+
+    if (isWindows) {
+        const home = os.homedir();
+        const localAppData = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
+        const appData = process.env.APPDATA || path.join(home, 'AppData', 'Roaming');
+        const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
+        const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+
+        // 1. Native .exe executables (Swift / Rust / Go / Scoop / Chocolatey / Volta)
+        candidates.push(
+            path.join(home, '.local', 'bin', 'tmd.exe'),
+            path.join(localAppData, 'Programs', 'tmd', 'tmd.exe'),
+            path.join(programFiles, 'tmd', 'tmd.exe'),
+            path.join(programFilesX86, 'tmd', 'tmd.exe'),
+            path.join(home, 'scoop', 'shims', 'tmd.exe'),
+            path.join(process.env.ProgramData || 'C:\\ProgramData', 'chocolatey', 'bin', 'tmd.exe'),
+            path.join(process.env.VOLTA_HOME || path.join(home, '.volta'), 'bin', 'tmd.exe'),
+            path.join(localAppData, 'pnpm', 'tmd.exe'),
+            path.join(process.env.FNM_MULTISHELL_PATH || '', 'tmd.exe'),
+            'C:\\nvm4w\\nodejs\\tmd.exe'
+        );
+
+        // 2. npm / nvm / pnpm / yarn batch wrappers (.cmd)
+        candidates.push(
+            path.join(appData, 'npm', 'tmd.cmd'),
+            path.join(localAppData, 'pnpm', 'tmd.cmd'),
+            path.join(localAppData, 'Yarn', 'bin', 'tmd.cmd'),
+            path.join(process.env.VOLTA_HOME || path.join(home, '.volta'), 'bin', 'tmd.cmd'),
+            path.join(process.env.FNM_MULTISHELL_PATH || '', 'tmd.cmd'),
+            'C:\\nvm4w\\nodejs\\tmd.cmd',
+            path.join(programFiles, 'nodejs', 'tmd.cmd'),
+            path.join(programFilesX86, 'nodejs', 'tmd.cmd')
+        );
+
+        // 3. Workspace local Swift builds (if developing TmdSwift on Windows)
+        const folders = vscode.workspace.workspaceFolders || [];
+        for (const folder of folders) {
+            candidates.push(
+                path.join(folder.uri.fsPath, '.build', 'release', 'tmd.exe'),
+                path.join(folder.uri.fsPath, '.build', 'debug', 'tmd.exe')
+            );
+        }
+    } else {
+        const home = os.homedir();
+        candidates.push(
+            '/usr/local/bin/tmd',
+            '/opt/homebrew/bin/tmd',
+            path.join(home, '.local', 'bin', 'tmd'),
+            path.join(home, '.cargo', 'bin', 'tmd'),
+            path.join(process.env.VOLTA_HOME || path.join(home, '.volta'), 'bin', 'tmd')
+        );
+
+        // Workspace local Swift builds
+        const folders = vscode.workspace.workspaceFolders || [];
+        for (const folder of folders) {
+            candidates.push(
+                path.join(folder.uri.fsPath, '.build', 'release', 'tmd'),
+                path.join(folder.uri.fsPath, '.build', 'debug', 'tmd')
+            );
+        }
+    }
+
     for (const c of candidates) {
-        if (fs.existsSync(c)) return c;
+        if (c && fs.existsSync(c)) return c;
     }
     return 'tmd';
 }
@@ -145,7 +246,7 @@ function runTmdExport(args, successMessage, outputFilePath) {
             cancellable: false
         }, () => {
             return new Promise((resolve) => {
-                execFile(tmdBin, args, (error, stdout, stderr) => {
+                runCliFile(tmdBin, args, (error, stdout, stderr) => {
                     if (error) {
                         const errMsg = (stderr && stderr.trim().length > 0) ? stderr.trim() : error.message;
                         vscode.window.showErrorMessage(vscode.l10n.t('TMD Export Failed: {0}', errMsg));
@@ -767,7 +868,7 @@ function activate(context) {
                 const key = getActiveKeySignature();
                 const preview = `::SCORE::\n** Hummed Preview **\n! = 120\n? = ${key}\n<4/4>\n\n${message.tmd}\n\n-> hummed ->#\n`;
                 fs.writeFileSync(tempPath, preview, 'utf8');
-                execFile(getTmdExecutable(), [tempPath, '-p'], (error, stdout, stderr) => {
+                runCliFile(getTmdExecutable(), [tempPath, '-p'], (error, stdout, stderr) => {
                     try { fs.unlinkSync(tempPath); } catch (_) {}
                     if (error) vscode.window.showErrorMessage(`TMD humming preview failed: ${(stderr || error.message).trim()}`);
                 });
@@ -926,7 +1027,7 @@ function activate(context) {
                 args.push('--instrument', options.instrument);
             }
 
-            execFile(tmdBin, args, (error, stdout, stderr) => {
+            runCliFile(tmdBin, args, (error, stdout, stderr) => {
                 if (error) {
                     const errMsg = (stderr && stderr.trim().length > 0) ? stderr.trim() : error.message;
                     vscode.window.showErrorMessage(`Failed to export MIDI for player: ${errMsg}`);
@@ -1009,7 +1110,7 @@ function activate(context) {
             cancellable: false
         }, () => {
             return new Promise((resolve) => {
-                execFile(tmdBin, ['--install-skills'], (error, stdout, stderr) => {
+                runCliFile(tmdBin, ['--install-skills'], (error, stdout, stderr) => {
                     if (error) {
                         const errMsg = (stderr && stderr.trim().length > 0) ? stderr.trim() : error.message;
                         vscode.window.showErrorMessage(`Failed to install skills: ${errMsg}`);
@@ -1048,7 +1149,7 @@ function activate(context) {
             }
         }
 
-        execFile(tmdBin, ['check', targetFilePath], (error, stdout, stderr) => {
+        runCliFile(tmdBin, ['check', targetFilePath], (error, stdout, stderr) => {
             if (isTempFile) {
                 try {
                     fs.unlinkSync(targetFilePath);
@@ -1510,7 +1611,7 @@ function activate(context) {
         }, () => {
             return new Promise((resolve) => {
                 const fullArgs = ['refactor', ...args, tempFilePath];
-                execFile(tmdBin, fullArgs, (error, stdout, stderr) => {
+                runCliFile(tmdBin, fullArgs, (error, stdout, stderr) => {
                     try { fs.unlinkSync(tempFilePath); } catch (e) {}
 
                     if (error) {
@@ -1957,7 +2058,7 @@ function activate(context) {
             return;
         }
 
-        execFile(tmdBin, ['refactor', 'extract-instrument', tempFilePath, '--instrument', inst.trim(), '-o', uri.fsPath], (error, stdout, stderr) => {
+        runCliFile(tmdBin, ['refactor', 'extract-instrument', tempFilePath, '--instrument', inst.trim(), '-o', uri.fsPath], (error, stdout, stderr) => {
             try { fs.unlinkSync(tempFilePath); } catch (e) {}
             if (error) {
                 const errMsg = (stderr && stderr.trim().length > 0) ? stderr.trim() : error.message;
@@ -2117,7 +2218,7 @@ function activate(context) {
                         }
                     }
 
-                    execFile(tmdBin, ['outline', '--json', targetPath], (error, stdout) => {
+                    runCliFile(tmdBin, ['outline', '--json', targetPath], (error, stdout) => {
                         if (tempFilePath) {
                             try { fs.unlinkSync(tempFilePath); } catch (e) {}
                         }
@@ -2221,7 +2322,7 @@ function activate(context) {
                 return;
             }
 
-            execFile(tmdBin, ['check', tempFilePath], (error, stdout, stderr) => {
+            runCliFile(tmdBin, ['check', tempFilePath], (error, stdout, stderr) => {
                 try { fs.unlinkSync(tempFilePath); } catch (_) {}
                 const output = ((stdout || '') + '\n' + (stderr || '')).trim();
                 const isClean = !error && output.includes('✅ All measures');
@@ -2247,7 +2348,7 @@ function activate(context) {
                 return;
             }
 
-            execFile(tmdBin, ['format', tempFilePath], (error, stdout, stderr) => {
+            runCliFile(tmdBin, ['format', tempFilePath], (error, stdout, stderr) => {
                 try { fs.unlinkSync(tempFilePath); } catch (_) {}
                 if (error || !stdout || stdout.trim().length === 0) {
                     resolve({ success: false, error: (stderr || error?.message || 'Format failed'), formattedText: text });
@@ -2273,7 +2374,7 @@ function activate(context) {
 
             const args = ['inspect', tempFilePath, '--locale', getTmdInspectLocale()];
             if (asJson) args.push('--json');
-            execFile(tmdBin, args, (error, stdout, stderr) => {
+            runCliFile(tmdBin, args, (error, stdout, stderr) => {
                 try { fs.unlinkSync(tempFilePath); } catch (_) {}
                 if (error && (!stdout || stdout.trim().length === 0)) {
                     resolve({ success: false, error: (stderr || error?.message || 'Inspect failed'), report: '' });
@@ -2574,7 +2675,7 @@ I am ready to help you compose, check, or format TMD music scores!
         start() {
             const tmdBin = getTmdExecutable();
             try {
-                this.process = spawn(tmdBin, ['lsp'], {
+                this.process = spawnCli(tmdBin, ['lsp'], {
                     stdio: ['pipe', 'pipe', 'pipe']
                 });
             } catch (err) {
@@ -3000,7 +3101,7 @@ function renderTmdMarkdownCard(rawTmd) {
         }
 
         fs.writeFileSync(tempTmd, compilableTmd, 'utf8');
-        execFileSync(tmdBin, ['-f', tempTmd, '-m', tempMid], { timeout: 4000, stdio: ['ignore', 'pipe', 'pipe'] });
+        runCliFileSync(tmdBin, ['-f', tempTmd, '-m', tempMid], { timeout: 4000, stdio: ['ignore', 'pipe', 'pipe'] });
         if (fs.existsSync(tempMid)) {
             midiBase64 = fs.readFileSync(tempMid).toString('base64');
             try { fs.unlinkSync(tempMid); } catch (_) {}
