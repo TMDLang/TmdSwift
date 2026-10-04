@@ -12,7 +12,7 @@ public struct TMDMIDIGenerator {
         targetParagraph: String? = nil,
         targetInstrument: String? = nil
     ) -> Data {
-        let sheet = TMDMacroEvaluator.expand(inputSheet)
+        let sheet = TMDMacroEvaluator.expandOrTrap(inputSheet)
         var effectiveSheet = sheet
         if let targetParagraph {
             let filteredParagraphs = sheet.entries.filter { $0.name == targetParagraph }

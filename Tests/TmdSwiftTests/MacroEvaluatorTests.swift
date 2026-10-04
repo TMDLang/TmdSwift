@@ -752,21 +752,5 @@ struct MacroEvaluatorTests {
 
         #expect(compatibilityResult == throwingResult)
 
-        let invalidInput = """
-            ::SCORE::
-            ** Invalid Expansion API parity **
-            != 120
-            ?= C
-            <4/4>
-
-            Theme {
-                <4*>
-                1 2 3 4
-            }
-
-            -> (play Missing Violin) ->#
-            """
-        let invalidSheet = try #require(TmdParser.parse(string: invalidInput))
-        #expect(TMDMacroEvaluator.expand(invalidSheet) == invalidSheet)
     }
 }

@@ -9,7 +9,7 @@ public struct TMDMusicXMLGenerator {
 
     /// Generates MusicXML UTF-8 string from a Sheet.
     public static func generateMusicXML(from inputSheet: Sheet) -> String {
-        let sheet = TMDMacroEvaluator.expand(inputSheet)
+        let sheet = TMDMacroEvaluator.expandOrTrap(inputSheet)
         let metadataCreators = sheet.metadata.sorted { $0.key < $1.key }.map { key, value in
             let type =
                 key.lowercased() == "lyrics"

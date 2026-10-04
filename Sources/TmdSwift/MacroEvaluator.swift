@@ -916,12 +916,19 @@ public enum TMDMacroEvaluator {
         )
     }
 
-    /// Compatibility API that suppresses macro diagnostics and returns the original sheet on failure.
+    /// Deprecated compatibility API. Macro failures are no longer silently suppressed.
+    @available(*, deprecated, message: "Use expandThrowing(_:) and handle TMDMacroError explicitly.")
     public static func expand(_ sheet: Sheet) -> Sheet {
+        return expandOrTrap(sheet)
+    }
+
+    /// Bridge for legacy non-throwing rendering APIs. It preserves their signatures while
+    /// ensuring that macro diagnostics cannot be silently discarded.
+    public static func expandOrTrap(_ sheet: Sheet) -> Sheet {
         do {
-            return try expandCanonical(sheet)
+            return try expandThrowing(sheet)
         } catch {
-            return sheet
+            preconditionFailure("TMD macro expansion failed: \(error)")
         }
     }
 

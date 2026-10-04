@@ -9,7 +9,7 @@ public struct TMDLilyPondGenerator {
 
     /// Generates LilyPond `.ly` file content from a Sheet.
     public static func generateLilyPond(from inputSheet: Sheet) -> String {
-        let sheet = TMDMacroEvaluator.expand(inputSheet)
+        let sheet = TMDMacroEvaluator.expandOrTrap(inputSheet)
         let composer = sheet.metadata["composer"] ?? "TMD"
         let initialTempoCommand = resolveTempo(
             beat: sheet.beat, quarterBPM: sheet.speed > 0 ? sheet.speed : 120)

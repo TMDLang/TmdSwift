@@ -466,7 +466,7 @@ public enum TMDSongInspector {
         targetInstrument: String? = nil,
         locale: TMDLocale = .zhHant
     ) -> TMDSongProfile {
-        let sheet = TMDMacroEvaluator.expand(inputSheet)
+        let sheet = TMDMacroEvaluator.expandOrTrap(inputSheet)
         let title = sheet.name.isEmpty ? "Untitled" : sheet.name
         let initialTempo = sheet.speed > 0 ? sheet.speed : 120.0
         let initialKey = sheet.keySignature.description

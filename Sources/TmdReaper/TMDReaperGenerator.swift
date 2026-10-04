@@ -15,7 +15,7 @@ public struct TMDReaperGenerator {
 
     /// Generates REAPER project file content (.rpp) from a Sheet.
     public static func generateRPP(from inputSheet: Sheet, ppq: UInt16 = defaultPPQ) -> String {
-        let sheet = TMDMacroEvaluator.expand(inputSheet)
+        let sheet = TMDMacroEvaluator.expandOrTrap(inputSheet)
         let distinctInstruments = sheet.distinctInstruments(fallbackToDefault: false)
         let conductorTimeline = TMDPlaybackRenderer.renderConductor(sheet: sheet)
 

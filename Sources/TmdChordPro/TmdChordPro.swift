@@ -22,7 +22,7 @@ public struct TMDChordProGenerator: Sendable {
         from inputSheet: Sheet,
         options: ChordProOptions = ChordProOptions()
     ) -> String {
-        let sheet = TMDMacroEvaluator.expand(inputSheet)
+        let sheet = TMDMacroEvaluator.expandOrTrap(inputSheet)
         var lines: [String] = []
 
         // Title and Metadata directives

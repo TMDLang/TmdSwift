@@ -9,7 +9,7 @@ public struct TMDABCGenerator {
 
     /// Generates ABC notation string from a Sheet.
     public static func generateABC(from inputSheet: Sheet) -> String {
-        let sheet = TMDMacroEvaluator.expand(inputSheet)
+        let sheet = TMDMacroEvaluator.expandOrTrap(inputSheet)
         var abc = ""
 
         // Header fields
