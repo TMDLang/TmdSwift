@@ -1411,6 +1411,27 @@ func testGlobalEarliestPositionUsesExpandedPlayback() throws {
     #expect(TMDPlaybackRenderer.globalEarliestPosition(in: sheet) == -4)
 }
 
+@Test("Playback order modifiers use one state transition path")
+func testPlaybackOrderModifiersShareStateTransition() throws {
+    let sheet = try #require(TmdParser.parse(string: """
+        ::SCORE::
+        ** Playback Order State **
+        != 120
+        ?= C
+        <4/4>
+
+        A:Piano@|0|{
+            <4*>
+            1
+        }
+
+        -> {?+2} -> A -> {?=E} -> A ->#
+        """))
+
+    let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+    #expect(timeline.events.map(\.state.keyOffset) == [2, 4])
+}
+
 @Test func testMeterModifierIsLocalToContainingEntry() throws {
     let meterChangedEntry = Section(
         noteLength: 4,

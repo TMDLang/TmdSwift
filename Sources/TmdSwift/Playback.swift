@@ -90,6 +90,40 @@ public struct PlaybackTempoConflict: Equatable, Sendable {
 
 /// Expands immutable TMD AST data into a shared playback timeline.
 public enum TMDPlaybackRenderer {
+    private struct PlaybackOrderCursor {
+        var state: PlaybackState
+        var timelinePosition = 0.0
+
+        init(sheet: Sheet) {
+            state = initialState(for: sheet)
+        }
+
+        mutating func visit(_ order: Playback) -> String? {
+            switch order {
+            case .relative(let value):
+                if let delta = Int(value.replacingOccurrences(of: "+", with: "")) {
+                    state = PlaybackState(
+                        tempo: state.tempo, keyOffset: state.keyOffset + delta,
+                        timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
+                }
+                return nil
+            case .absolute(let value):
+                state = PlaybackState(
+                    tempo: state.tempo, keyOffset: KeySignature(string: value).semitoneOffset,
+                    timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
+                return nil
+            case .name(let name):
+                return name
+            case .macro:
+                return nil
+            }
+        }
+
+        mutating func advance(by duration: Double) {
+            timelinePosition += duration
+        }
+    }
+
     private static func orders(for sheet: Sheet) -> [Playback] {
         guard !sheet.playback.isEmpty else {
             return sheet.entries.map(\.name).reduce(into: [String]()) { names, name in
@@ -175,42 +209,29 @@ public enum TMDPlaybackRenderer {
             $0.assignment?.caseInsensitiveCompare(instrument) == .orderedSame
         }
         let orders = orders(for: sheet)
-        var state = initialState(for: sheet)
+        var cursor = PlaybackOrderCursor(sheet: sheet)
         var events: [PlaybackEvent] = []
         var directives: [PlaybackDirectiveEvent] = []
-        var timelinePosition = 0.0
 
         for order in orders {
-            switch order {
-            case .relative(let value):
-                if let delta = Int(value.replacingOccurrences(of: "+", with: "")) {
-                    state = PlaybackState(
-                        tempo: state.tempo, keyOffset: state.keyOffset + delta,
-                        timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
-                }
-            case .absolute(let value):
-                let keyOffset = KeySignature(string: value).semitoneOffset
-                state = PlaybackState(
-                    tempo: state.tempo, keyOffset: keyOffset, timeSignature: state.timeSignature,
-                    dynamicLevel: state.dynamicLevel)
-            case .name(let name):
+            guard let name = cursor.visit(order) else { continue }
                 let matchingParagraphs = paragraphs.filter { $0.name == name }
-                let paragraphDuration = duration(of: name, in: sheet, beat: state.timeSignature)
+                let paragraphDuration = duration(of: name, in: sheet, beat: cursor.state.timeSignature)
                 guard !matchingParagraphs.isEmpty else {
-                    timelinePosition += paragraphDuration
+                    cursor.advance(by: paragraphDuration)
                     continue
                 }
 
                 for paragraph in matchingParagraphs {
                     let start =
-                        timelinePosition + Double(paragraph.start)
-                        * measureDuration(for: state.timeSignature)
+                        cursor.timelinePosition + Double(paragraph.start)
+                        * measureDuration(for: cursor.state.timeSignature)
                     let paragraphState =
                         paragraph.pitchMode == .fixed
                         ? PlaybackState(
-                            tempo: state.tempo, keyOffset: 0, timeSignature: state.timeSignature,
-                            dynamicLevel: state.dynamicLevel)
-                        : state
+                            tempo: cursor.state.tempo, keyOffset: 0, timeSignature: cursor.state.timeSignature,
+                            dynamicLevel: cursor.state.dynamicLevel)
+                        : cursor.state
                     let rendered = render(
                         paragraph: paragraph,
                         start: start,
@@ -219,19 +240,15 @@ public enum TMDPlaybackRenderer {
                     )
                     events.append(contentsOf: rendered.events)
                     directives.append(contentsOf: rendered.directives)
-                    state = PlaybackState(
+                    cursor.state = PlaybackState(
                         tempo: rendered.state.tempo,
                         keyOffset: paragraph.pitchMode == .fixed
-                            ? state.keyOffset : rendered.state.keyOffset,
-                        timeSignature: state.timeSignature,
+                            ? cursor.state.keyOffset : rendered.state.keyOffset,
+                        timeSignature: cursor.state.timeSignature,
                         dynamicLevel: rendered.state.dynamicLevel
                     )
                 }
-                timelinePosition += paragraphDuration
-            case .macro:
-                // S-expression macros are desugared by TMDMacroEvaluator before rendering
-                break
-            }
+                cursor.advance(by: paragraphDuration)
         }
 
         // Shift the entire timeline forward so that the earliest event across all instruments in the score
@@ -262,7 +279,7 @@ public enum TMDPlaybackRenderer {
         return PlaybackTimeline(
             events: adjustedEvents.sorted { $0.position < $1.position },
             directives: adjustedDirectives.sorted { $0.position < $1.position },
-            duration: timelinePosition + offset,
+            duration: cursor.timelinePosition + offset,
             assignment: paragraphs.first?.assignment ?? instrument
         )
     }
@@ -553,37 +570,22 @@ public enum TMDPlaybackRenderer {
     public static func globalEarliestPosition(in inputSheet: Sheet) -> Double {
         let sheet = TMDMacroEvaluator.expand(inputSheet)
         let orders = orders(for: sheet)
-        var state = initialState(for: sheet)
-        var timelinePosition = 0.0
+        var cursor = PlaybackOrderCursor(sheet: sheet)
         var minPosition = 0.0
 
         for order in orders {
-            switch order {
-            case .relative(let value):
-                if let delta = Int(value.replacingOccurrences(of: "+", with: "")) {
-                    state = PlaybackState(
-                        tempo: state.tempo, keyOffset: state.keyOffset + delta,
-                        timeSignature: state.timeSignature)
-                }
-            case .absolute(let value):
-                let keyOffset = KeySignature(string: value).semitoneOffset
-                state = PlaybackState(
-                    tempo: state.tempo, keyOffset: keyOffset, timeSignature: state.timeSignature)
-            case .name(let name):
+            guard let name = cursor.visit(order) else { continue }
                 let matchingParagraphs = sheet.entries.filter { $0.name == name }
-                let paragraphDuration = duration(of: name, in: sheet, beat: state.timeSignature)
+                let paragraphDuration = duration(of: name, in: sheet, beat: cursor.state.timeSignature)
                 for paragraph in matchingParagraphs {
                     let start =
-                        timelinePosition + Double(paragraph.start)
-                        * measureDuration(for: state.timeSignature)
+                        cursor.timelinePosition + Double(paragraph.start)
+                        * measureDuration(for: cursor.state.timeSignature)
                     if start < minPosition {
                         minPosition = start
                     }
                 }
-                timelinePosition += paragraphDuration
-            case .macro:
-                break
-            }
+                cursor.advance(by: paragraphDuration)
         }
         return minPosition
     }
