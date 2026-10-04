@@ -90,6 +90,23 @@ public struct PlaybackTempoConflict: Equatable, Sendable {
 
 /// Expands immutable TMD AST data into a shared playback timeline.
 public enum TMDPlaybackRenderer {
+    private static func orders(for sheet: Sheet) -> [Playback] {
+        guard !sheet.playback.isEmpty else {
+            return sheet.entries.map(\.name).reduce(into: [String]()) { names, name in
+                if !names.contains(name) { names.append(name) }
+            }.map(Playback.name)
+        }
+        return sheet.playback
+    }
+
+    private static func initialState(for sheet: Sheet) -> PlaybackState {
+        PlaybackState(
+            tempo: sheet.speed > 0 ? sheet.speed : 120,
+            keyOffset: sheet.keySignature.semitoneOffset,
+            timeSignature: sheet.beat
+        )
+    }
+
     /// Finds different absolute tempo values declared at the same playback position.
     public static func validateTempoConflicts(sheet: Sheet) -> [PlaybackTempoConflict] {
         var directives: [PlaybackDirectiveEvent] = []
@@ -157,17 +174,8 @@ public enum TMDPlaybackRenderer {
         let paragraphs = sheet.entries.filter {
             $0.assignment?.caseInsensitiveCompare(instrument) == .orderedSame
         }
-        let orders =
-            sheet.playback.isEmpty
-            ? sheet.entries.map(\.name).reduce(into: [String]()) { names, name in
-                if !names.contains(name) { names.append(name) }
-            }.map(Playback.name)
-            : sheet.playback
-        var state = PlaybackState(
-            tempo: sheet.speed > 0 ? sheet.speed : 120,
-            keyOffset: sheet.keySignature.semitoneOffset,
-            timeSignature: sheet.beat
-        )
+        let orders = orders(for: sheet)
+        var state = initialState(for: sheet)
         var events: [PlaybackEvent] = []
         var directives: [PlaybackDirectiveEvent] = []
         var timelinePosition = 0.0
@@ -277,12 +285,7 @@ public enum TMDPlaybackRenderer {
             }
         }
 
-        let initialState = PlaybackState(
-            tempo: sheet.speed > 0 ? sheet.speed : 120,
-            keyOffset: sheet.keySignature.semitoneOffset,
-            timeSignature: sheet.beat
-        )
-        var state = initialState
+        var state = initialState(for: sheet)
         let directives = merged.enumerated()
             .sorted {
                 $0.element.position == $1.element.position
@@ -547,18 +550,10 @@ public enum TMDPlaybackRenderer {
 
     /// Calculates the global negative offset across all instruments in the score orders,
     /// ensuring all tracks share the exact same temporal alignment.
-    public static func globalEarliestPosition(in sheet: Sheet) -> Double {
-        let orders =
-            sheet.playback.isEmpty
-            ? sheet.entries.map(\.name).reduce(into: [String]()) { names, name in
-                if !names.contains(name) { names.append(name) }
-            }.map(Playback.name)
-            : sheet.playback
-        var state = PlaybackState(
-            tempo: sheet.speed > 0 ? sheet.speed : 120,
-            keyOffset: sheet.keySignature.semitoneOffset,
-            timeSignature: sheet.beat
-        )
+    public static func globalEarliestPosition(in inputSheet: Sheet) -> Double {
+        let sheet = TMDMacroEvaluator.expand(inputSheet)
+        let orders = orders(for: sheet)
+        var state = initialState(for: sheet)
         var timelinePosition = 0.0
         var minPosition = 0.0
 

@@ -1386,6 +1386,31 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         ])
 }
 
+@Test("Global playback position expands macros before walking the timeline")
+func testGlobalEarliestPositionUsesExpandedPlayback() throws {
+    let theme = Entry(
+        name: "Theme",
+        start: -1,
+        sections: [
+            Section(
+                noteLength: 4,
+                unitGroups: [
+                    UnitGroup(units: [.note(Note(degree: .c))], length: 1),
+                    UnitGroup(units: [.note(Note(degree: .d))], length: 1),
+                    UnitGroup(units: [.note(Note(degree: .e))], length: 1),
+                    UnitGroup(units: [.note(Note(degree: .f))], length: 1),
+                ]
+            )
+        ]
+    )
+    let expression = SExpr.list([
+        .symbol("play"), .symbol("Theme"), .symbol("Piano"), .symbol(":at"), .number(-1)
+    ])
+    let sheet = Sheet(entries: [theme], playback: [.macro(expression)])
+
+    #expect(TMDPlaybackRenderer.globalEarliestPosition(in: sheet) == -4)
+}
+
 @Test func testMeterModifierIsLocalToContainingEntry() throws {
     let meterChangedEntry = Section(
         noteLength: 4,
