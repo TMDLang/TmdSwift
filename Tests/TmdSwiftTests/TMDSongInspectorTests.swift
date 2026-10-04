@@ -30,6 +30,36 @@ struct TMDSongInspectorTests {
         #expect(timing.sections.first?.name == "intro")
     }
 
+    @Test("Pitch range analysis is independently callable from the Inspector facade")
+    func testPitchRangeAnalyzerCanRunIndependently() throws {
+        let tmd = """
+            ::SCORE::
+            ** Pitch Analyzer **
+            != 120
+            ?= C
+            <4/4>
+
+            intro:Piano@|0|{
+                <4*>
+                1 3 5 1^
+            }
+
+            -> intro ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+        let timing = TMDSongTimingAnalyzer.analyze(sheet: sheet, timelineDirectives: timeline.directives)
+        let profile = try #require(
+            TMDSongPitchRangeAnalyzer.analyze(
+                instrument: "Piano", sheet: sheet, timingProfile: timing,
+                timelineDirectives: timeline.directives))
+
+        #expect(profile.totalNotes == 4)
+        #expect(profile.lowestNote.midiPitch == 60)
+        #expect(profile.highestNote.midiPitch == 72)
+        #expect(profile.spanSemitones == 12)
+    }
+
     @Test func prototypeOnlyScoreDoesNotCreateInspectorPianoTrack() throws {
         let tmd = """
             ::SCORE::

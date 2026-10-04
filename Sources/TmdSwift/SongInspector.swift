@@ -536,164 +536,22 @@ public enum TMDSongInspector {
         timingProfile: TMDTimingProfile,
         timelineDirectives: [PlaybackDirectiveEvent]
     ) -> TMDPitchRangeProfile? {
-        let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: instrument)
-
-        struct NoteHit {
-            let midi: Int
-            let name: String
-            let pos: Double
-            let sectionName: String
-            let sectionOccurrence: Int
-            let measure: Int
-            let timeSeconds: Double
-        }
-
-        var hits: [NoteHit] = []
-
-        for event in timeline.events {
-            guard case .note(let note) = event.content else { continue }
-            // Note MIDI pitch calculation:
-            // 60 (Middle C) + keyOffset + degreeOffset + accidental + octave
-            let pitch = note.midiPitch(keyOffset: event.state.keyOffset)
-
-            let noteName = TMDNotePitchInfo.name(for: pitch)
-            let matchedSection = timingProfile.sections.first {
-                event.position >= $0.startPositionQuarterNotes
-                    && event.position
-                        < ($0.startPositionQuarterNotes + $0.durationQuarterNotes + 0.001)
-            }
-
-            let sectionName = matchedSection?.name ?? ""
-            let sectionOccurrence = matchedSection?.occurrenceIndex ?? 1
-            let measure: Int
-            let timeSeconds: Double
-            if let sec = matchedSection {
-                let position = max(sec.startPositionQuarterNotes, event.position)
-                var cursor = sec.startPositionQuarterNotes
-                var tempo = sec.tempo
-                var meter = event.state.timeSignature
-                var elapsedSeconds = 0.0
-                var elapsedMeasures = 0.0
-
-                for directive in timelineDirectives {
-                    if directive.position <= cursor || directive.position >= position { continue }
-                    let segment = directive.position - cursor
-                    elapsedSeconds += segment * 60.0 / tempo
-                    elapsedMeasures += segment / measureDuration(for: meter)
-                    cursor = directive.position
-                    tempo = directive.state.tempo
-                    meter = directive.state.timeSignature
-                }
-
-                if position > cursor {
-                    let segment = position - cursor
-                    elapsedSeconds += segment * 60.0 / tempo
-                    elapsedMeasures += segment / measureDuration(for: meter)
-                }
-
-                measure = sec.startMeasure + Int(floor(elapsedMeasures + 1e-9))
-                timeSeconds = sec.startSeconds + elapsedSeconds
-            } else {
-                let nominalMeasureDur = measureDuration(for: event.state.timeSignature)
-                measure = 1 + Int(floor(event.position / nominalMeasureDur))
-                timeSeconds = event.position / (event.state.tempo / 60.0)
-            }
-
-            hits.append(
-                NoteHit(
-                    midi: pitch,
-                    name: noteName,
-                    pos: event.position,
-                    sectionName: sectionName,
-                    sectionOccurrence: sectionOccurrence,
-                    measure: measure,
-                    timeSeconds: timeSeconds
-                ))
-        }
-
-        guard !hits.isEmpty else { return nil }
-
-        let lowest = hits.min(by: { $0.midi < $1.midi })!
-        let highest = hits.max(by: { $0.midi < $1.midi })!
-        let sumPitch = hits.reduce(0) { $0 + $1.midi }
-        let avgPitch = Double(sumPitch) / Double(hits.count)
-
-        let spanSemitones = highest.midi - lowest.midi
-        let difficulty = evaluateDifficulty(spanSemitones: spanSemitones)
-        let suitable = evaluateSuitableVoiceTypes(
-            lowestMidi: lowest.midi, highestMidi: highest.midi)
-
-        return TMDPitchRangeProfile(
-            instrument: instrument,
-            lowestNote: TMDNotePitchInfo(
-                midiPitch: lowest.midi,
-                noteName: lowest.name,
-                sectionName: lowest.sectionName,
-                timelinePosition: lowest.pos,
-                sectionOccurrence: lowest.sectionOccurrence,
-                measure: lowest.measure,
-                timeSeconds: lowest.timeSeconds
-            ),
-            highestNote: TMDNotePitchInfo(
-                midiPitch: highest.midi,
-                noteName: highest.name,
-                sectionName: highest.sectionName,
-                timelinePosition: highest.pos,
-                sectionOccurrence: highest.sectionOccurrence,
-                measure: highest.measure,
-                timeSeconds: highest.timeSeconds
-            ),
-            spanSemitones: spanSemitones,
-            totalNotes: hits.count,
-            averageMidiPitch: avgPitch,
-            difficulty: difficulty,
-            suitableVoiceTypes: suitable
-        )
+        return TMDSongPitchRangeAnalyzer.analyze(
+            instrument: instrument, sheet: sheet, timingProfile: timingProfile,
+            timelineDirectives: timelineDirectives)
     }
 
     /// Evaluates pitch span difficulty based on semitones range.
     public static func evaluateDifficulty(spanSemitones: Int) -> TMDPitchRangeDifficulty {
-        if spanSemitones <= 12 { return .easy }
-        if spanSemitones <= 16 { return .moderate }
-        if spanSemitones <= 20 { return .challenging }
-        return .difficult
+        TMDSongPitchRangeAnalyzer.evaluateDifficulty(spanSemitones: spanSemitones)
     }
 
     /// Classical standard vocal ranges with amateur/pop margin and male octave displacement.
     public static func evaluateSuitableVoiceTypes(lowestMidi: Int, highestMidi: Int)
         -> [TMDVocalClassification]
     {
-        let voiceRanges: [(type: TMDVocalClassification, min: Int, max: Int)] = [
-            (.soprano, 57, 86),  // A3 - D6
-            (.mezzoSoprano, 53, 81),  // F3 - A5
-            (.contralto, 50, 77),  // D3 - F5
-            (.tenor, 45, 74),  // A2 - D5
-            (.baritone, 41, 69),  // F2 - A4
-            (.bass, 38, 65),  // D2 - F4
-        ]
-
-        var suitable: [TMDVocalClassification] = []
-
-        // Direct range check
-        for vr in voiceRanges {
-            if lowestMidi >= vr.min && highestMidi <= vr.max {
-                suitable.append(vr.type)
-            }
-        }
-
-        // Check standard male octave transpose (melodies written in treble clef C4-C5 sung C3-C4 by males)
-        let transposedLow = lowestMidi - 12
-        let transposedHigh = highestMidi - 12
-        let maleVoiceTypes: Set<TMDVocalClassification> = [.tenor, .baritone, .bass]
-        for vr in voiceRanges {
-            if maleVoiceTypes.contains(vr.type) && !suitable.contains(vr.type) {
-                if transposedLow >= vr.min && transposedHigh <= vr.max {
-                    suitable.append(vr.type)
-                }
-            }
-        }
-
-        return suitable
+        TMDSongPitchRangeAnalyzer.evaluateSuitableVoiceTypes(
+            lowestMidi: lowestMidi, highestMidi: highestMidi)
     }
 
     private static func buildHarmonyProfile(sheet: Sheet) -> TMDHarmonyProfile {
