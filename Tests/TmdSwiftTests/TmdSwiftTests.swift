@@ -10,6 +10,17 @@ import TmdUtils
 
 @testable import TmdSwift
 
+@Test("Shared text I/O round-trips UTF-8 content")
+func testSharedTextIORoundTrip() throws {
+    let path = FileManager.default.temporaryDirectory
+        .appendingPathComponent("tmd-text-io-\(UUID().uuidString).tmd")
+    defer { try? FileManager.default.removeItem(at: path) }
+
+    let content = "中文 🎵\n"
+    try TMDTextIO.writeUTF8(content, to: path.path)
+    #expect(try TMDTextIO.readUTF8(from: path.path) == content)
+}
+
 @Test func testParseTMDScore() throws {
     let tmd = """
         ::SCORE::

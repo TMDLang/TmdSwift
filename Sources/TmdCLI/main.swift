@@ -29,7 +29,7 @@ struct TmdCheckCommand: ParsableCommand {
     func run() throws {
         let content: String
         do {
-            content = try String(contentsOfFile: inputPath, encoding: .utf8)
+            content = try TMDTextIO.readUTF8(from: inputPath)
         } catch {
             print("Error reading \(inputPath): \(error.localizedDescription)")
             throw ExitCode.failure
@@ -97,7 +97,7 @@ struct TmdOutlineCommand: ParsableCommand {
     func run() throws {
         let content: String
         do {
-            content = try String(contentsOfFile: inputPath, encoding: .utf8)
+            content = try TMDTextIO.readUTF8(from: inputPath)
         } catch {
             print("Error reading \(inputPath): \(error.localizedDescription)")
             throw ExitCode.failure
@@ -225,7 +225,7 @@ struct TmdFormatCommand: ParsableCommand {
     func run() throws {
         let content: String
         do {
-            content = try String(contentsOfFile: inputPath, encoding: .utf8)
+            content = try TMDTextIO.readUTF8(from: inputPath)
         } catch {
             print("Error reading \(inputPath): \(error.localizedDescription)")
             throw ExitCode.failure
@@ -235,7 +235,7 @@ struct TmdFormatCommand: ParsableCommand {
 
         if inPlace {
             do {
-                try formatted.write(toFile: inputPath, atomically: true, encoding: .utf8)
+                try TMDTextIO.writeUTF8(formatted, to: inputPath)
                 print("Formatted \(inputPath) in-place.")
             } catch {
                 print("Error writing \(inputPath): \(error.localizedDescription)")
@@ -243,7 +243,7 @@ struct TmdFormatCommand: ParsableCommand {
             }
         } else if let outPath = output {
             do {
-                try formatted.write(toFile: outPath, atomically: true, encoding: .utf8)
+                try TMDTextIO.writeUTF8(formatted, to: outPath)
                 print("Formatted output written to \(outPath).")
             } catch {
                 print("Error writing \(outPath): \(error.localizedDescription)")
