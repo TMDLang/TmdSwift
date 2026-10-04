@@ -150,8 +150,8 @@ struct TmdCLICommand: ParsableCommand {
 
         let fileContent: String
         do {
-            fileContent = try String(
-                contentsOfFile: FilePathNormalizer.fileURLToPath(inputPath), encoding: .utf8)
+            fileContent = try TMDTextIO.readUTF8(
+                from: FilePathNormalizer.fileURLToPath(inputPath))
         } catch {
             print("Error: Could not read file at \(inputPath): \(error.localizedDescription)")
             throw ExitCode.failure
