@@ -50,55 +50,6 @@ struct TmdLSPCommand: ParsableCommand {
 
 
 
-struct TmdFormatCommand: ParsableCommand {
-    static let configuration = CommandConfiguration(
-        commandName: "format",
-        abstract:
-            "Format a TMD file with standardized indentation, spacing, and comments preserved."
-    )
-
-    @Argument(help: "Path to the .tmd file to format.")
-    var inputPath: String
-
-    @Flag(name: [.short, .long], help: "Modify the file in-place.")
-    var inPlace: Bool = false
-
-    @Option(name: [.short, .long], help: "Output formatted score to the specified path.")
-    var output: String?
-
-    func run() throws {
-        let content: String
-        do {
-            content = try TMDTextIO.readUTF8(from: inputPath)
-        } catch {
-            print("Error reading \(inputPath): \(error.localizedDescription)")
-            throw ExitCode.failure
-        }
-
-        let formatted = TMDRefactor.format(content)
-
-        if inPlace {
-            do {
-                try TMDTextIO.writeUTF8(formatted, to: inputPath)
-                print("Formatted \(inputPath) in-place.")
-            } catch {
-                print("Error writing \(inputPath): \(error.localizedDescription)")
-                throw ExitCode.failure
-            }
-        } else if let outPath = output {
-            do {
-                try TMDTextIO.writeUTF8(formatted, to: outPath)
-                print("Formatted output written to \(outPath).")
-            } catch {
-                print("Error writing \(outPath): \(error.localizedDescription)")
-                throw ExitCode.failure
-            }
-        } else {
-            print(formatted, terminator: "")
-        }
-    }
-}
-
 // MARK: - Refactor Subcommands
 
 struct TmdRefactorRenameInstrument: ParsableCommand {
