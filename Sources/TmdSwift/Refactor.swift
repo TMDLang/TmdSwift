@@ -1148,31 +1148,8 @@ public struct TMDRefactor {
         let currentKey = KeySignature(string: keyStr.isEmpty ? "C" : keyStr)
         let oldOffset = currentKey.semitoneOffset
         let newOffset = ((oldOffset + semitones) % 12 + 12) % 12
-        let offsetToKey: [Int: String] = [
-            0: "C", 1: "C'", 2: "D", 3: "E,", 4: "E", 5: "F",
-            6: "F'", 7: "G", 8: "A,", 9: "A", 10: "B,", 11: "B",
-        ]
-        return offsetToKey[newOffset] ?? "C"
+        return PitchMapping.keyName(forSemitone: newOffset)
     }
-
-    private static let scaleDegreeSemitones: [Int: Int] = [
-        1: 0, 2: 2, 3: 4, 4: 5, 5: 7, 6: 9, 7: 11,
-    ]
-
-    private static let semitoneToDegreeMap: [Int: (degree: Int, accidental: String)] = [
-        0: (1, ""),
-        1: (1, "'"),
-        2: (2, ""),
-        3: (2, "'"),
-        4: (3, ""),
-        5: (4, ""),
-        6: (4, "'"),
-        7: (5, ""),
-        8: (5, "'"),
-        9: (6, ""),
-        10: (7, ","),
-        11: (7, ""),
-    ]
 
     private static func transposeTmdNote(
         _ noteStr: String,
@@ -1232,13 +1209,13 @@ public struct TMDRefactor {
             accSemitone = -1
         }
 
-        let baseDegreeSemitone = (scaleDegreeSemitones[deg] ?? 0) + accSemitone
+        let baseDegreeSemitone = (ScaleDegree(rawValue: deg)?.semitoneOffset ?? 0) + accSemitone
         let totalSemitonesRelTonic = baseDegreeSemitone + octaveDelta * 12 + semitones
 
         let semitoneInOct = ((totalSemitonesRelTonic % 12) + 12) % 12
         let finalOctave = Int(floor(Double(totalSemitonesRelTonic) / 12.0))
 
-        guard let mapped = semitoneToDegreeMap[semitoneInOct] else { return noteStr }
+        let mapped = PitchMapping.semitoneToDegreeAccidental(semitoneInOct)
         var newOctStr = ""
         if finalOctave > 0 {
             newOctStr = String(repeating: "^", count: finalOctave)
@@ -1246,7 +1223,7 @@ public struct TMDRefactor {
             newOctStr = String(repeating: "_", count: -finalOctave)
         }
 
-        return "\(mapped.degree)\(mapped.accidental)\(newOctStr)"
+        return "\(mapped.degree.rawValue)\(PitchMapping.accidentalSymbol(mapped.accidental))\(newOctStr)"
     }
 
     private static func transposeTmdNoteUnit(

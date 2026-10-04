@@ -197,16 +197,7 @@ public struct TMDMIDIGenerator {
 
     /// Converts scale degree (1~7) + accidental + octave into MIDI pitch (Middle C = 60).
     public static func noteToMIDIPitch(_ note: Note, keyOffset: Int) -> Int {
-        var pitch = 60 + keyOffset + note.degree.semitoneOffset
-
-        switch note.accidental {
-        case .sharp: pitch += 1
-        case .flat: pitch -= 1
-        case .natural: break
-        }
-
-        pitch += note.octave * 12
-        return pitch
+        note.midiPitch(keyOffset: keyOffset)
     }
 
     private static func percussionMIDIPitch(for character: Character) -> Int? {

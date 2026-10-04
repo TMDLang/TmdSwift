@@ -343,6 +343,10 @@ public enum ScaleDegree: Int, CaseIterable, Equatable, Sendable {
 
 /// Shared pitch-name mappings used by the text and binary exporters.
 public enum PitchMapping {
+    public static let tmdKeyNames = [
+        "C", "C'", "D", "E,", "E", "F", "F'", "G", "A,", "A", "B,", "B",
+    ]
+
     public static let musicXMLSteps = ["C", "C", "D", "D", "E", "F", "F", "G", "G", "A", "A", "B"]
     public static let musicXMLAlters = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0]
     public static let lilyPondNames = [
@@ -354,6 +358,42 @@ public enum PitchMapping {
     public static let abcLowerNames = [
         "c", "^c", "d", "^d", "e", "f", "^f", "g", "^g", "a", "^a", "b",
     ]
+
+    public static func normalizedSemitone(_ semitone: Int) -> Int {
+        (semitone % 12 + 12) % 12
+    }
+
+    public static func keyName(forSemitone semitone: Int) -> String {
+        tmdKeyNames[normalizedSemitone(semitone)]
+    }
+
+    public static func semitoneToDegreeAccidental(_ semitone: Int) -> (
+        degree: ScaleDegree, accidental: Accidental
+    ) {
+        switch normalizedSemitone(semitone) {
+        case 0: return (.c, .natural)
+        case 1: return (.c, .sharp)
+        case 2: return (.d, .natural)
+        case 3: return (.d, .sharp)
+        case 4: return (.e, .natural)
+        case 5: return (.f, .natural)
+        case 6: return (.f, .sharp)
+        case 7: return (.g, .natural)
+        case 8: return (.g, .sharp)
+        case 9: return (.a, .natural)
+        case 10: return (.b, .flat)
+        case 11: return (.b, .natural)
+        default: fatalError("Normalized semitone must be between 0 and 11")
+        }
+    }
+
+    public static func accidentalSymbol(_ accidental: Accidental) -> String {
+        switch accidental {
+        case .natural: ""
+        case .sharp: "'"
+        case .flat: ","
+        }
+    }
 }
 
 /// A musical note containing scale degree, accidental, and octave displacement.
@@ -388,6 +428,16 @@ public struct Note: Equatable, Sendable {
     public init(accidental: Accidental = .natural, degree: Int, octave: Int = 0) {
         precondition((1...7).contains(degree), "Scale degree must be between 1 and 7")
         self.init(accidental: accidental, degree: ScaleDegree(rawValue: degree)!, octave: octave)
+    }
+
+    /// Converts this numbered-notation note to MIDI pitch using Middle C = 60.
+    public func midiPitch(keyOffset: Int) -> Int {
+        60 + keyOffset + totalSemitones
+    }
+
+    /// Chromatic offset from C in the numbered-notation pitch space.
+    public var totalSemitones: Int {
+        degree.semitoneOffset + accidental.semitoneOffset + octave * 12
     }
 }
 

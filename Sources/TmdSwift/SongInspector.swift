@@ -651,13 +651,7 @@ public enum TMDSongInspector {
             guard case .note(let note) = event.content else { continue }
             // Note MIDI pitch calculation:
             // 60 (Middle C) + keyOffset + degreeOffset + accidental + octave
-            var pitch = 60 + event.state.keyOffset + note.degree.semitoneOffset
-            switch note.accidental {
-            case .sharp: pitch += 1
-            case .flat: pitch -= 1
-            case .natural: break
-            }
-            pitch += note.octave * 12
+            let pitch = note.midiPitch(keyOffset: event.state.keyOffset)
 
             let noteName = TMDNotePitchInfo.name(for: pitch)
             let matchedSection = timingProfile.sections.first {
@@ -1028,13 +1022,7 @@ public enum TMDSongInspector {
         // 1. Accumulate melody notes
         for event in allEvents {
             guard case .note(let note) = event.content else { continue }
-            var pitch = 60 + event.state.keyOffset + note.degree.semitoneOffset
-            switch note.accidental {
-            case .sharp: pitch += 1
-            case .flat: pitch -= 1
-            case .natural: break
-            }
-            pitch += note.octave * 12
+            let pitch = note.midiPitch(keyOffset: event.state.keyOffset)
             let pc = (pitch % 12 + 12) % 12
             let dur = event.duration
 

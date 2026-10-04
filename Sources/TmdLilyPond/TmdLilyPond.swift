@@ -232,14 +232,7 @@ public struct TMDLilyPondGenerator {
     private static func noteToLilyPondPitch(_ note: Note, keyOffset: Int) -> String {
         let degree = note.degree.rawValue
         guard (1...7).contains(degree) else { return "c'" }
-        var midiPitch = 60 + keyOffset + note.degree.semitoneOffset
-
-        switch note.accidental {
-        case .sharp: midiPitch += 1
-        case .flat: midiPitch -= 1
-        case .natural: break
-        }
-        midiPitch += note.octave * 12
+        let midiPitch = note.midiPitch(keyOffset: keyOffset)
 
         return midiPitchToLilyPond(midiPitch)
     }

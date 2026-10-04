@@ -1315,6 +1315,11 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 @Test func testSharedPitchMappings() throws {
     #expect(ScaleDegree.c.semitoneOffset == 0)
     #expect(ScaleDegree.f.semitoneOffset == 5)
+    #expect(Note(degree: .f, octave: 1).midiPitch(keyOffset: 1) == 78)
+    let bFlat = PitchMapping.semitoneToDegreeAccidental(10)
+    #expect(bFlat.degree == .b)
+    #expect(bFlat.accidental == .flat)
+    #expect(PitchMapping.keyName(forSemitone: -1) == "B")
     #expect(PitchMapping.musicXMLSteps[10] == "A")
     #expect(PitchMapping.musicXMLAlters[10] == 1)
     #expect(PitchMapping.lilyPondNames[11] == "b")

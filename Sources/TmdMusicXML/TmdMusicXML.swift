@@ -595,13 +595,7 @@ public struct TMDMusicXMLGenerator {
     ) {
         let degree = note.degree.rawValue
         guard (1...7).contains(degree) else { return ("C", 0, 4) }
-        var midiPitch = 60 + keyOffset + note.degree.semitoneOffset
-        switch note.accidental {
-        case .sharp: midiPitch += 1
-        case .flat: midiPitch -= 1
-        case .natural: break
-        }
-        midiPitch += note.octave * 12
+        let midiPitch = note.midiPitch(keyOffset: keyOffset)
 
         // Convert MIDI pitch to Step + Alter + Octave
         let semitone = ((midiPitch % 12) + 12) % 12

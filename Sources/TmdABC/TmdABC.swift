@@ -260,7 +260,7 @@ public struct TMDABCGenerator {
         let stepUpper = ["C", "D", "E", "F", "G", "A", "B"][stepIdx]
         let stepLower = ["c", "d", "e", "f", "g", "a", "b"][stepIdx]
 
-        let midiPitch = 60 + keyOffset + note.degree.semitoneOffset + delta + note.octave * 12
+        let midiPitch = note.midiPitch(keyOffset: keyOffset) + delta
         let octave = (midiPitch / 12) - 1
 
         let letter: String
