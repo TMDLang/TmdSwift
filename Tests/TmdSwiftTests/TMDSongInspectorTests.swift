@@ -5,6 +5,31 @@ import Testing
 
 @Suite("TMD Song Profile & Inspector Tests")
 struct TMDSongInspectorTests {
+    @Test("Timing analysis is independently callable from the Inspector facade")
+    func testTimingAnalyzerCanRunIndependently() throws {
+        let tmd = """
+            ::SCORE::
+            ** Timing Analyzer **
+            != 120
+            ?= C
+            <4/4>
+
+            intro:Piano@|0|{
+                <4*>
+                1 2 3 4
+            }
+
+            -> intro ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let directives = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano").directives
+        let timing = TMDSongTimingAnalyzer.analyze(sheet: sheet, timelineDirectives: directives)
+
+        #expect(timing.totalMeasures == 1)
+        #expect(timing.totalDurationSeconds == 2.0)
+        #expect(timing.sections.first?.name == "intro")
+    }
+
     @Test func prototypeOnlyScoreDoesNotCreateInspectorPianoTrack() throws {
         let tmd = """
             ::SCORE::
