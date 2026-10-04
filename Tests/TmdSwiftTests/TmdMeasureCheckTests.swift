@@ -5,6 +5,22 @@ import Testing
 
 @Suite("TMD Measure Check Tests")
 struct TmdMeasureCheckTests {
+    @Test("Measure checker exposes an AST-first structural path")
+    func testASTMeasureCheckCanRunIndependently() throws {
+        let source = """
+            ::SCORE::
+            <4/4>
+            intro:Piano@|0|{
+                <4*>
+                1 2 3 4 5 6 7 1
+            }
+            -> intro ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: source))
+        let issues = TMDMeasureChecker.check(sheet: sheet)
+
+        #expect(issues.contains { $0.snippet.contains("explicit barlines") })
+    }
     @Test func testTimeSignatureChangeMustStartAtMeasureBoundary() throws {
         let input = """
             ::SCORE::

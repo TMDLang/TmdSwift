@@ -53,8 +53,50 @@ public struct TMDMeasureIssue: Equatable, CustomStringConvertible, Sendable {
 
 /// Verifies whether measures bounded by bar lines `|` in a TMD score conform to the expected time signature and subdivision grid.
 public struct TMDMeasureChecker {
+    /// Checks parser-valid structural invariants directly from the canonical AST.
+    public static func check(sheet: Sheet) -> [TMDMeasureIssue] {
+        let measureDuration =
+            Double(max(1, sheet.beat.count) * 4) / Double(max(1, sheet.beat.noteValue))
+        var issues: [TMDMeasureIssue] = []
+
+        for entry in sheet.entries where !entry.sections.isEmpty {
+            for section in entry.sections {
+                let duration = section.unitGroups.reduce(0.0) { total, group in
+                    total + Double(max(0, group.length)) * 4.0
+                        / Double(max(1, section.noteLength))
+                }
+                if duration > measureDuration + 1e-9 && section.barlinePositions.isEmpty {
+                    let measureCount = Int((duration / measureDuration).rounded())
+                    issues.append(
+                        TMDMeasureIssue(
+                            paragraphName: entry.name,
+                            instrument: entry.assignment ?? "",
+                            lineNumber: 0,
+                            measureIndex: 0,
+                            expectedUnits: measureCount,
+                            actualUnits: measureCount,
+                            noteLength: section.noteLength,
+                            beat: sheet.beat,
+                            snippet: "Multi-measure section requires explicit barlines"
+                        ))
+                }
+            }
+        }
+        return issues
+    }
+
     /// Checks a TMD source text string for measure length discrepancies.
     public static func check(source: String) -> [TMDMeasureIssue] {
+        let astIssues: [TMDMeasureIssue]
+        if let sheet = TmdParser.parse(string: source) {
+            astIssues = check(sheet: sheet)
+        } else {
+            astIssues = []
+        }
+        return astIssues + checkWithLexer(source: source)
+    }
+
+    private static func checkWithLexer(source: String) -> [TMDMeasureIssue] {
         let lexer = Lexer(string: source)
         let tokensWithRanges = lexer.tokenizeWithRanges()
 
@@ -552,32 +594,6 @@ public struct TMDMeasureChecker {
         // early exit / solos / breakdowns). TMDPlaybackRenderer pads trailing silence up to durationOf(section),
         // so shorter tracks are considered natural implicit rests rather than errors.
 
-        if let sheet = TmdParser.parse(string: source) {
-            let measureDuration =
-                Double(max(1, sheet.beat.count) * 4) / Double(max(1, sheet.beat.noteValue))
-            for entry in sheet.entries where !entry.sections.isEmpty {
-                for section in entry.sections {
-                    let duration = section.unitGroups.reduce(0.0) { total, group in
-                        total + Double(max(0, group.length)) * 4.0
-                            / Double(max(1, section.noteLength))
-                    }
-                    if duration > measureDuration + 1e-9 && section.barlinePositions.isEmpty {
-                        issues.append(
-                            TMDMeasureIssue(
-                                paragraphName: entry.name,
-                                instrument: entry.assignment ?? "",
-                                lineNumber: 0,
-                                measureIndex: 0,
-                                expectedUnits: Int((duration / measureDuration).rounded()),
-                                actualUnits: Int((duration / measureDuration).rounded()),
-                                noteLength: section.noteLength,
-                                beat: sheet.beat,
-                                snippet: "Multi-measure section requires explicit barlines"
-                            ))
-                    }
-                }
-            }
-        }
         return issues
     }
 
