@@ -706,7 +706,7 @@ public struct TMDRefactor {
                 in: .whitespaces)
         }
 
-        let tokens = tokenizeMeasureLine(working)
+        let tokens = measureUnits(in: working)
         var outTokens: [String] = []
 
         for tok in tokens {
@@ -738,7 +738,7 @@ public struct TMDRefactor {
                 in: .whitespaces)
         }
 
-        let tokens = tokenizeMeasureLine(working)
+        let tokens = measureUnits(in: working)
         var outTokens: [String] = []
         var currentMeasure: [String] = []
 
@@ -794,75 +794,80 @@ public struct TMDRefactor {
         return outTokens.joined(separator: " ") + commentSuffix
     }
 
-    private static func tokenizeMeasureLine(_ line: String) -> [String] {
-        var tokens: [String] = []
-        let chars = Array(line)
-        var i = 0
+    /// Groups the canonical Lexer tokens into the measure units consumed by refactors.
+    ///
+    /// The Lexer remains the only source of token boundaries. This layer only combines
+    /// adjacent syntax that is one refactor unit, such as a note followed immediately by
+    /// ties or a complete tuplet expression.
+    private static func measureUnits(in line: String) -> [String] {
+        let lexed = Lexer(string: line).tokenizeWithRanges()
+            .filter { $0.token != .eof }
+        var units: [String] = []
+        var index = 0
 
-        while i < chars.count {
-            let ch = chars[i]
-            if ch == " " || ch == "\t" {
-                i += 1
+        while index < lexed.count {
+            let current = lexed[index]
+
+            if current.token == .pipe {
+                units.append(current.text)
+                index += 1
                 continue
             }
-            if ch == "|" {
-                tokens.append("|")
-                i += 1
+
+            if current.token == .openParen,
+                let innerEnd = lexed[index...].firstIndex(where: { $0.token == .closeParen })
+            {
+                let inner = lexed[(index + 1)..<innerEnd].map(\.text).joined(separator: " ")
+                var end = innerEnd + 1
+                var dashes = ""
+
+                if end < lexed.count, lexed[end].token == .percentOpenParen,
+                    let dashEnd = lexed[(end + 1)...].firstIndex(where: { $0.token == .closeParen })
+                {
+                    dashes = lexed[(end + 1)..<dashEnd]
+                        .filter { $0.token == .tie }
+                        .map { _ in "-" }
+                        .joined()
+                    end = dashEnd + 1
+                }
+
+                if !dashes.isEmpty {
+                    units.append("(\(inner))%(\(dashes))")
+                } else {
+                    units.append("(\(inner))")
+                }
+                index = end
                 continue
             }
-            if ch == "[" {
-                if let end = chars[i...].firstIndex(of: "]") {
-                    tokens.append(String(chars[i...end]))
-                    i = end + 1
-                    continue
-                }
-            }
-            if ch == "(" {
-                if let endParen = chars[i...].firstIndex(of: ")") {
-                    var afterParen = endParen + 1
-                    while afterParen < chars.count
-                        && (chars[afterParen] == " " || chars[afterParen] == "\t")
-                    {
-                        afterParen += 1
-                    }
-                    if afterParen < chars.count && chars[afterParen] == "%" {
-                        var afterPercent = afterParen + 1
-                        while afterPercent < chars.count
-                            && (chars[afterPercent] == " " || chars[afterPercent] == "\t")
-                        {
-                            afterPercent += 1
-                        }
-                        if afterPercent < chars.count && chars[afterPercent] == "(" {
-                            if let endDashes = chars[afterPercent...].firstIndex(of: ")") {
-                                tokens.append(String(chars[i...endDashes]))
-                                i = endDashes + 1
-                                continue
-                            }
-                        }
-                    }
-                    tokens.append(String(chars[i...endParen]))
-                    i = endParen + 1
-                    continue
-                }
-            }
-            if ch == "{" {
-                if let end = chars[i...].firstIndex(of: "}") {
-                    tokens.append(String(chars[i...end]))
-                    i = end + 1
-                    continue
-                }
-            }
 
-            var word = ""
-            while i < chars.count && !chars[i].isWhitespace && !"|[](){}".contains(chars[i]) {
-                word.append(chars[i])
-                i += 1
+            var unit = current.text
+            var end = index + 1
+            while end < lexed.count,
+                lexed[end].token == .tie,
+                lexed[end - 1].range.endOffset == lexed[end].range.start.offset
+            {
+                unit += lexed[end].text
+                end += 1
             }
-            if !word.isEmpty {
-                tokens.append(word)
+            units.append(unit)
+            index = end
+        }
+
+        return units
+    }
+
+    private static func containsTransposableUnit(in line: String) -> Bool {
+        guard !line.trimmingCharacters(in: .whitespaces).hasPrefix("<") else {
+            return false
+        }
+        return Lexer(string: line).tokenize().contains { token in
+            switch token {
+            case .note, .chord:
+                return true
+            default:
+                return false
             }
         }
-        return tokens
     }
 
     // MARK: - Private Formatting Helpers
@@ -1119,21 +1124,18 @@ public struct TMDRefactor {
                 continue
             }
 
-            if !isFullScore || (insideParagraph && inMatchingPara) {
-                if trimmed.hasPrefix("|") || trimmed.contains("|")
-                    || trimmed.rangeOfCharacter(from: CharacterSet(charactersIn: "01234567[]-"))
-                        != nil
-                {
-                    let indent = String(rawLine.prefix(while: { $0 == " " || $0 == "\t" }))
-                    let transformed = transposeUnitsInLine(
-                        trimmed,
-                        semitones: semitones,
-                        diatonicSteps: diatonicSteps,
-                        keySignature: currentKeySig
-                    )
-                    resultLines.append(indent + transformed)
-                    continue
-                }
+            if (!isFullScore || (insideParagraph && inMatchingPara))
+                && containsTransposableUnit(in: trimmed)
+            {
+                let indent = String(rawLine.prefix(while: { $0 == " " || $0 == "\t" }))
+                let transformed = transposeUnitsInLine(
+                    trimmed,
+                    semitones: semitones,
+                    diatonicSteps: diatonicSteps,
+                    keySignature: currentKeySig
+                )
+                resultLines.append(indent + transformed)
+                continue
             }
 
             resultLines.append(rawLine)
@@ -1247,6 +1249,25 @@ public struct TMDRefactor {
         return "\(mapped.degree)\(mapped.accidental)\(newOctStr)"
     }
 
+    private static func transposeTmdNoteUnit(
+        _ unit: String,
+        semitones: Int,
+        diatonicSteps: Int,
+        keySignature: String
+    ) -> String {
+        guard let tieStart = unit.firstIndex(of: "-") else {
+            return transposeTmdNote(
+                unit, semitones: semitones, diatonicSteps: diatonicSteps,
+                keySignature: keySignature)
+        }
+
+        let note = String(unit[..<tieStart])
+        let ties = String(unit[tieStart...])
+        return transposeTmdNote(
+            note, semitones: semitones, diatonicSteps: diatonicSteps,
+            keySignature: keySignature) + ties
+    }
+
     private static func transposeChordToken(
         _ chordStr: String,
         semitones: Int,
@@ -1319,7 +1340,7 @@ public struct TMDRefactor {
                 in: .whitespaces)
         }
 
-        let tokens = tokenizeMeasureLine(working)
+        let tokens = measureUnits(in: working)
         var outTokens: [String] = []
 
         for tok in tokens {
@@ -1335,10 +1356,10 @@ public struct TMDRefactor {
             }
 
             if let tuplet = parseTupletToken(tok) {
-                let innerTokens = tokenizeMeasureLine(tuplet.inner)
+                let innerTokens = measureUnits(in: tuplet.inner)
                 let transposedInner = innerTokens.map { t -> String in
                     if let f = t.first, f >= "1" && f <= "7" {
-                        return transposeTmdNote(
+                        return transposeTmdNoteUnit(
                             t, semitones: semitones, diatonicSteps: diatonicSteps,
                             keySignature: keySignature)
                     }
@@ -1355,7 +1376,7 @@ public struct TMDRefactor {
 
             if let f = tok.first, f >= "1" && f <= "7" {
                 outTokens.append(
-                    transposeTmdNote(
+                    transposeTmdNoteUnit(
                         tok, semitones: semitones, diatonicSteps: diatonicSteps,
                         keySignature: keySignature))
                 continue

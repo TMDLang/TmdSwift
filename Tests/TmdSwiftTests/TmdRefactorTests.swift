@@ -751,6 +751,20 @@ struct TmdRefactorTests {
         #expect(transposed.contains("[2] - [5] [6]"))
     }
 
+    @Test func testTransposeUsesLexerBoundariesForTiedNotes() throws {
+        let source = "| 1-- 2^-- |"
+        let lexed = Lexer(string: source).tokenize()
+
+        #expect(lexed == [
+            .pipe, .note(Note(accidental: .natural, degree: .c, octave: 0)), .tie, .tie,
+            .note(Note(accidental: .natural, degree: .d, octave: 1)), .tie, .tie,
+            .pipe, .eof,
+        ])
+
+        let transposed = TMDRefactor.transpose(source: source, semitones: 2, keySignature: "C")
+        #expect(transposed == "| 2-- 3^-- |\n")
+    }
+
     @Test func testTransposeCompleteScoreAndUpdateKeySignature() throws {
         let input = """
             ::SCORE::
