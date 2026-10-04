@@ -84,6 +84,33 @@ struct TMDSongInspectorTests {
         #expect(profile.modulations.isEmpty)
     }
 
+    @Test("Tonality analysis is independently callable from the Inspector facade")
+    func testTonalityAnalyzerCanRunIndependently() throws {
+        let tmd = """
+            ::SCORE::
+            ** Tonality Analyzer **
+            != 120
+            ?= C
+            <4/4>
+
+            intro:Piano@|0|{
+                <4*>
+                1 3 5 1^
+            }
+
+            -> intro ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+        let timing = TMDSongTimingAnalyzer.analyze(sheet: sheet, timelineDirectives: timeline.directives)
+        let profile = TMDSongTonalityAnalyzer.analyze(
+            sheet: sheet, timingProfile: timing, locale: .zhHant)
+
+        #expect(profile.globalPitchClasses.weights[0] > 0)
+        #expect(profile.globalInference.tonic != nil)
+        #expect(profile.sections.count == 1)
+    }
+
     @Test func prototypeOnlyScoreDoesNotCreateInspectorPianoTrack() throws {
         let tmd = """
             ::SCORE::
