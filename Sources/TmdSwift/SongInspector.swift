@@ -555,36 +555,7 @@ public enum TMDSongInspector {
     }
 
     private static func buildHarmonyProfile(sheet: Sheet) -> TMDHarmonyProfile {
-        var chords: [String] = []
-        for p in sheet.entries {
-            for sec in p.sections {
-                for group in sec.unitGroups {
-                    for unit in group.units {
-                        if case .chord(let ch) = unit {
-                            let raw = "[\(ch.description)]"
-                            if !chords.contains(raw) {
-                                chords.append(raw)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        var modulations: [String] = []
-        for order in sheet.playback {
-            if case .relative(let val) = order {
-                modulations.append("Relative: \(val) semitones")
-            } else if case .absolute(let val) = order {
-                modulations.append("Key: \(val)")
-            }
-        }
-
-        return TMDHarmonyProfile(
-            distinctChords: chords,
-            chordCount: chords.count,
-            modulations: modulations
-        )
+        TMDSongHarmonyAnalyzer.analyze(sheet: sheet)
     }
 
     private static func buildDensityProfile(sheet: Sheet) -> TMDArrangementDensityProfile {

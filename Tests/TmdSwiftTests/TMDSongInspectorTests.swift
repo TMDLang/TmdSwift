@@ -60,6 +60,30 @@ struct TMDSongInspectorTests {
         #expect(profile.spanSemitones == 12)
     }
 
+    @Test("Harmony analysis is independently callable from the Inspector facade")
+    func testHarmonyAnalyzerCanRunIndependently() throws {
+        let tmd = """
+            ::SCORE::
+            ** Harmony Analyzer **
+            != 120
+            ?= C
+            <4/4>
+
+            intro:Piano@|0|{
+                <4*>
+                [C] - [G] -
+            }
+
+            -> intro ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let profile = TMDSongHarmonyAnalyzer.analyze(sheet: sheet)
+
+        #expect(profile.distinctChords == ["[C]", "[G]"])
+        #expect(profile.chordCount == 2)
+        #expect(profile.modulations.isEmpty)
+    }
+
     @Test func prototypeOnlyScoreDoesNotCreateInspectorPianoTrack() throws {
         let tmd = """
             ::SCORE::
