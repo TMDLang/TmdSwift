@@ -118,6 +118,18 @@ func refactoringGridHasExplicitBoundary() throws {
     #expect(!facade.contains("public static func doubleGrid("))
 }
 
+@Test("Refactoring track operations have an explicit responsibility boundary")
+func refactoringTracksHaveExplicitBoundary() throws {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let refactoringRoot = packageRoot.appendingPathComponent("Sources/TmdSwift/Refactoring")
+    #expect(FileManager.default.fileExists(atPath: refactoringRoot.appendingPathComponent("TmdRefactorTracks.swift").path))
+    let facade = try String(contentsOf: refactoringRoot.appendingPathComponent("TmdRefactor.swift"))
+    #expect(!facade.contains("public static func duplicateTrack("))
+}
+
 @Test("Presentation consumers stay outside the syntax core")
 func presentationResponsibilitiesHaveExplicitSourceBoundaries() {
     let packageRoot = URL(fileURLWithPath: #filePath)
