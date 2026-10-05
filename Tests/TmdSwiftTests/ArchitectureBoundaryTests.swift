@@ -55,6 +55,18 @@ func inspectorAnalyzersHaveExplicitSourceBoundaries() {
     }
 }
 
+@Test("Inspector profiles have an explicit source boundary")
+func inspectorProfilesHaveExplicitBoundary() throws {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let analysisRoot = packageRoot.appendingPathComponent("Sources/TmdSwift/Analysis")
+    #expect(FileManager.default.fileExists(atPath: analysisRoot.appendingPathComponent("TmdSongProfiles.swift").path))
+    let inspector = try String(contentsOf: analysisRoot.appendingPathComponent("TmdSongInspector.swift"))
+    #expect(!inspector.contains("public struct TmdSongProfile"))
+}
+
 @Test("Text I/O and source refactoring stay outside the syntax core")
 func toolResponsibilitiesHaveExplicitSourceBoundaries() {
     let packageRoot = URL(fileURLWithPath: #filePath)
