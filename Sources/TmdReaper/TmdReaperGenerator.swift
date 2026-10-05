@@ -10,14 +10,14 @@ private struct TempoSegment {
 }
 
 /// Exporter for REAPER project files (.rpp) with tempo maps, markers, and inline MIDI data.
-public struct TMDReaperGenerator {
+public struct TmdReaperGenerator {
     public static let defaultPPQ: UInt16 = 960
 
     /// Generates REAPER project file content (.rpp) from a Sheet.
     public static func generateRPP(from inputSheet: Sheet, ppq: UInt16 = defaultPPQ) -> String {
-        let sheet = TMDMacroEvaluator.expandOrTrap(inputSheet)
+        let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
         let distinctInstruments = sheet.distinctInstruments(fallbackToDefault: false)
-        let conductorTimeline = TMDPlaybackRenderer.renderConductor(sheet: sheet)
+        let conductorTimeline = TmdPlaybackRenderer.renderConductor(sheet: sheet)
 
         // Build timeline tempo segments
         let initialBpm = sheet.speed > 0 ? sheet.speed : 120
@@ -95,7 +95,7 @@ public struct TMDReaperGenerator {
                     }
                     markerDirectiveIndex += 1
                 }
-                let paragraphDuration = TMDPlaybackRenderer.duration(
+                let paragraphDuration = TmdPlaybackRenderer.duration(
                     of: name, in: sheet, beat: markerTimeSignature)
                 let secondPos = quarterToSeconds(currentQuarter)
                 markerLines.append(
@@ -118,7 +118,7 @@ public struct TMDReaperGenerator {
         var melodyChannel: UInt8 = 0
 
         for instrument in distinctInstruments {
-            let instTimeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: instrument)
+            let instTimeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: instrument)
             guard
                 instTimeline.events.contains(where: { event in
                     switch event.content {
@@ -150,7 +150,7 @@ public struct TMDReaperGenerator {
             let color = getTrackColor(midiInst)
 
             // Render track events
-            let events: [MIDIEvent] = TMDMIDIGenerator.instrumentEvents(
+            let events: [MIDIEvent] = TmdMIDIGenerator.instrumentEvents(
                 timeline: instTimeline,
                 instrument: instrument,
                 midiInstrument: midiInst,

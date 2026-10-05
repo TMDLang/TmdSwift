@@ -5,8 +5,8 @@ import TmdReaper
 
 @testable import TmdSwift
 
-@Suite("TMDReaperGenerator Tests")
-struct TMDReaperGeneratorTests {
+@Suite("TmdReaperGenerator Tests")
+struct TmdReaperGeneratorTests {
 
     @Test func testBasicProjectHeaderAndMarkers() throws {
         let tmd = """
@@ -27,8 +27,8 @@ struct TMDReaperGeneratorTests {
             }
             -> Intro -> Verse ->#
             """
-        let sheet = try TMDParser.parseThrowing(string: tmd)
-        let rpp = TMDReaperGenerator.generateRPP(from: sheet)
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let rpp = TmdReaperGenerator.generateRPP(from: sheet)
 
         // Project structure
         #expect(rpp.contains("<REAPER_PROJECT"))
@@ -63,8 +63,8 @@ struct TMDReaperGeneratorTests {
             }
             -> A ->#
             """
-        let sheet = try TMDParser.parseThrowing(string: tmd)
-        let rpp = TMDReaperGenerator.generateRPP(from: sheet)
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let rpp = TmdReaperGenerator.generateRPP(from: sheet)
 
         // Initial tempo: 60 BPM at 0.0s
         #expect(
@@ -103,8 +103,8 @@ struct TMDReaperGeneratorTests {
             }
             -> A -> B -> C ->#
             """
-        let sheet = try TMDParser.parseThrowing(string: tmd)
-        let rpp = TMDReaperGenerator.generateRPP(from: sheet)
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let rpp = TmdReaperGenerator.generateRPP(from: sheet)
 
         // A = 4 quarters, B starts 1 bar later in the active 3/4 meter and lasts 4 quarters.
         // C therefore starts at 11 quarters = 5.5 seconds at 120 BPM.
@@ -135,8 +135,8 @@ struct TMDReaperGeneratorTests {
             }
             -> A ->#
             """
-        let sheet = try TMDParser.parseThrowing(string: tmd)
-        let rpp = TMDReaperGenerator.generateRPP(from: sheet)
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let rpp = TmdReaperGenerator.generateRPP(from: sheet)
 
         // Tracks exist
         #expect(rpp.contains("NAME \"Piano-L\""))
@@ -193,8 +193,8 @@ struct TMDReaperGeneratorTests {
             }
             -> A ->#
             """
-        let sheet = try TMDParser.parseThrowing(string: tmd)
-        let rpp = TMDReaperGenerator.generateRPP(from: sheet)
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let rpp = TmdReaperGenerator.generateRPP(from: sheet)
 
         #expect(!rpp.contains("NAME \"Piano\""))
     }
@@ -205,8 +205,8 @@ struct TMDReaperGeneratorTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("sample/basic/三天三夜.tmd")
-        let sheet = try TMDParser.parseThrowing(filePathOrURL: sampleURL.path)
-        let rpp = TMDReaperGenerator.generateRPP(from: sheet)
+        let sheet = try TmdParser.parseThrowing(filePathOrURL: sampleURL.path)
+        let rpp = TmdReaperGenerator.generateRPP(from: sheet)
 
         #expect(rpp.contains("<REAPER_PROJECT"))
         #expect(rpp.contains("<TEMPOENVEX"))

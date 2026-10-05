@@ -34,8 +34,8 @@ struct VocaloidTests {
                 1 2 3 4
             }
             """
-        let sheet = try TMDParser.parseThrowing(string: tmdContent)
-        let vsqData = TMDVSQGenerator.generateVSQ(
+        let sheet = try TmdParser.parseThrowing(string: tmdContent)
+        let vsqData = TmdVSQGenerator.generateVSQ(
             from: sheet, options: VocaloidExportOptions(singerName: "Miku"))
 
         #expect(vsqData.count > 100)
@@ -61,8 +61,8 @@ struct VocaloidTests {
                 1 3 5 1^
             }
             """
-        let sheet = try TMDParser.parseThrowing(string: tmdContent)
-        let vsqx = TMDVSQXGenerator.generateVSQX(
+        let sheet = try TmdParser.parseThrowing(string: tmdContent)
+        let vsqx = TmdVSQXGenerator.generateVSQX(
             from: sheet, options: VocaloidExportOptions(singerName: "Hatsune Miku"))
 
         #expect(vsqx.contains("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>"))

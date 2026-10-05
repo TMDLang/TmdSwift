@@ -32,7 +32,7 @@ public struct USTExportOptions: Sendable, Equatable {
 
 /// Exporter for UTAU sequence text (`.ust`) format, fully compatible with
 /// original UTAU and modern cross-platform OpenUtau.
-public struct TMDUSTGenerator: Sendable {
+public struct TmdUSTGenerator: Sendable {
     /// Generates a `.ust` formatted string from a parsed TMD `Sheet`.
     ///
     /// - Parameters:
@@ -46,7 +46,7 @@ public struct TMDUSTGenerator: Sendable {
         options: USTExportOptions = USTExportOptions()
     ) -> String {
         let selectedInstrument = resolveTargetInstrument(sheet: sheet, requested: targetInstrument)
-        let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: selectedInstrument)
+        let timeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: selectedInstrument)
 
         let initialTempo = sheet.speed > 0 ? sheet.speed : 120.0
         let title =
@@ -89,7 +89,7 @@ public struct TMDUSTGenerator: Sendable {
             case .note(let note):
                 let ticks = max(
                     1, Int((event.duration * Double(options.ticksPerQuarter)).rounded()))
-                let pitch = TMDMIDIGenerator.noteToMIDIPitch(note, keyOffset: event.state.keyOffset)
+                let pitch = TmdMIDIGenerator.noteToMIDIPitch(note, keyOffset: event.state.keyOffset)
                 let lyric: String
                 if lyricIndex < options.lyrics.count {
                     lyric = options.lyrics[lyricIndex]

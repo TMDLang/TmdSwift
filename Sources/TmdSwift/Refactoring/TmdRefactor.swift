@@ -1,7 +1,7 @@
 import Foundation
 
 /// Errors that can occur during TMD refactoring operations.
-public enum TMDRefactorError: Error, LocalizedError, Equatable {
+public enum TmdRefactorError: Error, LocalizedError, Equatable {
     case invalidScore(String)
     case instrumentNotFound(String)
     case sectionNotFound(String)
@@ -25,7 +25,7 @@ public enum TMDRefactorError: Error, LocalizedError, Equatable {
 }
 
 /// Target selector for scoped refactoring operations.
-public struct TMDRefactorTarget: Sendable {
+public struct TmdRefactorTarget: Sendable {
     public var section: String?
     public var instrument: String?
 
@@ -36,7 +36,7 @@ public struct TMDRefactorTarget: Sendable {
 }
 
 /// Provides source-preserving formatting and refactoring operations on TMD score documents.
-public struct TMDRefactor {
+public struct TmdRefactor {
     private static func reindentBlockComment(lines: [String], indentPrefix: String) -> [String] {
         if lines.count <= 1 {
             return lines.map { indentPrefix + $0.trimmingCharacters(in: .whitespaces) }
@@ -165,13 +165,13 @@ public struct TMDRefactor {
         let matches = regex.matches(in: source, options: [], range: range)
         if matches.isEmpty {
             // Check if score even parses
-            _ = try TMDParser.parseThrowing(string: source)
+            _ = try TmdParser.parseThrowing(string: source)
         }
 
         let replaced = regex.stringByReplacingMatches(
             in: source, options: [], range: range, withTemplate: "$1:\(newInstrument)@")
         // Verify valid TMD score after rename
-        _ = try TMDParser.parseThrowing(string: replaced)
+        _ = try TmdParser.parseThrowing(string: replaced)
         return replaced
     }
 
@@ -204,17 +204,17 @@ public struct TMDRefactor {
         )
 
         // Verify valid TMD score after rename
-        _ = try TMDParser.parseThrowing(string: result)
+        _ = try TmdParser.parseThrowing(string: result)
         return result
     }
 
     /// Extracts all tracks matching the given instrument from the score into a new TMD document.
     /// Preserves score metadata, headers, tempo, key, beat, comments, and orders.
     public static func extractInstrument(from source: String, instrument: String) throws -> String {
-        let sheet = try TMDParser.parseThrowing(string: source)
+        let sheet = try TmdParser.parseThrowing(string: source)
         let matchingParagraphs = sheet.entries.filter { $0.assignment == instrument }
         guard !matchingParagraphs.isEmpty else {
-            throw TMDRefactorError.instrumentNotFound(instrument)
+            throw TmdRefactorError.instrumentNotFound(instrument)
         }
 
         let rawLines = source.components(separatedBy: .newlines)
@@ -270,7 +270,7 @@ public struct TMDRefactor {
         }
 
         let formatted = format(resultLines.joined(separator: "\n"))
-        _ = try TMDParser.parseThrowing(string: formatted)
+        _ = try TmdParser.parseThrowing(string: formatted)
         return formatted
     }
 
@@ -282,16 +282,16 @@ public struct TMDRefactor {
         section: String? = nil,
         octaveShift: Int = 0
     ) throws -> String {
-        let sheet = try TMDParser.parseThrowing(string: source)
+        let sheet = try TmdParser.parseThrowing(string: source)
         var matching = sheet.entries.filter { $0.assignment == sourceInstrument }
         if let sec = section {
             matching = matching.filter { $0.name == sec }
         }
         if matching.isEmpty {
             if let sec = section {
-                throw TMDRefactorError.trackNotFound("\(sec):\(sourceInstrument)")
+                throw TmdRefactorError.trackNotFound("\(sec):\(sourceInstrument)")
             }
-            throw TMDRefactorError.instrumentNotFound(sourceInstrument)
+            throw TmdRefactorError.instrumentNotFound(sourceInstrument)
         }
 
         let duplicatedParagraphs: [Entry] = matching.map { orig in
@@ -358,7 +358,7 @@ public struct TMDRefactor {
         }
 
         let formatted = format(combined)
-        _ = try TMDParser.parseThrowing(string: formatted)
+        _ = try TmdParser.parseThrowing(string: formatted)
         return formatted
     }
 
@@ -370,16 +370,16 @@ public struct TMDRefactor {
         section: String? = nil,
         intervalSteps: Int
     ) throws -> String {
-        let sheet = try TMDParser.parseThrowing(string: source)
+        let sheet = try TmdParser.parseThrowing(string: source)
         var matching = sheet.entries.filter { $0.assignment == sourceInstrument }
         if let sec = section {
             matching = matching.filter { $0.name == sec }
         }
         if matching.isEmpty {
             if let sec = section {
-                throw TMDRefactorError.trackNotFound("\(sec):\(sourceInstrument)")
+                throw TmdRefactorError.trackNotFound("\(sec):\(sourceInstrument)")
             }
-            throw TMDRefactorError.instrumentNotFound(sourceInstrument)
+            throw TmdRefactorError.instrumentNotFound(sourceInstrument)
         }
 
         let steps = intervalSteps
@@ -459,13 +459,13 @@ public struct TMDRefactor {
         }
 
         let formatted = format(combined)
-        _ = try TMDParser.parseThrowing(string: formatted)
+        _ = try TmdParser.parseThrowing(string: formatted)
         return formatted
     }
 
     /// Unrolls / inlines score playback orders into a linear score sequence.
     public static func inlineOrders(source: String) throws -> String {
-        let sheet = try TMDParser.parseThrowing(string: source)
+        let sheet = try TmdParser.parseThrowing(string: source)
         guard !sheet.playback.isEmpty else { return source }
 
         var seenInstruments: [String] = []
@@ -522,7 +522,7 @@ public struct TMDRefactor {
     }
 
     /// Doubles grid resolution (<4*> -> <8*>) padding units with ties, doubling tuplet dash lengths.
-    public static func doubleGrid(source: String, target: TMDRefactorTarget? = nil) throws -> String
+    public static func doubleGrid(source: String, target: TmdRefactorTarget? = nil) throws -> String
     {
         let rawLines = source.components(separatedBy: .newlines)
         var resultLines: [String] = []
@@ -592,7 +592,7 @@ public struct TMDRefactor {
     }
 
     /// Halves grid resolution (<8*> -> <4*>) collapsing ties and halving tuplet lengths.
-    public static func halveGrid(source: String, target: TMDRefactorTarget? = nil) throws -> String
+    public static func halveGrid(source: String, target: TmdRefactorTarget? = nil) throws -> String
     {
         let rawLines = source.components(separatedBy: .newlines)
         var resultLines: [String] = []
@@ -642,7 +642,7 @@ public struct TMDRefactor {
                 let lenStr = nsTrimmed.substring(with: gm.range(at: 1))
                 let curLen = Int(lenStr) ?? 4
                 if curLen % 2 != 0 {
-                    throw TMDRefactorError.invalidOperation("Cannot halve odd grid <\(curLen)*>")
+                    throw TmdRefactorError.invalidOperation("Cannot halve odd grid <\(curLen)*>")
                 }
                 let newLen = curLen / 2
                 let indent = String(rawLine.prefix(while: { $0 == " " || $0 == "\t" }))
@@ -748,7 +748,7 @@ public struct TMDRefactor {
                 let u1 = measureTokens[i]
                 if let tuplet = parseTupletToken(u1) {
                     if tuplet.dashes.count % 2 != 0 {
-                        throw TMDRefactorError.invalidOperation(
+                        throw TmdRefactorError.invalidOperation(
                             "Cannot halve tuplet with odd length: '\(u1)' in | \(measureTokens.joined(separator: " ")) |"
                         )
                     }
@@ -760,13 +760,13 @@ public struct TMDRefactor {
                 }
 
                 if i + 1 >= measureTokens.count {
-                    throw TMDRefactorError.invalidOperation(
+                    throw TmdRefactorError.invalidOperation(
                         "Cannot halve measure with odd number of units: | \(measureTokens.joined(separator: " ")) |"
                     )
                 }
                 let u2 = measureTokens[i + 1]
                 if u2 != "-" {
-                    throw TMDRefactorError.invalidOperation(
+                    throw TmdRefactorError.invalidOperation(
                         "Cannot halve grid: unit '\(u1) \(u2)' does not sustain with a tie '-'"
                     )
                 }
@@ -1007,7 +1007,7 @@ public struct TMDRefactor {
     }
 
     /// Optimizes and compresses grid resolution repeatedly until minimal noteLength is reached.
-    public static func optimizeGrid(source: String, target: TMDRefactorTarget? = nil) -> String {
+    public static func optimizeGrid(source: String, target: TmdRefactorTarget? = nil) -> String {
         if target?.section != nil || target?.instrument != nil {
             var current = source
             while true {
@@ -1024,10 +1024,10 @@ public struct TMDRefactor {
 
         // Optimize each paragraph independently so one indivisible track does not block other tracks
         var current = source
-        if let sheet = try? TMDParser.parseThrowing(string: current) {
+        if let sheet = try? TmdParser.parseThrowing(string: current) {
             for p in sheet.entries {
                 var paraCurrent = current
-                let pTarget = TMDRefactorTarget(section: p.name, instrument: p.assignment)
+                let pTarget = TmdRefactorTarget(section: p.name, instrument: p.assignment)
                 while true {
                     do {
                         let next = try halveGrid(source: paraCurrent, target: pTarget)
@@ -1050,7 +1050,7 @@ public struct TMDRefactor {
         diatonicSteps: Int = 0,
         keySignature: String? = nil,
         updateKeySignature: Bool = false,
-        target: TMDRefactorTarget? = nil
+        target: TmdRefactorTarget? = nil
     ) -> String {
         if semitones == 0 && diatonicSteps == 0 && !updateKeySignature {
             return source

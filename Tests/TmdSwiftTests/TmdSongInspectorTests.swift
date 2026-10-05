@@ -4,7 +4,7 @@ import Testing
 @testable import TmdSwift
 
 @Suite("TMD Song Profile & Inspector Tests")
-struct TMDSongInspectorTests {
+struct TmdSongInspectorTests {
     @Test("Timing analysis is independently callable from the Inspector facade")
     func testTimingAnalyzerCanRunIndependently() throws {
         let tmd = """
@@ -21,9 +21,9 @@ struct TMDSongInspectorTests {
 
             -> intro ->#
             """
-        let sheet = try #require(TMDParser.parse(string: tmd))
-        let directives = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano").directives
-        let timing = TMDSongTimingAnalyzer.analyze(sheet: sheet, timelineDirectives: directives)
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let directives = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Piano").directives
+        let timing = TmdSongTimingAnalyzer.analyze(sheet: sheet, timelineDirectives: directives)
 
         #expect(timing.totalMeasures == 1)
         #expect(timing.totalDurationSeconds == 2.0)
@@ -46,11 +46,11 @@ struct TMDSongInspectorTests {
 
             -> intro ->#
             """
-        let sheet = try #require(TMDParser.parse(string: tmd))
-        let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
-        let timing = TMDSongTimingAnalyzer.analyze(sheet: sheet, timelineDirectives: timeline.directives)
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let timeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+        let timing = TmdSongTimingAnalyzer.analyze(sheet: sheet, timelineDirectives: timeline.directives)
         let profile = try #require(
-            TMDSongPitchRangeAnalyzer.analyze(
+            TmdSongPitchRangeAnalyzer.analyze(
                 instrument: "Piano", sheet: sheet, timingProfile: timing,
                 timelineDirectives: timeline.directives))
 
@@ -76,8 +76,8 @@ struct TMDSongInspectorTests {
 
             -> intro ->#
             """
-        let sheet = try #require(TMDParser.parse(string: tmd))
-        let profile = TMDSongHarmonyAnalyzer.analyze(sheet: sheet)
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let profile = TmdSongHarmonyAnalyzer.analyze(sheet: sheet)
 
         #expect(profile.distinctChords == ["[C]", "[G]"])
         #expect(profile.chordCount == 2)
@@ -100,10 +100,10 @@ struct TMDSongInspectorTests {
 
             -> intro ->#
             """
-        let sheet = try #require(TMDParser.parse(string: tmd))
-        let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
-        let timing = TMDSongTimingAnalyzer.analyze(sheet: sheet, timelineDirectives: timeline.directives)
-        let profile = TMDSongTonalityAnalyzer.analyze(
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let timeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+        let timing = TmdSongTimingAnalyzer.analyze(sheet: sheet, timelineDirectives: timeline.directives)
+        let profile = TmdSongTonalityAnalyzer.analyze(
             sheet: sheet, timingProfile: timing, locale: .zhHant)
 
         #expect(profile.globalPitchClasses.weights[0] > 0)
@@ -124,9 +124,9 @@ struct TMDSongInspectorTests {
                 1 2 3 4
             }
             """
-        let sheet = try #require(TMDParser.parse(string: tmd))
+        let sheet = try #require(TmdParser.parse(string: tmd))
 
-        let profile = TMDSongInspector.inspect(sheet: sheet)
+        let profile = TmdSongInspector.inspect(sheet: sheet)
 
         #expect(profile.instrumentRanges.isEmpty)
         #expect(profile.density.sectionDensities.allSatisfy { !$0.instruments.contains("") })
@@ -173,8 +173,8 @@ struct TMDSongInspectorTests {
             -> intro -> verse -> {?+2} -> chorus ->#
             """
 
-        let sheet = try #require(TMDParser.parse(string: tmd))
-        let profile = TMDSongInspector.inspect(sheet: sheet)
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let profile = TmdSongInspector.inspect(sheet: sheet)
 
         // 1. Basic Metadata & Keys
         #expect(profile.title == "Inspector Test Song")
@@ -238,7 +238,7 @@ struct TMDSongInspectorTests {
             profile.density.sectionDensities.first { $0.sectionName == "verse" }?.trackCount == 2)
 
         // 7. Text Report Output
-        let report = TMDSongInspector.generateReport(profile)
+        let report = TmdSongInspector.generateReport(profile)
         #expect(report.contains("Inspector Test Song"))
         #expect(report.contains("12.0s") || report.contains("12s"))
         #expect(report.contains("C4"))
@@ -270,8 +270,8 @@ struct TMDSongInspectorTests {
             -> verse -> chorus -> {?+2} -> verse -> chorus ->#
             """
 
-        let sheet = try #require(TMDParser.parse(string: tmd))
-        let profile = TMDSongInspector.inspect(sheet: sheet)
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let profile = TmdSongInspector.inspect(sheet: sheet)
 
         let vocal = try #require(profile.vocalRange)
         // In verse #1: 1 2 3 4 in C -> C4 (60), D4 (62), E4 (64), F4 (65)
@@ -292,7 +292,7 @@ struct TMDSongInspectorTests {
         #expect(vocal.highestNote.measure == 7)
         #expect(abs(vocal.highestNote.timeSeconds - 13.5) < 0.01)
 
-        let report = TMDSongInspector.generateReport(profile)
+        let report = TmdSongInspector.generateReport(profile)
         // Check report string formatting for occurrence, measure, and timestamp
         #expect(report.contains("in [verse #1 @ m.1, 0:00]"))
         #expect(report.contains("in [chorus #2 @ m.7, 0:13]"))
@@ -316,8 +316,8 @@ struct TMDSongInspectorTests {
             -> A ->#
             """
 
-        let sheet = try #require(TMDParser.parse(string: tmd))
-        let profile = TMDSongInspector.inspect(sheet: sheet, targetInstrument: "Vocal")
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let profile = TmdSongInspector.inspect(sheet: sheet, targetInstrument: "Vocal")
 
         #expect(abs(profile.timing.totalDurationSeconds - 6.0) < 0.00001)
         #expect(abs(profile.timing.sections[0].durationSeconds - 6.0) < 0.00001)
@@ -348,8 +348,8 @@ struct TMDSongInspectorTests {
             -> verse -> {?+2} -> chorus ->#
             """
 
-        let sheet = try #require(TMDParser.parse(string: tmd))
-        let profile = TMDSongInspector.inspect(sheet: sheet)
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let profile = TmdSongInspector.inspect(sheet: sheet)
 
         let tonality = try #require(profile.tonality)
 
@@ -378,7 +378,7 @@ struct TMDSongInspectorTests {
         #expect(tonality.circleOfFifthsPath == [0, 2])
 
         // 3. Human-readable Producer Report
-        let report = TMDSongInspector.generateReport(profile)
+        let report = TmdSongInspector.generateReport(profile)
         #expect(report.contains("🗝  調性診斷："))
         #expect(report.contains("由實際發聲的音符與和弦推測調性"))
         #expect(report.contains("五度圈歷程:"))
@@ -404,8 +404,8 @@ struct TMDSongInspectorTests {
             -> verse ->#
             """
 
-        let sheet = try #require(TMDParser.parse(string: tmd))
-        let profile = TMDSongInspector.inspect(sheet: sheet)
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let profile = TmdSongInspector.inspect(sheet: sheet)
 
         let tonality = try #require(profile.tonality)
         let verseSec = tonality.sections[0]
@@ -417,7 +417,7 @@ struct TMDSongInspectorTests {
                 || verseSec.nonDiatonicNotes.contains("A#"))
         #expect(verseSec.pitchClasses.chromaticRatio > 0.1)
 
-        let report = TMDSongInspector.generateReport(profile)
+        let report = TmdSongInspector.generateReport(profile)
         #expect(report.contains("調外音:"))
     }
 
@@ -438,8 +438,8 @@ struct TMDSongInspectorTests {
             -> verse ->#
             """
 
-        let sheet = try #require(TMDParser.parse(string: tmd))
-        let profile = TMDSongInspector.inspect(sheet: sheet)
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let profile = TmdSongInspector.inspect(sheet: sheet)
         let tonality = try #require(profile.tonality)
         let section = try #require(tonality.sections.first)
 
@@ -473,8 +473,8 @@ struct TMDSongInspectorTests {
             -> verse -> {?+2} -> chorus ->#
             """
 
-        let sheet = try #require(TMDParser.parse(string: tmd))
-        let profile = TMDSongInspector.inspect(sheet: sheet)
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let profile = TmdSongInspector.inspect(sheet: sheet)
         let tonality = try #require(profile.tonality)
 
         #expect(tonality.sections.map { $0.inferredTonality.tonic } == ["D", "E"])
@@ -506,11 +506,11 @@ struct TMDSongInspectorTests {
             -> verse -> {?+2} -> chorus ->#
             """
 
-        let sheet = try #require(TMDParser.parse(string: tmd))
-        let profile = TMDSongInspector.inspect(sheet: sheet)
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let profile = TmdSongInspector.inspect(sheet: sheet)
 
         // 1. SVG Generation
-        let svg = TMDTonalityVisualizer.generateSVG(profile, locale: .en)
+        let svg = TmdTonalityVisualizer.generateSVG(profile, locale: .en)
         #expect(svg.contains("<svg"))
         #expect(svg.contains("Circle of Fifths Trajectory"))
         #expect(svg.contains("12-Tone Pitch Class Distribution"))
@@ -518,7 +518,7 @@ struct TMDSongInspectorTests {
         #expect(svg.contains("Visualizer Test Song"))
 
         // 2. HTML Generation
-        let html = TMDTonalityVisualizer.generateHTML(profile, locale: .en)
+        let html = TmdTonalityVisualizer.generateHTML(profile, locale: .en)
         #expect(html.contains("<!DOCTYPE html>"))
         #expect(html.contains("<svg"))
         #expect(html.contains("Detailed Text Analysis"))
@@ -540,9 +540,9 @@ struct TMDSongInspectorTests {
             -> verse ->#
             """
 
-        let sheet = try #require(TMDParser.parse(string: tmd))
-        let profile = TMDSongInspector.inspect(sheet: sheet, locale: .en)
-        let report = TMDSongInspector.generateReport(profile)
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let profile = TmdSongInspector.inspect(sheet: sheet, locale: .en)
+        let report = TmdSongInspector.generateReport(profile)
 
         #expect(profile.locale == .en)
         #expect(report.contains("TMD Song Profile"))
@@ -552,15 +552,15 @@ struct TMDSongInspectorTests {
     }
 
     @Test func testUnknownLocaleUsesCatalogFallbackWithoutCodeChanges() {
-        let localizer = TMDLocalizer(locale: TMDLocale(rawValue: "ja"), fallbackLocale: .en)
+        let localizer = TmdLocalizer(locale: TmdLocale(rawValue: "ja"), fallbackLocale: .en)
 
         #expect(localizer.text(.reportTitle) == "TMD Song Profile")
         #expect(localizer.text(.analysisScope).contains("Inferred tonality"))
     }
 
     @Test func testLocalizationCatalogIsAvailableWithoutResourceBundle() {
-        let english = TMDLocalizer(locale: .en)
-        let traditionalChinese = TMDLocalizer(locale: .zhHant)
+        let english = TmdLocalizer(locale: .en)
+        let traditionalChinese = TmdLocalizer(locale: .zhHant)
 
         #expect(english.text(.reportTitle) == "TMD Song Profile")
         #expect(english.text(.modulationStart, arguments: ["C", "Major"]) == "Starts in C Major")

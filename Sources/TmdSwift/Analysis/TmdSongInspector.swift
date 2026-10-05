@@ -1,7 +1,7 @@
 import Foundation
 
 /// Pitch descriptor with MIDI note number, canonical note name (e.g. "C4", "A5"), and source section context.
-public struct TMDNotePitchInfo: Equatable, Sendable, Codable {
+public struct TmdNotePitchInfo: Equatable, Sendable, Codable {
     public let midiPitch: Int
     public let noteName: String
     public let sectionName: String
@@ -38,7 +38,7 @@ public struct TMDNotePitchInfo: Equatable, Sendable, Codable {
 }
 
 /// Qualitative rating of a vocal/instrument pitch span difficulty.
-public enum TMDPitchRangeDifficulty: String, Equatable, Sendable, Codable {
+public enum TmdPitchRangeDifficulty: String, Equatable, Sendable, Codable {
     case easy
     case moderate
     case challenging
@@ -46,7 +46,7 @@ public enum TMDPitchRangeDifficulty: String, Equatable, Sendable, Codable {
 }
 
 /// Standard classical/pop vocal voice classifications.
-public enum TMDVocalClassification: String, Equatable, Sendable, Codable, CaseIterable {
+public enum TmdVocalClassification: String, Equatable, Sendable, Codable, CaseIterable {
     case soprano
     case mezzoSoprano = "mezzo-soprano"
     case contralto
@@ -56,30 +56,30 @@ public enum TMDVocalClassification: String, Equatable, Sendable, Codable, CaseIt
 }
 
 /// Vocal or instrument pitch range and tessitura summary.
-public struct TMDPitchRangeProfile: Equatable, Sendable, Codable {
+public struct TmdPitchRangeProfile: Equatable, Sendable, Codable {
     public let instrument: String
     /// Canonical assignment represented by this pitch profile.
     public var assignment: String { instrument }
-    public let lowestNote: TMDNotePitchInfo
-    public let highestNote: TMDNotePitchInfo
+    public let lowestNote: TmdNotePitchInfo
+    public let highestNote: TmdNotePitchInfo
     public let spanSemitones: Int
     public var spanOctaves: Double {
         Double(spanSemitones) / 12.0
     }
     public let totalNotes: Int
     public let averageMidiPitch: Double
-    public let difficulty: TMDPitchRangeDifficulty
-    public let suitableVoiceTypes: [TMDVocalClassification]
+    public let difficulty: TmdPitchRangeDifficulty
+    public let suitableVoiceTypes: [TmdVocalClassification]
 
     public init(
         instrument: String,
-        lowestNote: TMDNotePitchInfo,
-        highestNote: TMDNotePitchInfo,
+        lowestNote: TmdNotePitchInfo,
+        highestNote: TmdNotePitchInfo,
         spanSemitones: Int,
         totalNotes: Int,
         averageMidiPitch: Double,
-        difficulty: TMDPitchRangeDifficulty = .easy,
-        suitableVoiceTypes: [TMDVocalClassification] = []
+        difficulty: TmdPitchRangeDifficulty = .easy,
+        suitableVoiceTypes: [TmdVocalClassification] = []
     ) {
         self.instrument = instrument
         self.lowestNote = lowestNote
@@ -93,7 +93,7 @@ public struct TMDPitchRangeProfile: Equatable, Sendable, Codable {
 }
 
 /// Timing span descriptor for a section in the song's playback timeline.
-public struct TMDSectionTimingProfile: Equatable, Sendable, Codable {
+public struct TmdSectionTimingProfile: Equatable, Sendable, Codable {
     public let name: String
     public let orderIndex: Int
     public let occurrenceIndex: Int
@@ -134,13 +134,13 @@ public struct TMDSectionTimingProfile: Equatable, Sendable, Codable {
 }
 
 /// Song playback timeline timing and duration breakdown.
-public struct TMDTimingProfile: Equatable, Sendable, Codable {
+public struct TmdTimingProfile: Equatable, Sendable, Codable {
     public let totalDurationSeconds: Double
     public let totalMeasures: Int
-    public let sections: [TMDSectionTimingProfile]
+    public let sections: [TmdSectionTimingProfile]
 
     public init(
-        totalDurationSeconds: Double, totalMeasures: Int, sections: [TMDSectionTimingProfile]
+        totalDurationSeconds: Double, totalMeasures: Int, sections: [TmdSectionTimingProfile]
     ) {
         self.totalDurationSeconds = totalDurationSeconds
         self.totalMeasures = totalMeasures
@@ -149,7 +149,7 @@ public struct TMDTimingProfile: Equatable, Sendable, Codable {
 }
 
 /// Harmonic content and progression analysis.
-public struct TMDHarmonyProfile: Equatable, Sendable, Codable {
+public struct TmdHarmonyProfile: Equatable, Sendable, Codable {
     public let distinctChords: [String]
     public let chordCount: Int
     public let modulations: [String]
@@ -162,7 +162,7 @@ public struct TMDHarmonyProfile: Equatable, Sendable, Codable {
 }
 
 /// Arrangement orchestration and concurrent track layering density.
-public struct TMDArrangementDensityProfile: Equatable, Sendable, Codable {
+public struct TmdArrangementDensityProfile: Equatable, Sendable, Codable {
     public struct SectionDensity: Equatable, Sendable, Codable {
         public let sectionName: String
         public let trackCount: Int
@@ -185,7 +185,7 @@ public struct TMDArrangementDensityProfile: Equatable, Sendable, Codable {
 }
 
 /// Distribution of the 12 chromatic pitch classes across a section or entire score.
-public struct TMDPitchClassDistribution: Equatable, Sendable, Codable {
+public struct TmdPitchClassDistribution: Equatable, Sendable, Codable {
     /// Accumulated quarter-note duration weights for each pitch class (0: C, 1: C#, ..., 11: B).
     public let weights: [Double]
     /// Ratio of diatonic notes to total pitch weight (0.0 ~ 1.0).
@@ -205,29 +205,29 @@ public struct TMDPitchClassDistribution: Equatable, Sendable, Codable {
     }
 }
 
-public enum TMDTonalityMode: String, Equatable, Sendable, Codable {
+public enum TmdTonalityMode: String, Equatable, Sendable, Codable {
     case major, minor, modal, ambiguous, insufficient
 }
 
-public enum TMDScaleFamily: String, Equatable, Sendable, Codable {
+public enum TmdScaleFamily: String, Equatable, Sendable, Codable {
     case major, naturalMinor, harmonicMinor, melodicMinor, modal, chromatic, unknown
 }
 
-public enum TMDKeyStability: String, Equatable, Sendable, Codable {
+public enum TmdKeyStability: String, Equatable, Sendable, Codable {
     case high
     case moderate
     case ambiguous
     case insufficient
 }
 
-public struct TMDTonalityCandidate: Equatable, Sendable, Codable {
+public struct TmdTonalityCandidate: Equatable, Sendable, Codable {
     public let tonic: String
-    public let mode: TMDTonalityMode
-    public let scaleFamily: TMDScaleFamily
+    public let mode: TmdTonalityMode
+    public let scaleFamily: TmdScaleFamily
     public let correlation: Double
 
     public init(
-        tonic: String, mode: TMDTonalityMode, scaleFamily: TMDScaleFamily, correlation: Double
+        tonic: String, mode: TmdTonalityMode, scaleFamily: TmdScaleFamily, correlation: Double
     ) {
         self.tonic = tonic
         self.mode = mode
@@ -236,27 +236,27 @@ public struct TMDTonalityCandidate: Equatable, Sendable, Codable {
     }
 }
 
-public struct TMDTonalityEvidence: Equatable, Sendable, Codable {
+public struct TmdTonalityEvidence: Equatable, Sendable, Codable {
     public let noteWeight: Double
     public let chordWeight: Double
 }
 
-public struct TMDTonalityInference: Equatable, Sendable, Codable {
+public struct TmdTonalityInference: Equatable, Sendable, Codable {
     public let tonic: String?
-    public let mode: TMDTonalityMode
-    public let scaleFamily: TMDScaleFamily
+    public let mode: TmdTonalityMode
+    public let scaleFamily: TmdScaleFamily
     public let confidence: Double
     public let margin: Double
-    public let stability: TMDKeyStability
+    public let stability: TmdKeyStability
     public let bestCorrelation: Double
-    public let topCandidates: [TMDTonalityCandidate]
-    public let evidence: TMDTonalityEvidence
+    public let topCandidates: [TmdTonalityCandidate]
+    public let evidence: TmdTonalityEvidence
 
     public init(
-        tonic: String?, mode: TMDTonalityMode, scaleFamily: TMDScaleFamily,
-        confidence: Double, margin: Double, stability: TMDKeyStability,
-        bestCorrelation: Double, topCandidates: [TMDTonalityCandidate],
-        evidence: TMDTonalityEvidence
+        tonic: String?, mode: TmdTonalityMode, scaleFamily: TmdScaleFamily,
+        confidence: Double, margin: Double, stability: TmdKeyStability,
+        bestCorrelation: Double, topCandidates: [TmdTonalityCandidate],
+        evidence: TmdTonalityEvidence
     ) {
         self.tonic = tonic
         self.mode = mode
@@ -270,37 +270,37 @@ public struct TMDTonalityInference: Equatable, Sendable, Codable {
     }
 }
 
-public struct TMDPlaybackContext: Equatable, Sendable, Codable {
+public struct TmdPlaybackContext: Equatable, Sendable, Codable {
     public let movableDoBase: String
     public let transpositionOffset: Int
     public let fixedPitch: Bool
 }
 
-public struct TMDTonalityTransition: Equatable, Sendable, Codable {
+public struct TmdTonalityTransition: Equatable, Sendable, Codable {
     public let sectionName: String
     public let tonic: String
-    public let mode: TMDTonalityMode
+    public let mode: TmdTonalityMode
     public let semitoneDiff: Int
     public let fifthsStepDiff: Int
 }
 
 /// Tonality and pitch-class distribution metrics for an individual section.
-public struct TMDSectionTonalityProfile: Equatable, Sendable, Codable {
+public struct TmdSectionTonalityProfile: Equatable, Sendable, Codable {
     public let sectionName: String
     public let occurrenceIndex: Int
-    public let playbackContext: TMDPlaybackContext
+    public let playbackContext: TmdPlaybackContext
     public let fifthsPosition: Int
-    public let pitchClasses: TMDPitchClassDistribution
-    public let inferredTonality: TMDTonalityInference
+    public let pitchClasses: TmdPitchClassDistribution
+    public let inferredTonality: TmdTonalityInference
     public let nonDiatonicNotes: [String]
 
     public init(
         sectionName: String,
         occurrenceIndex: Int,
-        playbackContext: TMDPlaybackContext,
+        playbackContext: TmdPlaybackContext,
         fifthsPosition: Int,
-        pitchClasses: TMDPitchClassDistribution,
-        inferredTonality: TMDTonalityInference,
+        pitchClasses: TmdPitchClassDistribution,
+        inferredTonality: TmdTonalityInference,
         nonDiatonicNotes: [String]
     ) {
         self.sectionName = sectionName
@@ -314,14 +314,14 @@ public struct TMDSectionTonalityProfile: Equatable, Sendable, Codable {
 }
 
 /// Holistic tonality profile across sections and the full song.
-public struct TMDTonalityProfile: Equatable, Sendable, Codable {
-    public let globalPitchClasses: TMDPitchClassDistribution
-    public let globalInference: TMDTonalityInference
-    public let playbackContext: TMDPlaybackContext
+public struct TmdTonalityProfile: Equatable, Sendable, Codable {
+    public let globalPitchClasses: TmdPitchClassDistribution
+    public let globalInference: TmdTonalityInference
+    public let playbackContext: TmdPlaybackContext
     public let playbackTranspositionPath: [Int]
-    public let inferredModulationPath: [TMDTonalityTransition]
+    public let inferredModulationPath: [TmdTonalityTransition]
     public let circleOfFifthsPath: [Int]
-    public let sections: [TMDSectionTonalityProfile]
+    public let sections: [TmdSectionTonalityProfile]
     /// Human-friendly one-line producer diagnosis (e.g. "純淨自然大調，未轉調")
     public let summaryText: String
     /// Qualitative character/mood description (e.g. "陽光明朗，100% 自然音無調外音")
@@ -329,22 +329,22 @@ public struct TMDTonalityProfile: Equatable, Sendable, Codable {
     /// Story of key movements (e.g. "全曲維持單一調性" or "主歌 C 大調 ➔ 副歌升 2 半音至 D 大調")
     public let modulationStory: String
     /// Locale used when generating the human-readable narrative fields.
-    public let locale: TMDLocale
+    public let locale: TmdLocale
     /// Explicit musical tonality declared with `key=`, separate from movable-do `?=`.
     public let declaredKey: String?
 
     public init(
-        globalPitchClasses: TMDPitchClassDistribution,
-        globalInference: TMDTonalityInference,
-        playbackContext: TMDPlaybackContext,
+        globalPitchClasses: TmdPitchClassDistribution,
+        globalInference: TmdTonalityInference,
+        playbackContext: TmdPlaybackContext,
         playbackTranspositionPath: [Int],
-        inferredModulationPath: [TMDTonalityTransition],
+        inferredModulationPath: [TmdTonalityTransition],
         circleOfFifthsPath: [Int],
-        sections: [TMDSectionTonalityProfile],
+        sections: [TmdSectionTonalityProfile],
         summaryText: String = "",
         moodDescription: String = "",
         modulationStory: String = "",
-        locale: TMDLocale = .zhHant,
+        locale: TmdLocale = .zhHant,
         declaredKey: String? = nil
     ) {
         self.globalPitchClasses = globalPitchClasses
@@ -371,53 +371,53 @@ public struct TMDTonalityProfile: Equatable, Sendable, Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.init(
             globalPitchClasses: try container.decode(
-                TMDPitchClassDistribution.self, forKey: .globalPitchClasses),
+                TmdPitchClassDistribution.self, forKey: .globalPitchClasses),
             globalInference: try container.decode(
-                TMDTonalityInference.self, forKey: .globalInference),
+                TmdTonalityInference.self, forKey: .globalInference),
             playbackContext: try container.decode(
-                TMDPlaybackContext.self, forKey: .playbackContext),
+                TmdPlaybackContext.self, forKey: .playbackContext),
             playbackTranspositionPath: try container.decode(
                 [Int].self, forKey: .playbackTranspositionPath),
             inferredModulationPath: try container.decode(
-                [TMDTonalityTransition].self, forKey: .inferredModulationPath),
+                [TmdTonalityTransition].self, forKey: .inferredModulationPath),
             circleOfFifthsPath: try container.decode([Int].self, forKey: .circleOfFifthsPath),
-            sections: try container.decode([TMDSectionTonalityProfile].self, forKey: .sections),
+            sections: try container.decode([TmdSectionTonalityProfile].self, forKey: .sections),
             summaryText: try container.decode(String.self, forKey: .summaryText),
             moodDescription: try container.decode(String.self, forKey: .moodDescription),
             modulationStory: try container.decode(String.self, forKey: .modulationStory),
-            locale: try container.decodeIfPresent(TMDLocale.self, forKey: .locale) ?? .zhHant,
+            locale: try container.decodeIfPresent(TmdLocale.self, forKey: .locale) ?? .zhHant,
             declaredKey: try container.decodeIfPresent(String.self, forKey: .declaredKey)
         )
     }
 }
 
 /// Complete structural, vocal range, harmonic, and temporal profile of a TMD score.
-public struct TMDSongProfile: Equatable, Sendable, Codable {
+public struct TmdSongProfile: Equatable, Sendable, Codable {
     public let title: String
     public let initialTempo: Double
     public let initialKey: String
     public let initialTimeSignature: String
-    public let timing: TMDTimingProfile
-    public let vocalRange: TMDPitchRangeProfile?
-    public let instrumentRanges: [TMDPitchRangeProfile]
-    public let harmony: TMDHarmonyProfile
-    public let density: TMDArrangementDensityProfile
-    public let tonality: TMDTonalityProfile?
+    public let timing: TmdTimingProfile
+    public let vocalRange: TmdPitchRangeProfile?
+    public let instrumentRanges: [TmdPitchRangeProfile]
+    public let harmony: TmdHarmonyProfile
+    public let density: TmdArrangementDensityProfile
+    public let tonality: TmdTonalityProfile?
     /// Locale used for localized narrative fields in this profile.
-    public let locale: TMDLocale
+    public let locale: TmdLocale
 
     public init(
         title: String,
         initialTempo: Double,
         initialKey: String,
         initialTimeSignature: String,
-        timing: TMDTimingProfile,
-        vocalRange: TMDPitchRangeProfile?,
-        instrumentRanges: [TMDPitchRangeProfile],
-        harmony: TMDHarmonyProfile,
-        density: TMDArrangementDensityProfile,
-        tonality: TMDTonalityProfile? = nil,
-        locale: TMDLocale = .zhHant
+        timing: TmdTimingProfile,
+        vocalRange: TmdPitchRangeProfile?,
+        instrumentRanges: [TmdPitchRangeProfile],
+        harmony: TmdHarmonyProfile,
+        density: TmdArrangementDensityProfile,
+        tonality: TmdTonalityProfile? = nil,
+        locale: TmdLocale = .zhHant
     ) {
         self.title = title
         self.initialTempo = initialTempo
@@ -444,29 +444,29 @@ public struct TMDSongProfile: Equatable, Sendable, Codable {
             initialTempo: try container.decode(Double.self, forKey: .initialTempo),
             initialKey: try container.decode(String.self, forKey: .initialKey),
             initialTimeSignature: try container.decode(String.self, forKey: .initialTimeSignature),
-            timing: try container.decode(TMDTimingProfile.self, forKey: .timing),
+            timing: try container.decode(TmdTimingProfile.self, forKey: .timing),
             vocalRange: try container.decodeIfPresent(
-                TMDPitchRangeProfile.self, forKey: .vocalRange),
+                TmdPitchRangeProfile.self, forKey: .vocalRange),
             instrumentRanges: try container.decode(
-                [TMDPitchRangeProfile].self, forKey: .instrumentRanges),
-            harmony: try container.decode(TMDHarmonyProfile.self, forKey: .harmony),
-            density: try container.decode(TMDArrangementDensityProfile.self, forKey: .density),
-            tonality: try container.decodeIfPresent(TMDTonalityProfile.self, forKey: .tonality),
-            locale: try container.decodeIfPresent(TMDLocale.self, forKey: .locale) ?? .zhHant
+                [TmdPitchRangeProfile].self, forKey: .instrumentRanges),
+            harmony: try container.decode(TmdHarmonyProfile.self, forKey: .harmony),
+            density: try container.decode(TmdArrangementDensityProfile.self, forKey: .density),
+            tonality: try container.decodeIfPresent(TmdTonalityProfile.self, forKey: .tonality),
+            locale: try container.decodeIfPresent(TmdLocale.self, forKey: .locale) ?? .zhHant
         )
     }
 }
 
 /// Inspector engine extracting holistic musical metrics, vocal tessitura, and arrangement profiles from a TMD Sheet.
-public enum TMDSongInspector {
+public enum TmdSongInspector {
 
-    /// Inspects a parsed TMD `Sheet` and produces an in-depth `TMDSongProfile`.
+    /// Inspects a parsed TMD `Sheet` and produces an in-depth `TmdSongProfile`.
     public static func inspect(
         sheet inputSheet: Sheet,
         targetInstrument: String? = nil,
-        locale: TMDLocale = .zhHant
-    ) -> TMDSongProfile {
-        let sheet = TMDMacroEvaluator.expandOrTrap(inputSheet)
+        locale: TmdLocale = .zhHant
+    ) -> TmdSongProfile {
+        let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
         let title = sheet.name.isEmpty ? "Untitled" : sheet.name
         let initialTempo = sheet.speed > 0 ? sheet.speed : 120.0
         let initialKey = sheet.keySignature.description
@@ -478,7 +478,7 @@ public enum TMDSongInspector {
 
         // 2. Instrument & Pitch Ranges
         let instruments = sheet.distinctInstruments(fallbackToDefault: false)
-        var instrumentRanges: [TMDPitchRangeProfile] = []
+        var instrumentRanges: [TmdPitchRangeProfile] = []
 
         for inst in instruments {
             if let profile = buildPitchProfile(
@@ -508,7 +508,7 @@ public enum TMDSongInspector {
         let tonalityProfile = buildTonalityProfile(
             sheet: sheet, timingProfile: timingProfile, locale: locale)
 
-        return TMDSongProfile(
+        return TmdSongProfile(
             title: title,
             initialTempo: initialTempo,
             initialKey: initialKey,
@@ -525,47 +525,47 @@ public enum TMDSongInspector {
 
     private static func buildTimingProfile(
         sheet: Sheet, timelineDirectives: [PlaybackDirectiveEvent]
-    ) -> TMDTimingProfile {
-        TMDSongTimingAnalyzer.analyze(
+    ) -> TmdTimingProfile {
+        TmdSongTimingAnalyzer.analyze(
             sheet: sheet, timelineDirectives: timelineDirectives)
     }
 
     private static func buildPitchProfile(
         for instrument: String,
         sheet: Sheet,
-        timingProfile: TMDTimingProfile,
+        timingProfile: TmdTimingProfile,
         timelineDirectives: [PlaybackDirectiveEvent]
-    ) -> TMDPitchRangeProfile? {
-        return TMDSongPitchRangeAnalyzer.analyze(
+    ) -> TmdPitchRangeProfile? {
+        return TmdSongPitchRangeAnalyzer.analyze(
             instrument: instrument, sheet: sheet, timingProfile: timingProfile,
             timelineDirectives: timelineDirectives)
     }
 
     /// Evaluates pitch span difficulty based on semitones range.
-    public static func evaluateDifficulty(spanSemitones: Int) -> TMDPitchRangeDifficulty {
-        TMDSongPitchRangeAnalyzer.evaluateDifficulty(spanSemitones: spanSemitones)
+    public static func evaluateDifficulty(spanSemitones: Int) -> TmdPitchRangeDifficulty {
+        TmdSongPitchRangeAnalyzer.evaluateDifficulty(spanSemitones: spanSemitones)
     }
 
     /// Classical standard vocal ranges with amateur/pop margin and male octave displacement.
     public static func evaluateSuitableVoiceTypes(lowestMidi: Int, highestMidi: Int)
-        -> [TMDVocalClassification]
+        -> [TmdVocalClassification]
     {
-        TMDSongPitchRangeAnalyzer.evaluateSuitableVoiceTypes(
+        TmdSongPitchRangeAnalyzer.evaluateSuitableVoiceTypes(
             lowestMidi: lowestMidi, highestMidi: highestMidi)
     }
 
-    private static func buildHarmonyProfile(sheet: Sheet) -> TMDHarmonyProfile {
-        TMDSongHarmonyAnalyzer.analyze(sheet: sheet)
+    private static func buildHarmonyProfile(sheet: Sheet) -> TmdHarmonyProfile {
+        TmdSongHarmonyAnalyzer.analyze(sheet: sheet)
     }
 
-    private static func buildDensityProfile(sheet: Sheet) -> TMDArrangementDensityProfile {
+    private static func buildDensityProfile(sheet: Sheet) -> TmdArrangementDensityProfile {
         var sectionDict: [String: [String]] = [:]
         for p in sheet.entries {
             guard let assignment = p.assignment else { continue }
             sectionDict[p.name, default: []].append(assignment)
         }
 
-        var sectionDensities: [TMDArrangementDensityProfile.SectionDensity] = []
+        var sectionDensities: [TmdArrangementDensityProfile.SectionDensity] = []
         var maxTracks = 0
 
         for (secName, instList) in sectionDict {
@@ -574,20 +574,20 @@ public enum TMDSongInspector {
                 maxTracks = uniqueInst.count
             }
             sectionDensities.append(
-                TMDArrangementDensityProfile.SectionDensity(
+                TmdArrangementDensityProfile.SectionDensity(
                     sectionName: secName,
                     trackCount: uniqueInst.count,
                     instruments: uniqueInst
                 ))
         }
 
-        return TMDArrangementDensityProfile(
+        return TmdArrangementDensityProfile(
             maxConcurrentTracks: maxTracks,
             sectionDensities: sectionDensities.sorted(by: { $0.sectionName < $1.sectionName })
         )
     }
 
-    private static func formatNoteLocation(_ note: TMDNotePitchInfo) -> String {
+    private static func formatNoteLocation(_ note: TmdNotePitchInfo) -> String {
         let mins = Int(note.timeSeconds) / 60
         let secs = Int(note.timeSeconds) % 60
         let timeStr = String(format: "%d:%02d", mins, secs)
@@ -600,9 +600,9 @@ public enum TMDSongInspector {
     }
 
     /// Generates human-readable plain text / ASCII inspection report.
-    public static func generateReport(_ profile: TMDSongProfile, locale: TMDLocale? = nil) -> String
+    public static func generateReport(_ profile: TmdSongProfile, locale: TmdLocale? = nil) -> String
     {
-        let strings = TMDReportStrings(localizer: TMDLocalizer(locale: locale ?? profile.locale))
+        let strings = TmdReportStrings(localizer: TmdLocalizer(locale: locale ?? profile.locale))
         let mins = Int(profile.timing.totalDurationSeconds) / 60
         let secs = Int(profile.timing.totalDurationSeconds) % 60
         let timeFormatted = String(
@@ -732,15 +732,15 @@ public enum TMDSongInspector {
 
     private static func buildTonalityProfile(
         sheet: Sheet,
-        timingProfile: TMDTimingProfile,
-        locale: TMDLocale
-    ) -> TMDTonalityProfile {
-        TMDSongTonalityAnalyzer.analyze(
+        timingProfile: TmdTimingProfile,
+        locale: TmdLocale
+    ) -> TmdTonalityProfile {
+        TmdSongTonalityAnalyzer.analyze(
             sheet: sheet, timingProfile: timingProfile, locale: locale)
     }
 
-    private static func modeLabel(_ mode: TMDTonalityMode, localizer: TMDLocalizer) -> String {
-        TMDSongTonalityAnalyzer.modeLabel(mode, localizer: localizer)
+    private static func modeLabel(_ mode: TmdTonalityMode, localizer: TmdLocalizer) -> String {
+        TmdSongTonalityAnalyzer.modeLabel(mode, localizer: localizer)
     }
 
     private static func collectTimelineDirectives(sheet: Sheet) -> [PlaybackDirectiveEvent] {
@@ -749,7 +749,7 @@ public enum TMDSongInspector {
         var directives: [PlaybackDirectiveEvent] = []
         for instrument in instruments {
             directives.append(
-                contentsOf: TMDPlaybackRenderer.render(sheet: sheet, instrument: instrument)
+                contentsOf: TmdPlaybackRenderer.render(sheet: sheet, instrument: instrument)
                     .directives)
         }
         directives.sort(by: { $0.position < $1.position })
@@ -776,7 +776,7 @@ public enum TMDSongInspector {
 
     // MARK: - ASCII / Unicode Tonality Visualizers
 
-    private static func renderAsciiCircleOfFifths(tonality: TMDTonalityProfile) -> String {
+    private static func renderAsciiCircleOfFifths(tonality: TmdTonalityProfile) -> String {
         // Collect active fifths steps from sections
         var activeSteps = Set<Int>()
         for sec in tonality.sections {
@@ -824,7 +824,7 @@ public enum TMDSongInspector {
         return lines.joined(separator: "\n")
     }
 
-    private static func renderPitchClassHistogram(tonality: TMDTonalityProfile) -> String {
+    private static func renderPitchClassHistogram(tonality: TmdTonalityProfile) -> String {
         let pitchClassNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
         let weights = tonality.globalPitchClasses.weights
         let maxWeight = weights.max() ?? 1.0

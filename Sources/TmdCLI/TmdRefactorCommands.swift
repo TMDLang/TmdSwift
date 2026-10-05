@@ -26,7 +26,7 @@ struct TmdRefactorRenameInstrument: ParsableCommand {
     func run() throws {
         let content: String
         do {
-            content = try TMDTextIO.readUTF8(from: inputPath)
+            content = try TmdTextIO.readUTF8(from: inputPath)
         } catch {
             print("Error reading \(inputPath): \(error.localizedDescription)")
             throw ExitCode.failure
@@ -34,7 +34,7 @@ struct TmdRefactorRenameInstrument: ParsableCommand {
 
         let refactored: String
         do {
-            refactored = try TMDRefactor.renameInstrument(in: content, from: from, to: to)
+            refactored = try TmdRefactor.renameInstrument(in: content, from: from, to: to)
         } catch {
             print("Refactor error: \(error.localizedDescription)")
             throw ExitCode.failure
@@ -42,7 +42,7 @@ struct TmdRefactorRenameInstrument: ParsableCommand {
 
         if inPlace {
             do {
-                try TMDTextIO.writeUTF8(refactored, to: inputPath)
+                try TmdTextIO.writeUTF8(refactored, to: inputPath)
                 print("Renamed instrument in \(inputPath) in-place.")
             } catch {
                 print("Error writing \(inputPath): \(error.localizedDescription)")
@@ -50,7 +50,7 @@ struct TmdRefactorRenameInstrument: ParsableCommand {
             }
         } else if let outPath = output {
             do {
-                try TMDTextIO.writeUTF8(refactored, to: outPath)
+                try TmdTextIO.writeUTF8(refactored, to: outPath)
                 print("Refactored score written to \(outPath).")
             } catch {
                 print("Error writing \(outPath): \(error.localizedDescription)")
@@ -86,7 +86,7 @@ struct TmdRefactorRenameSection: ParsableCommand {
     func run() throws {
         let content: String
         do {
-            content = try TMDTextIO.readUTF8(from: inputPath)
+            content = try TmdTextIO.readUTF8(from: inputPath)
         } catch {
             print("Error reading \(inputPath): \(error.localizedDescription)")
             throw ExitCode.failure
@@ -94,7 +94,7 @@ struct TmdRefactorRenameSection: ParsableCommand {
 
         let refactored: String
         do {
-            refactored = try TMDRefactor.renameSection(in: content, from: from, to: to)
+            refactored = try TmdRefactor.renameSection(in: content, from: from, to: to)
         } catch {
             print("Refactor error: \(error.localizedDescription)")
             throw ExitCode.failure
@@ -102,7 +102,7 @@ struct TmdRefactorRenameSection: ParsableCommand {
 
         if inPlace {
             do {
-                try TMDTextIO.writeUTF8(refactored, to: inputPath)
+                try TmdTextIO.writeUTF8(refactored, to: inputPath)
                 print("Renamed section in \(inputPath) in-place.")
             } catch {
                 print("Error writing \(inputPath): \(error.localizedDescription)")
@@ -110,7 +110,7 @@ struct TmdRefactorRenameSection: ParsableCommand {
             }
         } else if let outPath = output {
             do {
-                try TMDTextIO.writeUTF8(refactored, to: outPath)
+                try TmdTextIO.writeUTF8(refactored, to: outPath)
                 print("Refactored score written to \(outPath).")
             } catch {
                 print("Error writing \(outPath): \(error.localizedDescription)")
@@ -140,7 +140,7 @@ struct TmdRefactorExtractInstrument: ParsableCommand {
     func run() throws {
         let content: String
         do {
-            content = try TMDTextIO.readUTF8(from: inputPath)
+            content = try TmdTextIO.readUTF8(from: inputPath)
         } catch {
             print("Error reading \(inputPath): \(error.localizedDescription)")
             throw ExitCode.failure
@@ -148,7 +148,7 @@ struct TmdRefactorExtractInstrument: ParsableCommand {
 
         let extracted: String
         do {
-            extracted = try TMDRefactor.extractInstrument(from: content, instrument: instrument)
+            extracted = try TmdRefactor.extractInstrument(from: content, instrument: instrument)
         } catch {
             print("Refactor error: \(error.localizedDescription)")
             throw ExitCode.failure
@@ -156,7 +156,7 @@ struct TmdRefactorExtractInstrument: ParsableCommand {
 
         if let outPath = output {
             do {
-                try TMDTextIO.writeUTF8(extracted, to: outPath)
+                try TmdTextIO.writeUTF8(extracted, to: outPath)
                 print("Extracted instrument '\(instrument)' to \(outPath).")
             } catch {
                 print("Error writing \(outPath): \(error.localizedDescription)")
@@ -192,7 +192,7 @@ struct TmdRefactorDoubleGrid: ParsableCommand {
     func run() throws {
         let content: String
         do {
-            content = try TMDTextIO.readUTF8(from: inputPath)
+            content = try TmdTextIO.readUTF8(from: inputPath)
         } catch {
             print("Error reading \(inputPath): \(error.localizedDescription)")
             throw ExitCode.failure
@@ -200,10 +200,10 @@ struct TmdRefactorDoubleGrid: ParsableCommand {
 
         let target =
             (section != nil || instrument != nil)
-            ? TMDRefactorTarget(section: section, instrument: instrument) : nil
+            ? TmdRefactorTarget(section: section, instrument: instrument) : nil
         let result: String
         do {
-            result = try TMDRefactor.doubleGrid(source: content, target: target)
+            result = try TmdRefactor.doubleGrid(source: content, target: target)
         } catch {
             print("Refactor error: \(error.localizedDescription)")
             throw ExitCode.failure
@@ -211,7 +211,7 @@ struct TmdRefactorDoubleGrid: ParsableCommand {
 
         if inPlace {
             do {
-                try TMDTextIO.writeUTF8(result, to: inputPath)
+                try TmdTextIO.writeUTF8(result, to: inputPath)
                 print("Transformed grid (double-grid) in \(inputPath) in-place.")
             } catch {
                 print("Error writing \(inputPath): \(error.localizedDescription)")
@@ -219,7 +219,7 @@ struct TmdRefactorDoubleGrid: ParsableCommand {
             }
         } else if let outPath = output {
             do {
-                try TMDTextIO.writeUTF8(result, to: outPath)
+                try TmdTextIO.writeUTF8(result, to: outPath)
                 print("Transformed score written to \(outPath).")
             } catch {
                 print("Error writing \(outPath): \(error.localizedDescription)")
@@ -255,7 +255,7 @@ struct TmdRefactorHalveGrid: ParsableCommand {
     func run() throws {
         let content: String
         do {
-            content = try TMDTextIO.readUTF8(from: inputPath)
+            content = try TmdTextIO.readUTF8(from: inputPath)
         } catch {
             print("Error reading \(inputPath): \(error.localizedDescription)")
             throw ExitCode.failure
@@ -263,10 +263,10 @@ struct TmdRefactorHalveGrid: ParsableCommand {
 
         let target =
             (section != nil || instrument != nil)
-            ? TMDRefactorTarget(section: section, instrument: instrument) : nil
+            ? TmdRefactorTarget(section: section, instrument: instrument) : nil
         let result: String
         do {
-            result = try TMDRefactor.halveGrid(source: content, target: target)
+            result = try TmdRefactor.halveGrid(source: content, target: target)
         } catch {
             print("Refactor error: \(error.localizedDescription)")
             throw ExitCode.failure
@@ -274,7 +274,7 @@ struct TmdRefactorHalveGrid: ParsableCommand {
 
         if inPlace {
             do {
-                try TMDTextIO.writeUTF8(result, to: inputPath)
+                try TmdTextIO.writeUTF8(result, to: inputPath)
                 print("Transformed grid (halve-grid) in \(inputPath) in-place.")
             } catch {
                 print("Error writing \(inputPath): \(error.localizedDescription)")
@@ -282,7 +282,7 @@ struct TmdRefactorHalveGrid: ParsableCommand {
             }
         } else if let outPath = output {
             do {
-                try TMDTextIO.writeUTF8(result, to: outPath)
+                try TmdTextIO.writeUTF8(result, to: outPath)
                 print("Transformed score written to \(outPath).")
             } catch {
                 print("Error writing \(outPath): \(error.localizedDescription)")
@@ -324,7 +324,7 @@ struct TmdRefactorDuplicateTrack: ParsableCommand {
     func run() throws {
         let content: String
         do {
-            content = try TMDTextIO.readUTF8(from: inputPath)
+            content = try TmdTextIO.readUTF8(from: inputPath)
         } catch {
             print("Error reading \(inputPath): \(error.localizedDescription)")
             throw ExitCode.failure
@@ -332,7 +332,7 @@ struct TmdRefactorDuplicateTrack: ParsableCommand {
 
         let result: String
         do {
-            result = try TMDRefactor.duplicateTrack(
+            result = try TmdRefactor.duplicateTrack(
                 source: content,
                 sourceInstrument: source,
                 targetInstrument: target,
@@ -346,7 +346,7 @@ struct TmdRefactorDuplicateTrack: ParsableCommand {
 
         if inPlace {
             do {
-                try TMDTextIO.writeUTF8(result, to: inputPath)
+                try TmdTextIO.writeUTF8(result, to: inputPath)
                 print("Duplicated track in \(inputPath) in-place.")
             } catch {
                 print("Error writing \(inputPath): \(error.localizedDescription)")
@@ -354,7 +354,7 @@ struct TmdRefactorDuplicateTrack: ParsableCommand {
             }
         } else if let outPath = output {
             do {
-                try TMDTextIO.writeUTF8(result, to: outPath)
+                try TmdTextIO.writeUTF8(result, to: outPath)
                 print("Refactored score written to \(outPath).")
             } catch {
                 print("Error writing \(outPath): \(error.localizedDescription)")
@@ -396,7 +396,7 @@ struct TmdRefactorGenerateHarmony: ParsableCommand {
     func run() throws {
         let content: String
         do {
-            content = try TMDTextIO.readUTF8(from: inputPath)
+            content = try TmdTextIO.readUTF8(from: inputPath)
         } catch {
             print("Error reading \(inputPath): \(error.localizedDescription)")
             throw ExitCode.failure
@@ -404,7 +404,7 @@ struct TmdRefactorGenerateHarmony: ParsableCommand {
 
         let result: String
         do {
-            result = try TMDRefactor.generateHarmony(
+            result = try TmdRefactor.generateHarmony(
                 source: content,
                 sourceInstrument: source,
                 harmonyInstrument: target,
@@ -418,7 +418,7 @@ struct TmdRefactorGenerateHarmony: ParsableCommand {
 
         if inPlace {
             do {
-                try TMDTextIO.writeUTF8(result, to: inputPath)
+                try TmdTextIO.writeUTF8(result, to: inputPath)
                 print("Generated harmony in \(inputPath) in-place.")
             } catch {
                 print("Error writing \(inputPath): \(error.localizedDescription)")
@@ -426,7 +426,7 @@ struct TmdRefactorGenerateHarmony: ParsableCommand {
             }
         } else if let outPath = output {
             do {
-                try TMDTextIO.writeUTF8(result, to: outPath)
+                try TmdTextIO.writeUTF8(result, to: outPath)
                 print("Refactored score written to \(outPath).")
             } catch {
                 print("Error writing \(outPath): \(error.localizedDescription)")
@@ -456,7 +456,7 @@ struct TmdRefactorInlineOrders: ParsableCommand {
     func run() throws {
         let content: String
         do {
-            content = try TMDTextIO.readUTF8(from: inputPath)
+            content = try TmdTextIO.readUTF8(from: inputPath)
         } catch {
             print("Error reading \(inputPath): \(error.localizedDescription)")
             throw ExitCode.failure
@@ -464,7 +464,7 @@ struct TmdRefactorInlineOrders: ParsableCommand {
 
         let result: String
         do {
-            result = try TMDRefactor.inlineOrders(source: content)
+            result = try TmdRefactor.inlineOrders(source: content)
         } catch {
             print("Refactor error: \(error.localizedDescription)")
             throw ExitCode.failure
@@ -472,7 +472,7 @@ struct TmdRefactorInlineOrders: ParsableCommand {
 
         if inPlace {
             do {
-                try TMDTextIO.writeUTF8(result, to: inputPath)
+                try TmdTextIO.writeUTF8(result, to: inputPath)
                 print("Inlined orders in \(inputPath) in-place.")
             } catch {
                 print("Error writing \(inputPath): \(error.localizedDescription)")
@@ -480,7 +480,7 @@ struct TmdRefactorInlineOrders: ParsableCommand {
             }
         } else if let outPath = output {
             do {
-                try TMDTextIO.writeUTF8(result, to: outPath)
+                try TmdTextIO.writeUTF8(result, to: outPath)
                 print("Inlined score written to \(outPath).")
             } catch {
                 print("Error writing \(outPath): \(error.localizedDescription)")
@@ -517,7 +517,7 @@ struct TmdRefactorOptimizeGrid: ParsableCommand {
     func run() throws {
         let content: String
         do {
-            content = try TMDTextIO.readUTF8(from: inputPath)
+            content = try TmdTextIO.readUTF8(from: inputPath)
         } catch {
             print("Error reading \(inputPath): \(error.localizedDescription)")
             throw ExitCode.failure
@@ -525,12 +525,12 @@ struct TmdRefactorOptimizeGrid: ParsableCommand {
 
         let target =
             (section != nil || instrument != nil)
-            ? TMDRefactorTarget(section: section, instrument: instrument) : nil
-        let result = TMDRefactor.optimizeGrid(source: content, target: target)
+            ? TmdRefactorTarget(section: section, instrument: instrument) : nil
+        let result = TmdRefactor.optimizeGrid(source: content, target: target)
 
         if inPlace {
             do {
-                try TMDTextIO.writeUTF8(result, to: inputPath)
+                try TmdTextIO.writeUTF8(result, to: inputPath)
                 print("Optimized grid in \(inputPath) in-place.")
             } catch {
                 print("Error writing \(inputPath): \(error.localizedDescription)")
@@ -538,7 +538,7 @@ struct TmdRefactorOptimizeGrid: ParsableCommand {
             }
         } else if let outPath = output {
             do {
-                try TMDTextIO.writeUTF8(result, to: outPath)
+                try TmdTextIO.writeUTF8(result, to: outPath)
                 print("Refactored score written to \(outPath).")
             } catch {
                 print("Error writing \(outPath): \(error.localizedDescription)")
@@ -593,7 +593,7 @@ struct TmdRefactorTranspose: ParsableCommand {
 
         let content: String
         do {
-            content = try TMDTextIO.readUTF8(from: inputPath)
+            content = try TmdTextIO.readUTF8(from: inputPath)
         } catch {
             print("Error reading \(inputPath): \(error.localizedDescription)")
             throw ExitCode.failure
@@ -601,8 +601,8 @@ struct TmdRefactorTranspose: ParsableCommand {
 
         let target =
             (section != nil || instrument != nil)
-            ? TMDRefactorTarget(section: section, instrument: instrument) : nil
-        let result = TMDRefactor.transpose(
+            ? TmdRefactorTarget(section: section, instrument: instrument) : nil
+        let result = TmdRefactor.transpose(
             source: content,
             semitones: semitones ?? 0,
             diatonicSteps: diatonic ?? 0,
@@ -612,7 +612,7 @@ struct TmdRefactorTranspose: ParsableCommand {
 
         if inPlace {
             do {
-                try TMDTextIO.writeUTF8(result, to: inputPath)
+                try TmdTextIO.writeUTF8(result, to: inputPath)
                 print("Transposed score in \(inputPath) in-place.")
             } catch {
                 print("Error writing \(inputPath): \(error.localizedDescription)")
@@ -620,7 +620,7 @@ struct TmdRefactorTranspose: ParsableCommand {
             }
         } else if let outPath = output {
             do {
-                try TMDTextIO.writeUTF8(result, to: outPath)
+                try TmdTextIO.writeUTF8(result, to: outPath)
                 print("Refactored score written to \(outPath).")
             } catch {
                 print("Error writing \(outPath): \(error.localizedDescription)")

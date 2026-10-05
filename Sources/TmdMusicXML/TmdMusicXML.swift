@@ -5,11 +5,11 @@ import TmdSwift
 ///
 /// Exports the Sheet AST into W3C MusicXML (Partwise) format for use with notation software
 /// such as MuseScore, Finale, Sibelius, Dorico, or web renderers like OpenSheetMusicDisplay.
-public struct TMDMusicXMLGenerator {
+public struct TmdMusicXMLGenerator {
 
     /// Generates MusicXML UTF-8 string from a Sheet.
     public static func generateMusicXML(from inputSheet: Sheet) -> String {
-        let sheet = TMDMacroEvaluator.expandOrTrap(inputSheet)
+        let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
         let metadataCreators = sheet.metadata.sorted { $0.key < $1.key }.map { key, value in
             let type =
                 key.lowercased() == "lyrics"
@@ -71,7 +71,7 @@ public struct TMDMusicXMLGenerator {
         sheet: Sheet,
         divisions: Int
     ) -> String {
-        let measures = TMDMeasureRenderer.renderMeasures(sheet: sheet, instrument: instrument)
+        let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: instrument)
         var xml = ""
 
         for measure in measures {

@@ -4,7 +4,7 @@ import Foundation
 ///
 /// This is intentionally a string-backed value rather than an enum so a new
 /// language can be added without changing the public API.
-public struct TMDLocale: RawRepresentable, Codable, Hashable, Sendable, ExpressibleByStringLiteral {
+public struct TmdLocale: RawRepresentable, Codable, Hashable, Sendable, ExpressibleByStringLiteral {
     public let rawValue: String
 
     public init(rawValue: String) {
@@ -15,12 +15,12 @@ public struct TMDLocale: RawRepresentable, Codable, Hashable, Sendable, Expressi
         self.init(rawValue: value)
     }
 
-    public static let zhHant = TMDLocale(rawValue: "zh-Hant")
-    public static let en = TMDLocale(rawValue: "en")
+    public static let zhHant = TmdLocale(rawValue: "zh-Hant")
+    public static let en = TmdLocale(rawValue: "en")
 }
 
 /// Stable resource keys used by TMD's Swift-library reports.
-public enum TMDLocalizationKey: String, Sendable {
+public enum TmdLocalizationKey: String, Sendable {
     case reportTitle = "report.title"
     case duration = "report.duration"
     case measuresTotal = "report.measuresTotal"
@@ -85,16 +85,16 @@ public enum TMDLocalizationKey: String, Sendable {
 ///
 /// The catalog is compiled into the library so command-line distributions do
 /// not need to install a companion SwiftPM resource bundle.
-public struct TMDLocalizer: Sendable {
-    public let locale: TMDLocale
-    public let fallbackLocale: TMDLocale
+public struct TmdLocalizer: Sendable {
+    public let locale: TmdLocale
+    public let fallbackLocale: TmdLocale
 
-    public init(locale: TMDLocale = .zhHant, fallbackLocale: TMDLocale = .en) {
+    public init(locale: TmdLocale = .zhHant, fallbackLocale: TmdLocale = .en) {
         self.locale = locale
         self.fallbackLocale = fallbackLocale
     }
 
-    public func text(_ key: TMDLocalizationKey, arguments: [String] = []) -> String {
+    public func text(_ key: TmdLocalizationKey, arguments: [String] = []) -> String {
         let localized = lookup(key.rawValue, locale: locale)
         let fallback = lookup(key.rawValue, locale: fallbackLocale)
         let template = localized == key.rawValue ? fallback : localized
@@ -103,15 +103,15 @@ public struct TMDLocalizer: Sendable {
         }
     }
 
-    private func lookup(_ key: String, locale: TMDLocale) -> String {
-        TMDLocalizationCatalog.values[locale.rawValue]?[key] ?? key
+    private func lookup(_ key: String, locale: TmdLocale) -> String {
+        TmdLocalizationCatalog.values[locale.rawValue]?[key] ?? key
     }
 }
 
-internal struct TMDReportStrings: Sendable {
-    let localizer: TMDLocalizer
+internal struct TmdReportStrings: Sendable {
+    let localizer: TmdLocalizer
 
-    var locale: TMDLocale { localizer.locale }
+    var locale: TmdLocale { localizer.locale }
     var songProfile: String { localizer.text(.reportTitle) }
     var duration: String { localizer.text(.duration) }
     var measuresTotal: String { localizer.text(.measuresTotal) }

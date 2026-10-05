@@ -1,7 +1,7 @@
 import Foundation
 
 /// Encodes stereo PCM samples into a RIFF/WAV file.
-final class TMDWAVEncoder {
+final class TmdWAVEncoder {
     static func encode(left: [Float], right: [Float], sampleRate: UInt32) -> Data {
         let sampleCount = min(left.count, right.count)
         let format = WAVFormat(sampleRate: sampleRate, channels: 2, bitsPerSample: 16)

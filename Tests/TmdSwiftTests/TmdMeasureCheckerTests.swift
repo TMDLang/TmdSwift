@@ -16,8 +16,8 @@ struct TmdMeasureCheckTests {
             }
             -> intro ->#
             """
-        let sheet = try #require(TMDParser.parse(string: source))
-        let issues = TMDMeasureChecker.check(sheet: sheet)
+        let sheet = try #require(TmdParser.parse(string: source))
+        let issues = TmdMeasureChecker.check(sheet: sheet)
 
         #expect(issues.contains { $0.snippet.contains("explicit barlines") })
     }
@@ -37,7 +37,7 @@ struct TmdMeasureCheckTests {
             -> verse ->#
             """
 
-        let issues = TMDMeasureChecker.check(source: input)
+        let issues = TmdMeasureChecker.check(source: input)
         #expect(issues.contains { $0.snippet.contains("Time signature directive") })
     }
 
@@ -57,7 +57,7 @@ struct TmdMeasureCheckTests {
             -> verse ->#
             """
 
-        let issues = TMDMeasureChecker.check(source: input)
+        let issues = TmdMeasureChecker.check(source: input)
         #expect(issues.isEmpty)
     }
 
@@ -77,7 +77,7 @@ struct TmdMeasureCheckTests {
             -> verse ->#
             """
 
-        let issues = TMDMeasureChecker.check(source: input)
+        let issues = TmdMeasureChecker.check(source: input)
         #expect(issues.isEmpty)
     }
 
@@ -99,7 +99,7 @@ struct TmdMeasureCheckTests {
             -> verse ->#
             """
 
-        let issues = TMDMeasureChecker.check(source: input)
+        let issues = TmdMeasureChecker.check(source: input)
         #expect(issues.isEmpty)
     }
 
@@ -121,7 +121,7 @@ struct TmdMeasureCheckTests {
             -> verse ->#
             """
 
-        let issues = TMDMeasureChecker.check(source: input)
+        let issues = TmdMeasureChecker.check(source: input)
         #expect(issues.count == 2)
 
         // Issue 1: 3 units instead of 4
@@ -155,7 +155,7 @@ struct TmdMeasureCheckTests {
             -> verse ->#
             """
 
-        let issues = TMDMeasureChecker.check(source: input)
+        let issues = TmdMeasureChecker.check(source: input)
         #expect(issues.isEmpty)
     }
 
@@ -176,7 +176,7 @@ struct TmdMeasureCheckTests {
             -> verse ->#
             """
 
-        let issues = TMDMeasureChecker.check(source: input)
+        let issues = TmdMeasureChecker.check(source: input)
         // Measure 1 has 16 sixteenth units: valid
         // Measure 2 has 4 sixteenth units (needs 16): invalid
         #expect(issues.count == 1)
@@ -260,7 +260,7 @@ struct TmdMeasureCheckTests {
 
         // Bass exits early (2 measures out of 4), Chorus enters at +2 and exits at 3.
         // In TMD, these are valid staggered entrances / early exits without reporting error.
-        let issues = TMDMeasureChecker.check(source: input)
+        let issues = TmdMeasureChecker.check(source: input)
         #expect(issues.isEmpty)
     }
 
@@ -289,7 +289,7 @@ struct TmdMeasureCheckTests {
             -> verse ->#
             """
 
-        let issues = TMDMeasureChecker.check(source: input)
+        let issues = TmdMeasureChecker.check(source: input)
         // verse:Piano ends at 0 + 4 = 4 measures.
         // verse:Chorus starts at 2 and has 2 measures -> ends at 2 + 2 = 4 measures.
         // Both end at measure 4, so no mismatch.
@@ -324,7 +324,7 @@ struct TmdMeasureCheckTests {
             -> verse ->#
             """
 
-        let issues = TMDMeasureChecker.check(source: input)
+        let issues = TmdMeasureChecker.check(source: input)
         // Both end at positive measure 4, so no mismatch.
         #expect(issues.isEmpty)
     }
@@ -352,7 +352,7 @@ struct TmdMeasureCheckTests {
             -> v2 ->#
             """
 
-        let issues = TMDMeasureChecker.check(source: input)
+        let issues = TmdMeasureChecker.check(source: input)
         #expect(issues.isEmpty)
     }
 
@@ -372,7 +372,7 @@ struct TmdMeasureCheckTests {
             -> verse -> chorus -> #
             """
 
-        let issues = TMDMeasureChecker.check(source: input)
+        let issues = TmdMeasureChecker.check(source: input)
         // 'chorus' is undefined, but '#' should be considered valid terminator and not reported!
         #expect(issues.count == 1)
         guard let issue = issues.first else { return }
@@ -396,7 +396,7 @@ struct TmdMeasureCheckTests {
             }
             """
 
-        let issues = TMDMeasureChecker.check(source: input)
+        let issues = TmdMeasureChecker.check(source: input)
         #expect(issues.count == 1)
         guard let issue = issues.first else { return }
         #expect(issue.instrument == "Order")
@@ -419,7 +419,7 @@ struct TmdMeasureCheckTests {
             -> verse
             """
 
-        let issues = TMDMeasureChecker.check(source: input)
+        let issues = TmdMeasureChecker.check(source: input)
         #expect(issues.count == 1)
         guard let issue = issues.first else { return }
         #expect(issue.instrument == "Order")
@@ -450,7 +450,7 @@ struct TmdMeasureCheckTests {
         // intro:CHORD has 8 measures of <2*> (16 half notes = 32 quarter notes = 8 measures)
         // plus 2 measures of <4*> (8 quarter notes = 2 measures)
         // total 10 measures. Should have 0 issues.
-        let issues = TMDMeasureChecker.check(source: code)
+        let issues = TmdMeasureChecker.check(source: code)
         #expect(issues.isEmpty)
     }
 
@@ -464,7 +464,7 @@ struct TmdMeasureCheckTests {
             }
             -> intro ->#
             """
-        let issues = TMDMeasureChecker.check(source: source)
+        let issues = TmdMeasureChecker.check(source: source)
         #expect(
             issues.contains {
                 $0.snippet.contains("explicit barlines")
@@ -520,7 +520,7 @@ struct TmdMeasureCheckTests {
 
             -> intro ->#
             """
-        let issues = TMDMeasureChecker.check(source: code)
+        let issues = TmdMeasureChecker.check(source: code)
         #expect(issues.isEmpty)
     }
 
@@ -538,7 +538,7 @@ struct TmdMeasureCheckTests {
             }
             -> intro ->#
             """
-        let issues = TMDMeasureChecker.check(source: code)
+        let issues = TmdMeasureChecker.check(source: code)
         #expect(issues.isEmpty)
     }
 
@@ -561,7 +561,7 @@ struct TmdMeasureCheckTests {
 
             -> intro -> verse ->#
             """
-        let issues = TMDMeasureChecker.check(source: code)
+        let issues = TmdMeasureChecker.check(source: code)
         let unclosed = issues.filter { $0.snippet.contains("Unclosed entry") }
         #expect(!unclosed.isEmpty)
         #expect(unclosed[0].paragraphName == "intro")

@@ -29,7 +29,7 @@ import Testing
         -> intro -> verse ->#
         """
 
-    let nodes = TMDOutlineGenerator.generate(source: source)
+    let nodes = TmdOutlineGenerator.generate(source: source)
 
     // Verify top-level structure: Score node, Sections node, and Playback node
     #expect(nodes.count == 3)
@@ -88,7 +88,7 @@ import Testing
 
     // Verify JSON encoding can be decoded back cleanly
     let jsonData = try JSONEncoder().encode(nodes)
-    let decodedNodes = try JSONDecoder().decode([TMDOutlineNode].self, from: jsonData)
+    let decodedNodes = try JSONDecoder().decode([TmdOutlineNode].self, from: jsonData)
     #expect(decodedNodes == nodes)
 }
 
@@ -131,7 +131,7 @@ import Testing
 
     #expect(process.terminationStatus == 0)
     let data = outlinePipe.fileHandleForReading.readDataToEndOfFile()
-    let parsedNodes = try JSONDecoder().decode([TMDOutlineNode].self, from: data)
+    let parsedNodes = try JSONDecoder().decode([TmdOutlineNode].self, from: data)
     #expect(parsedNodes.count == 3)
     #expect(parsedNodes[0].name == "Score: CLI Outline Test")
 }

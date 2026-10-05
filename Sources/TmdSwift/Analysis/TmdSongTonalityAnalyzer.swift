@@ -1,17 +1,17 @@
 import Foundation
 
 /// Extracts pitch-class weighting, tonality inference, and modulation narratives.
-public enum TMDSongTonalityAnalyzer {
+public enum TmdSongTonalityAnalyzer {
     public static func analyze(
         sheet: Sheet,
-        timingProfile: TMDTimingProfile,
-        locale: TMDLocale
-    ) -> TMDTonalityProfile {
-        let localizer = TMDLocalizer(locale: locale)
+        timingProfile: TmdTimingProfile,
+        locale: TmdLocale
+    ) -> TmdTonalityProfile {
+        let localizer = TmdLocalizer(locale: locale)
         let distinctInsts = sheet.distinctInstruments(fallbackToDefault: false)
         var allEvents: [PlaybackEvent] = []
         for inst in distinctInsts {
-            let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: inst)
+            let timeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: inst)
             allEvents.append(contentsOf: timeline.events)
         }
 
@@ -75,7 +75,7 @@ public enum TMDSongTonalityAnalyzer {
         // Infer tonality from sounding evidence. The movable-do base is only playback context.
         let globalInference = evaluateTonality(
             weights: globalWeights,
-            evidence: TMDTonalityEvidence(noteWeight: noteWeight, chordWeight: chordWeight))
+            evidence: TmdTonalityEvidence(noteWeight: noteWeight, chordWeight: chordWeight))
         let globalTonicOffset =
             globalInference.tonic.map { pitchClassOffset($0) } ?? sheet.keySignature.semitoneOffset
         let globalDisplayMode =
@@ -85,7 +85,7 @@ public enum TMDSongTonalityAnalyzer {
             weights: globalWeights, tonicOffset: globalTonicOffset, mode: globalDisplayMode)
 
         // Sections
-        var sectionProfiles: [TMDSectionTonalityProfile] = []
+        var sectionProfiles: [TmdSectionTonalityProfile] = []
         var circleOfFifthsPath: [Int] = []
 
         for (secIdx, sec) in timingProfile.sections.enumerated() {
@@ -125,10 +125,10 @@ public enum TMDSongTonalityAnalyzer {
             circleOfFifthsPath.append(fifthsStep)
 
             sectionProfiles.append(
-                TMDSectionTonalityProfile(
+                TmdSectionTonalityProfile(
                     sectionName: sec.name,
                     occurrenceIndex: sec.occurrenceIndex,
-                    playbackContext: TMDPlaybackContext(
+                    playbackContext: TmdPlaybackContext(
                         movableDoBase: baseKey, transpositionOffset: sec.keyOffset,
                         fixedPitch: fixedPitch),
                     fifthsPosition: fifthsStep,
@@ -140,7 +140,7 @@ public enum TMDSongTonalityAnalyzer {
 
         // Human-friendly producer narrative synthesis
         let diatonicRatio = globalDist.diatonicRatio
-        let moodKey: TMDLocalizationKey
+        let moodKey: TmdLocalizationKey
         if globalInference.mode == .insufficient {
             moodKey = .moodInsufficient
         } else if globalInference.mode == .minor && diatonicRatio >= 0.95 {
@@ -158,8 +158,8 @@ public enum TMDSongTonalityAnalyzer {
 
         // Modulation story
         var modTransitions: [String] = []
-        var inferredModulationPath: [TMDTonalityTransition] = []
-        var previousInference: TMDTonalityInference?
+        var inferredModulationPath: [TmdTonalityTransition] = []
+        var previousInference: TmdTonalityInference?
         var prevOffset = globalTonicOffset
         var prevFifths = circleOfFifthsStep(tonicOffset: prevOffset)
         for sec in sectionProfiles {
@@ -185,7 +185,7 @@ public enum TMDSongTonalityAnalyzer {
                         ]
                     ))
                 inferredModulationPath.append(
-                    TMDTonalityTransition(
+                    TmdTonalityTransition(
                         sectionName: sec.sectionName, tonic: currentTonic, mode: current.mode,
                         semitoneDiff: diff, fifthsStepDiff: stepDiff))
                 prevOffset = currentOffset
@@ -235,10 +235,10 @@ public enum TMDSongTonalityAnalyzer {
                 ])
         }
 
-        return TMDTonalityProfile(
+        return TmdTonalityProfile(
             globalPitchClasses: globalDist,
             globalInference: globalInference,
-            playbackContext: TMDPlaybackContext(
+            playbackContext: TmdPlaybackContext(
                 movableDoBase: baseKey, transpositionOffset: sheet.keySignature.semitoneOffset,
                 fixedPitch: false),
             playbackTranspositionPath: sectionProfiles.map {
@@ -305,7 +305,7 @@ public enum TMDSongTonalityAnalyzer {
         return result
     }
 
-    private static func diatonicPitchClassMask(tonicOffset: Int, mode: TMDTonalityMode = .major)
+    private static func diatonicPitchClassMask(tonicOffset: Int, mode: TmdTonalityMode = .major)
         -> Set<Int>
     {
         let steps =
@@ -318,12 +318,12 @@ public enum TMDSongTonalityAnalyzer {
     }
 
     private static func makePitchClassDistribution(
-        weights: [Double], tonicOffset: Int, mode: TMDTonalityMode = .major
-    ) -> TMDPitchClassDistribution {
+        weights: [Double], tonicOffset: Int, mode: TmdTonalityMode = .major
+    ) -> TmdPitchClassDistribution {
         let pitchClassNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
         let total = weights.reduce(0.0, +)
         guard total > 0.0001 else {
-            return TMDPitchClassDistribution(
+            return TmdPitchClassDistribution(
                 weights: weights,
                 diatonicRatio: 1.0,
                 chromaticRatio: 0.0,
@@ -351,7 +351,7 @@ public enum TMDSongTonalityAnalyzer {
         indexed.sort(by: { $0.weight > $1.weight })
         let topNames = indexed.map(\.name)
 
-        return TMDPitchClassDistribution(
+        return TmdPitchClassDistribution(
             weights: weights,
             diatonicRatio: diatonicRatio,
             chromaticRatio: chromaticRatio,
@@ -392,16 +392,16 @@ public enum TMDSongTonalityAnalyzer {
 
     private static func evaluateTonality(
         weights: [Double],
-        evidence: TMDTonalityEvidence = TMDTonalityEvidence(noteWeight: 0, chordWeight: 0)
-    ) -> TMDTonalityInference {
+        evidence: TmdTonalityEvidence = TmdTonalityEvidence(noteWeight: 0, chordWeight: 0)
+    ) -> TmdTonalityInference {
         let pitchClassNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
         let total = weights.reduce(0.0, +)
         guard total > 0.0001 else {
-            return TMDTonalityInference(
+            return TmdTonalityInference(
                 tonic: nil, mode: .insufficient, scaleFamily: .unknown, confidence: 0, margin: 0,
                 stability: .insufficient, bestCorrelation: 0, topCandidates: [], evidence: evidence)
         }
-        var candidates: [TMDTonalityCandidate] = []
+        var candidates: [TmdTonalityCandidate] = []
 
         // Evaluate all 12 Major and 12 Minor keys
         for tonic in 0..<12 {
@@ -412,18 +412,18 @@ public enum TMDSongTonalityAnalyzer {
 
             let rMajor = pearsonCorrelation(rotWeights, ksMajorProfile)
             candidates.append(
-                TMDTonalityCandidate(
+                TmdTonalityCandidate(
                     tonic: pitchClassNames[tonic], mode: .major, scaleFamily: .major,
                     correlation: rMajor))
 
             let rMinor = pearsonCorrelation(rotWeights, ksMinorProfile)
             let seventhWeight = weights[(tonic + 11) % 12] / total
             let sixthWeight = weights[(tonic + 9) % 12] / total
-            let scaleFamily: TMDScaleFamily =
+            let scaleFamily: TmdScaleFamily =
                 seventhWeight > 0.08 && sixthWeight > 0.08
                 ? .melodicMinor : seventhWeight > 0.08 ? .harmonicMinor : .naturalMinor
             candidates.append(
-                TMDTonalityCandidate(
+                TmdTonalityCandidate(
                     tonic: pitchClassNames[tonic], mode: .minor, scaleFamily: scaleFamily,
                     correlation: rMinor))
         }
@@ -435,11 +435,11 @@ public enum TMDSongTonalityAnalyzer {
         let margin = best.correlation - second.correlation
         let confidence = max(
             0, min(1, ((best.correlation + 1) / 2) * (0.5 + min(1, margin / 0.20) * 0.5)))
-        let stability: TMDKeyStability =
+        let stability: TmdKeyStability =
             confidence >= 0.75 && margin >= 0.08
             ? .high : confidence >= 0.50 && margin >= 0.03 ? .moderate : .ambiguous
-        let mode: TMDTonalityMode = stability == .ambiguous ? .ambiguous : best.mode
-        return TMDTonalityInference(
+        let mode: TmdTonalityMode = stability == .ambiguous ? .ambiguous : best.mode
+        return TmdTonalityInference(
             tonic: best.tonic, mode: mode,
             scaleFamily: mode == .ambiguous ? .unknown : best.scaleFamily, confidence: confidence,
             margin: margin, stability: stability, bestCorrelation: best.correlation,
@@ -450,12 +450,12 @@ public enum TMDSongTonalityAnalyzer {
         ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"].firstIndex(of: tonic) ?? 0
     }
 
-    private static func isStable(_ inference: TMDTonalityInference) -> Bool {
+    private static func isStable(_ inference: TmdTonalityInference) -> Bool {
         inference.tonic != nil && (inference.mode == .major || inference.mode == .minor)
             && inference.stability != .ambiguous && inference.stability != .insufficient
     }
 
-    public static func modeLabel(_ mode: TMDTonalityMode, localizer: TMDLocalizer) -> String {
+    public static func modeLabel(_ mode: TmdTonalityMode, localizer: TmdLocalizer) -> String {
         switch mode {
         case .major: localizer.text(.major)
         case .minor: localizer.text(.minor)

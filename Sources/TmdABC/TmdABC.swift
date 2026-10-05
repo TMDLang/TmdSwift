@@ -5,11 +5,11 @@ import TmdSwift
 ///
 /// Converts a Sheet into standard ABC Notation (v2.1+), widely supported by web players
 /// (e.g. abcjs), Markdown previewers, and traditional tune archives.
-public struct TMDABCGenerator {
+public struct TmdABCGenerator {
 
     /// Generates ABC notation string from a Sheet.
     public static func generateABC(from inputSheet: Sheet) -> String {
-        let sheet = TMDMacroEvaluator.expandOrTrap(inputSheet)
+        let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
         var abc = ""
 
         // Header fields
@@ -51,7 +51,7 @@ public struct TMDABCGenerator {
         instrument: String,
         sheet: Sheet
     ) -> String {
-        let measures = TMDMeasureRenderer.renderMeasures(sheet: sheet, instrument: instrument)
+        let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: instrument)
         var result = ""
         for (mIdx, measure) in measures.enumerated() {
             for directive in measure.directives {

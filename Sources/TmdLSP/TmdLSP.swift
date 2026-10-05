@@ -3,7 +3,7 @@ import TmdSwift
 
 // MARK: - LSP Data Structures
 
-public struct TMDLSPPosition: Codable, Equatable, Sendable {
+public struct TmdLSPPosition: Codable, Equatable, Sendable {
     public let line: Int
     public let character: Int
 
@@ -13,17 +13,17 @@ public struct TMDLSPPosition: Codable, Equatable, Sendable {
     }
 }
 
-public struct TMDLSPRange: Codable, Equatable, Sendable {
-    public let start: TMDLSPPosition
-    public let end: TMDLSPPosition
+public struct TmdLSPRange: Codable, Equatable, Sendable {
+    public let start: TmdLSPPosition
+    public let end: TmdLSPPosition
 
-    public init(start: TMDLSPPosition, end: TMDLSPPosition) {
+    public init(start: TmdLSPPosition, end: TmdLSPPosition) {
         self.start = start
         self.end = end
     }
 }
 
-public enum TMDLSPCompletionItemKind: Int, Codable, Sendable {
+public enum TmdLSPCompletionItemKind: Int, Codable, Sendable {
     case text = 1
     case method = 2
     case function = 3
@@ -44,7 +44,7 @@ public enum TMDLSPCompletionItemKind: Int, Codable, Sendable {
     case reference = 18
 }
 
-public enum TMDLSPSymbolKind: Int, Codable, Sendable {
+public enum TmdLSPSymbolKind: Int, Codable, Sendable {
     case file = 1
     case module = 2
     case namespace = 3
@@ -72,7 +72,7 @@ public enum TMDLSPSymbolKind: Int, Codable, Sendable {
     case `operator` = 25
     case typeParameter = 26
 
-    public static func from(outlineKind: String) -> TMDLSPSymbolKind {
+    public static func from(outlineKind: String) -> TmdLSPSymbolKind {
         switch outlineKind.lowercased() {
         case "file": return .file
         case "namespace": return .namespace
@@ -89,9 +89,9 @@ public enum TMDLSPSymbolKind: Int, Codable, Sendable {
     }
 }
 
-public struct TMDLSPCompletionItem: Codable, Equatable, Sendable {
+public struct TmdLSPCompletionItem: Codable, Equatable, Sendable {
     public let label: String
-    public let kind: TMDLSPCompletionItemKind
+    public let kind: TmdLSPCompletionItemKind
     public let detail: String?
     public let documentation: String?
     public let insertText: String?
@@ -99,7 +99,7 @@ public struct TMDLSPCompletionItem: Codable, Equatable, Sendable {
 
     public init(
         label: String,
-        kind: TMDLSPCompletionItemKind,
+        kind: TmdLSPCompletionItemKind,
         detail: String? = nil,
         documentation: String? = nil,
         insertText: String? = nil,
@@ -114,13 +114,13 @@ public struct TMDLSPCompletionItem: Codable, Equatable, Sendable {
     }
 }
 
-public struct TMDLSPDiagnostic: Codable, Equatable, Sendable {
-    public let range: TMDLSPRange
+public struct TmdLSPDiagnostic: Codable, Equatable, Sendable {
+    public let range: TmdLSPRange
     public let severity: Int  // 1: Error, 2: Warning, 3: Information, 4: Hint
     public let source: String?
     public let message: String
 
-    public init(range: TMDLSPRange, severity: Int = 1, source: String? = "tmd", message: String) {
+    public init(range: TmdLSPRange, severity: Int = 1, source: String? = "tmd", message: String) {
         self.range = range
         self.severity = severity
         self.source = source
@@ -130,7 +130,7 @@ public struct TMDLSPDiagnostic: Codable, Equatable, Sendable {
 
 // MARK: - JSON-RPC Frame & Codec
 
-public struct TMDJSONRPCFrame: @unchecked Sendable {
+public struct TmdJSONRPCFrame: @unchecked Sendable {
     public let id: Int?
     public let method: String?
     public let params: Any?
@@ -142,7 +142,7 @@ public struct TMDJSONRPCFrame: @unchecked Sendable {
     }
 }
 
-public struct TMDJSONRPCResponse: @unchecked Sendable {
+public struct TmdJSONRPCResponse: @unchecked Sendable {
     public let id: Int?
     public let result: Any?
     public let error: Any?
@@ -154,14 +154,14 @@ public struct TMDJSONRPCResponse: @unchecked Sendable {
     }
 }
 
-public struct TMDJSONRPCCodec {
-    public static func decode(_ input: String) -> [TMDJSONRPCFrame] {
+public struct TmdJSONRPCCodec {
+    public static func decode(_ input: String) -> [TmdJSONRPCFrame] {
         var buffer = Data(input.utf8)
         return decode(buffer: &buffer)
     }
 
-    public static func decode(buffer: inout Data) -> [TMDJSONRPCFrame] {
-        var frames: [TMDJSONRPCFrame] = []
+    public static func decode(buffer: inout Data) -> [TmdJSONRPCFrame] {
+        var frames: [TmdJSONRPCFrame] = []
         let separator = Data("\r\n\r\n".utf8)
 
         while let range = buffer.range(of: separator) {
@@ -195,13 +195,13 @@ public struct TMDJSONRPCCodec {
                 let id = obj["id"] as? Int
                 let method = obj["method"] as? String
                 let params = obj["params"]
-                frames.append(TMDJSONRPCFrame(id: id, method: method, params: params))
+                frames.append(TmdJSONRPCFrame(id: id, method: method, params: params))
             }
         }
         return frames
     }
 
-    public static func encode(_ response: TMDJSONRPCResponse) -> String {
+    public static func encode(_ response: TmdJSONRPCResponse) -> String {
         var dict: [String: Any] = [
             "jsonrpc": "2.0"
         ]
@@ -245,7 +245,7 @@ public struct TMDJSONRPCCodec {
 
 // MARK: - Completion Engine
 
-public struct TMDLSPCompletionEngine {
+public struct TmdLSPCompletionEngine {
     public static let standardInstruments: [String] = [
         // Keyboard & Piano
         "Piano", "AcousticGrandPiano", "BrightAcousticPiano", "ElectricGrandPiano",
@@ -297,41 +297,41 @@ public struct TMDLSPCompletionEngine {
         ("play", "(play ${1:Theme} ${2:Violin})", "Track Binding: (play <theme> <assignment>)"),
     ]
 
-    public static let sectionDirectiveCompletions: [TMDLSPCompletionItem] = [
-        TMDLSPCompletionItem(
+    public static let sectionDirectiveCompletions: [TmdLSPCompletionItem] = [
+        TmdLSPCompletionItem(
             label: "!= 120", kind: .snippet, detail: "Absolute Tempo (BPM)",
             insertText: "!= ${1:120}}", insertTextFormat: 2),
-        TMDLSPCompletionItem(
+        TmdLSPCompletionItem(
             label: "!+ 10", kind: .snippet, detail: "Relative Tempo Change (+BPM)",
             insertText: "!+ ${1:10}}", insertTextFormat: 2),
-        TMDLSPCompletionItem(
+        TmdLSPCompletionItem(
             label: "?= C", kind: .snippet, detail: "Movable-do Base", insertText: "?= ${1:C}}",
             insertTextFormat: 2),
-        TMDLSPCompletionItem(
+        TmdLSPCompletionItem(
             label: "?+ 2", kind: .snippet, detail: "Relative Movable-do Transposition (+semitones)",
             insertText: "?+ ${1:2}}", insertTextFormat: 2),
-        TMDLSPCompletionItem(
+        TmdLSPCompletionItem(
             label: "?- 2", kind: .snippet, detail: "Relative Movable-do Transposition (-semitones)",
             insertText: "?- ${1:2}}", insertTextFormat: 2),
-        TMDLSPCompletionItem(
+        TmdLSPCompletionItem(
             label: "key= Bm", kind: .snippet, detail: "Explicit Tonality (B minor)",
             insertText: "key= ${1:Bm}}", insertTextFormat: 2),
-        TMDLSPCompletionItem(
+        TmdLSPCompletionItem(
             label: "ppp", kind: .value, detail: "Dynamics (ppp)", insertText: "ppp}"),
-        TMDLSPCompletionItem(label: "pp", kind: .value, detail: "Dynamics (pp)", insertText: "pp}"),
-        TMDLSPCompletionItem(label: "p", kind: .value, detail: "Dynamics (p)", insertText: "p}"),
-        TMDLSPCompletionItem(label: "mp", kind: .value, detail: "Dynamics (mp)", insertText: "mp}"),
-        TMDLSPCompletionItem(label: "mf", kind: .value, detail: "Dynamics (mf)", insertText: "mf}"),
-        TMDLSPCompletionItem(label: "f", kind: .value, detail: "Dynamics (f)", insertText: "f}"),
-        TMDLSPCompletionItem(label: "ff", kind: .value, detail: "Dynamics (ff)", insertText: "ff}"),
-        TMDLSPCompletionItem(
+        TmdLSPCompletionItem(label: "pp", kind: .value, detail: "Dynamics (pp)", insertText: "pp}"),
+        TmdLSPCompletionItem(label: "p", kind: .value, detail: "Dynamics (p)", insertText: "p}"),
+        TmdLSPCompletionItem(label: "mp", kind: .value, detail: "Dynamics (mp)", insertText: "mp}"),
+        TmdLSPCompletionItem(label: "mf", kind: .value, detail: "Dynamics (mf)", insertText: "mf}"),
+        TmdLSPCompletionItem(label: "f", kind: .value, detail: "Dynamics (f)", insertText: "f}"),
+        TmdLSPCompletionItem(label: "ff", kind: .value, detail: "Dynamics (ff)", insertText: "ff}"),
+        TmdLSPCompletionItem(
             label: "fff", kind: .value, detail: "Dynamics (fff)", insertText: "fff}"),
-        TMDLSPCompletionItem(
+        TmdLSPCompletionItem(
             label: "<4/4>", kind: .snippet, detail: "Time Signature Change",
             insertText: "<${1:4}/${2:4}>}", insertTextFormat: 2),
     ]
 
-    public static func complete(source: String, position: TMDLSPPosition) -> [TMDLSPCompletionItem]
+    public static func complete(source: String, position: TmdLSPPosition) -> [TmdLSPCompletionItem]
     {
         let lines = source.components(separatedBy: "\n")
         guard position.line < lines.count else { return [] }
@@ -359,7 +359,7 @@ public struct TMDLSPCompletionEngine {
 
         if prefix.range(of: #":\s*[A-Za-z][A-Za-z0-9_-]*\[$"#, options: .regularExpression) != nil {
             return [
-                TMDLSPCompletionItem(
+                TmdLSPCompletionItem(
                     label: "pitchMode=fixed",
                     kind: .value,
                     detail: "Fixed Pitch Entry Attribute",
@@ -378,7 +378,7 @@ public struct TMDLSPCompletionEngine {
                 if nextChar == ")" && cleanInsert.hasSuffix(")") {
                     cleanInsert.removeLast()
                 }
-                return TMDLSPCompletionItem(
+                return TmdLSPCompletionItem(
                     label: $0.label,
                     kind: .snippet,
                     detail: $0.detail,
@@ -393,9 +393,9 @@ public struct TMDLSPCompletionEngine {
         if prefix.trimmingCharacters(in: .whitespaces).hasSuffix("->")
             || prefix.trimmingCharacters(in: .whitespaces).contains("->")
         {
-            let sectionNames = TMDOutlineGenerator.extractSectionNames(source: source)
+            let sectionNames = TmdOutlineGenerator.extractSectionNames(source: source)
             return sectionNames.map {
-                TMDLSPCompletionItem(
+                TmdLSPCompletionItem(
                     label: $0,
                     kind: .field,
                     detail: "TMD Section: \($0)",
@@ -407,7 +407,7 @@ public struct TMDLSPCompletionEngine {
         // 3. Check for assignment completion: after ":"
         if prefix.trimmingCharacters(in: .whitespaces).hasSuffix(":") {
             return standardInstruments.map {
-                TMDLSPCompletionItem(
+                TmdLSPCompletionItem(
                     label: $0,
                     kind: .keyword,
                     detail: "General MIDI Assignment: \($0)",
@@ -422,13 +422,13 @@ public struct TMDLSPCompletionEngine {
             if !afterBracket.contains("]") && afterBracket.count <= 12 {
                 let typed = afterBracket.trimmingCharacters(in: .whitespaces)
                 let appendClosingBracket = nextChar != "]"
-                var items: [TMDLSPCompletionItem] = []
+                var items: [TmdLSPCompletionItem] = []
 
                 // A. Scale Degree Chords (Key-agnostic, pop progression friendly: 1, 4, 5, 3m, 6m, etc.)
                 for chord in scaleDegreeChords {
                     if typed.isEmpty || chord.hasPrefix(typed) {
                         items.append(
-                            TMDLSPCompletionItem(
+                            TmdLSPCompletionItem(
                                 label: chord,
                                 kind: .value,
                                 detail: "Scale Degree Chord: [\(chord)]",
@@ -440,13 +440,13 @@ public struct TMDLSPCompletionEngine {
                 }
 
                 // B. Diatonic Letter Chords for current key
-                let sheet = TMDParser.parse(string: source)
+                let sheet = TmdParser.parse(string: source)
                 let keyStr = sheet?.keySignature.description ?? "C"
                 let diatonicChords = getDiatonicChords(for: keyStr)
                 for chord in diatonicChords {
                     if typed.isEmpty || chord.hasPrefix(typed) {
                         items.append(
-                            TMDLSPCompletionItem(
+                            TmdLSPCompletionItem(
                                 label: chord,
                                 kind: .value,
                                 detail: "Diatonic Chord in \(keyStr)",
@@ -476,7 +476,7 @@ public struct TMDLSPCompletionEngine {
                     guard let insertText = item.insertText, insertText.hasSuffix("}") else {
                         return item
                     }
-                    return TMDLSPCompletionItem(
+                    return TmdLSPCompletionItem(
                         label: item.label,
                         kind: item.kind,
                         detail: item.detail,
@@ -614,21 +614,21 @@ public struct TMDLSPCompletionEngine {
 
 // MARK: - Diagnostic Engine
 
-public struct TMDLSPDiagnosticEngine {
-    public static func diagnose(source: String) -> [TMDLSPDiagnostic] {
-        var diagnostics: [TMDLSPDiagnostic] = []
+public struct TmdLSPDiagnosticEngine {
+    public static func diagnose(source: String) -> [TmdLSPDiagnostic] {
+        var diagnostics: [TmdLSPDiagnostic] = []
 
         // 1. Measure consistency check
-        let issues = TMDMeasureChecker.check(source: source)
+        let issues = TmdMeasureChecker.check(source: source)
         for issue in issues {
             let line = max(0, issue.lineNumber - 1)
             let col = 0
-            let range = TMDLSPRange(
-                start: TMDLSPPosition(line: line, character: col),
-                end: TMDLSPPosition(line: line, character: 80)
+            let range = TmdLSPRange(
+                start: TmdLSPPosition(line: line, character: col),
+                end: TmdLSPPosition(line: line, character: 80)
             )
             diagnostics.append(
-                TMDLSPDiagnostic(
+                TmdLSPDiagnostic(
                     range: range,
                     severity: 1,  // Error
                     source: "tmd-measure-checker",
@@ -638,17 +638,17 @@ public struct TMDLSPDiagnosticEngine {
 
         // 2. Syntax / Throwing parser check
         do {
-            _ = try TMDParser.parseThrowing(string: source)
-        } catch let err as TMDParseError {
+            _ = try TmdParser.parseThrowing(string: source)
+        } catch let err as TmdParseError {
             let line = max(0, err.range.start.line - 1)
             let col = max(0, err.range.start.column - 1)
             let length = max(1, err.range.length)
-            let range = TMDLSPRange(
-                start: TMDLSPPosition(line: line, character: col),
-                end: TMDLSPPosition(line: line, character: col + length)
+            let range = TmdLSPRange(
+                start: TmdLSPPosition(line: line, character: col),
+                end: TmdLSPPosition(line: line, character: col + length)
             )
             diagnostics.append(
-                TMDLSPDiagnostic(
+                TmdLSPDiagnostic(
                     range: range,
                     severity: 1,
                     source: "tmd-parser",
@@ -664,7 +664,7 @@ public struct TMDLSPDiagnosticEngine {
 
 // MARK: - LSP Server Handler & Event Loop
 
-public final class TMDLSPServer: @unchecked Sendable {
+public final class TmdLSPServer: @unchecked Sendable {
     public private(set) var documents: [String: String] = [:]
     public var sendOutput: ((String) -> Void)?
     public private(set) var isRunning: Bool = true
@@ -673,7 +673,7 @@ public final class TMDLSPServer: @unchecked Sendable {
         self.sendOutput = sendOutput
     }
 
-    public func handle(message: TMDJSONRPCFrame) {
+    public func handle(message: TmdJSONRPCFrame) {
         guard let method = message.method else { return }
 
         switch method {
@@ -693,16 +693,16 @@ public final class TMDLSPServer: @unchecked Sendable {
                     "version": "1.0.0",
                 ],
             ]
-            let resp = TMDJSONRPCResponse(id: message.id, result: capabilities)
-            send(TMDJSONRPCCodec.encode(resp))
+            let resp = TmdJSONRPCResponse(id: message.id, result: capabilities)
+            send(TmdJSONRPCCodec.encode(resp))
 
         case "initialized":
             // Notification from client after initialize
             break
 
         case "shutdown":
-            let resp = TMDJSONRPCResponse(id: message.id, result: NSNull())
-            send(TMDJSONRPCCodec.encode(resp))
+            let resp = TmdJSONRPCResponse(id: message.id, result: NSNull())
+            send(TmdJSONRPCCodec.encode(resp))
 
         case "exit":
             isRunning = false
@@ -751,8 +751,8 @@ public final class TMDLSPServer: @unchecked Sendable {
                 let character = posDict["character"] as? Int,
                 let source = documents[uri]
             {
-                let position = TMDLSPPosition(line: line, character: character)
-                let items = TMDLSPCompletionEngine.complete(source: source, position: position)
+                let position = TmdLSPPosition(line: line, character: character)
+                let items = TmdLSPCompletionEngine.complete(source: source, position: position)
                 completionItems = items.map { item in
                     var dict: [String: Any] = [
                         "label": item.label,
@@ -766,8 +766,8 @@ public final class TMDLSPServer: @unchecked Sendable {
                 }
             }
 
-            let resp = TMDJSONRPCResponse(id: id, result: completionItems)
-            send(TMDJSONRPCCodec.encode(resp))
+            let resp = TmdJSONRPCResponse(id: id, result: completionItems)
+            send(TmdJSONRPCCodec.encode(resp))
 
         case "textDocument/formatting":
             guard let id = message.id else { return }
@@ -778,7 +778,7 @@ public final class TMDLSPServer: @unchecked Sendable {
                 let uri = textDocument["uri"] as? String,
                 let source = documents[uri]
             {
-                let formatted = TMDRefactor.format(source)
+                let formatted = TmdRefactor.format(source)
                 let lines = source.components(separatedBy: "\n")
                 let lastLineIndex = max(0, lines.count - 1)
                 let lastLineChar = lines[lastLineIndex].utf16.count
@@ -793,8 +793,8 @@ public final class TMDLSPServer: @unchecked Sendable {
                 ])
             }
 
-            let resp = TMDJSONRPCResponse(id: id, result: edits)
-            send(TMDJSONRPCCodec.encode(resp))
+            let resp = TmdJSONRPCResponse(id: id, result: edits)
+            send(TmdJSONRPCCodec.encode(resp))
 
         case "textDocument/documentSymbol":
             guard let id = message.id else { return }
@@ -805,17 +805,17 @@ public final class TMDLSPServer: @unchecked Sendable {
                 let uri = textDocument["uri"] as? String,
                 let source = documents[uri]
             {
-                let nodes = TMDOutlineGenerator.generate(source: source)
+                let nodes = TmdOutlineGenerator.generate(source: source)
                 symbols = nodes.map { nodeToLSPDocumentSymbol($0) }
             }
 
-            let resp = TMDJSONRPCResponse(id: id, result: symbols)
-            send(TMDJSONRPCCodec.encode(resp))
+            let resp = TmdJSONRPCResponse(id: id, result: symbols)
+            send(TmdJSONRPCCodec.encode(resp))
 
         default:
             if let id = message.id {
-                let resp = TMDJSONRPCResponse(id: id, result: NSNull())
-                send(TMDJSONRPCCodec.encode(resp))
+                let resp = TmdJSONRPCResponse(id: id, result: NSNull())
+                send(TmdJSONRPCCodec.encode(resp))
             }
         }
     }
@@ -825,7 +825,7 @@ public final class TMDLSPServer: @unchecked Sendable {
     }
 
     private func publishDiagnostics(uri: String, source: String) {
-        let diags = TMDLSPDiagnosticEngine.diagnose(source: source)
+        let diags = TmdLSPDiagnosticEngine.diagnose(source: source)
         let diagDicts: [[String: Any]] = diags.map { d in
             var dict: [String: Any] = [
                 "range": [
@@ -846,13 +846,13 @@ public final class TMDLSPServer: @unchecked Sendable {
             "uri": uri,
             "diagnostics": diagnostics,
         ]
-        let encoded = TMDJSONRPCCodec.encode(
+        let encoded = TmdJSONRPCCodec.encode(
             method: "textDocument/publishDiagnostics", params: params)
         send(encoded)
     }
 
-    private func nodeToLSPDocumentSymbol(_ node: TMDOutlineNode) -> [String: Any] {
-        let symbolKind = TMDLSPSymbolKind.from(outlineKind: node.kind).rawValue
+    private func nodeToLSPDocumentSymbol(_ node: TmdOutlineNode) -> [String: Any] {
+        let symbolKind = TmdLSPSymbolKind.from(outlineKind: node.kind).rawValue
         var dict: [String: Any] = [
             "name": node.name,
             "kind": symbolKind,

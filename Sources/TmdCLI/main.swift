@@ -25,7 +25,7 @@ struct TmdCLICommand: ParsableCommand {
         abstract: "A compiler and toolkit for the TMD (Timebase Mark Down) music markup language.",
         discussion:
             "In memory of Chen, Chih-Han / aguai (阿怪, 1974–2019).\nOriginal project: https://github.com/aguai/TMDLang",
-        version: TMDVersion.current,
+        version: TmdVersion.current,
         subcommands: [
             TmdCheckCommand.self,
             TmdInspectCommand.self,
@@ -124,7 +124,7 @@ struct TmdCLICommand: ParsableCommand {
     func run() throws {
         if installSkills {
             print("Installing TMD skill for AI agents...")
-            let results = TMDSkill.installSkills()
+            let results = TmdSkill.installSkills()
             if results.isEmpty {
                 print("No AI agent directories found to install into.")
             } else {
@@ -145,12 +145,12 @@ struct TmdCLICommand: ParsableCommand {
         }
 
         print(
-            "TmdSwift v\(TMDVersion.current) - In memory of Chen, Chih-Han / aguai (阿怪, 1974–2019)."
+            "TmdSwift v\(TmdVersion.current) - In memory of Chen, Chih-Han / aguai (阿怪, 1974–2019)."
         )
 
         let fileContent: String
         do {
-            fileContent = try TMDTextIO.readUTF8(
+            fileContent = try TmdTextIO.readUTF8(
                 from: FilePathNormalizer.fileURLToPath(inputPath))
         } catch {
             print("Error: Could not read file at \(inputPath): \(error.localizedDescription)")
@@ -159,8 +159,8 @@ struct TmdCLICommand: ParsableCommand {
 
         let sheet: Sheet
         do {
-            sheet = try TMDParser.parseThrowing(string: fileContent)
-        } catch let parseError as TMDParseError {
+            sheet = try TmdParser.parseThrowing(string: fileContent)
+        } catch let parseError as TmdParseError {
             print("Error: Syntax error in \(inputPath):")
             print(parseError.description)
             let codeFrame = parseError.formatCodeFrame()
@@ -180,7 +180,7 @@ struct TmdCLICommand: ParsableCommand {
                 || ustOutput != nil)
 
         if isExporting && !force {
-            let issues = TMDMeasureChecker.check(source: fileContent)
+            let issues = TmdMeasureChecker.check(source: fileContent)
             if !issues.isEmpty {
                 print(
                     "❌ Export aborted: Found \(issues.count) measure discrepancy issue\(issues.count == 1 ? "" : "s") in \(inputPath):"
@@ -204,8 +204,8 @@ struct TmdCLICommand: ParsableCommand {
         print("----------------------------------------")
 
         if inspectSong {
-            let profile = TMDSongInspector.inspect(sheet: sheet)
-            print(TMDSongInspector.generateReport(profile))
+            let profile = TmdSongInspector.inspect(sheet: sheet)
+            print(TmdSongInspector.generateReport(profile))
             return
         }
 
@@ -219,7 +219,7 @@ struct TmdCLICommand: ParsableCommand {
 
         // Export to MIDI if requested
         if let outputPath = midiOutput {
-            let midiData = TMDMIDIGenerator.generateMIDI(
+            let midiData = TmdMIDIGenerator.generateMIDI(
                 from: sheet,
                 targetParagraph: section,
                 targetInstrument: instrument
@@ -236,7 +236,7 @@ struct TmdCLICommand: ParsableCommand {
 
         // Export to REAPER project (.rpp) if requested
         if let rppPath = reaperOutput {
-            let rppString = TMDReaperGenerator.generateRPP(from: sheet)
+            let rppString = TmdReaperGenerator.generateRPP(from: sheet)
             let outURL = URL(fileURLWithPath: rppPath)
             do {
                 try rppString.write(to: outURL, atomically: true, encoding: .utf8)
@@ -251,7 +251,7 @@ struct TmdCLICommand: ParsableCommand {
 
         // Export to MusicXML if requested
         if let xmlPath = musicxmlOutput {
-            let xmlString = TMDMusicXMLGenerator.generateMusicXML(from: sheet)
+            let xmlString = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
             let outURL = URL(fileURLWithPath: xmlPath)
             do {
                 try xmlString.write(to: outURL, atomically: true, encoding: .utf8)
@@ -265,7 +265,7 @@ struct TmdCLICommand: ParsableCommand {
 
         // Export to LilyPond if requested
         if let lyPath = lilypondOutput {
-            let lyString = TMDLilyPondGenerator.generateLilyPond(from: sheet)
+            let lyString = TmdLilyPondGenerator.generateLilyPond(from: sheet)
             let outURL = URL(fileURLWithPath: lyPath)
             do {
                 try lyString.write(to: outURL, atomically: true, encoding: .utf8)
@@ -280,7 +280,7 @@ struct TmdCLICommand: ParsableCommand {
         if let pdfPath = pdfOutput {
             let tempLyURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(
                 UUID().uuidString + ".ly")
-            let lyString = TMDLilyPondGenerator.generateLilyPond(from: sheet)
+            let lyString = TmdLilyPondGenerator.generateLilyPond(from: sheet)
             try? lyString.write(to: tempLyURL, atomically: true, encoding: .utf8)
 
             let pdfBase = pdfPath.hasSuffix(".pdf") ? String(pdfPath.dropLast(4)) : pdfPath
@@ -308,7 +308,7 @@ struct TmdCLICommand: ParsableCommand {
 
         // Export to ABC notation if requested
         if let abcPath = abcOutput {
-            let abcString = TMDABCGenerator.generateABC(from: sheet)
+            let abcString = TmdABCGenerator.generateABC(from: sheet)
             let outURL = URL(fileURLWithPath: abcPath)
             do {
                 try abcString.write(to: outURL, atomically: true, encoding: .utf8)
@@ -323,7 +323,7 @@ struct TmdCLICommand: ParsableCommand {
 
         // Export to ChordPro if requested
         if let choPath = chordproOutput {
-            let choString = TMDChordProGenerator.generateChordPro(from: sheet)
+            let choString = TmdChordProGenerator.generateChordPro(from: sheet)
             let outURL = URL(fileURLWithPath: choPath)
             do {
                 try choString.write(to: outURL, atomically: true, encoding: .utf8)
@@ -339,7 +339,7 @@ struct TmdCLICommand: ParsableCommand {
         if let wavPath = wavOutput {
             let soundBankURL = soundfont.map { URL(fileURLWithPath: $0) }
             do {
-                let wavData = try TMDWAVRenderer.renderWAV(
+                let wavData = try TmdWAVRenderer.renderWAV(
                     from: sheet,
                     soundBankURL: soundBankURL,
                     targetParagraph: section,
@@ -357,7 +357,7 @@ struct TmdCLICommand: ParsableCommand {
         // Export to VOCALOID2 (.vsq) if requested
         if let vsqPath = vsqOutput {
             let options = VocaloidExportOptions(singerName: singer)
-            let vsqData = TMDVSQGenerator.generateVSQ(from: sheet, options: options)
+            let vsqData = TmdVSQGenerator.generateVSQ(from: sheet, options: options)
             let outURL = URL(fileURLWithPath: vsqPath)
             do {
                 try vsqData.write(to: outURL)
@@ -372,7 +372,7 @@ struct TmdCLICommand: ParsableCommand {
         // Export to VOCALOID3/4 (.vsqx) if requested
         if let vsqxPath = vsqxOutput {
             let options = VocaloidExportOptions(singerName: singer)
-            let vsqxString = TMDVSQXGenerator.generateVSQX(from: sheet, options: options)
+            let vsqxString = TmdVSQXGenerator.generateVSQX(from: sheet, options: options)
             let outURL = URL(fileURLWithPath: vsqxPath)
             do {
                 try vsqxString.write(to: outURL, atomically: true, encoding: .utf8)
@@ -388,7 +388,7 @@ struct TmdCLICommand: ParsableCommand {
         // Export to UTAU / OpenUtau (.ust) if requested
         if let ustPath = ustOutput {
             let options = USTExportOptions(projectName: sheet.name)
-            let ustString = TMDUSTGenerator.generateUST(from: sheet, options: options)
+            let ustString = TmdUSTGenerator.generateUST(from: sheet, options: options)
             let outURL = URL(fileURLWithPath: ustPath)
             do {
                 try ustString.write(to: outURL, atomically: true, encoding: .utf8)
@@ -409,7 +409,7 @@ struct TmdCLICommand: ParsableCommand {
             let soundBankURL = soundfont.map { URL(fileURLWithPath: $0) }
             let wavData: Data
             do {
-                wavData = try TMDWAVRenderer.renderWAV(
+                wavData = try TmdWAVRenderer.renderWAV(
                     from: sheet,
                     soundBankURL: soundBankURL,
                     targetParagraph: targetParagraph,

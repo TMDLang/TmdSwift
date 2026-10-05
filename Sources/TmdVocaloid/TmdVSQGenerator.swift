@@ -26,7 +26,7 @@ public struct VocaloidExportOptions: Sendable, Equatable {
 ///
 /// A `.vsq` file is a Standard MIDI File (SMF Format 1) containing text meta events (`0xFF 0x01`)
 /// that concatenate into a Windows INI text document describing the vocal track and lyric events.
-public struct TMDVSQGenerator: Sendable {
+public struct TmdVSQGenerator: Sendable {
     public static let ticksPerQuarter: UInt16 = 480
 
     /// Generates VOCALOID2 `.vsq` binary data from a TMD `Sheet`.
@@ -36,11 +36,11 @@ public struct TMDVSQGenerator: Sendable {
         options: VocaloidExportOptions = VocaloidExportOptions()
     ) -> Data {
         let selectedInstrument = resolveTargetInstrument(sheet: sheet, requested: targetInstrument)
-        let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: selectedInstrument)
+        let timeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: selectedInstrument)
 
         // Track 0: Conductor Track (Tempo & Time Signature)
         let tempo = sheet.speed > 0 ? sheet.speed : 120.0
-        let conductorTrackData = TMDMIDIEncoder.encodeTrack(events: [
+        let conductorTrackData = TmdMIDIEncoder.encodeTrack(events: [
             MIDIEvent(
                 tick: 0, message: .trackName(sheet.name.isEmpty ? "TMD VOCALOID Score" : sheet.name)
             ),
@@ -55,7 +55,7 @@ public struct TMDVSQGenerator: Sendable {
             options: options
         )
 
-        return TMDMIDIEncoder.encodeFile(
+        return TmdMIDIEncoder.encodeFile(
             tracks: [conductorTrackData, vsqTrackData], ticksPerQuarter: ticksPerQuarter)
     }
 
@@ -84,7 +84,7 @@ public struct TMDVSQGenerator: Sendable {
             guard case .note(let note) = event.content else { continue }
             let tick = preMeasureTicks + midiTick(event.position)
             let dur = max(1, midiTick(event.duration))
-            let pitch = TMDMIDIGenerator.noteToMIDIPitch(note, keyOffset: event.state.keyOffset)
+            let pitch = TmdMIDIGenerator.noteToMIDIPitch(note, keyOffset: event.state.keyOffset)
             guard (0...127).contains(pitch) else { continue }
             let lyric = options.defaultLyric
             let phoneme = VocaloidPhoneme.resolvePhoneme(for: lyric)
@@ -186,7 +186,7 @@ public struct TMDVSQGenerator: Sendable {
                 MIDIEvent(tick: offTick, message: .noteOff(channel: 0, note: note.pitch)))
         }
 
-        return TMDMIDIEncoder.encodeTrack(events: midiEvents)
+        return TmdMIDIEncoder.encodeTrack(events: midiEvents)
     }
 
     private static func midiTick(_ quarterNotes: Double) -> UInt32 {

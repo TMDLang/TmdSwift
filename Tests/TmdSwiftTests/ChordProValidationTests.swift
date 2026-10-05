@@ -26,8 +26,8 @@ struct ChordProValidationTests {
             }
             -> A ->#
             """
-        let sheet = try TMDParser.parseThrowing(string: tmd)
-        let cho = TMDChordProGenerator.generateChordPro(from: sheet)
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let cho = TmdChordProGenerator.generateChordPro(from: sheet)
 
         #expect(cho.contains("{title: Amazing Grace}"))
         #expect(cho.contains("{tempo: 80}"))
@@ -56,8 +56,8 @@ struct ChordProValidationTests {
             }
             -> Verse ->#
             """
-        let sheet = try TMDParser.parseThrowing(string: tmd)
-        let cho = TMDChordProGenerator.generateChordPro(from: sheet)
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let cho = TmdChordProGenerator.generateChordPro(from: sheet)
 
         #expect(cho.contains("{comment: Verse}"))
         #expect(cho.contains("| [C] | [F] | [C] [G] |"))
@@ -83,8 +83,8 @@ struct ChordProValidationTests {
 
             -> Intro -> Chorus -> Intro ->#
             """
-        let sheet = try TMDParser.parseThrowing(string: tmd)
-        let cho = TMDChordProGenerator.generateChordPro(from: sheet)
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let cho = TmdChordProGenerator.generateChordPro(from: sheet)
 
         let introMatches = cho.components(separatedBy: "{comment: Intro}").count - 1
         #expect(introMatches == 2)
@@ -106,8 +106,8 @@ struct ChordProValidationTests {
             }
             -> Verse -> {?+2} -> Verse ->#
             """
-        let sheet = try TMDParser.parseThrowing(string: tmd)
-        let cho = TMDChordProGenerator.generateChordPro(from: sheet)
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let cho = TmdChordProGenerator.generateChordPro(from: sheet)
 
         #expect(cho.components(separatedBy: "[C]").count - 1 == 1)
         #expect(cho.components(separatedBy: "[D]").count - 1 == 1)
@@ -131,9 +131,9 @@ struct ChordProValidationTests {
             }
             -> Verse ->#
             """
-        let sheet = try TMDParser.parseThrowing(string: tmd)
+        let sheet = try TmdParser.parseThrowing(string: tmd)
         let options = ChordProOptions(measuresPerLine: 4)
-        let cho = TMDChordProGenerator.generateChordPro(from: sheet, options: options)
+        let cho = TmdChordProGenerator.generateChordPro(from: sheet, options: options)
 
         let measureLines = cho.split(separator: "\n").filter { $0.hasPrefix("|") }
         #expect(measureLines.count == 2)
@@ -161,8 +161,8 @@ struct ChordProValidationTests {
             }
             -> Verse ->#
             """
-        let sheet = try TMDParser.parseThrowing(string: tmd)
-        let cho = TMDChordProGenerator.generateChordPro(from: sheet)
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let cho = TmdChordProGenerator.generateChordPro(from: sheet)
 
         #expect(cho.contains("{comment: Verse}"))
         #expect(cho.contains("| [C] |"))

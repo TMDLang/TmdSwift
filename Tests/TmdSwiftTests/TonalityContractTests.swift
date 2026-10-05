@@ -28,8 +28,8 @@ struct TonalityContractTests {
     }
 
     @Test func keepsMovableDoContextSeparateAndInfersMinor() throws {
-        let sheet = try #require(TMDParser.parse(string: inferentialScore("C")))
-        let profile = TMDSongInspector.inspect(sheet: sheet)
+        let sheet = try #require(TmdParser.parse(string: inferentialScore("C")))
+        let profile = TmdSongInspector.inspect(sheet: sheet)
         let tonality = try #require(profile.tonality)
 
         #expect(sheet.keySignature.description == "C")
@@ -55,8 +55,8 @@ struct TonalityContractTests {
 
             -> verse ->#
             """
-        let sheet = try #require(TMDParser.parse(string: tmd))
-        let tonality = try #require(TMDSongInspector.inspect(sheet: sheet).tonality)
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let tonality = try #require(TmdSongInspector.inspect(sheet: sheet).tonality)
 
         #expect(sheet.keySignature.description == "D")
         #expect(sheet.declaredKey == "Bm")
@@ -79,8 +79,8 @@ struct TonalityContractTests {
 
             -> verse ->#
             """
-        let sheet = try #require(TMDParser.parse(string: tmd))
-        let tonality = try #require(TMDSongInspector.inspect(sheet: sheet).tonality)
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let tonality = try #require(TmdSongInspector.inspect(sheet: sheet).tonality)
 
         #expect(tonality.globalInference.mode == .insufficient)
         #expect(tonality.globalInference.tonic == nil)
@@ -89,8 +89,8 @@ struct TonalityContractTests {
 
     @Test func keepsPlaybackTranspositionSeparateFromInferredModulation() throws {
         let sheet = try #require(
-            TMDParser.parse(string: inferentialScore("C", playback: "-> verse -> {?+2}")))
-        let tonality = try #require(TMDSongInspector.inspect(sheet: sheet).tonality)
+            TmdParser.parse(string: inferentialScore("C", playback: "-> verse -> {?+2}")))
+        let tonality = try #require(TmdSongInspector.inspect(sheet: sheet).tonality)
 
         #expect(tonality.playbackTranspositionPath == [0, 2])
         #expect(tonality.inferredModulationPath.isEmpty)
@@ -138,8 +138,8 @@ struct TonalityContractTests {
 
             -> major -> minor ->#
             """
-        let sheet = try #require(TMDParser.parse(string: tmd))
-        let tonality = try #require(TMDSongInspector.inspect(sheet: sheet).tonality)
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let tonality = try #require(TmdSongInspector.inspect(sheet: sheet).tonality)
 
         #expect(tonality.sections.map { $0.inferredTonality.mode } == [.major, .minor])
         #expect(tonality.inferredModulationPath.count == 1)

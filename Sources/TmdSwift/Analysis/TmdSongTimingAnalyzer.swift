@@ -1,10 +1,10 @@
 import Foundation
 
 /// Computes the score timing profile independently from the Inspector facade.
-public enum TMDSongTimingAnalyzer {
+public enum TmdSongTimingAnalyzer {
     public static func analyze(
         sheet: Sheet, timelineDirectives: [PlaybackDirectiveEvent]
-    ) -> TMDTimingProfile {
+    ) -> TmdTimingProfile {
         let orders = sheet.playback.isEmpty
             ? sheet.entries.map(\.name).reduce(into: [String]()) {
                 if !$0.contains($1) { $0.append($1) }
@@ -16,7 +16,7 @@ public enum TMDSongTimingAnalyzer {
             keyOffset: sheet.keySignature.semitoneOffset,
             timeSignature: sheet.beat
         )
-        var sections: [TMDSectionTimingProfile] = []
+        var sections: [TmdSectionTimingProfile] = []
         var currentQuarterPosition = 0.0
         var currentSeconds = 0.0
         var currentMeasure = 1
@@ -37,7 +37,7 @@ public enum TMDSongTimingAnalyzer {
                     keyOffset: KeySignature(string: val).semitoneOffset,
                     timeSignature: state.timeSignature)
             case .name(let secName):
-                let duration = TMDPlaybackRenderer.duration(of: secName, in: sheet)
+                let duration = TmdPlaybackRenderer.duration(of: secName, in: sheet)
                 let startPosition = currentQuarterPosition
                 let endPosition = startPosition + duration
                 var cursor = startPosition
@@ -67,7 +67,7 @@ public enum TMDSongTimingAnalyzer {
                 let occurrence = sectionOccurrences[secName, default: 0] + 1
                 sectionOccurrences[secName] = occurrence
                 let sectionMeasures = max(1, Int(round(measureCount)))
-                sections.append(TMDSectionTimingProfile(
+                sections.append(TmdSectionTimingProfile(
                     name: secName,
                     orderIndex: idx,
                     occurrenceIndex: occurrence,
@@ -92,7 +92,7 @@ public enum TMDSongTimingAnalyzer {
             }
         }
 
-        return TMDTimingProfile(
+        return TmdTimingProfile(
             totalDurationSeconds: currentSeconds,
             totalMeasures: totalMeasures,
             sections: sections)

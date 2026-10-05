@@ -1,7 +1,7 @@
 import Foundation
 
 /// Provides skill definition content and installation utilities for AI agents (Codex, Antigravity, Claude, etc.).
-public enum TMDSkill {
+public enum TmdSkill {
     /// Unique identifier for the skill.
     public static let skillName = "tmd"
 

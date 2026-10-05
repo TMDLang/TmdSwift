@@ -2,7 +2,7 @@ import Foundation
 import TmdSwift
 
 /// Standard MIDI file generator for TMD Sheets.
-public struct TMDMIDIGenerator {
+public struct TmdMIDIGenerator {
     public static let defaultTicksPerQuarterNote: UInt16 = 480
 
     /// Converts a Sheet into Standard MIDI File (SMF Type 1) binary data.
@@ -12,7 +12,7 @@ public struct TMDMIDIGenerator {
         targetParagraph: String? = nil,
         targetInstrument: String? = nil
     ) -> Data {
-        let sheet = TMDMacroEvaluator.expandOrTrap(inputSheet)
+        let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
         var effectiveSheet = sheet
         if let targetParagraph {
             let filteredParagraphs = sheet.entries.filter { $0.name == targetParagraph }
@@ -32,16 +32,16 @@ public struct TMDMIDIGenerator {
             distinctInstruments = distinctInstruments.filter { $0 == targetInstrument }
         }
 
-        let timeline = TMDPlaybackRenderer.renderConductor(sheet: effectiveSheet)
+        let timeline = TmdPlaybackRenderer.renderConductor(sheet: effectiveSheet)
         var trackData = [
-            TMDMIDIEncoder.encodeTrack(
+            TmdMIDIEncoder.encodeTrack(
                 events: conductorEvents(
                     sheet: effectiveSheet, timeline: timeline, ticksPerQuarter: ticksPerQuarter
                 ))
         ]
         var melodyChannel = 0
         for (_, instrument) in distinctInstruments.enumerated() {
-            let timeline = TMDPlaybackRenderer.render(sheet: effectiveSheet, instrument: instrument)
+            let timeline = TmdPlaybackRenderer.render(sheet: effectiveSheet, instrument: instrument)
             guard
                 timeline.events.contains(where: { event in
                     switch event.content {
@@ -60,13 +60,13 @@ public struct TMDMIDIGenerator {
                 melodyChannel += 1
             }
             trackData.append(
-                TMDMIDIEncoder.encodeTrack(
+                TmdMIDIEncoder.encodeTrack(
                     events: instrumentEvents(
                         timeline: timeline, instrument: instrument, midiInstrument: midiInstrument,
                         channel: channel, ticksPerQuarter: ticksPerQuarter
                     )))
         }
-        return TMDMIDIEncoder.encodeFile(tracks: trackData, ticksPerQuarter: ticksPerQuarter)
+        return TmdMIDIEncoder.encodeFile(tracks: trackData, ticksPerQuarter: ticksPerQuarter)
     }
 
     private static func conductorEvents(

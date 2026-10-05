@@ -15,14 +15,14 @@ public struct ChordProOptions: Sendable, Equatable {
 ///
 /// Converts a `Sheet` into standard ChordPro lead sheet format, with section comments
 /// and measure barlines (`| [C] | [F] |`).
-public struct TMDChordProGenerator: Sendable {
+public struct TmdChordProGenerator: Sendable {
 
     /// Generates a ChordPro string from a parsed TMD `Sheet`.
     public static func generateChordPro(
         from inputSheet: Sheet,
         options: ChordProOptions = ChordProOptions()
     ) -> String {
-        let sheet = TMDMacroEvaluator.expandOrTrap(inputSheet)
+        let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
         var lines: [String] = []
 
         // Title and Metadata directives
@@ -126,7 +126,7 @@ public struct TMDChordProGenerator: Sendable {
                     regex?.firstMatch(in: inst, range: NSRange(inst.startIndex..., in: inst)) != nil
                 } ?? sectionInstruments.first ?? targetInstrument)
 
-            let sectionMeasures = TMDMeasureRenderer.renderMeasures(
+            let sectionMeasures = TmdMeasureRenderer.renderMeasures(
                 sheet: sectionSheet,
                 instrument: instToRender
             )

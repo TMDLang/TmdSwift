@@ -25,7 +25,7 @@ public struct MIDIEvent: Equatable, Sendable {
 }
 
 /// Encodes typed MIDI content into Standard MIDI File binary data.
-public final class TMDMIDIEncoder {
+public final class TmdMIDIEncoder {
     public static func encodeFile(tracks: [Data], ticksPerQuarter: UInt16) -> Data {
         let encodedTracks = tracks.prefix(Int(UInt16.max))
         let header =

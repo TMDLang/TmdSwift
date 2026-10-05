@@ -5,14 +5,14 @@ import Testing
 @testable import TmdSwift
 
 @Suite("TMD LSP Protocol & Completion Tests")
-struct TMDLSPTests {
+struct TmdLSPTests {
 
     @Test("Parses JSON-RPC messages with Content-Length header")
     func testJSONRPCMessageParsing() throws {
         let raw =
             "Content-Length: 46\r\n\r\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\"}"
         // Test helper will decode JSON-RPC frame
-        let frames = TMDJSONRPCCodec.decode(raw)
+        let frames = TmdJSONRPCCodec.decode(raw)
         #expect(frames.count == 1)
         #expect(frames[0].id == 1)
         #expect(frames[0].method == "initialize")
@@ -20,8 +20,8 @@ struct TMDLSPTests {
 
     @Test("Encodes JSON-RPC response with Content-Length header")
     func testJSONRPCMessageEncoding() throws {
-        let response = TMDJSONRPCResponse(id: 1, result: ["capabilities": [:]])
-        let encoded = TMDJSONRPCCodec.encode(response)
+        let response = TmdJSONRPCResponse(id: 1, result: ["capabilities": [:]])
+        let encoded = TmdJSONRPCCodec.encode(response)
         #expect(encoded.starts(with: "Content-Length: "))
         #expect(encoded.contains("\r\n\r\n"))
         #expect(encoded.contains("\"jsonrpc\":\"2.0\""))
@@ -54,9 +54,9 @@ struct TMDLSPTests {
             -> 
             """
         // Position at line 21 (0-based index: 21), column 3
-        let items = TMDLSPCompletionEngine.complete(
+        let items = TmdLSPCompletionEngine.complete(
             source: source,
-            position: TMDLSPPosition(line: 21, character: 3)
+            position: TmdLSPPosition(line: 21, character: 3)
         )
         let labels = items.map(\.label)
         #expect(labels.contains("intro"))
@@ -80,9 +80,9 @@ struct TMDLSPTests {
 
             -> (
             """
-        let items = TMDLSPCompletionEngine.complete(
+        let items = TmdLSPCompletionEngine.complete(
             source: source,
-            position: TMDLSPPosition(line: 11, character: 4)
+            position: TmdLSPPosition(line: 11, character: 4)
         )
         let labels = items.map(\.label)
         #expect(labels.contains("canon"))
@@ -114,9 +114,9 @@ struct TMDLSPTests {
 
             -> ()
             """
-        let itemsWithAutoClose = TMDLSPCompletionEngine.complete(
+        let itemsWithAutoClose = TmdLSPCompletionEngine.complete(
             source: sourceWithAutoClose,
-            position: TMDLSPPosition(line: 11, character: 4)  // cursor between ( and )
+            position: TmdLSPPosition(line: 11, character: 4)  // cursor between ( and )
         )
         let canonAutoClose = itemsWithAutoClose.first(where: { $0.label == "canon" })
         #expect(canonAutoClose?.insertText?.hasSuffix(")") == false)
@@ -129,9 +129,9 @@ struct TMDLSPTests {
                 <4*>
                 {
             """
-        let all = TMDLSPCompletionEngine.complete(
+        let all = TmdLSPCompletionEngine.complete(
             source: source,
-            position: TMDLSPPosition(line: 2, character: 5)
+            position: TmdLSPPosition(line: 2, character: 5)
         )
         let labels = all.map(\.label)
         #expect(labels.contains("!= 120"))
@@ -151,9 +151,9 @@ struct TMDLSPTests {
                 <4*>
                 {key
             """
-        let keyItems = TMDLSPCompletionEngine.complete(
+        let keyItems = TmdLSPCompletionEngine.complete(
             source: partial,
-            position: TMDLSPPosition(line: 2, character: 8)
+            position: TmdLSPPosition(line: 2, character: 8)
         )
         #expect(keyItems.map(\.label) == ["key= Bm"])
 
@@ -162,9 +162,9 @@ struct TMDLSPTests {
                 <4*>
                 {}
             """
-        let autoCloseItems = TMDLSPCompletionEngine.complete(
+        let autoCloseItems = TmdLSPCompletionEngine.complete(
             source: sourceWithAutoClose,
-            position: TMDLSPPosition(line: 2, character: 5)
+            position: TmdLSPPosition(line: 2, character: 5)
         )
         let meterItem = autoCloseItems.first(where: { $0.label == "<4/4>" })
         #expect(meterItem?.insertText?.hasSuffix("}") == false)
@@ -181,9 +181,9 @@ struct TMDLSPTests {
 
             verse:
             """
-        let items = TMDLSPCompletionEngine.complete(
+        let items = TmdLSPCompletionEngine.complete(
             source: source,
-            position: TMDLSPPosition(line: 6, character: 6)
+            position: TmdLSPPosition(line: 6, character: 6)
         )
         let labels = items.map(\.label)
         #expect(labels.contains("Piano") || labels.contains("AcousticGrandPiano"))
@@ -198,9 +198,9 @@ struct TMDLSPTests {
     @Test("Provides canonical fixed-pitch entry attributes")
     func testCompletionFixedPitchEntryAttribute() throws {
         let source = "A:Timpani["
-        let items = TMDLSPCompletionEngine.complete(
+        let items = TmdLSPCompletionEngine.complete(
             source: source,
-            position: TMDLSPPosition(line: 0, character: source.count)
+            position: TmdLSPPosition(line: 0, character: source.count)
         )
         #expect(items.map(\.label).contains("pitchMode=fixed"))
     }
@@ -219,9 +219,9 @@ struct TMDLSPTests {
                 [
             }
             """
-        let items = TMDLSPCompletionEngine.complete(
+        let items = TmdLSPCompletionEngine.complete(
             source: source,
-            position: TMDLSPPosition(line: 8, character: 5)
+            position: TmdLSPPosition(line: 8, character: 5)
         )
         let labels = items.map(\.label)
         // Scale degree chords (triads, secondary dominants, modal mixture, sevenths, extended, slash)
@@ -277,9 +277,9 @@ struct TMDLSPTests {
                 [6
             }
             """
-        let items = TMDLSPCompletionEngine.complete(
+        let items = TmdLSPCompletionEngine.complete(
             source: source,
-            position: TMDLSPPosition(line: 7, character: 6)
+            position: TmdLSPPosition(line: 7, character: 6)
         )
         let labels = items.map(\.label)
         #expect(labels.contains("6m"))
@@ -304,9 +304,9 @@ struct TMDLSPTests {
                 [
             }
             """
-        let itemsE = TMDLSPCompletionEngine.complete(
+        let itemsE = TmdLSPCompletionEngine.complete(
             source: sourceE,
-            position: TMDLSPPosition(line: 7, character: 5)
+            position: TmdLSPPosition(line: 7, character: 5)
         )
         let labelsE = itemsE.map(\.label)
         #expect(labelsE.contains("E"))
@@ -330,9 +330,9 @@ struct TMDLSPTests {
                 [
             }
             """
-        let itemsEb = TMDLSPCompletionEngine.complete(
+        let itemsEb = TmdLSPCompletionEngine.complete(
             source: sourceEb,
-            position: TMDLSPPosition(line: 7, character: 5)
+            position: TmdLSPPosition(line: 7, character: 5)
         )
         let labelsEb = itemsEb.map(\.label)
         #expect(labelsEb.contains("Eb"))
@@ -352,9 +352,9 @@ struct TMDLSPTests {
                 []
             }
             """
-        let items = TMDLSPCompletionEngine.complete(
+        let items = TmdLSPCompletionEngine.complete(
             source: source,
-            position: TMDLSPPosition(line: 2, character: 5)
+            position: TmdLSPPosition(line: 2, character: 5)
         )
         let chordItem = items.first(where: { $0.label == "1" })
         #expect(chordItem?.insertText == "1")
@@ -375,7 +375,7 @@ struct TMDLSPTests {
             }
             -> intro ->#
             """
-        let diagnostics = TMDLSPDiagnosticEngine.diagnose(source: source)
+        let diagnostics = TmdLSPDiagnosticEngine.diagnose(source: source)
         #expect(!diagnostics.isEmpty)
         let msg = diagnostics[0].message
         #expect(msg.contains("Expected") || msg.contains("units") || msg.contains("measure"))
@@ -384,12 +384,12 @@ struct TMDLSPTests {
     @Test("Server handles initialize and completion workflow")
     func testServerLifecycleAndCompletion() throws {
         var sentMessages: [String] = []
-        let server = TMDLSPServer { msg in
+        let server = TmdLSPServer { msg in
             sentMessages.append(msg)
         }
 
         // 1. Initialize
-        let initFrame = TMDJSONRPCFrame(id: 1, method: "initialize", params: [:])
+        let initFrame = TmdJSONRPCFrame(id: 1, method: "initialize", params: [:])
         server.handle(message: initFrame)
         #expect(sentMessages.count == 1)
         #expect(sentMessages[0].contains("\"capabilities\""))
@@ -416,7 +416,7 @@ struct TMDLSPTests {
             ]
         ]
         server.handle(
-            message: TMDJSONRPCFrame(id: nil, method: "textDocument/didOpen", params: openParams))
+            message: TmdJSONRPCFrame(id: nil, method: "textDocument/didOpen", params: openParams))
         // Expect diagnostics notification sent
         #expect(sentMessages.count >= 2)
         #expect(sentMessages.last?.contains("textDocument/publishDiagnostics") == true)
@@ -427,7 +427,7 @@ struct TMDLSPTests {
             "position": ["line": 10, "character": 3],
         ]
         server.handle(
-            message: TMDJSONRPCFrame(id: 2, method: "textDocument/completion", params: compParams))
+            message: TmdJSONRPCFrame(id: 2, method: "textDocument/completion", params: compParams))
         let compResponse = sentMessages.last ?? ""
         #expect(compResponse.contains("verse"))
     }
@@ -435,7 +435,7 @@ struct TMDLSPTests {
     @Test("Server handles document formatting and outline symbols")
     func testServerFormattingAndSymbols() throws {
         var sentMessages: [String] = []
-        let server = TMDLSPServer { msg in
+        let server = TmdLSPServer { msg in
             sentMessages.append(msg)
         }
 
@@ -459,14 +459,14 @@ struct TMDLSPTests {
             ]
         ]
         server.handle(
-            message: TMDJSONRPCFrame(id: nil, method: "textDocument/didOpen", params: openParams))
+            message: TmdJSONRPCFrame(id: nil, method: "textDocument/didOpen", params: openParams))
 
         // 1. Formatting
         let formatParams: [String: Any] = [
             "textDocument": ["uri": "file:///test.tmd"]
         ]
         server.handle(
-            message: TMDJSONRPCFrame(
+            message: TmdJSONRPCFrame(
                 id: 10, method: "textDocument/formatting", params: formatParams))
         let formatResp = sentMessages.last ?? ""
         #expect(formatResp.contains("newText"))
@@ -476,7 +476,7 @@ struct TMDLSPTests {
             "textDocument": ["uri": "file:///test.tmd"]
         ]
         server.handle(
-            message: TMDJSONRPCFrame(
+            message: TmdJSONRPCFrame(
                 id: 11, method: "textDocument/documentSymbol", params: symbolParams))
         let symbolResp = sentMessages.last ?? ""
         #expect(symbolResp.contains("Test Score") || symbolResp.contains("verse"))

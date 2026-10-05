@@ -89,7 +89,7 @@ public struct PlaybackTempoConflict: Equatable, Sendable {
 }
 
 /// Expands immutable TMD AST data into a shared playback timeline.
-public enum TMDPlaybackRenderer {
+public enum TmdPlaybackRenderer {
     private struct PlaybackOrderCursor {
         var state: PlaybackState
         var timelinePosition = 0.0
@@ -204,7 +204,7 @@ public enum TMDPlaybackRenderer {
 
     /// Renders one instrument's playback sequence in quarter-note units.
     public static func render(sheet inputSheet: Sheet, instrument: String) -> PlaybackTimeline {
-        let sheet = TMDMacroEvaluator.expandOrTrap(inputSheet)
+        let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
         let paragraphs = sheet.entries.filter {
             $0.assignment?.caseInsensitiveCompare(instrument) == .orderedSame
         }
@@ -286,7 +286,7 @@ public enum TMDPlaybackRenderer {
 
     /// Renders the score-level conductor timeline by merging directives from every concrete instrument.
     public static func renderConductor(sheet inputSheet: Sheet) -> PlaybackTimeline {
-        let sheet = TMDMacroEvaluator.expandOrTrap(inputSheet)
+        let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
         let instruments = sheet.distinctInstruments(fallbackToDefault: false)
         let sourceTimelines = instruments.map { render(sheet: sheet, instrument: $0) }
         var merged: [PlaybackDirectiveEvent] = []
@@ -568,7 +568,7 @@ public enum TMDPlaybackRenderer {
     /// Calculates the global negative offset across all instruments in the score orders,
     /// ensuring all tracks share the exact same temporal alignment.
     public static func globalEarliestPosition(in inputSheet: Sheet) -> Double {
-        let sheet = TMDMacroEvaluator.expandOrTrap(inputSheet)
+        let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
         let orders = orders(for: sheet)
         var cursor = PlaybackOrderCursor(sheet: sheet)
         var minPosition = 0.0

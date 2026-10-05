@@ -4,38 +4,49 @@ import TmdAudio
 import TmdSkill
 @testable import TmdSwift
 
-@Test("TMD acronym public symbols use canonical capitalization")
-func canonicalTMDPublicNamesExist() {
-    let parser: TMDParser.Type = TMDParser.self
-    let version: TMDVersion.Type = TMDVersion.self
+@Test("Tmd prefix public symbols use canonical capitalization")
+func canonicalTmdPublicNamesExist() {
+    let parser: TmdParser.Type = TmdParser.self
+    let version: TmdVersion.Type = TmdVersion.self
+    let checker: TmdMeasureChecker.Type = TmdMeasureChecker.self
+    let inspector: TmdSongInspector.Type = TmdSongInspector.self
+    let renderer: TmdPlaybackRenderer.Type = TmdPlaybackRenderer.self
+    let textIO: TmdTextIO.Type = TmdTextIO.self
 
-    #expect(parser == TMDParser.self)
+    #expect(parser == TmdParser.self)
     #expect(version.current == "0.2.1")
+    #expect(checker == TmdMeasureChecker.self)
+    #expect(inspector == TmdSongInspector.self)
+    #expect(renderer == TmdPlaybackRenderer.self)
+    #expect(textIO == TmdTextIO.self)
 }
 
-@Test("TMD acronym public names are used by supporting modules")
+@Test("Tmd prefix public names are used by supporting modules")
 func canonicalSupportingModuleNamesExist() {
-    #expect(TMDSkill.skillName == "tmd")
+    #expect(TmdSkill.skillName == "tmd")
 
-    let audioError: TMDAudioError = .unsupportedPlatform
+    let audioError: TmdAudioError = .unsupportedPlatform
     #expect(audioError.errorDescription != nil)
 }
 
-@Test("Legacy Tmd acronym aliases have been removed after caller migration")
-func legacyTMDAliasesHaveBeenRemoved() throws {
+@Test("Canonical Tmd source filenames match the public symbols")
+func canonicalTmdSourceFilenamesMatchSymbols() throws {
     let packageRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
         .deletingLastPathComponent()
         .deletingLastPathComponent()
     let sourceFiles = [
-        "Sources/TmdSwift/Syntax/Parser.swift",
-        "Sources/TmdSwift/Version.swift",
+        "Sources/TmdSwift/Syntax/TmdParser.swift",
+        "Sources/TmdSwift/TmdVersion.swift",
         "Sources/TmdSkill/TmdSkill.swift",
         "Sources/TmdAudio/TmdAudio.swift",
+        "Sources/TmdSwift/Validation/TmdMeasureChecker.swift",
+        "Sources/TmdSwift/Analysis/TmdSongInspector.swift",
+        "Sources/TmdSwift/Playback/TmdPlaybackRenderer.swift",
+        "Sources/TmdSwift/IO/TmdTextIO.swift",
     ]
 
     for relativePath in sourceFiles {
-        let source = try String(contentsOf: packageRoot.appendingPathComponent(relativePath))
-        #expect(!source.contains("public typealias Tmd"))
+        #expect(FileManager.default.fileExists(atPath: packageRoot.appendingPathComponent(relativePath).path))
     }
 }

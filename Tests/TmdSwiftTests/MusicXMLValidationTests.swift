@@ -20,9 +20,9 @@ struct MusicXMLValidationTests {
                 1 2 3 4
             }
             """
-        let sheet = try TMDParser.parseThrowing(string: tmd)
+        let sheet = try TmdParser.parseThrowing(string: tmd)
 
-        let xml = TMDMusicXMLGenerator.generateMusicXML(from: sheet)
+        let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
 
         #expect(xml.contains("<score-partwise"))
         #expect(!xml.contains("<score-part id=\"P1\">"))
@@ -36,9 +36,9 @@ struct MusicXMLValidationTests {
             .deletingLastPathComponent()
             .appendingPathComponent("sample/basic/三天三夜.tmd")
         let data = try Data(contentsOf: sampleURL)
-        let sheet = try TMDParser.parseThrowing(data: data)
+        let sheet = try TmdParser.parseThrowing(data: data)
 
-        let xml = TMDMusicXMLGenerator.generateMusicXML(from: sheet)
+        let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
         let xmlData = Data(xml.utf8)
 
         #if os(macOS)
@@ -66,9 +66,9 @@ struct MusicXMLValidationTests {
             }
             -> A ->#
             """
-        let sheet = try TMDParser.parseThrowing(string: tmd)
+        let sheet = try TmdParser.parseThrowing(string: tmd)
 
-        let xml = TMDMusicXMLGenerator.generateMusicXML(from: sheet)
+        let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
         let xmlData = Data(xml.utf8)
 
         #if os(macOS)
@@ -124,8 +124,8 @@ struct MusicXMLValidationTests {
             }
             -> intro ->#
             """
-        let sheet = try TMDParser.parseThrowing(string: tmd)
-        let xml = TMDMusicXMLGenerator.generateMusicXML(from: sheet)
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
         let xmlData = Data(xml.utf8)
 
         #if os(macOS)
@@ -214,9 +214,9 @@ struct MusicXMLValidationTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("sample/basic/三天三夜.tmd")
-        let sheet = try TMDParser.parseThrowing(url: sampleURL)
+        let sheet = try TmdParser.parseThrowing(url: sampleURL)
 
-        let xml = TMDMusicXMLGenerator.generateMusicXML(from: sheet)
+        let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
         let tempXMLURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(
             "mscore_test_\(UUID().uuidString).musicxml")
         let tempOutURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(
@@ -257,8 +257,8 @@ struct MusicXMLValidationTests {
             }
             -> A ->#
             """
-        let sheet = try TMDParser.parseThrowing(string: tmd)
-        let xml = TMDMusicXMLGenerator.generateMusicXML(from: sheet)
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
 
         let xmlData = Data(xml.utf8)
         #if os(macOS)
@@ -308,8 +308,8 @@ struct MusicXMLValidationTests {
             }
             -> A ->#
             """
-        let sheet = try TMDParser.parseThrowing(string: tmd)
-        let xml = TMDMusicXMLGenerator.generateMusicXML(from: sheet)
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
 
         // Drum clef
         #expect(xml.contains("<sign>percussion</sign>"))
@@ -339,8 +339,8 @@ struct MusicXMLValidationTests {
             }
             -> A ->#
             """
-        let sheet = try TMDParser.parseThrowing(string: tmd)
-        let xml = TMDMusicXMLGenerator.generateMusicXML(from: sheet)
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
 
         // Standard root-step (should be single letter C, A, etc.)
         #expect(xml.contains("<root-step>C</root-step>"))
@@ -366,8 +366,8 @@ struct MusicXMLValidationTests {
             }
             -> A ->#
             """
-        let sheet = try TMDParser.parseThrowing(string: tmd)
-        let xml = TMDMusicXMLGenerator.generateMusicXML(from: sheet)
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
 
         // Original key C has fifths = 0
         #expect(xml.contains("<fifths>0</fifths>"))
@@ -393,8 +393,8 @@ struct MusicXMLValidationTests {
             }
             -> A ->#
             """
-        let sheetCompound = try TMDParser.parseThrowing(string: tmdCompound)
-        let xmlCompound = TMDMusicXMLGenerator.generateMusicXML(from: sheetCompound)
+        let sheetCompound = try TmdParser.parseThrowing(string: tmdCompound)
+        let xmlCompound = TmdMusicXMLGenerator.generateMusicXML(from: sheetCompound)
 
         // Initial tempo in 6/8: quarter BPM 120 -> dotted quarter BPM 80
         #expect(
@@ -423,8 +423,8 @@ struct MusicXMLValidationTests {
             }
             -> A ->#
             """
-        let sheetCutTime = try TMDParser.parseThrowing(string: tmdCutTime)
-        let xmlCutTime = TMDMusicXMLGenerator.generateMusicXML(from: sheetCutTime)
+        let sheetCutTime = try TmdParser.parseThrowing(string: tmdCutTime)
+        let xmlCutTime = TmdMusicXMLGenerator.generateMusicXML(from: sheetCutTime)
 
         // Half note beat unit: quarter BPM 120 -> half note BPM 60
         #expect(
@@ -445,8 +445,8 @@ struct MusicXMLValidationTests {
             }
             -> A ->#
             """
-        let sheetEighthTime = try TMDParser.parseThrowing(string: tmdEighthTime)
-        let xmlEighthTime = TMDMusicXMLGenerator.generateMusicXML(from: sheetEighthTime)
+        let sheetEighthTime = try TmdParser.parseThrowing(string: tmdEighthTime)
+        let xmlEighthTime = TmdMusicXMLGenerator.generateMusicXML(from: sheetEighthTime)
 
         // Eighth note beat unit: quarter BPM 120 -> eighth note BPM 240
         #expect(
@@ -470,8 +470,8 @@ struct MusicXMLValidationTests {
             }
             -> A ->#
             """
-        let sheet = try TMDParser.parseThrowing(string: tmd)
-        let xml = TMDMusicXMLGenerator.generateMusicXML(from: sheet)
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
 
         // Header declared key= Bm -> 2 sharps, minor mode
         #expect(xml.contains("<fifths>2</fifths>\n            <mode>minor</mode>"))

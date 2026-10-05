@@ -5,11 +5,11 @@ import TmdSwift
 ///
 /// Exports the Sheet AST into LilyPond (`.ly`) source files, which can be compiled by the
 /// `lilypond` tool into publication-quality engraving PDFs, SVGs, or PNGs.
-public struct TMDLilyPondGenerator {
+public struct TmdLilyPondGenerator {
 
     /// Generates LilyPond `.ly` file content from a Sheet.
     public static func generateLilyPond(from inputSheet: Sheet) -> String {
-        let sheet = TMDMacroEvaluator.expandOrTrap(inputSheet)
+        let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
         let composer = sheet.metadata["composer"] ?? "TMD"
         let initialTempoCommand = resolveTempo(
             beat: sheet.beat, quarterBPM: sheet.speed > 0 ? sheet.speed : 120)
@@ -93,7 +93,7 @@ public struct TMDLilyPondGenerator {
         sheet: Sheet,
         percussion: Bool
     ) -> String {
-        let measures = TMDMeasureRenderer.renderMeasures(sheet: sheet, instrument: instrument)
+        let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: instrument)
         var result = "  "
 
         for measure in measures {

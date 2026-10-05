@@ -1,14 +1,14 @@
 import Foundation
 
 /// Computes instrument pitch ranges independently from the Inspector facade.
-public enum TMDSongPitchRangeAnalyzer {
+public enum TmdSongPitchRangeAnalyzer {
     public static func analyze(
         instrument: String,
         sheet: Sheet,
-        timingProfile: TMDTimingProfile,
+        timingProfile: TmdTimingProfile,
         timelineDirectives: [PlaybackDirectiveEvent]
-    ) -> TMDPitchRangeProfile? {
-        let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: instrument)
+    ) -> TmdPitchRangeProfile? {
+        let timeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: instrument)
         struct NoteHit {
             let midi: Int
             let name: String
@@ -60,7 +60,7 @@ public enum TMDSongPitchRangeAnalyzer {
                 timeSeconds = event.position / (event.state.tempo / 60.0)
             }
             hits.append(NoteHit(
-                midi: pitch, name: TMDNotePitchInfo.name(for: pitch), pos: event.position,
+                midi: pitch, name: TmdNotePitchInfo.name(for: pitch), pos: event.position,
                 sectionName: sectionName, sectionOccurrence: occurrence,
                 measure: measure, timeSeconds: timeSeconds))
         }
@@ -69,13 +69,13 @@ public enum TMDSongPitchRangeAnalyzer {
         let lowest = hits.min { $0.midi < $1.midi }!
         let highest = hits.max { $0.midi < $1.midi }!
         let span = highest.midi - lowest.midi
-        return TMDPitchRangeProfile(
+        return TmdPitchRangeProfile(
             instrument: instrument,
-            lowestNote: TMDNotePitchInfo(
+            lowestNote: TmdNotePitchInfo(
                 midiPitch: lowest.midi, noteName: lowest.name, sectionName: lowest.sectionName,
                 timelinePosition: lowest.pos, sectionOccurrence: lowest.sectionOccurrence,
                 measure: lowest.measure, timeSeconds: lowest.timeSeconds),
-            highestNote: TMDNotePitchInfo(
+            highestNote: TmdNotePitchInfo(
                 midiPitch: highest.midi, noteName: highest.name, sectionName: highest.sectionName,
                 timelinePosition: highest.pos, sectionOccurrence: highest.sectionOccurrence,
                 measure: highest.measure, timeSeconds: highest.timeSeconds),
@@ -87,7 +87,7 @@ public enum TMDSongPitchRangeAnalyzer {
                 lowestMidi: lowest.midi, highestMidi: highest.midi))
     }
 
-    public static func evaluateDifficulty(spanSemitones: Int) -> TMDPitchRangeDifficulty {
+    public static func evaluateDifficulty(spanSemitones: Int) -> TmdPitchRangeDifficulty {
         if spanSemitones <= 12 { return .easy }
         if spanSemitones <= 16 { return .moderate }
         if spanSemitones <= 20 { return .challenging }
@@ -96,16 +96,16 @@ public enum TMDSongPitchRangeAnalyzer {
 
     public static func evaluateSuitableVoiceTypes(
         lowestMidi: Int, highestMidi: Int
-    ) -> [TMDVocalClassification] {
-        let ranges: [(TMDVocalClassification, Int, Int)] = [
+    ) -> [TmdVocalClassification] {
+        let ranges: [(TmdVocalClassification, Int, Int)] = [
             (.soprano, 57, 86), (.mezzoSoprano, 53, 81), (.contralto, 50, 77),
             (.tenor, 45, 74), (.baritone, 41, 69), (.bass, 38, 65)
         ]
-        var suitable: [TMDVocalClassification] = []
+        var suitable: [TmdVocalClassification] = []
         for (type, min, max) in ranges where lowestMidi >= min && highestMidi <= max {
             suitable.append(type)
         }
-        let maleTypes: Set<TMDVocalClassification> = [.tenor, .baritone, .bass]
+        let maleTypes: Set<TmdVocalClassification> = [.tenor, .baritone, .bass]
         for (type, min, max) in ranges where maleTypes.contains(type) && !suitable.contains(type) {
             if lowestMidi - 12 >= min && highestMidi - 12 <= max { suitable.append(type) }
         }

@@ -6,7 +6,7 @@ import TmdSwift
     import AudioToolbox
     import AVFoundation
 
-    public enum TMDAudioError: Error, LocalizedError {
+    public enum TmdAudioError: Error, LocalizedError {
         case unsupportedPlatform
         case soundBankNotFound
         case failedToCreatePlayer
@@ -26,7 +26,7 @@ import TmdSwift
         }
     }
 
-    public struct TMDWAVRenderer {
+    public struct TmdWAVRenderer {
         public static let defaultSoundBankPath =
             "/System/Library/Components/CoreAudio.component/Contents/Resources/gs_instruments.dls"
 
@@ -45,7 +45,7 @@ import TmdSwift
             targetParagraph: String? = nil,
             targetInstrument: String? = nil
         ) throws -> Data {
-            let midiData = TMDMIDIGenerator.generateMIDI(
+            let midiData = TmdMIDIGenerator.generateMIDI(
                 from: sheet,
                 targetParagraph: targetParagraph,
                 targetInstrument: targetInstrument
@@ -67,7 +67,7 @@ import TmdSwift
             } else {
                 let defaultURL = URL(fileURLWithPath: defaultSoundBankPath)
                 guard FileManager.default.fileExists(atPath: defaultURL.path) else {
-                    throw TMDAudioError.soundBankNotFound
+                    throw TmdAudioError.soundBankNotFound
                 }
                 bankURL = defaultURL
             }
@@ -76,7 +76,7 @@ import TmdSwift
             var sequence: MusicSequence?
             var status = NewMusicSequence(&sequence)
             guard status == noErr, let musicSequence = sequence else {
-                throw TMDAudioError.failedToCreatePlayer
+                throw TmdAudioError.failedToCreatePlayer
             }
             defer { DisposeMusicSequence(musicSequence) }
 
@@ -89,7 +89,7 @@ import TmdSwift
             status = MusicSequenceFileLoad(
                 musicSequence, tempMIDIURL as CFURL, .midiType, MusicSequenceLoadFlags())
             guard status == noErr else {
-                throw TMDAudioError.renderFailed(status)
+                throw TmdAudioError.renderFailed(status)
             }
 
             // Calculate sequence duration in seconds
@@ -114,7 +114,7 @@ import TmdSwift
             var graph: AUGraph?
             status = NewAUGraph(&graph)
             guard status == noErr, let audioGraph = graph else {
-                throw TMDAudioError.renderFailed(status)
+                throw TmdAudioError.renderFailed(status)
             }
             defer {
                 AUGraphClose(audioGraph)
@@ -131,7 +131,7 @@ import TmdSwift
             )
             var synthNode: AUNode = 0
             status = AUGraphAddNode(audioGraph, &synthDesc, &synthNode)
-            guard status == noErr else { throw TMDAudioError.renderFailed(status) }
+            guard status == noErr else { throw TmdAudioError.renderFailed(status) }
 
             // Add Generic Output Unit (for offline render)
             var outputDesc = AudioComponentDescription(
@@ -143,25 +143,25 @@ import TmdSwift
             )
             var outputNode: AUNode = 0
             status = AUGraphAddNode(audioGraph, &outputDesc, &outputNode)
-            guard status == noErr else { throw TMDAudioError.renderFailed(status) }
+            guard status == noErr else { throw TmdAudioError.renderFailed(status) }
 
             status = AUGraphOpen(audioGraph)
-            guard status == noErr else { throw TMDAudioError.renderFailed(status) }
+            guard status == noErr else { throw TmdAudioError.renderFailed(status) }
 
             // Connect Synth to Output
             status = AUGraphConnectNodeInput(audioGraph, synthNode, 0, outputNode, 0)
-            guard status == noErr else { throw TMDAudioError.renderFailed(status) }
+            guard status == noErr else { throw TmdAudioError.renderFailed(status) }
 
             var synthUnit: AudioUnit?
             status = AUGraphNodeInfo(audioGraph, synthNode, nil, &synthUnit)
             guard status == noErr, let synth = synthUnit else {
-                throw TMDAudioError.renderFailed(status)
+                throw TmdAudioError.renderFailed(status)
             }
 
             var outputUnit: AudioUnit?
             status = AUGraphNodeInfo(audioGraph, outputNode, nil, &outputUnit)
             guard status == noErr, let output = outputUnit else {
-                throw TMDAudioError.renderFailed(status)
+                throw TmdAudioError.renderFailed(status)
             }
 
             // Set SoundBank URL on Synth
@@ -176,7 +176,7 @@ import TmdSwift
                     UInt32(MemoryLayout<CFURL>.size)
                 )
             }
-            guard status == noErr else { throw TMDAudioError.renderFailed(status) }
+            guard status == noErr else { throw TmdAudioError.renderFailed(status) }
 
             // Set Standard Stereo LPCM Format (Float32 for rendering)
             var streamFormat = AudioStreamBasicDescription(
@@ -198,20 +198,20 @@ import TmdSwift
                 &streamFormat,
                 UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
             )
-            guard status == noErr else { throw TMDAudioError.renderFailed(status) }
+            guard status == noErr else { throw TmdAudioError.renderFailed(status) }
 
             status = AUGraphInitialize(audioGraph)
-            guard status == noErr else { throw TMDAudioError.renderFailed(status) }
+            guard status == noErr else { throw TmdAudioError.renderFailed(status) }
 
             // Link MusicSequence to AUGraph
             status = MusicSequenceSetAUGraph(musicSequence, audioGraph)
-            guard status == noErr else { throw TMDAudioError.renderFailed(status) }
+            guard status == noErr else { throw TmdAudioError.renderFailed(status) }
 
             // Create MusicPlayer
             var player: MusicPlayer?
             status = NewMusicPlayer(&player)
             guard status == noErr, let musicPlayer = player else {
-                throw TMDAudioError.renderFailed(status)
+                throw TmdAudioError.renderFailed(status)
             }
             defer {
                 MusicPlayerStop(musicPlayer)
@@ -219,13 +219,13 @@ import TmdSwift
             }
 
             status = MusicPlayerSetSequence(musicPlayer, musicSequence)
-            guard status == noErr else { throw TMDAudioError.renderFailed(status) }
+            guard status == noErr else { throw TmdAudioError.renderFailed(status) }
 
             status = MusicPlayerPreroll(musicPlayer)
-            guard status == noErr else { throw TMDAudioError.renderFailed(status) }
+            guard status == noErr else { throw TmdAudioError.renderFailed(status) }
 
             status = MusicPlayerStart(musicPlayer)
-            guard status == noErr else { throw TMDAudioError.renderFailed(status) }
+            guard status == noErr else { throw TmdAudioError.renderFailed(status) }
 
             // Determine render duration: convert beats to approximate seconds + 2.5s release reverb tail
             var sequenceSeconds: Float64 = 0
@@ -296,7 +296,7 @@ import TmdSwift
             }
 
             // Encode into Standard 16-bit Linear PCM Stereo WAV
-            return TMDWAVEncoder.encode(
+            return TmdWAVEncoder.encode(
                 left: pcmSamplesLeft, right: pcmSamplesRight, sampleRate: clampedUInt32(sampleRate))
         }
 
@@ -306,7 +306,7 @@ import TmdSwift
         }
     }
 #else
-    public enum TMDAudioError: Error, LocalizedError {
+    public enum TmdAudioError: Error, LocalizedError {
         case unsupportedPlatform
 
         public var errorDescription: String? {
@@ -317,7 +317,7 @@ import TmdSwift
         }
     }
 
-    public struct TMDWAVRenderer {
+    public struct TmdWAVRenderer {
         public static func renderWAV(
             from sheet: Sheet,
             soundBankURL: URL? = nil,
@@ -325,7 +325,7 @@ import TmdSwift
             targetParagraph: String? = nil,
             targetInstrument: String? = nil
         ) throws -> Data {
-            throw TMDAudioError.unsupportedPlatform
+            throw TmdAudioError.unsupportedPlatform
         }
 
         public static func renderWAV(
@@ -333,7 +333,7 @@ import TmdSwift
             soundBankURL: URL? = nil,
             sampleRate: Double = 44100.0
         ) throws -> Data {
-            throw TMDAudioError.unsupportedPlatform
+            throw TmdAudioError.unsupportedPlatform
         }
     }
 #endif

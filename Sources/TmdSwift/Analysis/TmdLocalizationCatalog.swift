@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Keeping this catalog in source makes the CLI self-contained: SwiftPM no
 /// longer needs to ship a resource bundle beside the executable.
-internal enum TMDLocalizationCatalog {
+internal enum TmdLocalizationCatalog {
     static let values: [String: [String: String]] = [
         "en": [
             "report.title": "TMD Song Profile",

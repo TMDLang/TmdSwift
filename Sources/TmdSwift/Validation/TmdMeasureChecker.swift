@@ -1,7 +1,7 @@
 import Foundation
 
 /// Represents a detected measure duration issue within a TMD score.
-public struct TMDMeasureIssue: Equatable, CustomStringConvertible, Sendable {
+public struct TmdMeasureIssue: Equatable, CustomStringConvertible, Sendable {
     public let paragraphName: String
     public let instrument: String
     public let lineNumber: Int
@@ -50,12 +50,12 @@ public struct TMDMeasureIssue: Equatable, CustomStringConvertible, Sendable {
 
 /// Verifies parser-valid measure invariants and combines them with the
 /// malformed-source lexer fallback without owning that fallback implementation.
-public struct TMDMeasureChecker {
+public struct TmdMeasureChecker {
     /// Checks parser-valid structural invariants directly from the canonical AST.
-    public static func check(sheet: Sheet) -> [TMDMeasureIssue] {
+    public static func check(sheet: Sheet) -> [TmdMeasureIssue] {
         let measureDuration =
             Double(max(1, sheet.beat.count) * 4) / Double(max(1, sheet.beat.noteValue))
-        var issues: [TMDMeasureIssue] = []
+        var issues: [TmdMeasureIssue] = []
 
         for entry in sheet.entries where !entry.sections.isEmpty {
             for section in entry.sections {
@@ -66,7 +66,7 @@ public struct TMDMeasureChecker {
                 if duration > measureDuration + 1e-9 && section.barlinePositions.isEmpty {
                     let measureCount = Int((duration / measureDuration).rounded())
                     issues.append(
-                        TMDMeasureIssue(
+                        TmdMeasureIssue(
                             paragraphName: entry.name,
                             instrument: entry.assignment ?? "",
                             lineNumber: 0,
@@ -84,13 +84,13 @@ public struct TMDMeasureChecker {
     }
 
     /// Checks source text using AST validation first, then the malformed-source fallback.
-    public static func check(source: String) -> [TMDMeasureIssue] {
-        let astIssues: [TMDMeasureIssue]
-        if let sheet = TMDParser.parse(string: source) {
+    public static func check(source: String) -> [TmdMeasureIssue] {
+        let astIssues: [TmdMeasureIssue]
+        if let sheet = TmdParser.parse(string: source) {
             astIssues = check(sheet: sheet)
         } else {
             astIssues = []
         }
-        return astIssues + TMDMeasureLexerFallback.check(source: source)
+        return astIssues + TmdMeasureLexerFallback.check(source: source)
     }
 }

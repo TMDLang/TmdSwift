@@ -17,13 +17,13 @@ struct TmdOutlineCommand: ParsableCommand {
     func run() throws {
         let content: String
         do {
-            content = try TMDTextIO.readUTF8(from: inputPath)
+            content = try TmdTextIO.readUTF8(from: inputPath)
         } catch {
             print("Error reading \(inputPath): \(error.localizedDescription)")
             throw ExitCode.failure
         }
 
-        let nodes = TMDOutlineGenerator.generate(source: content)
+        let nodes = TmdOutlineGenerator.generate(source: content)
         if json {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted]
@@ -33,7 +33,7 @@ struct TmdOutlineCommand: ParsableCommand {
                 print("[]")
             }
         } else {
-            func printNode(_ node: TMDOutlineNode, indent: Int) {
+            func printNode(_ node: TmdOutlineNode, indent: Int) {
                 let pad = String(repeating: "  ", count: indent)
                 var line = "\(pad)- [\(node.kind)] \(node.name)"
                 if let detail = node.detail, !detail.isEmpty { line += " (\(detail))" }

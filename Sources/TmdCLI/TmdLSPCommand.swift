@@ -9,7 +9,7 @@ struct TmdLSPCommand: ParsableCommand {
     )
 
     func run() throws {
-        let server = TMDLSPServer { responseString in
+        let server = TmdLSPServer { responseString in
             if let data = responseString.data(using: .utf8) {
                 FileHandle.standardOutput.write(data)
             }
@@ -20,7 +20,7 @@ struct TmdLSPCommand: ParsableCommand {
             let chunk = stdin.availableData
             if chunk.isEmpty { break }
             buffer.append(chunk)
-            for frame in TMDJSONRPCCodec.decode(buffer: &buffer) {
+            for frame in TmdJSONRPCCodec.decode(buffer: &buffer) {
                 server.handle(message: frame)
             }
         }

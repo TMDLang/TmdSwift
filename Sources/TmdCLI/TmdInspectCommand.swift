@@ -16,8 +16,8 @@ struct TmdInspectCommand: ParsableCommand {
 
     func run() throws {
         let sheet: Sheet
-        do { sheet = try TMDParser.parseThrowing(filePathOrURL: inputPath) }
-        catch let parseError as TMDParseError {
+        do { sheet = try TmdParser.parseThrowing(filePathOrURL: inputPath) }
+        catch let parseError as TmdParseError {
             print("Error: Syntax error in \(inputPath):")
             print(parseError.description)
             let codeFrame = parseError.formatCodeFrame()
@@ -27,17 +27,17 @@ struct TmdInspectCommand: ParsableCommand {
             print("Error reading \(inputPath): \(error.localizedDescription)")
             throw ExitCode.failure
         }
-        let profile = TMDSongInspector.inspect(sheet: sheet, locale: inspectionLocale)
+        let profile = TmdSongInspector.inspect(sheet: sheet, locale: inspectionLocale)
         if json {
             let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted]
             if let data = try? encoder.encode(profile), let str = String(data: data, encoding: .utf8) { print(str) }
             else { print("{}") }
-        } else if svg { print(TMDTonalityVisualizer.generateSVG(profile)) }
-        else if html { print(TMDTonalityVisualizer.generateHTML(profile)) }
-        else { print(TMDSongInspector.generateReport(profile)) }
+        } else if svg { print(TmdTonalityVisualizer.generateSVG(profile)) }
+        else if html { print(TmdTonalityVisualizer.generateHTML(profile)) }
+        else { print(TmdSongInspector.generateReport(profile)) }
     }
 
-    private var inspectionLocale: TMDLocale {
+    private var inspectionLocale: TmdLocale {
         guard let locale else { return .en }
         return locale.lowercased().hasPrefix("zh") ? .zhHant : .en
     }

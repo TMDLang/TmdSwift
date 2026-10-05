@@ -1,7 +1,7 @@
 import Foundation
 
 /// Represents a source code position range for outline nodes (1-based line and column).
-public struct TMDOutlineRange: Codable, Equatable, Sendable {
+public struct TmdOutlineRange: Codable, Equatable, Sendable {
     public let startLine: Int
     public let startColumn: Int
     public let endLine: Int
@@ -23,21 +23,21 @@ public struct TMDOutlineRange: Codable, Equatable, Sendable {
 }
 
 /// Represents an outline symbol node conforming to standard DocumentSymbol hierarchies.
-public struct TMDOutlineNode: Codable, Equatable, Sendable {
+public struct TmdOutlineNode: Codable, Equatable, Sendable {
     public let name: String
     public let detail: String?
     public let kind: String  // "file", "class", "namespace", "field", "method", "event", etc.
-    public let range: TMDOutlineRange
-    public let selectionRange: TMDOutlineRange
-    public let children: [TMDOutlineNode]?
+    public let range: TmdOutlineRange
+    public let selectionRange: TmdOutlineRange
+    public let children: [TmdOutlineNode]?
 
     public init(
         name: String,
         detail: String? = nil,
         kind: String,
-        range: TMDOutlineRange,
-        selectionRange: TMDOutlineRange? = nil,
-        children: [TMDOutlineNode]? = nil
+        range: TmdOutlineRange,
+        selectionRange: TmdOutlineRange? = nil,
+        children: [TmdOutlineNode]? = nil
     ) {
         self.name = name
         self.detail = detail
@@ -49,14 +49,14 @@ public struct TMDOutlineNode: Codable, Equatable, Sendable {
 }
 
 /// Generates an outline hierarchy from TMD source text.
-public struct TMDOutlineGenerator {
-    public static func generate(source: String) -> [TMDOutlineNode] {
+public struct TmdOutlineGenerator {
+    public static func generate(source: String) -> [TmdOutlineNode] {
         let lexer = Lexer(string: source)
         let tokens = lexer.tokenizeWithRanges()
 
         guard !tokens.isEmpty else { return [] }
 
-        var result: [TMDOutlineNode] = []
+        var result: [TmdOutlineNode] = []
         var pos = 0
 
         func current() -> LexedToken? {
@@ -81,8 +81,8 @@ public struct TMDOutlineGenerator {
         struct TrackOccurrence {
             let sectionName: String
             let assignment: String
-            let range: TMDOutlineRange
-            let selectionRange: TMDOutlineRange
+            let range: TmdOutlineRange
+            let selectionRange: TmdOutlineRange
             let detail: String?
         }
 
@@ -90,7 +90,7 @@ public struct TMDOutlineGenerator {
 
         struct OrderItem {
             let name: String
-            let range: TMDOutlineRange
+            let range: TmdOutlineRange
         }
         var orderItems: [OrderItem] = []
         var orderStartPos: SourcePosition?
@@ -220,7 +220,7 @@ public struct TMDOutlineGenerator {
                     line: paraEndTok.range.start.line,
                     column: paraEndTok.range.start.column + paraEndTok.range.length
                 )
-                let range = TMDOutlineRange(start: pStart, end: pEnd)
+                let range = TmdOutlineRange(start: pStart, end: pEnd)
                 let selStart = instTok?.range.start ?? pStart
                 let selEnd = SourcePosition(
                     offset: (instTok?.range.endOffset) ?? pEnd.offset,
@@ -228,7 +228,7 @@ public struct TMDOutlineGenerator {
                     column: (instTok?.range.start.column ?? pEnd.column)
                         + (instTok?.range.length ?? 0)
                 )
-                let selectionRange = TMDOutlineRange(start: selStart, end: selEnd)
+                let selectionRange = TmdOutlineRange(start: selStart, end: selEnd)
 
                 var detail: String?
                 if let startOffsetStr = startOffsetStr, !startOffsetStr.isEmpty {
@@ -273,8 +273,8 @@ public struct TMDOutlineGenerator {
                     line: paraEndTok.range.start.line,
                     column: paraEndTok.range.start.column + paraEndTok.range.length
                 )
-                let range = TMDOutlineRange(start: pStart, end: pEnd)
-                let selectionRange = TMDOutlineRange(
+                let range = TmdOutlineRange(start: pStart, end: pEnd)
+                let selectionRange = TmdOutlineRange(
                     start: paraStartTok.range.start,
                     end: SourcePosition(
                         offset: paraStartTok.range.endOffset,
@@ -315,7 +315,7 @@ public struct TMDOutlineGenerator {
                     } else if case .identifier(let orderSec) = next.token {
                         orderSnippet.append(orderSec)
                         if let secTok = advance() {
-                            let oRange = TMDOutlineRange(
+                            let oRange = TmdOutlineRange(
                                 start: secTok.range.start,
                                 end: SourcePosition(
                                     offset: secTok.range.endOffset,
@@ -370,7 +370,7 @@ public struct TMDOutlineGenerator {
                                 }
                             }
                         }
-                        let mRange = TMDOutlineRange(
+                        let mRange = TmdOutlineRange(
                             start: startTok.range.start,
                             end: orderEndPos ?? startTok.range.start
                         )
@@ -419,10 +419,10 @@ public struct TMDOutlineGenerator {
 
         let scoreStart = scoreHeaderStart ?? SourcePosition(offset: 0, line: 1, column: 1)
         let scoreEnd = scoreHeaderEnd ?? SourcePosition(offset: 0, line: 1, column: 1)
-        let scoreRange = TMDOutlineRange(start: scoreStart, end: scoreEnd)
+        let scoreRange = TmdOutlineRange(start: scoreStart, end: scoreEnd)
 
         result.append(
-            TMDOutlineNode(
+            TmdOutlineNode(
                 name: "Score: \(songName)",
                 detail: scoreDetailStr,
                 kind: "class",
@@ -441,18 +441,18 @@ public struct TMDOutlineGenerator {
             tracksBySection[track.sectionName, default: []].append(track)
         }
 
-        var sectionNodes: [TMDOutlineNode] = []
+        var sectionNodes: [TmdOutlineNode] = []
         for secName in sectionOrder {
             guard let tracks = tracksBySection[secName], !tracks.isEmpty else { continue }
             let minLine = tracks.map(\.range.startLine).min() ?? 1
             let minCol = tracks.first?.range.startColumn ?? 1
             let maxLine = tracks.map(\.range.endLine).max() ?? 1
             let maxCol = tracks.last?.range.endColumn ?? 1
-            let secRange = TMDOutlineRange(
+            let secRange = TmdOutlineRange(
                 startLine: minLine, startColumn: minCol, endLine: maxLine, endColumn: maxCol)
 
             let trackNodes = tracks.map { track in
-                TMDOutlineNode(
+                TmdOutlineNode(
                     name: track.assignment,
                     detail: track.detail,
                     kind: "field",
@@ -462,7 +462,7 @@ public struct TMDOutlineGenerator {
             }
 
             sectionNodes.append(
-                TMDOutlineNode(
+                TmdOutlineNode(
                     name: secName,
                     detail: "\(trackNodes.count) track\(trackNodes.count == 1 ? "" : "s")",
                     kind: "namespace",
@@ -473,14 +473,14 @@ public struct TMDOutlineGenerator {
         }
 
         if !sectionNodes.isEmpty {
-            let sRange = TMDOutlineRange(
+            let sRange = TmdOutlineRange(
                 startLine: sectionNodes.first?.range.startLine ?? 1,
                 startColumn: sectionNodes.first?.range.startColumn ?? 1,
                 endLine: sectionNodes.last?.range.endLine ?? 1,
                 endColumn: sectionNodes.last?.range.endColumn ?? 1
             )
             result.append(
-                TMDOutlineNode(
+                TmdOutlineNode(
                     name: "Sections",
                     detail: "\(sectionNodes.count) section\(sectionNodes.count == 1 ? "" : "s")",
                     kind: "namespace",
@@ -494,10 +494,10 @@ public struct TMDOutlineGenerator {
         if !orderItems.isEmpty || orderStartPos != nil {
             let start = orderStartPos ?? SourcePosition(offset: 0, line: 1, column: 1)
             let end = orderEndPos ?? start
-            let ordersRange = TMDOutlineRange(start: start, end: end)
+            let ordersRange = TmdOutlineRange(start: start, end: end)
 
             let orderChildNodes = orderItems.map { item in
-                TMDOutlineNode(
+                TmdOutlineNode(
                     name: item.name,
                     detail: nil,
                     kind: "method",
@@ -508,7 +508,7 @@ public struct TMDOutlineGenerator {
 
             let fullSnippet = orderSnippet.joined(separator: " ")
             result.append(
-                TMDOutlineNode(
+                TmdOutlineNode(
                     name: "Playback",
                     detail: fullSnippet.isEmpty ? nil : fullSnippet,
                     kind: "event",
@@ -533,7 +533,7 @@ public struct TMDOutlineGenerator {
     }
 }
 
-extension TMDOutlineRange {
+extension TmdOutlineRange {
     fileprivate func endPosition(from tok: LexedToken) -> SourcePosition {
         SourcePosition(
             offset: tok.range.endOffset,

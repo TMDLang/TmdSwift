@@ -1,8 +1,8 @@
 import Foundation
 
 /// Validates malformed TMD source using the shared canonical lexer.
-internal enum TMDMeasureLexerFallback {
-    static func check(source: String) -> [TMDMeasureIssue] {
+internal enum TmdMeasureLexerFallback {
+    static func check(source: String) -> [TmdMeasureIssue] {
         let lexer = Lexer(string: source)
         let tokensWithRanges = lexer.tokenizeWithRanges()
 
@@ -22,7 +22,7 @@ internal enum TMDMeasureLexerFallback {
             }
         }
 
-        var issues: [TMDMeasureIssue] = []
+        var issues: [TmdMeasureIssue] = []
         var paragraphInfos: [ParagraphSpanInfo] = []
         var orderSections: [(name: String, line: Int)] = []
         var hasOrder = false
@@ -174,7 +174,7 @@ internal enum TMDMeasureLexerFallback {
                                 && currentMeasureUnits < expected && currentMeasureUnits > 0
                             if currentMeasureUnits != expected && !isPickup {
                                 issues.append(
-                                    TMDMeasureIssue(
+                                    TmdMeasureIssue(
                                         paragraphName: pName,
                                         instrument: instName,
                                         lineNumber: measureStartLine,
@@ -228,7 +228,7 @@ internal enum TMDMeasureLexerFallback {
                         if let timeSignature {
                             if currentMeasureUnits != 0 {
                                 issues.append(
-                                    TMDMeasureIssue(
+                                    TmdMeasureIssue(
                                         paragraphName: pName,
                                         instrument: instName,
                                         lineNumber: directiveLine,
@@ -359,7 +359,7 @@ internal enum TMDMeasureLexerFallback {
 
                 if unclosedParagraph {
                     issues.append(
-                        TMDMeasureIssue(
+                        TmdMeasureIssue(
                             paragraphName: pName,
                             instrument: instName,
                             lineNumber: paraStartLine,
@@ -448,7 +448,7 @@ internal enum TMDMeasureLexerFallback {
         if !hasOrder {
             let lastLine = tokensWithRanges.last(where: { $0.token != .eof })?.range.start.line ?? 1
             issues.append(
-                TMDMeasureIssue(
+                TmdMeasureIssue(
                     paragraphName: "",
                     instrument: "Order",
                     lineNumber: lastLine,
@@ -461,7 +461,7 @@ internal enum TMDMeasureLexerFallback {
                 ))
         } else if !terminatedWithHash {
             issues.append(
-                TMDMeasureIssue(
+                TmdMeasureIssue(
                     paragraphName: "",
                     instrument: "Order",
                     lineNumber: lastOrderTokenLine,
@@ -482,7 +482,7 @@ internal enum TMDMeasureLexerFallback {
             }
             if !definedSectionNames.contains(order.name) {
                 issues.append(
-                    TMDMeasureIssue(
+                    TmdMeasureIssue(
                         paragraphName: order.name,
                         instrument: "Order",
                         lineNumber: order.line,
@@ -497,7 +497,7 @@ internal enum TMDMeasureLexerFallback {
         }
 
         // Note: in TMD, tracks within the same section may enter and exit freely (staggered entrance,
-        // early exit / solos / breakdowns). TMDPlaybackRenderer pads trailing silence up to durationOf(section),
+        // early exit / solos / breakdowns). TmdPlaybackRenderer pads trailing silence up to durationOf(section),
         // so shorter tracks are considered natural implicit rests rather than errors.
 
         return issues

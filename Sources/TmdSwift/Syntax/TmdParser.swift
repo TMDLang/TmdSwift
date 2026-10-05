@@ -127,7 +127,7 @@ public let fullwidthPunctuationOrder: [String] = [
 ]
 
 /// A syntax error reported by the throwing parser API.
-public struct TMDParseError: Error, Equatable, CustomStringConvertible, LocalizedError {
+public struct TmdParseError: Error, Equatable, CustomStringConvertible, LocalizedError {
     public let message: String
     public let token: Token
     public let text: String
@@ -680,7 +680,7 @@ public final class Lexer {
 
 // MARK: - Parser
 
-public struct TMDParser {
+public struct TmdParser {
     /// Parses a TMD score from a text string.
     public static func parse(string: String) -> Sheet? {
         let lexer = Lexer(string: string)
@@ -697,7 +697,7 @@ public struct TMDParser {
             let index = diagnosticIndex(
                 parser.failureIndex ?? parser.position, tokenCount: lexedTokens.count)
             let offending = lexedTokens[index]
-            throw TMDParseError(
+            throw TmdParseError(
                 message: "Unexpected token",
                 token: offending.token,
                 text: offending.text,
@@ -709,7 +709,7 @@ public struct TMDParser {
         if let failureIndex = parser.failureIndex {
             let index = diagnosticIndex(failureIndex, tokenCount: lexedTokens.count)
             let offending = lexedTokens[index]
-            throw TMDParseError(
+            throw TmdParseError(
                 message: "Unexpected token",
                 token: offending.token,
                 text: offending.text,
@@ -729,7 +729,7 @@ public struct TMDParser {
     /// Parses encoded data and reports decoding or syntax failures.
     public static func parseThrowing(data: Data) throws -> Sheet {
         guard let result = TextEncodingDetector.detectAndDecode(data) else {
-            throw TMDParseError(
+            throw TmdParseError(
                 message: "Unable to decode source",
                 token: .eof,
                 text: "",

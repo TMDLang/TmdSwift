@@ -9,10 +9,10 @@ func coreResponsibilitiesHaveExplicitSourceBoundaries() {
         .deletingLastPathComponent()
     let sourceRoot = packageRoot.appendingPathComponent("Sources/TmdSwift")
     let canonicalFiles = [
-        ("Syntax", "Parser.swift"),
-        ("Validation", "MeasureCheck.swift"),
-        ("Analysis", "SongInspector.swift"),
-        ("Playback", "Playback.swift"),
+        ("Syntax", "TmdParser.swift"),
+        ("Validation", "TmdMeasureChecker.swift"),
+        ("Analysis", "TmdSongInspector.swift"),
+        ("Playback", "TmdPlaybackRenderer.swift"),
     ]
 
     for (boundary, file) in canonicalFiles {
@@ -29,10 +29,10 @@ func inspectorAnalyzersHaveExplicitSourceBoundaries() {
         .deletingLastPathComponent()
     let analysisRoot = packageRoot.appendingPathComponent("Sources/TmdSwift/Analysis")
     let files = [
-        "SongHarmonyAnalyzer.swift",
-        "SongPitchRangeAnalyzer.swift",
-        "SongTimingAnalyzer.swift",
-        "SongTonalityAnalyzer.swift",
+        "TmdSongHarmonyAnalyzer.swift",
+        "TmdSongPitchRangeAnalyzer.swift",
+        "TmdSongTimingAnalyzer.swift",
+        "TmdSongTonalityAnalyzer.swift",
     ]
 
     for file in files {
@@ -48,8 +48,8 @@ func toolResponsibilitiesHaveExplicitSourceBoundaries() {
         .deletingLastPathComponent()
     let sourceRoot = packageRoot.appendingPathComponent("Sources/TmdSwift")
     let files = [
-        "IO/TMDTextIO.swift",
-        "Refactoring/Refactor.swift",
+        "IO/TmdTextIO.swift",
+        "Refactoring/TmdRefactor.swift",
     ]
 
     for file in files {
@@ -65,8 +65,8 @@ func presentationResponsibilitiesHaveExplicitSourceBoundaries() {
         .deletingLastPathComponent()
     let sourceRoot = packageRoot.appendingPathComponent("Sources/TmdSwift")
     let files = [
-        "Presentation/Outline.swift",
-        "Presentation/TonalityVisualizer.swift",
+        "Presentation/TmdOutline.swift",
+        "Presentation/TmdTonalityVisualizer.swift",
     ]
 
     for file in files {
@@ -95,7 +95,7 @@ func macroResponsibilitiesHaveExplicitSourceBoundaries() {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
         .deletingLastPathComponent()
-    let path = packageRoot.appendingPathComponent("Sources/TmdSwift/Playback/MacroEvaluator.swift").path
+    let path = packageRoot.appendingPathComponent("Sources/TmdSwift/Playback/TmdMacroEvaluator.swift").path
     #expect(FileManager.default.fileExists(atPath: path))
 }
 
@@ -108,7 +108,7 @@ func measureRenderingHasExplicitPlaybackBoundary() {
     let sourceRoot = packageRoot.appendingPathComponent("Sources/TmdSwift")
     #expect(
         FileManager.default.fileExists(
-            atPath: sourceRoot.appendingPathComponent("Playback/Measure.swift").path))
+            atPath: sourceRoot.appendingPathComponent("Playback/TmdMeasureRenderer.swift").path))
     #expect(
         !FileManager.default.fileExists(
             atPath: sourceRoot.appendingPathComponent("Measure.swift").path))
@@ -131,7 +131,7 @@ func inspectorLocalizationHasExplicitAnalysisBoundary() {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
     let sourceRoot = packageRoot.appendingPathComponent("Sources/TmdSwift")
-    for file in ["Localization.swift", "LocalizationCatalog.swift"] {
+    for file in ["TmdLocalization.swift", "TmdLocalizationCatalog.swift"] {
         #expect(
             FileManager.default.fileExists(
                 atPath: sourceRoot.appendingPathComponent("Analysis").appendingPathComponent(file).path))
@@ -150,8 +150,8 @@ func measureCheckerSeparatesASTAndLexerFallback() throws {
     let validationRoot = packageRoot.appendingPathComponent("Sources/TmdSwift/Validation")
     #expect(
         FileManager.default.fileExists(
-            atPath: validationRoot.appendingPathComponent("MeasureLexerFallback.swift").path))
+            atPath: validationRoot.appendingPathComponent("TmdMeasureLexerFallback.swift").path))
     let checker = try String(
-        contentsOf: validationRoot.appendingPathComponent("MeasureCheck.swift"))
+        contentsOf: validationRoot.appendingPathComponent("TmdMeasureChecker.swift"))
     #expect(!checker.contains("private static func checkWithLexer"))
 }

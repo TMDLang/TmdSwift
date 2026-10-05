@@ -1,14 +1,14 @@
 import Foundation
 
 /// SVG and HTML interactive dashboard visualizer for TMD tonality profiles.
-public enum TMDTonalityVisualizer {
+public enum TmdTonalityVisualizer {
 
     /// Generates a standalone, beautifully styled SVG dashboard containing:
     /// 1. Circle of Fifths dial with active nodes and curved trajectory paths.
     /// 2. Section Keyscape Timeline ribbon.
     /// 3. 12-Tone Pitch Class Distribution radar chart.
-    public static func generateSVG(_ profile: TMDSongProfile, locale: TMDLocale? = nil) -> String {
-        let localizer = TMDLocalizer(locale: locale ?? profile.locale)
+    public static func generateSVG(_ profile: TmdSongProfile, locale: TmdLocale? = nil) -> String {
+        let localizer = TmdLocalizer(locale: locale ?? profile.locale)
         guard let tonality = profile.tonality else {
             return
                 "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"800\" height=\"200\"><text x=\"20\" y=\"40\" fill=\"#888\">No tonality data available</text></svg>"
@@ -61,10 +61,10 @@ public enum TMDTonalityVisualizer {
 
     /// Generates a complete, responsive HTML report containing the embedded SVG dashboard,
     /// inspection summary metrics, and section-by-section tonality breakdown.
-    public static func generateHTML(_ profile: TMDSongProfile, locale: TMDLocale? = nil) -> String {
-        let localizer = TMDLocalizer(locale: locale ?? profile.locale)
+    public static func generateHTML(_ profile: TmdSongProfile, locale: TmdLocale? = nil) -> String {
+        let localizer = TmdLocalizer(locale: locale ?? profile.locale)
         let svg = generateSVG(profile, locale: localizer.locale)
-        let textReport = TMDSongInspector.generateReport(profile, locale: localizer.locale)
+        let textReport = TmdSongInspector.generateReport(profile, locale: localizer.locale)
 
         return """
             <!DOCTYPE html>
@@ -156,7 +156,7 @@ public enum TMDTonalityVisualizer {
     // MARK: - Private SVG Sub-Renderers
 
     private static func renderCircleOfFifthsSVG(
-        tonality: TMDTonalityProfile, localizer: TMDLocalizer, cx: Int, cy: Int, r: Int
+        tonality: TmdTonalityProfile, localizer: TmdLocalizer, cx: Int, cy: Int, r: Int
     ) -> String {
         // Circle of Fifths order starting from 12 o'clock (0: C, 1: G, 2: D, ..., 11: F)
         let fifthsCircle: [(name: String, step: Int)] = [
@@ -223,7 +223,7 @@ public enum TMDTonalityVisualizer {
     }
 
     private static func renderRadarChartSVG(
-        tonality: TMDTonalityProfile, localizer: TMDLocalizer, cx: Int, cy: Int, r: Int
+        tonality: TmdTonalityProfile, localizer: TmdLocalizer, cx: Int, cy: Int, r: Int
     ) -> String {
         let pitchClassNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
         let weights = tonality.globalPitchClasses.weights
@@ -272,7 +272,7 @@ public enum TMDTonalityVisualizer {
     }
 
     private static func renderTimelineRibbonSVG(
-        profile: TMDSongProfile, localizer: TMDLocalizer, x: Int, y: Int, width: Int, height: Int
+        profile: TmdSongProfile, localizer: TmdLocalizer, x: Int, y: Int, width: Int, height: Int
     ) -> String {
         let sections = profile.timing.sections
         let totalDuration = max(0.001, profile.timing.totalDurationSeconds)
@@ -336,7 +336,7 @@ public enum TMDTonalityVisualizer {
             .replacingOccurrences(of: "'", with: "&apos;")
     }
 
-    private static func modeLabel(_ mode: TMDTonalityMode, localizer: TMDLocalizer) -> String {
+    private static func modeLabel(_ mode: TmdTonalityMode, localizer: TmdLocalizer) -> String {
         switch mode {
         case .major: localizer.text(.major)
         case .minor: localizer.text(.minor)

@@ -26,7 +26,7 @@ struct MacroEvaluatorTests {
 
             -> Theme ->#
             """
-        let sheet = try #require(TMDParser.parse(string: input))
+        let sheet = try #require(TmdParser.parse(string: input))
         #expect(sheet.entries.count == 1)
         let p = sheet.entries[0]
         #expect(p.name == "Theme")
@@ -52,7 +52,7 @@ struct MacroEvaluatorTests {
 
             -> (canon Theme (Violin1 Violin2) 2) ->#
             """
-        let sheet = try #require(TMDParser.parse(string: input))
+        let sheet = try #require(TmdParser.parse(string: input))
         #expect(sheet.playback.count == 1)
         guard case .macro(let expr) = sheet.playback[0] else {
             Issue.record("Expected .macro order but got \(sheet.playback[0])")
@@ -83,7 +83,7 @@ struct MacroEvaluatorTests {
 
             -> (canon Theme (Violin1 Violin2) 2) ->#
             """
-        let sheet = try #require(TMDParser.parse(string: input))
+        let sheet = try #require(TmdParser.parse(string: input))
         let formatted = sheet.format()
         #expect(formatted.contains("Theme {\n"))
         #expect(formatted.contains("-> (canon Theme (Violin1 Violin2) 2) ->#"))
@@ -105,8 +105,8 @@ struct MacroEvaluatorTests {
 
             -> (play Theme Violin) ->#
             """
-        let sheet = try #require(TMDParser.parse(string: input))
-        let playback = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Violin")
+        let sheet = try #require(TmdParser.parse(string: input))
+        let playback = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Violin")
         #expect(playback.events.count == 4)
         #expect(playback.events[0].position == 0)
         #expect(playback.duration == 4)
@@ -128,8 +128,8 @@ struct MacroEvaluatorTests {
 
             -> (loop Bass Cello 3) ->#
             """
-        let sheet = try #require(TMDParser.parse(string: input))
-        let playback = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Cello")
+        let sheet = try #require(TmdParser.parse(string: input))
+        let playback = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Cello")
         // 4 beats * 3 iterations = 12 events across 12 beats
         #expect(playback.events.count == 12)
         #expect(playback.duration == 12)
@@ -151,10 +151,10 @@ struct MacroEvaluatorTests {
 
             -> (canon Theme (Violin1 Violin2 Violin3) 2) ->#
             """
-        let sheet = try #require(TMDParser.parse(string: input))
-        let v1 = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Violin1")
-        let v2 = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Violin2")
-        let v3 = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Violin3")
+        let sheet = try #require(TmdParser.parse(string: input))
+        let v1 = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Violin1")
+        let v2 = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Violin2")
+        let v3 = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Violin3")
 
         #expect(v1.events[0].position == 0)
         #expect(v2.events[0].position == 8)  // 2 measures * 4 beats
@@ -185,11 +185,11 @@ struct MacroEvaluatorTests {
                  4
                ) ->#
             """
-        let sheet = try #require(TMDParser.parse(string: input))
-        let v1 = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Violin1")
-        let v2 = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Violin2")
-        let f1 = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Flute1")
-        let f2 = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Flute2")
+        let sheet = try #require(TmdParser.parse(string: input))
+        let v1 = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Violin1")
+        let v2 = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Violin2")
+        let f1 = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Flute1")
+        let f2 = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Flute2")
 
         // Inner canon: Violin1 enters at 0, Violin2 enters at 1 bar (4 beats)
         #expect(v1.events.count == 4)
@@ -227,12 +227,12 @@ struct MacroEvaluatorTests {
                  (canon Theme (Violin1 Violin2 Violin3) 2)
                  (loop Bass Cello 4)) ->#
             """
-        let sheet = try #require(TMDParser.parse(string: input))
+        let sheet = try #require(TmdParser.parse(string: input))
 
-        let cello = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Cello")
-        let v1 = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Violin1")
-        let v2 = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Violin2")
-        let v3 = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Violin3")
+        let cello = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Cello")
+        let v1 = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Violin1")
+        let v2 = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Violin2")
+        let v3 = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Violin3")
 
         // Cello: 4 iterations * 2 measures * 4 beats = 32 beats
         #expect(cello.duration == 32)
@@ -251,7 +251,7 @@ struct MacroEvaluatorTests {
         #expect(v3.events.count == 16)
     }
 
-    @Test("Passes TMDMeasureChecker and exports MIDI / WAV seamlessly")
+    @Test("Passes TmdMeasureChecker and exports MIDI / WAV seamlessly")
     func testMeasureCheckerAndExportIntegration() throws {
         let input = """
             ::SCORE::
@@ -275,17 +275,17 @@ struct MacroEvaluatorTests {
                  (loop Bass Cello 3)) ->#
             """
         // 1. Measure check passes with 0 issues
-        let issues = TMDMeasureChecker.check(source: input)
+        let issues = TmdMeasureChecker.check(source: input)
         #expect(issues.isEmpty)
 
         // 2. MIDI generation produces valid bytes without throwing
-        let sheet = try #require(TMDParser.parse(string: input))
-        let midiBytes = TMDMIDIGenerator.generateMIDI(from: sheet)
+        let sheet = try #require(TmdParser.parse(string: input))
+        let midiBytes = TmdMIDIGenerator.generateMIDI(from: sheet)
         #expect(midiBytes.count > 50)
 
         // 3. WAV synthesis produces valid RIFF WAV data
         #if os(macOS)
-            let wavBytes = try TMDWAVRenderer.renderWAV(from: sheet)
+            let wavBytes = try TmdWAVRenderer.renderWAV(from: sheet)
             #expect(wavBytes.count > 44)
             let header = String(data: wavBytes.subdata(in: 0..<4), encoding: .ascii)
             #expect(header == "RIFF")
@@ -327,11 +327,11 @@ struct MacroEvaluatorTests {
                  (canon (ThemeA ThemeB) (Violin1 Violin2) 2)
                  (loop (BassA BassB) Cello 2)) ->#
             """
-        let sheet = try #require(TMDParser.parse(string: input))
+        let sheet = try #require(TmdParser.parse(string: input))
 
-        let v1 = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Violin1")
-        let v2 = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Violin2")
-        let cello = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Cello")
+        let v1 = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Violin1")
+        let v2 = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Violin2")
+        let cello = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Cello")
 
         #expect(v1.events.count == 8)
         #expect(v1.events[0].position == 0)
@@ -363,13 +363,13 @@ struct MacroEvaluatorTests {
 
             -> (play (transpose Theme 2) Violin) ->#
             """
-        let sheet = try #require(TMDParser.parse(string: input))
-        let v = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Violin")
+        let sheet = try #require(TmdParser.parse(string: input))
+        let v = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Violin")
         #expect(v.events.count == 4)
 
         let pitches = v.events.compactMap { e -> Int? in
             if case .note(let note) = e.content {
-                return TMDMIDIGenerator.noteToMIDIPitch(note, keyOffset: e.state.keyOffset)
+                return TmdMIDIGenerator.noteToMIDIPitch(note, keyOffset: e.state.keyOffset)
             }
             return nil
         }
@@ -392,11 +392,11 @@ struct MacroEvaluatorTests {
 
             -> (play (reverse Theme) Violin) ->#
             """
-        let sheet = try #require(TMDParser.parse(string: input))
-        let v = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Violin")
+        let sheet = try #require(TmdParser.parse(string: input))
+        let v = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Violin")
         let pitches = v.events.compactMap { e -> Int? in
             if case .note(let note) = e.content {
-                return TMDMIDIGenerator.noteToMIDIPitch(note, keyOffset: e.state.keyOffset)
+                return TmdMIDIGenerator.noteToMIDIPitch(note, keyOffset: e.state.keyOffset)
             }
             return nil
         }
@@ -419,11 +419,11 @@ struct MacroEvaluatorTests {
 
             -> (play (flip Theme) Violin) ->#
             """
-        let sheet = try #require(TMDParser.parse(string: input))
-        let v = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Violin")
+        let sheet = try #require(TmdParser.parse(string: input))
+        let v = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Violin")
         let pitches = v.events.compactMap { e -> Int? in
             if case .note(let note) = e.content {
-                return TMDMIDIGenerator.noteToMIDIPitch(note, keyOffset: e.state.keyOffset)
+                return TmdMIDIGenerator.noteToMIDIPitch(note, keyOffset: e.state.keyOffset)
             }
             return nil
         }
@@ -449,15 +449,15 @@ struct MacroEvaluatorTests {
                  (play (vary Subject +19) Flute)
                  (canon (vary Subject reverse -12) (Cello Bass) 1)) ->#
             """
-        let sheet = try #require(TMDParser.parse(string: input))
-        let violin = TMDPlaybackRenderer.render(sheet: sheet, instrument: "SoloViolin")
-        let flute = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Flute")
-        let cello = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Cello")
-        let bass = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Bass")
+        let sheet = try #require(TmdParser.parse(string: input))
+        let violin = TmdPlaybackRenderer.render(sheet: sheet, instrument: "SoloViolin")
+        let flute = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Flute")
+        let cello = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Cello")
+        let bass = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Bass")
 
         let violinPitches = violin.events.compactMap { e -> Int? in
             if case .note(let note) = e.content {
-                return TMDMIDIGenerator.noteToMIDIPitch(note, keyOffset: e.state.keyOffset)
+                return TmdMIDIGenerator.noteToMIDIPitch(note, keyOffset: e.state.keyOffset)
             }
             return nil
         }
@@ -465,7 +465,7 @@ struct MacroEvaluatorTests {
 
         let flutePitches = flute.events.compactMap { e -> Int? in
             if case .note(let note) = e.content {
-                return TMDMIDIGenerator.noteToMIDIPitch(note, keyOffset: e.state.keyOffset)
+                return TmdMIDIGenerator.noteToMIDIPitch(note, keyOffset: e.state.keyOffset)
             }
             return nil
         }
@@ -473,7 +473,7 @@ struct MacroEvaluatorTests {
 
         let celloPitches = cello.events.compactMap { e -> Int? in
             if case .note(let note) = e.content {
-                return TMDMIDIGenerator.noteToMIDIPitch(note, keyOffset: e.state.keyOffset)
+                return TmdMIDIGenerator.noteToMIDIPitch(note, keyOffset: e.state.keyOffset)
             }
             return nil
         }
@@ -482,7 +482,7 @@ struct MacroEvaluatorTests {
 
         let bassPitches = bass.events.compactMap { e -> Int? in
             if case .note(let note) = e.content {
-                return TMDMIDIGenerator.noteToMIDIPitch(note, keyOffset: e.state.keyOffset)
+                return TmdMIDIGenerator.noteToMIDIPitch(note, keyOffset: e.state.keyOffset)
             }
             return nil
         }
@@ -510,8 +510,8 @@ struct MacroEvaluatorTests {
 
             -> (seq (play ThemeA Piano) (play ThemeB Piano)) ->#
             """
-        let sheet = try #require(TMDParser.parse(string: input))
-        let playback = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+        let sheet = try #require(TmdParser.parse(string: input))
+        let playback = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
         #expect(playback.events.count == 8)
         #expect(playback.events[0].position == 0)
         #expect(playback.events[4].position == 4)
@@ -535,20 +535,20 @@ struct MacroEvaluatorTests {
             -> (play (minor Theme) MinorPiano)
             -> (play (major (minor Theme)) MajorPiano) ->#
             """
-        let sheet = try #require(TMDParser.parse(string: input))
-        let minorPlayback = TMDPlaybackRenderer.render(sheet: sheet, instrument: "MinorPiano")
+        let sheet = try #require(TmdParser.parse(string: input))
+        let minorPlayback = TmdPlaybackRenderer.render(sheet: sheet, instrument: "MinorPiano")
         let minorPitches = minorPlayback.events.compactMap { e -> Int? in
             if case .note(let note) = e.content {
-                return TMDMIDIGenerator.noteToMIDIPitch(note, keyOffset: e.state.keyOffset)
+                return TmdMIDIGenerator.noteToMIDIPitch(note, keyOffset: e.state.keyOffset)
             }
             return nil
         }
         #expect(minorPitches == [60, 62, 63, 65, 67, 68, 70, 72])
 
-        let majorPlayback = TMDPlaybackRenderer.render(sheet: sheet, instrument: "MajorPiano")
+        let majorPlayback = TmdPlaybackRenderer.render(sheet: sheet, instrument: "MajorPiano")
         let majorPitches = majorPlayback.events.compactMap { e -> Int? in
             if case .note(let note) = e.content {
-                return TMDMIDIGenerator.noteToMIDIPitch(note, keyOffset: e.state.keyOffset)
+                return TmdMIDIGenerator.noteToMIDIPitch(note, keyOffset: e.state.keyOffset)
             }
             return nil
         }
@@ -562,29 +562,29 @@ struct MacroEvaluatorTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("sample/basic/canon_in_d_macro.tmd")
-        let sheet = try TMDParser.parseThrowing(url: sampleURL)
+        let sheet = try TmdParser.parseThrowing(url: sampleURL)
         #expect(sheet.name.contains("Canon in D"))
 
         // Measure consistency check: 0 errors
-        let issues = TMDMeasureChecker.check(
+        let issues = TmdMeasureChecker.check(
             source: try String(contentsOf: sampleURL, encoding: .utf8))
         #expect(issues.isEmpty)
 
         // MIDI export
-        let midi = TMDMIDIGenerator.generateMIDI(from: sheet)
+        let midi = TmdMIDIGenerator.generateMIDI(from: sheet)
         #expect(midi.count > 1000)
 
         // MusicXML export
-        let xml = TMDMusicXMLGenerator.generateMusicXML(from: sheet)
+        let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
         #expect(xml.contains("<score-partwise"))
 
         // ABC export
-        let abc = TMDABCGenerator.generateABC(from: sheet)
+        let abc = TmdABCGenerator.generateABC(from: sheet)
         #expect(abc.contains("X:1"))
 
         // WAV rendering on macOS
         #if os(macOS)
-            let wav = try TMDWAVRenderer.renderWAV(from: sheet)
+            let wav = try TmdWAVRenderer.renderWAV(from: sheet)
             #expect(wav.count > 1000)
         #endif
     }
@@ -605,8 +605,8 @@ struct MacroEvaluatorTests {
 
             -> (play Theme Piano ->#
             """
-        #expect(throws: TMDParseError.self) {
-            try TMDParser.parseThrowing(string: input)
+        #expect(throws: TmdParseError.self) {
+            try TmdParser.parseThrowing(string: input)
         }
     }
 
@@ -627,11 +627,11 @@ struct MacroEvaluatorTests {
 
             -> Intro ->#
             """
-        let sheet = try #require(TMDParser.parse(string: input))
-        let playback = TMDPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+        let sheet = try #require(TmdParser.parse(string: input))
+        let playback = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
         let pitches = playback.events.compactMap { event -> Int? in
             if case .note(let note) = event.content {
-                return TMDMIDIGenerator.noteToMIDIPitch(note, keyOffset: event.state.keyOffset)
+                return TmdMIDIGenerator.noteToMIDIPitch(note, keyOffset: event.state.keyOffset)
             }
             return nil
         }
@@ -656,9 +656,9 @@ struct MacroEvaluatorTests {
 
             -> (play Intro Violin) ->#
             """
-        let sheet = try #require(TMDParser.parse(string: input))
-        #expect(throws: TMDMacroError.self) {
-            try TMDMacroEvaluator.expandThrowing(sheet)
+        let sheet = try #require(TmdParser.parse(string: input))
+        #expect(throws: TmdMacroError.self) {
+            try TmdMacroEvaluator.expandThrowing(sheet)
         }
     }
 
@@ -678,9 +678,9 @@ struct MacroEvaluatorTests {
 
             -> (loop Theme 0) ->#
             """
-        let sheet = try #require(TMDParser.parse(string: input))
-        #expect(throws: TMDMacroError.self) {
-            try TMDMacroEvaluator.expandThrowing(sheet)
+        let sheet = try #require(TmdParser.parse(string: input))
+        #expect(throws: TmdMacroError.self) {
+            try TmdMacroEvaluator.expandThrowing(sheet)
         }
     }
 
@@ -700,9 +700,9 @@ struct MacroEvaluatorTests {
 
             -> (canon Theme (Violin1 Violin2) 2) ->#
             """
-        let sheet = try #require(TMDParser.parse(string: input))
-        #expect(throws: TMDMacroError.self) {
-            try TMDMacroEvaluator.expandThrowing(sheet)
+        let sheet = try #require(TmdParser.parse(string: input))
+        #expect(throws: TmdMacroError.self) {
+            try TmdMacroEvaluator.expandThrowing(sheet)
         }
     }
 
@@ -723,9 +723,9 @@ struct MacroEvaluatorTests {
 
                 -> \(expression) ->#
                 """
-            let sheet = try #require(TMDParser.parse(string: input))
-            #expect(throws: TMDMacroError.self) {
-                try TMDMacroEvaluator.expandThrowing(sheet)
+            let sheet = try #require(TmdParser.parse(string: input))
+            #expect(throws: TmdMacroError.self) {
+                try TmdMacroEvaluator.expandThrowing(sheet)
             }
         }
     }
@@ -746,9 +746,9 @@ struct MacroEvaluatorTests {
 
             -> (play Theme Violin) ->#
             """
-        let sheet = try #require(TMDParser.parse(string: input))
-        let throwingResult = try TMDMacroEvaluator.expandThrowing(sheet)
-        let compatibilityResult = TMDMacroEvaluator.expand(sheet)
+        let sheet = try #require(TmdParser.parse(string: input))
+        let throwingResult = try TmdMacroEvaluator.expandThrowing(sheet)
+        let compatibilityResult = TmdMacroEvaluator.expand(sheet)
 
         #expect(compatibilityResult == throwingResult)
 

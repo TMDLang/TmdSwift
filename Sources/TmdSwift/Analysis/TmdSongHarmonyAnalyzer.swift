@@ -1,8 +1,8 @@
 import Foundation
 
 /// Extracts harmonic content and playback key changes from a parsed score.
-public enum TMDSongHarmonyAnalyzer {
-    public static func analyze(sheet: Sheet) -> TMDHarmonyProfile {
+public enum TmdSongHarmonyAnalyzer {
+    public static func analyze(sheet: Sheet) -> TmdHarmonyProfile {
         var chords: [String] = []
         for paragraph in sheet.entries {
             for section in paragraph.sections {
@@ -28,7 +28,7 @@ public enum TMDSongHarmonyAnalyzer {
             }
         }
 
-        return TMDHarmonyProfile(
+        return TmdHarmonyProfile(
             distinctChords: chords,
             chordCount: chords.count,
             modulations: modulations

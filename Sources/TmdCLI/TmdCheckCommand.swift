@@ -14,13 +14,13 @@ struct TmdCheckCommand: ParsableCommand {
     func run() throws {
         let content: String
         do {
-            content = try TMDTextIO.readUTF8(from: inputPath)
+            content = try TmdTextIO.readUTF8(from: inputPath)
         } catch {
             print("Error reading \(inputPath): \(error.localizedDescription)")
             throw ExitCode.failure
         }
 
-        let issues = TMDMeasureChecker.check(source: content)
+        let issues = TmdMeasureChecker.check(source: content)
         if issues.isEmpty {
             print("✅ All measures in \(inputPath) conform to expected time signatures.")
         } else {

@@ -118,11 +118,11 @@ public struct Measure: Equatable, Sendable {
 }
 
 /// Renders format-independent timeline events into discrete, duration-conserved measures.
-public enum TMDMeasureRenderer {
+public enum TmdMeasureRenderer {
 
     /// Renders an instrument track into an array of strictly bounded measures.
     public static func renderMeasures(sheet: Sheet, instrument: String) -> [Measure] {
-        let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: instrument)
+        let timeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: instrument)
         let defaultBeat =
             sheet.beat.count > 0 && sheet.beat.noteValue > 0
             ? sheet.beat : Beat(count: 4, noteValue: 4)

@@ -24,7 +24,7 @@ struct TmdRefactorTests {
             -> intro   ->#
             """
 
-        let formatted = TMDRefactor.format(input)
+        let formatted = TmdRefactor.format(input)
         #expect(formatted.contains("/* Header Comment */"))
         #expect(formatted.contains("/* bar comment */"))
         #expect(formatted.contains("intro:Piano@|0|{"))
@@ -35,8 +35,8 @@ struct TmdRefactorTests {
         #expect(formatted.contains("}"))
         #expect(formatted.contains("-> intro ->#"))
         // Check that reparsing the formatted string yields the exact same Sheet
-        let origSheet = try #require(TMDParser.parse(string: input))
-        let newSheet = try #require(TMDParser.parse(string: formatted))
+        let origSheet = try #require(TmdParser.parse(string: input))
+        let newSheet = try #require(TmdParser.parse(string: formatted))
         #expect(origSheet.name == newSheet.name)
         #expect(origSheet.entries.count == newSheet.entries.count)
         #expect(origSheet.playback.count == newSheet.playback.count)
@@ -66,7 +66,7 @@ struct TmdRefactorTests {
             -> intro ->#
             """
 
-        let formatted = TMDRefactor.format(input)
+        let formatted = TmdRefactor.format(input)
         // At root level, comments should not have leading indentation on any line
         #expect(formatted.contains("/*\n * Header multi-line comment\n * line 2\n */"))
 
@@ -101,14 +101,14 @@ struct TmdRefactorTests {
             -> intro -> verse -> outro ->#
             """
 
-        let result = try TMDRefactor.renameInstrument(in: input, from: "Piano", to: "GrandPiano")
+        let result = try TmdRefactor.renameInstrument(in: input, from: "Piano", to: "GrandPiano")
         #expect(result.contains("intro:GrandPiano@|0|{"))
         #expect(result.contains("outro:GrandPiano@|0|{"))
         #expect(result.contains("verse:Guitar@|0|{"))
         #expect(!result.contains(":Piano@"))
 
         // Sheet inspection
-        let sheet = try #require(TMDParser.parse(string: result))
+        let sheet = try #require(TmdParser.parse(string: result))
         #expect(sheet.entries[0].assignment == "GrandPiano")
         #expect(sheet.entries[1].assignment == "Guitar")
         #expect(sheet.entries[2].assignment == "GrandPiano")
@@ -140,7 +140,7 @@ struct TmdRefactorTests {
             -> intro -> verse -> {?+2} -> verse ->#
             """
 
-        let result = try TMDRefactor.renameSection(in: input, from: "verse", to: "A")
+        let result = try TmdRefactor.renameSection(in: input, from: "verse", to: "A")
         #expect(result.contains("intro:Piano@|0|{"))
         #expect(result.contains("A:Piano@|0|{"))
         #expect(result.contains("A:Bass@|0|{"))
@@ -148,7 +148,7 @@ struct TmdRefactorTests {
         #expect(!result.contains("verse:Bass@"))
         #expect(result.contains("-> intro -> A -> {?+2} -> A ->#"))
 
-        let sheet = try #require(TMDParser.parse(string: result))
+        let sheet = try #require(TmdParser.parse(string: result))
         #expect(sheet.entries[1].name == "A")
         #expect(sheet.entries[2].name == "A")
         #expect(sheet.playback == [.name("intro"), .name("A"), .relative("+2"), .name("A")])
@@ -186,7 +186,7 @@ struct TmdRefactorTests {
             -> intro -> verse ->#
             """
 
-        let extracted = try TMDRefactor.extractInstrument(from: input, instrument: "Piano")
+        let extracted = try TmdRefactor.extractInstrument(from: input, instrument: "Piano")
         #expect(extracted.contains("** Full Band Song **"))
         #expect(extracted.contains("!= 130"))
         #expect(extracted.contains("?= G"))
@@ -197,7 +197,7 @@ struct TmdRefactorTests {
         #expect(!extracted.contains(":Drums@"))
         #expect(extracted.contains("-> intro -> verse ->#"))
 
-        let sheet = try #require(TMDParser.parse(string: extracted))
+        let sheet = try #require(TmdParser.parse(string: extracted))
         #expect(sheet.name == "Full Band Song")
         #expect(sheet.entries.count == 2)
         #expect(sheet.entries.allSatisfy { $0.assignment == "Piano" })
@@ -341,20 +341,20 @@ struct TmdRefactorTests {
             -> verse ->#
             """
 
-        let doubled = try TMDRefactor.doubleGrid(source: input)
+        let doubled = try TmdRefactor.doubleGrid(source: input)
         #expect(doubled.contains("<8*>"))
         #expect(doubled.contains("| 1 - 2 - 3 - 4 - |"))
         #expect(doubled.contains("| [C] - - - 0 - D - |"))
 
-        let doubleIssues = TMDMeasureChecker.check(source: doubled)
+        let doubleIssues = TmdMeasureChecker.check(source: doubled)
         #expect(doubleIssues.isEmpty)
 
-        let halved = try TMDRefactor.halveGrid(source: doubled)
+        let halved = try TmdRefactor.halveGrid(source: doubled)
         #expect(halved.contains("<4*>"))
         #expect(halved.contains("| 1 2 3 4 |"))
         #expect(halved.contains("| [C] - 0 D |"))
 
-        let halveIssues = TMDMeasureChecker.check(source: halved)
+        let halveIssues = TmdMeasureChecker.check(source: halved)
         #expect(halveIssues.isEmpty)
     }
 
@@ -374,16 +374,16 @@ struct TmdRefactorTests {
             -> Intro ->#
             """
 
-        let doubled = try TMDRefactor.doubleGrid(source: input)
+        let doubled = try TmdRefactor.doubleGrid(source: input)
         #expect(doubled.contains("<8*>"))
         #expect(doubled.contains("(3 1)%(--)"))
-        let doubleIssues = TMDMeasureChecker.check(source: doubled)
+        let doubleIssues = TmdMeasureChecker.check(source: doubled)
         #expect(doubleIssues.isEmpty)
 
-        let halved = try TMDRefactor.halveGrid(source: doubled)
+        let halved = try TmdRefactor.halveGrid(source: doubled)
         #expect(halved.contains("<4*>"))
         #expect(halved.contains("(3 1)%(-)"))
-        let halveIssues = TMDMeasureChecker.check(source: halved)
+        let halveIssues = TmdMeasureChecker.check(source: halved)
         #expect(halveIssues.isEmpty)
     }
 
@@ -404,7 +404,7 @@ struct TmdRefactorTests {
             """
 
         #expect(throws: Error.self) {
-            _ = try TMDRefactor.halveGrid(source: input)
+            _ = try TmdRefactor.halveGrid(source: input)
         }
     }
 
@@ -424,7 +424,7 @@ struct TmdRefactorTests {
             -> verse ->#
             """
 
-        let duped = try TMDRefactor.duplicateTrack(
+        let duped = try TmdRefactor.duplicateTrack(
             source: input,
             sourceInstrument: "Lead",
             targetInstrument: "Synth",
@@ -434,7 +434,7 @@ struct TmdRefactorTests {
         #expect(duped.contains("verse:Synth@|0|{"))
         #expect(duped.contains("1_ 2_ 3_ 5_"))
 
-        let issues = TMDMeasureChecker.check(source: duped)
+        let issues = TmdMeasureChecker.check(source: duped)
         #expect(issues.isEmpty)
     }
 
@@ -459,7 +459,7 @@ struct TmdRefactorTests {
             -> verse -> chorus ->#
             """
 
-        let duped = try TMDRefactor.duplicateTrack(
+        let duped = try TmdRefactor.duplicateTrack(
             source: input,
             sourceInstrument: "Lead",
             targetInstrument: "Synth",
@@ -470,7 +470,7 @@ struct TmdRefactorTests {
         #expect(duped.contains("5^ 6^ 7^ 1^^"))
         #expect(!duped.contains("verse:Synth@"))
 
-        let issues = TMDMeasureChecker.check(source: duped)
+        let issues = TmdMeasureChecker.check(source: duped)
         #expect(issues.isEmpty)
     }
 
@@ -490,7 +490,7 @@ struct TmdRefactorTests {
             -> verse ->#
             """
 
-        let harmonized = try TMDRefactor.generateHarmony(
+        let harmonized = try TmdRefactor.generateHarmony(
             source: input,
             sourceInstrument: "Vocal",
             harmonyInstrument: "Harmony",
@@ -502,7 +502,7 @@ struct TmdRefactorTests {
         #expect(harmonized.contains("[C] - - -"))
         #expect(harmonized.contains("3 4 5 3 |"))
 
-        let issues = TMDMeasureChecker.check(source: harmonized)
+        let issues = TmdMeasureChecker.check(source: harmonized)
         #expect(issues.isEmpty)
     }
 
@@ -527,13 +527,13 @@ struct TmdRefactorTests {
             -> intro -> verse -> intro ->#
             """
 
-        let inlined = try TMDRefactor.inlineOrders(source: input)
+        let inlined = try TmdRefactor.inlineOrders(source: input)
         #expect(inlined.contains("linear:Piano@|0|{"))
         #expect(inlined.contains("-> linear ->#"))
         #expect(inlined.contains("1 2 3 4"))
         #expect(inlined.contains("5 6 7 1^"))
 
-        let sheet = try #require(TMDParser.parse(string: inlined))
+        let sheet = try #require(TmdParser.parse(string: inlined))
         #expect(sheet.entries.count == 1)
         #expect(sheet.entries[0].sections[0].unitGroups.count == 12)
     }
@@ -555,7 +555,7 @@ struct TmdRefactorTests {
             -> verse -># /* order comment */
             """
 
-        let duped = try TMDRefactor.duplicateTrack(
+        let duped = try TmdRefactor.duplicateTrack(
             source: input, sourceInstrument: "Lead", targetInstrument: "Synth", octaveShift: 1)
         #expect(duped.contains("/* Header comment */"))
         #expect(duped.contains("/* bar comment */"))
@@ -564,7 +564,7 @@ struct TmdRefactorTests {
         #expect(duped.contains("verse:Synth@|0|{"))
         #expect(duped.contains("1^ 2^ 3^ 4^"))
 
-        let issues = TMDMeasureChecker.check(source: duped)
+        let issues = TmdMeasureChecker.check(source: duped)
         #expect(issues.isEmpty)
     }
 
@@ -585,7 +585,7 @@ struct TmdRefactorTests {
             -> verse -># /* order comment */
             """
 
-        let harmonized = try TMDRefactor.generateHarmony(
+        let harmonized = try TmdRefactor.generateHarmony(
             source: input, sourceInstrument: "Vocal", harmonyInstrument: "Backing", intervalSteps: 2
         )
         #expect(harmonized.contains("/* Header comment */"))
@@ -595,7 +595,7 @@ struct TmdRefactorTests {
         #expect(harmonized.contains("verse:Backing@|0|{"))
         #expect(harmonized.contains("3 4 5 3"))
 
-        let issues = TMDMeasureChecker.check(source: harmonized)
+        let issues = TmdMeasureChecker.check(source: harmonized)
         #expect(issues.isEmpty)
     }
 
@@ -626,7 +626,7 @@ struct TmdRefactorTests {
             -> intro -> verse -># /* order comment */
             """
 
-        let extracted = try TMDRefactor.extractInstrument(from: input, instrument: "Piano")
+        let extracted = try TmdRefactor.extractInstrument(from: input, instrument: "Piano")
         #expect(extracted.contains("/* Header Comment */"))
         #expect(extracted.contains("/* piano comment */"))
         #expect(extracted.contains("/* verse piano */"))
@@ -656,14 +656,14 @@ struct TmdRefactorTests {
             -> b1 ->#
             """
 
-        let optimized = TMDRefactor.optimizeGrid(source: input)
+        let optimized = TmdRefactor.optimizeGrid(source: input)
         #expect(optimized.contains("<1*>"))
         #expect(optimized.contains("| 4__ | 5__ | 3__ | 6__ |"))
         #expect(optimized.contains("| 2__ | 5__ | 1_ | 5__ |"))
         #expect(optimized.contains("| 4__ | 5__ | 3__ | 6__ |"))
         #expect(optimized.contains("| 2__ | 5__ | 6__ | - |"))
 
-        let issues = TMDMeasureChecker.check(source: optimized)
+        let issues = TmdMeasureChecker.check(source: optimized)
         #expect(issues.isEmpty)
     }
 
@@ -688,13 +688,13 @@ struct TmdRefactorTests {
             -> verse ->#
             """
 
-        let optBass = TMDRefactor.optimizeGrid(
-            source: input, target: TMDRefactorTarget(instrument: "Bass"))
+        let optBass = TmdRefactor.optimizeGrid(
+            source: input, target: TmdRefactorTarget(instrument: "Bass"))
         #expect(optBass.contains("<1*>"))
         #expect(optBass.contains("| 1_ | 5__ |"))
         #expect(optBass.contains("<4*>"))
         #expect(optBass.contains("| 1 2 3 4 | 5 6 7 1^ |"))
-        #expect(TMDMeasureChecker.check(source: optBass).isEmpty)
+        #expect(TmdMeasureChecker.check(source: optBass).isEmpty)
     }
 
     @Test func testOptimizeGridGlobalAcrossMultipleParagraphs() throws {
@@ -718,35 +718,35 @@ struct TmdRefactorTests {
             -> verse ->#
             """
 
-        let optGlobal = TMDRefactor.optimizeGrid(source: input)
+        let optGlobal = TmdRefactor.optimizeGrid(source: input)
         #expect(optGlobal.contains("verse:Bass@|0|{"))
         #expect(optGlobal.contains("<1*>"))
         #expect(optGlobal.contains("| 1_ | 5__ |"))
         #expect(optGlobal.contains("verse:Lead@|0|{"))
         #expect(optGlobal.contains("<4*>"))
         #expect(optGlobal.contains("| 1 2 3 4 | 5 6 7 1^ |"))
-        #expect(TMDMeasureChecker.check(source: optGlobal).isEmpty)
+        #expect(TmdMeasureChecker.check(source: optGlobal).isEmpty)
     }
 
     // MARK: - Transpose Tests
 
     @Test func testTransposeNotesAndChordsUpBySemitones() throws {
         let input = "| 1 2 3 4 | [C] - [Am] - |"
-        let transposed = TMDRefactor.transpose(source: input, semitones: 2, keySignature: "C")
+        let transposed = TmdRefactor.transpose(source: input, semitones: 2, keySignature: "C")
         #expect(transposed.contains("| 2 3 4' 5 |"))
         #expect(transposed.contains("[D] - [Bm] -"))
     }
 
     @Test func testTransposeNotesAndChordsDownBySemitones() throws {
         let input = "| 1 3 5 1^ | [C] - [G7] - |"
-        let transposed = TMDRefactor.transpose(source: input, semitones: -1, keySignature: "C")
+        let transposed = TmdRefactor.transpose(source: input, semitones: -1, keySignature: "C")
         #expect(transposed.contains("| 7_ 2' 4' 7 |"))
         #expect(transposed.contains("[B] - [F#7] -"))
     }
 
     @Test func testTransposeDiatonically() throws {
         let input = "| 1 2 3 4 | 5 6 7 1^ | [1] - [4] [5] |"
-        let transposed = TMDRefactor.transpose(source: input, diatonicSteps: 1)
+        let transposed = TmdRefactor.transpose(source: input, diatonicSteps: 1)
         #expect(transposed.contains("| 2 3 4 5 | 6 7 1^ 2^ |"))
         #expect(transposed.contains("[2] - [5] [6]"))
     }
@@ -761,7 +761,7 @@ struct TmdRefactorTests {
             .pipe, .eof,
         ])
 
-        let transposed = TMDRefactor.transpose(source: source, semitones: 2, keySignature: "C")
+        let transposed = TmdRefactor.transpose(source: source, semitones: 2, keySignature: "C")
         #expect(transposed == "| 2-- 3^-- |\n")
     }
 
@@ -783,7 +783,7 @@ struct TmdRefactorTests {
             -> verse ->#
             """
 
-        let transposed = TMDRefactor.transpose(
+        let transposed = TmdRefactor.transpose(
             source: input, semitones: 2, updateKeySignature: true)
         #expect(transposed.contains("?= D"))
         #expect(transposed.contains("/* My intro comment */"))
@@ -791,7 +791,7 @@ struct TmdRefactorTests {
         #expect(transposed.contains("verse:Lead@|0|{"))
         #expect(transposed.contains("-> verse ->#"))
 
-        let issues = TMDMeasureChecker.check(source: transposed)
+        let issues = TmdMeasureChecker.check(source: transposed)
         #expect(issues.isEmpty)
     }
 
@@ -821,10 +821,10 @@ struct TmdRefactorTests {
             -> verse -> chorus ->#
             """
 
-        let transposed = TMDRefactor.transpose(
+        let transposed = TmdRefactor.transpose(
             source: input,
             semitones: 12,
-            target: TMDRefactorTarget(section: "verse", instrument: "Lead")
+            target: TmdRefactorTarget(section: "verse", instrument: "Lead")
         )
 
         #expect(transposed.contains("verse:Lead@|0|{\n    <4*>\n    | 1^ 2^ 3^ 4^ |"))

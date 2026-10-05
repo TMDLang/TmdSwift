@@ -6,7 +6,7 @@ import TmdSwift
 ///
 /// `.vsqx` is an XML-based format compatible with VOCALOID3, VOCALOID4, VOCALOID5, VOCALOID6,
 /// and Crypton's Piapro Studio.
-public struct TMDVSQXGenerator: Sendable {
+public struct TmdVSQXGenerator: Sendable {
     public static let ticksPerQuarter: UInt16 = 480
 
     /// Generates VOCALOID4 `.vsqx` XML string from a TMD `Sheet`.
@@ -16,7 +16,7 @@ public struct TMDVSQXGenerator: Sendable {
         options: VocaloidExportOptions = VocaloidExportOptions()
     ) -> String {
         let selectedInstrument = resolveTargetInstrument(sheet: sheet, requested: targetInstrument)
-        let timeline = TMDPlaybackRenderer.render(sheet: sheet, instrument: selectedInstrument)
+        let timeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: selectedInstrument)
 
         let bpm = sheet.speed > 0 ? sheet.speed : 120.0
         let tempoVal = Int(round(bpm * 100))  // VSQX tempo is scaled by 100 (e.g. 120 BPM = 12000)
@@ -44,7 +44,7 @@ public struct TMDVSQXGenerator: Sendable {
             guard case .note(let note) = event.content else { continue }
             let tick = preMeasureTicks + Int((event.position * Double(ticksPerQuarter)).rounded())
             let dur = max(1, Int((event.duration * Double(ticksPerQuarter)).rounded()))
-            let pitch = TMDMIDIGenerator.noteToMIDIPitch(note, keyOffset: event.state.keyOffset)
+            let pitch = TmdMIDIGenerator.noteToMIDIPitch(note, keyOffset: event.state.keyOffset)
             guard (0...127).contains(pitch) else { continue }
             let lyric = options.defaultLyric
             let phnm = VocaloidPhoneme.resolvePhoneme(for: lyric)

@@ -1,7 +1,7 @@
 import Foundation
 
 /// Errors that occur during S-expression macro expansion in TMD scores.
-public struct TMDMacroError: Error, LocalizedError, Equatable, Sendable {
+public struct TmdMacroError: Error, LocalizedError, Equatable, Sendable {
     public let message: String
     public let line: Int?
     public let column: Int?
@@ -22,7 +22,7 @@ public struct TMDMacroError: Error, LocalizedError, Equatable, Sendable {
 
 /// Evaluator that expands S-Expression macro orders (`Order.macro`) and abstract paragraphs
 /// into concrete paragraphs and concrete playback orders.
-public enum TMDMacroEvaluator {
+public enum TmdMacroEvaluator {
 
     /// Maps pitch in semitones (0-11) to ScaleDegree and Accidental.
     public static func semitoneToDegreeAccidental(_ semi: Int) -> (
@@ -255,7 +255,7 @@ public enum TMDMacroEvaluator {
         func getThemeSections(_ themeArg: SExpr) throws -> (name: String, sections: [Section]) {
             if case .list(let items) = themeArg {
                 if items.isEmpty {
-                    throw TMDMacroError("Empty prototype list")
+                    throw TmdMacroError("Empty prototype list")
                 }
 
                 guard case .symbol(let headRaw) = items[0] else {
@@ -274,7 +274,7 @@ public enum TMDMacroEvaluator {
 
                 if head == "transpose" {
                     guard items.count >= 3 else {
-                        throw TMDMacroError(
+                        throw TmdMacroError(
                             "'transpose' requires theme and semitones offset, e.g. (transpose Theme 7)"
                         )
                     }
@@ -296,7 +296,7 @@ public enum TMDMacroEvaluator {
 
                 if head == "reverse" {
                     guard items.count >= 2 else {
-                        throw TMDMacroError(
+                        throw TmdMacroError(
                             "'reverse' requires a target theme, e.g. (reverse Theme)")
                     }
                     let sub = try getThemeSections(items[1])
@@ -305,7 +305,7 @@ public enum TMDMacroEvaluator {
 
                 if head == "flip" {
                     guard items.count >= 2 else {
-                        throw TMDMacroError("'flip' requires a target theme, e.g. (flip Theme)")
+                        throw TmdMacroError("'flip' requires a target theme, e.g. (flip Theme)")
                     }
                     var axis: Int? = nil
                     if items.count >= 3, case .number(let a) = items[2] {
@@ -319,7 +319,7 @@ public enum TMDMacroEvaluator {
 
                 if head == "minor" {
                     guard items.count >= 2 else {
-                        throw TMDMacroError("'minor' requires a target theme, e.g. (minor Theme)")
+                        throw TmdMacroError("'minor' requires a target theme, e.g. (minor Theme)")
                     }
                     let sub = try getThemeSections(items[1])
                     return ("\(sub.name)_minor", toMinorSections(sub.sections))
@@ -327,7 +327,7 @@ public enum TMDMacroEvaluator {
 
                 if head == "major" {
                     guard items.count >= 2 else {
-                        throw TMDMacroError("'major' requires a target theme, e.g. (major Theme)")
+                        throw TmdMacroError("'major' requires a target theme, e.g. (major Theme)")
                     }
                     let sub = try getThemeSections(items[1])
                     return ("\(sub.name)_major", toMajorSections(sub.sections))
@@ -335,7 +335,7 @@ public enum TMDMacroEvaluator {
 
                 if head == "vary" {
                     guard items.count >= 2 else {
-                        throw TMDMacroError(
+                        throw TmdMacroError(
                             "'vary' requires a target theme, e.g. (vary Theme +7 reverse)")
                     }
                     var current = try getThemeSections(items[1])
@@ -426,13 +426,13 @@ public enum TMDMacroEvaluator {
             if let p = abstractMap[themeName] {
                 return (themeName, p.sections)
             }
-            throw TMDMacroError("Unknown prototype '\(themeName)'")
+            throw TmdMacroError("Unknown prototype '\(themeName)'")
         }
 
         func evalExpr(_ expr: SExpr) throws -> [String] {
             guard case .list(let items) = expr else {
                 let targetName = expr.description
-                throw TMDMacroError("Concrete section '\(targetName)' is not a valid macro source")
+                throw TmdMacroError("Concrete section '\(targetName)' is not a valid macro source")
             }
 
             guard !items.isEmpty, case .symbol(let opRaw) = items[0] else {
@@ -444,7 +444,7 @@ public enum TMDMacroEvaluator {
             switch op {
             case "play":
                 guard items.count == 3 || items.count == 4 || items.count == 5 else {
-                    throw TMDMacroError(
+                    throw TmdMacroError(
                         "'play' requires theme and instrument, e.g. (play Theme Violin)")
                 }
                 let themeTarget = items[1]
@@ -454,12 +454,12 @@ public enum TMDMacroEvaluator {
                     guard case .symbol(let atFlag) = items[3], atFlag.lowercased() == ":at",
                         case .number(let n) = items[4]
                     else {
-                        throw TMDMacroError("'play' offset must be an integer after :at")
+                        throw TmdMacroError("'play' offset must be an integer after :at")
                     }
                     atOffset = n
                 } else if items.count == 4 {
                     guard case .number(let n) = items[3] else {
-                        throw TMDMacroError("'play' offset must be an integer")
+                        throw TmdMacroError("'play' offset must be an integer")
                     }
                     atOffset = n
                 }
@@ -475,13 +475,13 @@ public enum TMDMacroEvaluator {
 
             case "loop":
                 guard items.count == 4 else {
-                    throw TMDMacroError(
+                    throw TmdMacroError(
                         "'loop' requires theme, instrument, and a positive integer count")
                 }
                 let themeTarget = items[1]
                 let instrument = items[2].description
                 guard case .number(let times) = items[3], times > 0 else {
-                    throw TMDMacroError("'loop' count must be a positive integer")
+                    throw TmdMacroError("'loop' count must be a positive integer")
                 }
 
                 let (themeName, baseSections) = try getThemeSections(themeTarget)
@@ -500,17 +500,17 @@ public enum TMDMacroEvaluator {
 
             case "canon":
                 guard items.count == 4 else {
-                    throw TMDMacroError(
+                    throw TmdMacroError(
                         "'canon' requires a prototype, non-empty instrument list, and non-negative integer offset"
                     )
                 }
                 let themeTarget = items[1]
                 guard case .list(let instList) = items[2], !instList.isEmpty else {
-                    throw TMDMacroError("'canon' requires a non-empty instrument list")
+                    throw TmdMacroError("'canon' requires a non-empty instrument list")
                 }
                 let instruments = instList.map(\.description)
                 guard case .number(let offsetBars) = items[3], offsetBars >= 0 else {
-                    throw TMDMacroError("'canon' offset must be a non-negative integer")
+                    throw TmdMacroError("'canon' offset must be a non-negative integer")
                 }
 
                 // Check if themeTarget is a nested sub-expression
@@ -587,11 +587,11 @@ public enum TMDMacroEvaluator {
                         }
                 }
                 let prototypeBars =
-                    prototypeQuarterDuration / TMDPlaybackRenderer.measureDuration(for: sheet.beat)
+                    prototypeQuarterDuration / TmdPlaybackRenderer.measureDuration(for: sheet.beat)
                 if let lastIndex = instruments.indices.last,
                     Double(lastIndex * offsetBars) > prototypeBars
                 {
-                    throw TMDMacroError(
+                    throw TmdMacroError(
                         "Canon voice \(lastIndex + 1) enters after the combined prototype ends")
                 }
                 genCounter += 1
@@ -612,7 +612,7 @@ public enum TMDMacroEvaluator {
 
             case "layer":
                 guard items.count > 1 else {
-                    throw TMDMacroError("'layer' requires at least one child expression")
+                    throw TmdMacroError("'layer' requires at least one child expression")
                 }
                 var childNames: [String] = []
                 for i in 1..<items.count {
@@ -636,7 +636,7 @@ public enum TMDMacroEvaluator {
 
             case "seq":
                 guard items.count > 1 else {
-                    throw TMDMacroError("'seq' requires at least one child expression")
+                    throw TmdMacroError("'seq' requires at least one child expression")
                 }
                 var seqNames: [String] = []
                 for i in 1..<items.count {
@@ -647,7 +647,7 @@ public enum TMDMacroEvaluator {
 
             case "reverse":
                 guard items.count >= 2 else {
-                    throw TMDMacroError(
+                    throw TmdMacroError(
                         "'reverse' requires a target theme or expression, e.g. (reverse Theme)")
                 }
                 let innerNames = try evalExpr(items[1])
@@ -665,7 +665,7 @@ public enum TMDMacroEvaluator {
 
             case "flip":
                 guard items.count >= 2 else {
-                    throw TMDMacroError(
+                    throw TmdMacroError(
                         "'flip' requires a target theme or expression, e.g. (flip Theme)")
                 }
                 var axis: Int? = nil
@@ -686,7 +686,7 @@ public enum TMDMacroEvaluator {
 
             case "minor":
                 guard items.count >= 2 else {
-                    throw TMDMacroError(
+                    throw TmdMacroError(
                         "'minor' requires a target theme or expression, e.g. (minor Theme)")
                 }
                 let innerNames = try evalExpr(items[1])
@@ -704,7 +704,7 @@ public enum TMDMacroEvaluator {
 
             case "major":
                 guard items.count >= 2 else {
-                    throw TMDMacroError(
+                    throw TmdMacroError(
                         "'major' requires a target theme or expression, e.g. (major Theme)")
                 }
                 let innerNames = try evalExpr(items[1])
@@ -722,7 +722,7 @@ public enum TMDMacroEvaluator {
 
             case "transpose":
                 guard items.count >= 3 else {
-                    throw TMDMacroError(
+                    throw TmdMacroError(
                         "'transpose' requires theme and semitones offset, e.g. (transpose Theme 7)")
                 }
                 var target = items[1]
@@ -749,7 +749,7 @@ public enum TMDMacroEvaluator {
 
             case "vary":
                 guard items.count >= 2 else {
-                    throw TMDMacroError(
+                    throw TmdMacroError(
                         "'vary' requires a target theme or expression, e.g. (vary Theme +7 reverse)"
                     )
                 }
@@ -887,7 +887,7 @@ public enum TMDMacroEvaluator {
                 return innerNames
 
             default:
-                throw TMDMacroError("Unknown macro operation '\(op)' in S-expression")
+                throw TmdMacroError("Unknown macro operation '\(op)' in S-expression")
             }
         }
 
@@ -917,7 +917,7 @@ public enum TMDMacroEvaluator {
     }
 
     /// Deprecated compatibility API. Macro failures are no longer silently suppressed.
-    @available(*, deprecated, message: "Use expandThrowing(_:) and handle TMDMacroError explicitly.")
+    @available(*, deprecated, message: "Use expandThrowing(_:) and handle TmdMacroError explicitly.")
     public static func expand(_ sheet: Sheet) -> Sheet {
         return expandOrTrap(sheet)
     }
