@@ -140,3 +140,18 @@ func inspectorLocalizationHasExplicitAnalysisBoundary() {
                 atPath: sourceRoot.appendingPathComponent(file).path))
     }
 }
+
+@Test("AST measure checking and lexer fallback have separate implementations")
+func measureCheckerSeparatesASTAndLexerFallback() throws {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let validationRoot = packageRoot.appendingPathComponent("Sources/TmdSwift/Validation")
+    #expect(
+        FileManager.default.fileExists(
+            atPath: validationRoot.appendingPathComponent("MeasureLexerFallback.swift").path))
+    let checker = try String(
+        contentsOf: validationRoot.appendingPathComponent("MeasureCheck.swift"))
+    #expect(!checker.contains("private static func checkWithLexer"))
+}
