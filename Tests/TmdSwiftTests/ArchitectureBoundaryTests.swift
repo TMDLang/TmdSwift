@@ -21,6 +21,21 @@ func coreResponsibilitiesHaveExplicitSourceBoundaries() {
     }
 }
 
+@Test("Syntax lexer, parser, and diagnostics have separate source boundaries")
+func syntaxResponsibilitiesHaveExplicitSourceBoundaries() throws {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let syntaxRoot = packageRoot.appendingPathComponent("Sources/TmdSwift/Syntax")
+    for file in ["Lexer.swift", "TmdParser.swift", "TmdParseDiagnostics.swift"] {
+        #expect(FileManager.default.fileExists(atPath: syntaxRoot.appendingPathComponent(file).path))
+    }
+    let parser = try String(contentsOf: syntaxRoot.appendingPathComponent("TmdParser.swift"))
+    #expect(!parser.contains("public final class Lexer"))
+    #expect(!parser.contains("public struct TmdParseError"))
+}
+
 @Test("Inspector analyzers stay inside the analysis boundary")
 func inspectorAnalyzersHaveExplicitSourceBoundaries() {
     let packageRoot = URL(fileURLWithPath: #filePath)
