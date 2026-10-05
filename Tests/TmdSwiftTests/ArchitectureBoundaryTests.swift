@@ -94,6 +94,18 @@ func refactoringFormattingHasExplicitBoundary() {
     #expect(FileManager.default.fileExists(atPath: path))
 }
 
+@Test("Refactoring transposition has an explicit responsibility boundary")
+func refactoringTransposeHasExplicitBoundary() throws {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let refactoringRoot = packageRoot.appendingPathComponent("Sources/TmdSwift/Refactoring")
+    #expect(FileManager.default.fileExists(atPath: refactoringRoot.appendingPathComponent("TmdRefactorTranspose.swift").path))
+    let facade = try String(contentsOf: refactoringRoot.appendingPathComponent("TmdRefactor.swift"))
+    #expect(!facade.contains("public static func transpose("))
+}
+
 @Test("Presentation consumers stay outside the syntax core")
 func presentationResponsibilitiesHaveExplicitSourceBoundaries() {
     let packageRoot = URL(fileURLWithPath: #filePath)
