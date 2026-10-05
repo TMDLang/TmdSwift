@@ -84,3 +84,13 @@ func macroResponsibilitiesHaveExplicitSourceBoundaries() {
     let path = packageRoot.appendingPathComponent("Sources/TmdSwift/Playback/MacroEvaluator.swift").path
     #expect(FileManager.default.fileExists(atPath: path))
 }
+
+@Test("The canonical source model stays inside the syntax boundary")
+func sourceModelHasExplicitSyntaxBoundary() {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let path = packageRoot.appendingPathComponent("Sources/TmdSwift/Syntax/Types.swift").path
+    #expect(FileManager.default.fileExists(atPath: path))
+}
