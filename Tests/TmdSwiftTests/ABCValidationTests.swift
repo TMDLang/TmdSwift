@@ -13,7 +13,7 @@ struct ABCValidationTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("sample/basic/三天三夜.tmd")
-        let sheet = try TmdParser.parseThrowing(url: sampleURL)
+        let sheet = try TmdParserIO.parseThrowing(url: sampleURL)
 
         let abc = TmdABCGenerator.generateABC(from: sheet)
         #expect(abc.contains("X:1"))

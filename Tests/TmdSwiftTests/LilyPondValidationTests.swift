@@ -13,7 +13,7 @@ struct LilyPondValidationTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("sample/basic/三天三夜.tmd")
-        let sheet = try TmdParser.parseThrowing(url: sampleURL)
+        let sheet = try TmdParserIO.parseThrowing(url: sampleURL)
 
         let ly = TmdLilyPondGenerator.generateLilyPond(from: sheet)
 
@@ -48,7 +48,7 @@ struct LilyPondValidationTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("sample/basic/三天三夜.tmd")
-        let sheet = try TmdParser.parseThrowing(url: sampleURL)
+        let sheet = try TmdParserIO.parseThrowing(url: sampleURL)
 
         let ly = TmdLilyPondGenerator.generateLilyPond(from: sheet)
 

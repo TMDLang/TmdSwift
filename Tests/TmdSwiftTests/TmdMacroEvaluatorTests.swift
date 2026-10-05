@@ -562,7 +562,7 @@ struct MacroEvaluatorTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("sample/basic/canon_in_d_macro.tmd")
-        let sheet = try TmdParser.parseThrowing(url: sampleURL)
+        let sheet = try TmdParserIO.parseThrowing(url: sampleURL)
         #expect(sheet.name.contains("Canon in D"))
 
         // Measure consistency check: 0 errors

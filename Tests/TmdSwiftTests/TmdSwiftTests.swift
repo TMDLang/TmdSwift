@@ -98,7 +98,7 @@ func testSharedTextIORoundTrip() throws {
 @Test func testParseData() throws {
     let tmd = "::SCORE::\n** Song **\n!=90\n?=G\n<3/4>\n->#"
     let data = Data(tmd.utf8)
-    let sheet = TmdParser.parse(data: data)
+    let sheet = TmdParserIO.parse(data: data)
     #expect(sheet != nil)
     #expect(sheet?.name == "Song")
     #expect(sheet?.speed == 90.0)
@@ -438,7 +438,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         .deletingLastPathComponent()
         .appendingPathComponent("sample/basic/三天三夜.tmd")
     let data = try Data(contentsOf: sampleURL)
-    let sheet = TmdParser.parse(data: data)
+    let sheet = TmdParserIO.parse(data: data)
     #expect(sheet != nil)
     #expect(sheet?.name == "三天三夜")
     #expect(sheet?.speed == 133.0)
@@ -499,7 +499,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     var testedCount = 0
     while let fileURL = enumerator?.nextObject() as? URL {
         guard fileURL.pathExtension == "tmd" else { continue }
-        let sheet = try TmdParser.parseThrowing(url: fileURL)
+        let sheet = try TmdParserIO.parseThrowing(url: fileURL)
         #expect(!sheet.name.isEmpty, "Score in \(fileURL.lastPathComponent) should have a name")
         #expect(sheet.speed > 0, "Score in \(fileURL.lastPathComponent) should have positive BPM")
         #expect(
@@ -520,14 +520,14 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         .appendingPathComponent("sample/basic/三天三夜.tmd")
 
     // Test URL parsing
-    let sheetFromURL = try TmdParser.parse(url: sampleURL)
+    let sheetFromURL = try TmdParserIO.parse(url: sampleURL)
     #expect(sheetFromURL != nil)
     #expect(sheetFromURL?.name == "三天三夜")
 
     // Test file:// string parsing with percent-encoding
     let fileURLString = sampleURL.absoluteString
     #expect(FilePathNormalizer.isFileURL(fileURLString))
-    let sheetFromFileURL = try TmdParser.parse(filePathOrURL: fileURLString)
+    let sheetFromFileURL = try TmdParserIO.parse(filePathOrURL: fileURLString)
     #expect(sheetFromFileURL != nil)
     #expect(sheetFromFileURL?.name == "三天三夜")
 
@@ -545,7 +545,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         -> intro ->#
         """
     if let big5Data = tmdBig5.data(using: .big5) {
-        let sheetBig5 = TmdParser.parse(data: big5Data)
+        let sheetBig5 = TmdParserIO.parse(data: big5Data)
         #expect(sheetBig5 != nil)
         #expect(sheetBig5?.name == "測試Big5")
         #expect(sheetBig5?.entries.first?.assignment == "鋼琴")

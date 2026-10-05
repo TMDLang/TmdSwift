@@ -205,7 +205,7 @@ struct TmdReaperGeneratorTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("sample/basic/三天三夜.tmd")
-        let sheet = try TmdParser.parseThrowing(filePathOrURL: sampleURL.path)
+        let sheet = try TmdParserIO.parseThrowing(filePathOrURL: sampleURL.path)
         let rpp = TmdReaperGenerator.generateRPP(from: sheet)
 
         #expect(rpp.contains("<REAPER_PROJECT"))

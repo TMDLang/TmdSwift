@@ -36,7 +36,7 @@ struct MusicXMLValidationTests {
             .deletingLastPathComponent()
             .appendingPathComponent("sample/basic/三天三夜.tmd")
         let data = try Data(contentsOf: sampleURL)
-        let sheet = try TmdParser.parseThrowing(data: data)
+        let sheet = try TmdParserIO.parseThrowing(data: data)
 
         let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
         let xmlData = Data(xml.utf8)
@@ -214,7 +214,7 @@ struct MusicXMLValidationTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("sample/basic/三天三夜.tmd")
-        let sheet = try TmdParser.parseThrowing(url: sampleURL)
+        let sheet = try TmdParserIO.parseThrowing(url: sampleURL)
 
         let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
         let tempXMLURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(

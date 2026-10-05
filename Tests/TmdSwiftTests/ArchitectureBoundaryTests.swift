@@ -36,6 +36,21 @@ func syntaxResponsibilitiesHaveExplicitSourceBoundaries() throws {
     #expect(!parser.contains("public struct TmdParseError"))
 }
 
+@Test("Source loading stays outside the syntax parser")
+func sourceLoadingHasExplicitIOBoundary() throws {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceRoot = packageRoot.appendingPathComponent("Sources/TmdSwift")
+    let parserPath = sourceRoot.appendingPathComponent("Syntax/TmdParser.swift")
+    #expect(FileManager.default.fileExists(atPath: sourceRoot.appendingPathComponent("IO/TmdParserIO.swift").path))
+    let parser = try String(contentsOf: parserPath)
+    #expect(!parser.contains("TextEncodingDetector"))
+    #expect(!parser.contains("FilePathNormalizer"))
+    #expect(!parser.contains("Data(contentsOf:"))
+}
+
 @Test("Inspector analyzers stay inside the analysis boundary")
 func inspectorAnalyzersHaveExplicitSourceBoundaries() {
     let packageRoot = URL(fileURLWithPath: #filePath)

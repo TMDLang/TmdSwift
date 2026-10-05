@@ -1,5 +1,4 @@
 import Foundation
-import TmdUtils
 
 // MARK: - Parser
 
@@ -49,49 +48,40 @@ public struct TmdParser {
         return min(index == tokenCount - 1 ? index - 1 : index, tokenCount - 1)
     }
 
-    /// Parses encoded data and reports decoding or syntax failures.
+    /// Deprecated compatibility wrapper. Prefer `TmdParserIO` for source loading.
+    @available(*, deprecated, message: "Use TmdParserIO for source loading")
     public static func parseThrowing(data: Data) throws -> Sheet {
-        guard let result = TextEncodingDetector.detectAndDecode(data) else {
-            throw TmdParseError(
-                message: "Unable to decode source",
-                token: .eof,
-                text: "",
-                range: SourceRange(start: SourcePosition(offset: 0, line: 1, column: 1), length: 0)
-            )
-        }
-        return try parseThrowing(string: result.content)
+        try TmdParserIO.parseThrowing(data: data)
     }
 
     /// Parses a file URL and reports syntax failures with source locations.
+    @available(*, deprecated, message: "Use TmdParserIO for source loading")
     public static func parseThrowing(url: URL) throws -> Sheet {
-        try parseThrowing(data: Data(contentsOf: url))
+        try TmdParserIO.parseThrowing(url: url)
     }
 
     /// Parses a path or `file://` URL and reports syntax failures with source locations.
+    @available(*, deprecated, message: "Use TmdParserIO for source loading")
     public static func parseThrowing(filePathOrURL: String) throws -> Sheet {
-        let cleanPath = FilePathNormalizer.fileURLToPath(filePathOrURL)
-        return try parseThrowing(url: URL(fileURLWithPath: cleanPath))
+        try TmdParserIO.parseThrowing(filePathOrURL: filePathOrURL)
     }
 
     /// Parses a TMD score from raw byte data, automatically detecting character encoding (UTF-8, Big5, GB18030, etc.).
+    @available(*, deprecated, message: "Use TmdParserIO for source loading")
     public static func parse(data: Data) -> Sheet? {
-        guard let result = TextEncodingDetector.detectAndDecode(data) else {
-            return nil
-        }
-        return parse(string: result.content)
+        TmdParserIO.parse(data: data)
     }
 
     /// Parses a TMD score from a file URL or remote URL.
+    @available(*, deprecated, message: "Use TmdParserIO for source loading")
     public static func parse(url: URL) throws -> Sheet? {
-        let data = try Data(contentsOf: url)
-        return parse(data: data)
+        try TmdParserIO.parse(url: url)
     }
 
     /// Parses a TMD score from a path string or `file://` URL string, normalizing path and decoding encoding.
+    @available(*, deprecated, message: "Use TmdParserIO for source loading")
     public static func parse(filePathOrURL: String) throws -> Sheet? {
-        let cleanPath = FilePathNormalizer.fileURLToPath(filePathOrURL)
-        let url = URL(fileURLWithPath: cleanPath)
-        return try parse(url: url)
+        try TmdParserIO.parse(filePathOrURL: filePathOrURL)
     }
 }
 
