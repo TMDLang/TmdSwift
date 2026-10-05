@@ -74,3 +74,13 @@ func presentationResponsibilitiesHaveExplicitSourceBoundaries() {
         #expect(FileManager.default.fileExists(atPath: sourceRoot.appendingPathComponent(file).path))
     }
 }
+
+@Test("Macro expansion stays inside the playback boundary")
+func macroResponsibilitiesHaveExplicitSourceBoundaries() {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let path = packageRoot.appendingPathComponent("Sources/TmdSwift/Playback/MacroEvaluator.swift").path
+    #expect(FileManager.default.fileExists(atPath: path))
+}
