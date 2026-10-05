@@ -65,7 +65,6 @@ func presentationResponsibilitiesHaveExplicitSourceBoundaries() {
         .deletingLastPathComponent()
     let sourceRoot = packageRoot.appendingPathComponent("Sources/TmdSwift")
     let files = [
-        "Formatting/Format.swift",
         "Presentation/Outline.swift",
         "Presentation/TonalityVisualizer.swift",
     ]
@@ -73,6 +72,21 @@ func presentationResponsibilitiesHaveExplicitSourceBoundaries() {
     for file in files {
         #expect(FileManager.default.fileExists(atPath: sourceRoot.appendingPathComponent(file).path))
     }
+}
+
+@Test("Source formatting stays inside the syntax boundary")
+func sourceFormattingHasExplicitSyntaxBoundary() {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceRoot = packageRoot.appendingPathComponent("Sources/TmdSwift")
+    #expect(
+        FileManager.default.fileExists(
+            atPath: sourceRoot.appendingPathComponent("Syntax/Format.swift").path))
+    #expect(
+        !FileManager.default.fileExists(
+            atPath: sourceRoot.appendingPathComponent("Formatting/Format.swift").path))
 }
 
 @Test("Macro expansion stays inside the playback boundary")
