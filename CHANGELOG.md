@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2026-10-05
+
+### Added
+- Added humming-to-TMD recording in the VS Code extension, including Windows and Linux microphone capture.
+- Added chord autocomplete and expanded score inspection and refactoring workflows.
+
+### Changed
+- Reorganized parser, lexer, diagnostics, inspection, refactoring, playback, and LSP responsibilities around explicit architecture boundaries.
+- Unified Swift public type naming under the `Tmd` prefix and made AST-based validation and shared lexing canonical.
+- Improved Windows VS Code CLI discovery and process invocation.
+
+### Fixed
+- Corrected playback timeline handling and aligned parsing, macro expansion, and export behavior with the language specification.
+
 ## [0.2.1] - 2026-09-28
 
 ### Changed
