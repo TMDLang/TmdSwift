@@ -72,6 +72,16 @@ func toolResponsibilitiesHaveExplicitSourceBoundaries() {
     }
 }
 
+@Test("Refactoring formatting helpers have an explicit responsibility boundary")
+func refactoringFormattingHasExplicitBoundary() {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let path = packageRoot.appendingPathComponent("Sources/TmdSwift/Refactoring/TmdRefactorFormatting.swift").path
+    #expect(FileManager.default.fileExists(atPath: path))
+}
+
 @Test("Presentation consumers stay outside the syntax core")
 func presentationResponsibilitiesHaveExplicitSourceBoundaries() {
     let packageRoot = URL(fileURLWithPath: #filePath)
