@@ -159,6 +159,18 @@ func lspCompletionHasExplicitBoundary() throws {
     #expect(!implementation.contains("public struct TmdLSPCompletionEngine"))
 }
 
+@Test("LSP diagnostic engine has an explicit source boundary")
+func lspDiagnosticHasExplicitBoundary() throws {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let lspRoot = packageRoot.appendingPathComponent("Sources/TmdLSP")
+    #expect(FileManager.default.fileExists(atPath: lspRoot.appendingPathComponent("TmdLSPDiagnostics.swift").path))
+    let implementation = try String(contentsOf: lspRoot.appendingPathComponent("TmdLSP.swift"))
+    #expect(!implementation.contains("public struct TmdLSPDiagnosticEngine"))
+}
+
 @Test("Source formatting stays inside the syntax boundary")
 func sourceFormattingHasExplicitSyntaxBoundary() {
     let packageRoot = URL(fileURLWithPath: #filePath)
