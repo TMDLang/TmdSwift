@@ -337,7 +337,3 @@ import TmdSwift
         }
     }
 #endif
-
-/// Source-compatible spelling retained for clients of TmdSwift 0.2.x.
-@available(*, deprecated, renamed: "TMDAudioError")
-public typealias TmdAudioError = TMDAudioError

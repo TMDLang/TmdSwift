@@ -772,10 +772,6 @@ public struct TMDParser {
     }
 }
 
-/// Source-compatible spelling retained for clients of TmdSwift 0.2.x.
-@available(*, deprecated, renamed: "TMDParser")
-public typealias TmdParser = TMDParser
-
 private struct TokenParser {
     private let tokens: [Token]
     private var pos: Int = 0

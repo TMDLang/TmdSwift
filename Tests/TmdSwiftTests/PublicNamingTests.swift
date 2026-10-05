@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 import TmdAudio
 import TmdSkill
@@ -18,4 +19,23 @@ func canonicalSupportingModuleNamesExist() {
 
     let audioError: TMDAudioError = .unsupportedPlatform
     #expect(audioError.errorDescription != nil)
+}
+
+@Test("Legacy Tmd acronym aliases have been removed after caller migration")
+func legacyTMDAliasesHaveBeenRemoved() throws {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceFiles = [
+        "Sources/TmdSwift/Syntax/Parser.swift",
+        "Sources/TmdSwift/Version.swift",
+        "Sources/TmdSkill/TmdSkill.swift",
+        "Sources/TmdAudio/TmdAudio.swift",
+    ]
+
+    for relativePath in sourceFiles {
+        let source = try String(contentsOf: packageRoot.appendingPathComponent(relativePath))
+        #expect(!source.contains("public typealias Tmd"))
+    }
 }
