@@ -130,6 +130,18 @@ func refactoringTracksHaveExplicitBoundary() throws {
     #expect(!facade.contains("public static func duplicateTrack("))
 }
 
+@Test("Macro transformations have an explicit playback boundary")
+func macroTransformationsHaveExplicitBoundary() throws {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let playbackRoot = packageRoot.appendingPathComponent("Sources/TmdSwift/Playback")
+    #expect(FileManager.default.fileExists(atPath: playbackRoot.appendingPathComponent("TmdMacroTransformations.swift").path))
+    let evaluator = try String(contentsOf: playbackRoot.appendingPathComponent("TmdMacroEvaluator.swift"))
+    #expect(!evaluator.contains("public static func transposeSections"))
+}
+
 @Test("Presentation consumers stay outside the syntax core")
 func presentationResponsibilitiesHaveExplicitSourceBoundaries() {
     let packageRoot = URL(fileURLWithPath: #filePath)
