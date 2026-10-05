@@ -99,6 +99,18 @@ func presentationResponsibilitiesHaveExplicitSourceBoundaries() {
     }
 }
 
+@Test("LSP data models have an explicit source boundary")
+func lspDataModelsHaveExplicitBoundary() throws {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let lspRoot = packageRoot.appendingPathComponent("Sources/TmdLSP")
+    #expect(FileManager.default.fileExists(atPath: lspRoot.appendingPathComponent("TmdLSPTypes.swift").path))
+    let implementation = try String(contentsOf: lspRoot.appendingPathComponent("TmdLSP.swift"))
+    #expect(!implementation.contains("public struct TmdLSPPosition"))
+}
+
 @Test("Source formatting stays inside the syntax boundary")
 func sourceFormattingHasExplicitSyntaxBoundary() {
     let packageRoot = URL(fileURLWithPath: #filePath)
