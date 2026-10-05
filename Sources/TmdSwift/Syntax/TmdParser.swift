@@ -1,5 +1,3 @@
-import Foundation
-
 // MARK: - Parser
 
 public struct TmdParser {
@@ -48,41 +46,6 @@ public struct TmdParser {
         return min(index == tokenCount - 1 ? index - 1 : index, tokenCount - 1)
     }
 
-    /// Deprecated compatibility wrapper. Prefer `TmdParserIO` for source loading.
-    @available(*, deprecated, message: "Use TmdParserIO for source loading")
-    public static func parseThrowing(data: Data) throws -> Sheet {
-        try TmdParserIO.parseThrowing(data: data)
-    }
-
-    /// Parses a file URL and reports syntax failures with source locations.
-    @available(*, deprecated, message: "Use TmdParserIO for source loading")
-    public static func parseThrowing(url: URL) throws -> Sheet {
-        try TmdParserIO.parseThrowing(url: url)
-    }
-
-    /// Parses a path or `file://` URL and reports syntax failures with source locations.
-    @available(*, deprecated, message: "Use TmdParserIO for source loading")
-    public static func parseThrowing(filePathOrURL: String) throws -> Sheet {
-        try TmdParserIO.parseThrowing(filePathOrURL: filePathOrURL)
-    }
-
-    /// Parses a TMD score from raw byte data, automatically detecting character encoding (UTF-8, Big5, GB18030, etc.).
-    @available(*, deprecated, message: "Use TmdParserIO for source loading")
-    public static func parse(data: Data) -> Sheet? {
-        TmdParserIO.parse(data: data)
-    }
-
-    /// Parses a TMD score from a file URL or remote URL.
-    @available(*, deprecated, message: "Use TmdParserIO for source loading")
-    public static func parse(url: URL) throws -> Sheet? {
-        try TmdParserIO.parse(url: url)
-    }
-
-    /// Parses a TMD score from a path string or `file://` URL string, normalizing path and decoding encoding.
-    @available(*, deprecated, message: "Use TmdParserIO for source loading")
-    public static func parse(filePathOrURL: String) throws -> Sheet? {
-        try TmdParserIO.parse(filePathOrURL: filePathOrURL)
-    }
 }
 
 private struct TokenParser {

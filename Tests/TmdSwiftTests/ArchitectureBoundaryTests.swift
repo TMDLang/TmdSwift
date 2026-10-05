@@ -49,6 +49,12 @@ func sourceLoadingHasExplicitIOBoundary() throws {
     #expect(!parser.contains("TextEncodingDetector"))
     #expect(!parser.contains("FilePathNormalizer"))
     #expect(!parser.contains("Data(contentsOf:"))
+    #expect(!parser.contains("parseThrowing(data:"))
+    #expect(!parser.contains("parseThrowing(url:"))
+    #expect(!parser.contains("parseThrowing(filePathOrURL:"))
+    #expect(!parser.contains("parse(data:"))
+    #expect(!parser.contains("parse(url:"))
+    #expect(!parser.contains("parse(filePathOrURL:"))
 }
 
 @Test("Inspector analyzers stay inside the analysis boundary")
