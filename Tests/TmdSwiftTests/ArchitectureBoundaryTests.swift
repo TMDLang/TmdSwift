@@ -109,3 +109,20 @@ func sourceModelHasExplicitSyntaxBoundary() {
     let path = packageRoot.appendingPathComponent("Sources/TmdSwift/Syntax/Types.swift").path
     #expect(FileManager.default.fileExists(atPath: path))
 }
+
+@Test("Inspector localization stays inside the analysis boundary")
+func inspectorLocalizationHasExplicitAnalysisBoundary() {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceRoot = packageRoot.appendingPathComponent("Sources/TmdSwift")
+    for file in ["Localization.swift", "LocalizationCatalog.swift"] {
+        #expect(
+            FileManager.default.fileExists(
+                atPath: sourceRoot.appendingPathComponent("Analysis").appendingPathComponent(file).path))
+        #expect(
+            !FileManager.default.fileExists(
+                atPath: sourceRoot.appendingPathComponent(file).path))
+    }
+}
