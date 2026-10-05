@@ -20,3 +20,22 @@ func coreResponsibilitiesHaveExplicitSourceBoundaries() {
         #expect(FileManager.default.fileExists(atPath: path))
     }
 }
+
+@Test("Inspector analyzers stay inside the analysis boundary")
+func inspectorAnalyzersHaveExplicitSourceBoundaries() {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let analysisRoot = packageRoot.appendingPathComponent("Sources/TmdSwift/Analysis")
+    let files = [
+        "SongHarmonyAnalyzer.swift",
+        "SongPitchRangeAnalyzer.swift",
+        "SongTimingAnalyzer.swift",
+        "SongTonalityAnalyzer.swift",
+    ]
+
+    for file in files {
+        #expect(FileManager.default.fileExists(atPath: analysisRoot.appendingPathComponent(file).path))
+    }
+}
