@@ -14,11 +14,28 @@ func canonicalTmdPublicNamesExist() {
     let textIO: TmdTextIO.Type = TmdTextIO.self
 
     #expect(parser == TmdParser.self)
-    #expect(version.current == "0.2.1")
+    #expect(version.current == "0.2.3")
     #expect(checker == TmdMeasureChecker.self)
     #expect(inspector == TmdSongInspector.self)
     #expect(renderer == TmdPlaybackRenderer.self)
     #expect(textIO == TmdTextIO.self)
+}
+
+@Test("Release version stays aligned across the extension manifest and install instructions")
+func releaseVersionIsConsistentAcrossPublishedMetadata() throws {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let version = TmdVersion.current
+    let extensionManifest = try Data(contentsOf: packageRoot.appendingPathComponent("editor/vscode/package.json"))
+    let manifest = try #require(JSONSerialization.jsonObject(with: extensionManifest) as? [String: Any])
+    let extensionVersion = try #require(manifest["version"] as? String)
+    let readme = try String(contentsOf: packageRoot.appendingPathComponent("README.md"))
+
+    #expect(version == "0.2.3")
+    #expect(extensionVersion == version)
+    #expect(readme.contains("zonble.tmd-vscode-\(version)"))
 }
 
 @Test("Tmd prefix public names are used by supporting modules")
