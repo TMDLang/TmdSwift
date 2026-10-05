@@ -85,6 +85,21 @@ func macroResponsibilitiesHaveExplicitSourceBoundaries() {
     #expect(FileManager.default.fileExists(atPath: path))
 }
 
+@Test("Measure rendering stays inside the playback boundary")
+func measureRenderingHasExplicitPlaybackBoundary() {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceRoot = packageRoot.appendingPathComponent("Sources/TmdSwift")
+    #expect(
+        FileManager.default.fileExists(
+            atPath: sourceRoot.appendingPathComponent("Playback/Measure.swift").path))
+    #expect(
+        !FileManager.default.fileExists(
+            atPath: sourceRoot.appendingPathComponent("Measure.swift").path))
+}
+
 @Test("The canonical source model stays inside the syntax boundary")
 func sourceModelHasExplicitSyntaxBoundary() {
     let packageRoot = URL(fileURLWithPath: #filePath)
