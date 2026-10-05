@@ -56,3 +56,21 @@ func toolResponsibilitiesHaveExplicitSourceBoundaries() {
         #expect(FileManager.default.fileExists(atPath: sourceRoot.appendingPathComponent(file).path))
     }
 }
+
+@Test("Presentation consumers stay outside the syntax core")
+func presentationResponsibilitiesHaveExplicitSourceBoundaries() {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceRoot = packageRoot.appendingPathComponent("Sources/TmdSwift")
+    let files = [
+        "Formatting/Format.swift",
+        "Presentation/Outline.swift",
+        "Presentation/TonalityVisualizer.swift",
+    ]
+
+    for file in files {
+        #expect(FileManager.default.fileExists(atPath: sourceRoot.appendingPathComponent(file).path))
+    }
+}
