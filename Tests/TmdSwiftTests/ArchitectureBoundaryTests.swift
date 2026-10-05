@@ -135,6 +135,18 @@ func lspDataModelsHaveExplicitBoundary() throws {
     #expect(!implementation.contains("public struct TmdLSPPosition"))
 }
 
+@Test("LSP JSON-RPC codec has an explicit source boundary")
+func lspCodecHasExplicitBoundary() throws {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let lspRoot = packageRoot.appendingPathComponent("Sources/TmdLSP")
+    #expect(FileManager.default.fileExists(atPath: lspRoot.appendingPathComponent("TmdLSPCodec.swift").path))
+    let implementation = try String(contentsOf: lspRoot.appendingPathComponent("TmdLSP.swift"))
+    #expect(!implementation.contains("public struct TmdJSONRPCCodec"))
+}
+
 @Test("Source formatting stays inside the syntax boundary")
 func sourceFormattingHasExplicitSyntaxBoundary() {
     let packageRoot = URL(fileURLWithPath: #filePath)
