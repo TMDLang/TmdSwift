@@ -16,7 +16,7 @@ struct TmdInspectCommand: ParsableCommand {
 
     func run() throws {
         let sheet: Sheet
-        do { sheet = try TmdParser.parseThrowing(filePathOrURL: inputPath) }
+        do { sheet = try TMDParser.parseThrowing(filePathOrURL: inputPath) }
         catch let parseError as TMDParseError {
             print("Error: Syntax error in \(inputPath):")
             print(parseError.description)

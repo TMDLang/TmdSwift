@@ -28,7 +28,7 @@ struct TonalityContractTests {
     }
 
     @Test func keepsMovableDoContextSeparateAndInfersMinor() throws {
-        let sheet = try #require(TmdParser.parse(string: inferentialScore("C")))
+        let sheet = try #require(TMDParser.parse(string: inferentialScore("C")))
         let profile = TMDSongInspector.inspect(sheet: sheet)
         let tonality = try #require(profile.tonality)
 
@@ -55,7 +55,7 @@ struct TonalityContractTests {
 
             -> verse ->#
             """
-        let sheet = try #require(TmdParser.parse(string: tmd))
+        let sheet = try #require(TMDParser.parse(string: tmd))
         let tonality = try #require(TMDSongInspector.inspect(sheet: sheet).tonality)
 
         #expect(sheet.keySignature.description == "D")
@@ -79,7 +79,7 @@ struct TonalityContractTests {
 
             -> verse ->#
             """
-        let sheet = try #require(TmdParser.parse(string: tmd))
+        let sheet = try #require(TMDParser.parse(string: tmd))
         let tonality = try #require(TMDSongInspector.inspect(sheet: sheet).tonality)
 
         #expect(tonality.globalInference.mode == .insufficient)
@@ -89,7 +89,7 @@ struct TonalityContractTests {
 
     @Test func keepsPlaybackTranspositionSeparateFromInferredModulation() throws {
         let sheet = try #require(
-            TmdParser.parse(string: inferentialScore("C", playback: "-> verse -> {?+2}")))
+            TMDParser.parse(string: inferentialScore("C", playback: "-> verse -> {?+2}")))
         let tonality = try #require(TMDSongInspector.inspect(sheet: sheet).tonality)
 
         #expect(tonality.playbackTranspositionPath == [0, 2])
@@ -138,7 +138,7 @@ struct TonalityContractTests {
 
             -> major -> minor ->#
             """
-        let sheet = try #require(TmdParser.parse(string: tmd))
+        let sheet = try #require(TMDParser.parse(string: tmd))
         let tonality = try #require(TMDSongInspector.inspect(sheet: sheet).tonality)
 
         #expect(tonality.sections.map { $0.inferredTonality.mode } == [.major, .minor])

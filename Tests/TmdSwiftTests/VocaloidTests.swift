@@ -34,7 +34,7 @@ struct VocaloidTests {
                 1 2 3 4
             }
             """
-        let sheet = try TmdParser.parseThrowing(string: tmdContent)
+        let sheet = try TMDParser.parseThrowing(string: tmdContent)
         let vsqData = TMDVSQGenerator.generateVSQ(
             from: sheet, options: VocaloidExportOptions(singerName: "Miku"))
 
@@ -61,7 +61,7 @@ struct VocaloidTests {
                 1 3 5 1^
             }
             """
-        let sheet = try TmdParser.parseThrowing(string: tmdContent)
+        let sheet = try TMDParser.parseThrowing(string: tmdContent)
         let vsqx = TMDVSQXGenerator.generateVSQX(
             from: sheet, options: VocaloidExportOptions(singerName: "Hatsune Miku"))
 

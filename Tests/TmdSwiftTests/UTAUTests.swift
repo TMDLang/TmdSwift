@@ -22,7 +22,7 @@ struct UTAUTests {
                 [あ い う え]
             }
             """
-        let sheet = try TmdParser.parseThrowing(string: tmdContent)
+        let sheet = try TMDParser.parseThrowing(string: tmdContent)
         let ust = TMDUSTGenerator.generateUST(
             from: sheet,
             options: USTExportOptions(
@@ -72,7 +72,7 @@ struct UTAUTests {
                 [お _ _ か]
             }
             """
-        let sheet = try TmdParser.parseThrowing(string: tmdContent)
+        let sheet = try TMDParser.parseThrowing(string: tmdContent)
         let ust = TMDUSTGenerator.generateUST(
             from: sheet, options: USTExportOptions(lyrics: ["お", "か"]))
 
@@ -118,7 +118,7 @@ struct UTAUTests {
                 [c d]
             }
             """
-        let sheet = try TmdParser.parseThrowing(string: tmdContent)
+        let sheet = try TMDParser.parseThrowing(string: tmdContent)
         let ust = TMDUSTGenerator.generateUST(from: sheet)
 
         // PartB should have Tempo=150.00 attached to its first note

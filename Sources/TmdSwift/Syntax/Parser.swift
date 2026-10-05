@@ -680,7 +680,7 @@ public final class Lexer {
 
 // MARK: - Parser
 
-public struct TmdParser {
+public struct TMDParser {
     /// Parses a TMD score from a text string.
     public static func parse(string: String) -> Sheet? {
         let lexer = Lexer(string: string)
@@ -771,6 +771,10 @@ public struct TmdParser {
         return try parse(url: url)
     }
 }
+
+/// Source-compatible spelling retained for clients of TmdSwift 0.2.x.
+@available(*, deprecated, renamed: "TMDParser")
+public typealias TmdParser = TMDParser
 
 private struct TokenParser {
     private let tokens: [Token]

@@ -35,8 +35,8 @@ struct TmdRefactorTests {
         #expect(formatted.contains("}"))
         #expect(formatted.contains("-> intro ->#"))
         // Check that reparsing the formatted string yields the exact same Sheet
-        let origSheet = try #require(TmdParser.parse(string: input))
-        let newSheet = try #require(TmdParser.parse(string: formatted))
+        let origSheet = try #require(TMDParser.parse(string: input))
+        let newSheet = try #require(TMDParser.parse(string: formatted))
         #expect(origSheet.name == newSheet.name)
         #expect(origSheet.entries.count == newSheet.entries.count)
         #expect(origSheet.playback.count == newSheet.playback.count)
@@ -108,7 +108,7 @@ struct TmdRefactorTests {
         #expect(!result.contains(":Piano@"))
 
         // Sheet inspection
-        let sheet = try #require(TmdParser.parse(string: result))
+        let sheet = try #require(TMDParser.parse(string: result))
         #expect(sheet.entries[0].assignment == "GrandPiano")
         #expect(sheet.entries[1].assignment == "Guitar")
         #expect(sheet.entries[2].assignment == "GrandPiano")
@@ -148,7 +148,7 @@ struct TmdRefactorTests {
         #expect(!result.contains("verse:Bass@"))
         #expect(result.contains("-> intro -> A -> {?+2} -> A ->#"))
 
-        let sheet = try #require(TmdParser.parse(string: result))
+        let sheet = try #require(TMDParser.parse(string: result))
         #expect(sheet.entries[1].name == "A")
         #expect(sheet.entries[2].name == "A")
         #expect(sheet.playback == [.name("intro"), .name("A"), .relative("+2"), .name("A")])
@@ -197,7 +197,7 @@ struct TmdRefactorTests {
         #expect(!extracted.contains(":Drums@"))
         #expect(extracted.contains("-> intro -> verse ->#"))
 
-        let sheet = try #require(TmdParser.parse(string: extracted))
+        let sheet = try #require(TMDParser.parse(string: extracted))
         #expect(sheet.name == "Full Band Song")
         #expect(sheet.entries.count == 2)
         #expect(sheet.entries.allSatisfy { $0.assignment == "Piano" })
@@ -533,7 +533,7 @@ struct TmdRefactorTests {
         #expect(inlined.contains("1 2 3 4"))
         #expect(inlined.contains("5 6 7 1^"))
 
-        let sheet = try #require(TmdParser.parse(string: inlined))
+        let sheet = try #require(TMDParser.parse(string: inlined))
         #expect(sheet.entries.count == 1)
         #expect(sheet.entries[0].sections[0].unitGroups.count == 12)
     }

@@ -13,7 +13,7 @@ struct LilyPondValidationTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("sample/basic/三天三夜.tmd")
-        let sheet = try TmdParser.parseThrowing(url: sampleURL)
+        let sheet = try TMDParser.parseThrowing(url: sampleURL)
 
         let ly = TMDLilyPondGenerator.generateLilyPond(from: sheet)
 
@@ -48,7 +48,7 @@ struct LilyPondValidationTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("sample/basic/三天三夜.tmd")
-        let sheet = try TmdParser.parseThrowing(url: sampleURL)
+        let sheet = try TMDParser.parseThrowing(url: sampleURL)
 
         let ly = TMDLilyPondGenerator.generateLilyPond(from: sheet)
 
@@ -88,7 +88,7 @@ struct LilyPondValidationTests {
             }
             -> A ->#
             """
-        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let sheet = try TMDParser.parseThrowing(string: tmd)
 
         let ly = TMDLilyPondGenerator.generateLilyPond(from: sheet)
         let barlineCount = ly.components(separatedBy: "|").count - 1
@@ -117,7 +117,7 @@ struct LilyPondValidationTests {
             }
             -> A ->#
             """
-        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let sheet = try TMDParser.parseThrowing(string: tmd)
         let ly = TMDLilyPondGenerator.generateLilyPond(from: sheet)
 
         // Drum tokens
@@ -149,7 +149,7 @@ struct LilyPondValidationTests {
             }
             -> A ->#
             """
-        let sheetCompound = try TmdParser.parseThrowing(string: tmdCompound)
+        let sheetCompound = try TMDParser.parseThrowing(string: tmdCompound)
         let lyCompound = TMDLilyPondGenerator.generateLilyPond(from: sheetCompound)
 
         #expect(lyCompound.contains("\\tempo 4. = 80"))
@@ -169,7 +169,7 @@ struct LilyPondValidationTests {
             }
             -> A ->#
             """
-        let sheetCutTime = try TmdParser.parseThrowing(string: tmdCutTime)
+        let sheetCutTime = try TMDParser.parseThrowing(string: tmdCutTime)
         let lyCutTime = TMDLilyPondGenerator.generateLilyPond(from: sheetCutTime)
 
         #expect(lyCutTime.contains("\\tempo 2 = 60"))
@@ -188,7 +188,7 @@ struct LilyPondValidationTests {
             }
             -> A ->#
             """
-        let sheetEighthTime = try TmdParser.parseThrowing(string: tmdEighthTime)
+        let sheetEighthTime = try TMDParser.parseThrowing(string: tmdEighthTime)
         let lyEighthTime = TMDLilyPondGenerator.generateLilyPond(from: sheetEighthTime)
 
         #expect(lyEighthTime.contains("\\tempo 8 = 240"))
@@ -210,7 +210,7 @@ struct LilyPondValidationTests {
             }
             -> A ->#
             """
-        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let sheet = try TMDParser.parseThrowing(string: tmd)
         let ly = TMDLilyPondGenerator.generateLilyPond(from: sheet)
 
         // Header declared key= Bm -> \key b \minor

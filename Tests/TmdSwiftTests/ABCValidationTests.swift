@@ -13,7 +13,7 @@ struct ABCValidationTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("sample/basic/三天三夜.tmd")
-        let sheet = try TmdParser.parseThrowing(url: sampleURL)
+        let sheet = try TMDParser.parseThrowing(url: sampleURL)
 
         let abc = TMDABCGenerator.generateABC(from: sheet)
         #expect(abc.contains("X:1"))
@@ -39,7 +39,7 @@ struct ABCValidationTests {
             }
             -> A ->#
             """
-        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let sheet = try TMDParser.parseThrowing(string: tmd)
 
         let abc = TMDABCGenerator.generateABC(from: sheet)
 
@@ -89,7 +89,7 @@ struct ABCValidationTests {
             }
             -> A ->#
             """
-        let sheetG = try TmdParser.parseThrowing(string: tmdG)
+        let sheetG = try TMDParser.parseThrowing(string: tmdG)
         let abcG = TMDABCGenerator.generateABC(from: sheetG)
         #expect(abcG.contains("K:G"))
         // Degree 7 in G major is F# -> under K:G written as f4 (not ^f4)
@@ -112,7 +112,7 @@ struct ABCValidationTests {
             }
             -> A ->#
             """
-        let sheetBb = try TmdParser.parseThrowing(string: tmdBb)
+        let sheetBb = try TMDParser.parseThrowing(string: tmdBb)
         let abcBb = TMDABCGenerator.generateABC(from: sheetBb)
         #expect(abcBb.contains("K:Bb"))
         // In K:Bb, Degree 1 is Bb -> under K:Bb it is written as b4 / B4 without ^ or _
@@ -136,7 +136,7 @@ struct ABCValidationTests {
             }
             -> A ->#
             """
-        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let sheet = try TMDParser.parseThrowing(string: tmd)
         let abc = TMDABCGenerator.generateABC(from: sheet)
         #expect(abc.contains("K:C"))
         #expect(abc.contains("K:D"))
@@ -159,7 +159,7 @@ struct ABCValidationTests {
             }
             -> A ->#
             """
-        let sheetCompound = try TmdParser.parseThrowing(string: tmdCompound)
+        let sheetCompound = try TMDParser.parseThrowing(string: tmdCompound)
         let abcCompound = TMDABCGenerator.generateABC(from: sheetCompound)
 
         #expect(abcCompound.contains("Q:3/8=80"))
@@ -179,7 +179,7 @@ struct ABCValidationTests {
             }
             -> A ->#
             """
-        let sheetCutTime = try TmdParser.parseThrowing(string: tmdCutTime)
+        let sheetCutTime = try TMDParser.parseThrowing(string: tmdCutTime)
         let abcCutTime = TMDABCGenerator.generateABC(from: sheetCutTime)
 
         #expect(abcCutTime.contains("Q:1/2=60"))
@@ -198,7 +198,7 @@ struct ABCValidationTests {
             }
             -> A ->#
             """
-        let sheetEighthTime = try TmdParser.parseThrowing(string: tmdEighthTime)
+        let sheetEighthTime = try TMDParser.parseThrowing(string: tmdEighthTime)
         let abcEighthTime = TMDABCGenerator.generateABC(from: sheetEighthTime)
 
         #expect(abcEighthTime.contains("Q:1/8=240"))
@@ -220,7 +220,7 @@ struct ABCValidationTests {
             }
             -> A ->#
             """
-        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let sheet = try TMDParser.parseThrowing(string: tmd)
         let abc = TMDABCGenerator.generateABC(from: sheet)
 
         // Header declared key= Bm -> K:Bm

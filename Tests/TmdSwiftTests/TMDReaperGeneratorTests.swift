@@ -27,7 +27,7 @@ struct TMDReaperGeneratorTests {
             }
             -> Intro -> Verse ->#
             """
-        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let sheet = try TMDParser.parseThrowing(string: tmd)
         let rpp = TMDReaperGenerator.generateRPP(from: sheet)
 
         // Project structure
@@ -63,7 +63,7 @@ struct TMDReaperGeneratorTests {
             }
             -> A ->#
             """
-        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let sheet = try TMDParser.parseThrowing(string: tmd)
         let rpp = TMDReaperGenerator.generateRPP(from: sheet)
 
         // Initial tempo: 60 BPM at 0.0s
@@ -103,7 +103,7 @@ struct TMDReaperGeneratorTests {
             }
             -> A -> B -> C ->#
             """
-        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let sheet = try TMDParser.parseThrowing(string: tmd)
         let rpp = TMDReaperGenerator.generateRPP(from: sheet)
 
         // A = 4 quarters, B starts 1 bar later in the active 3/4 meter and lasts 4 quarters.
@@ -135,7 +135,7 @@ struct TMDReaperGeneratorTests {
             }
             -> A ->#
             """
-        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let sheet = try TMDParser.parseThrowing(string: tmd)
         let rpp = TMDReaperGenerator.generateRPP(from: sheet)
 
         // Tracks exist
@@ -193,7 +193,7 @@ struct TMDReaperGeneratorTests {
             }
             -> A ->#
             """
-        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let sheet = try TMDParser.parseThrowing(string: tmd)
         let rpp = TMDReaperGenerator.generateRPP(from: sheet)
 
         #expect(!rpp.contains("NAME \"Piano\""))
@@ -205,7 +205,7 @@ struct TMDReaperGeneratorTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("sample/basic/三天三夜.tmd")
-        let sheet = try TmdParser.parseThrowing(filePathOrURL: sampleURL.path)
+        let sheet = try TMDParser.parseThrowing(filePathOrURL: sampleURL.path)
         let rpp = TMDReaperGenerator.generateRPP(from: sheet)
 
         #expect(rpp.contains("<REAPER_PROJECT"))

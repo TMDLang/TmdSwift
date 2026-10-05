@@ -88,7 +88,7 @@ public struct TMDMeasureChecker {
     /// Checks a TMD source text string for measure length discrepancies.
     public static func check(source: String) -> [TMDMeasureIssue] {
         let astIssues: [TMDMeasureIssue]
-        if let sheet = TmdParser.parse(string: source) {
+        if let sheet = TMDParser.parse(string: source) {
             astIssues = check(sheet: sheet)
         } else {
             astIssues = []

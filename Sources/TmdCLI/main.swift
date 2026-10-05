@@ -25,7 +25,7 @@ struct TmdCLICommand: ParsableCommand {
         abstract: "A compiler and toolkit for the TMD (Timebase Mark Down) music markup language.",
         discussion:
             "In memory of Chen, Chih-Han / aguai (阿怪, 1974–2019).\nOriginal project: https://github.com/aguai/TMDLang",
-        version: TmdVersion.current,
+        version: TMDVersion.current,
         subcommands: [
             TmdCheckCommand.self,
             TmdInspectCommand.self,
@@ -145,7 +145,7 @@ struct TmdCLICommand: ParsableCommand {
         }
 
         print(
-            "TmdSwift v\(TmdVersion.current) - In memory of Chen, Chih-Han / aguai (阿怪, 1974–2019)."
+            "TmdSwift v\(TMDVersion.current) - In memory of Chen, Chih-Han / aguai (阿怪, 1974–2019)."
         )
 
         let fileContent: String
@@ -159,7 +159,7 @@ struct TmdCLICommand: ParsableCommand {
 
         let sheet: Sheet
         do {
-            sheet = try TmdParser.parseThrowing(string: fileContent)
+            sheet = try TMDParser.parseThrowing(string: fileContent)
         } catch let parseError as TMDParseError {
             print("Error: Syntax error in \(inputPath):")
             print(parseError.description)

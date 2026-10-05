@@ -16,7 +16,7 @@ struct TmdMeasureCheckTests {
             }
             -> intro ->#
             """
-        let sheet = try #require(TmdParser.parse(string: source))
+        let sheet = try #require(TMDParser.parse(string: source))
         let issues = TMDMeasureChecker.check(sheet: sheet)
 
         #expect(issues.contains { $0.snippet.contains("explicit barlines") })

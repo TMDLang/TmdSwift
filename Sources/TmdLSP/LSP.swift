@@ -440,7 +440,7 @@ public struct TMDLSPCompletionEngine {
                 }
 
                 // B. Diatonic Letter Chords for current key
-                let sheet = TmdParser.parse(string: source)
+                let sheet = TMDParser.parse(string: source)
                 let keyStr = sheet?.keySignature.description ?? "C"
                 let diatonicChords = getDiatonicChords(for: keyStr)
                 for chord in diatonicChords {
@@ -638,7 +638,7 @@ public struct TMDLSPDiagnosticEngine {
 
         // 2. Syntax / Throwing parser check
         do {
-            _ = try TmdParser.parseThrowing(string: source)
+            _ = try TMDParser.parseThrowing(string: source)
         } catch let err as TMDParseError {
             let line = max(0, err.range.start.line - 1)
             let col = max(0, err.range.start.column - 1)

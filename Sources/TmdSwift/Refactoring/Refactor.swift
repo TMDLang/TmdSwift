@@ -165,13 +165,13 @@ public struct TMDRefactor {
         let matches = regex.matches(in: source, options: [], range: range)
         if matches.isEmpty {
             // Check if score even parses
-            _ = try TmdParser.parseThrowing(string: source)
+            _ = try TMDParser.parseThrowing(string: source)
         }
 
         let replaced = regex.stringByReplacingMatches(
             in: source, options: [], range: range, withTemplate: "$1:\(newInstrument)@")
         // Verify valid TMD score after rename
-        _ = try TmdParser.parseThrowing(string: replaced)
+        _ = try TMDParser.parseThrowing(string: replaced)
         return replaced
     }
 
@@ -204,14 +204,14 @@ public struct TMDRefactor {
         )
 
         // Verify valid TMD score after rename
-        _ = try TmdParser.parseThrowing(string: result)
+        _ = try TMDParser.parseThrowing(string: result)
         return result
     }
 
     /// Extracts all tracks matching the given instrument from the score into a new TMD document.
     /// Preserves score metadata, headers, tempo, key, beat, comments, and orders.
     public static func extractInstrument(from source: String, instrument: String) throws -> String {
-        let sheet = try TmdParser.parseThrowing(string: source)
+        let sheet = try TMDParser.parseThrowing(string: source)
         let matchingParagraphs = sheet.entries.filter { $0.assignment == instrument }
         guard !matchingParagraphs.isEmpty else {
             throw TMDRefactorError.instrumentNotFound(instrument)
@@ -270,7 +270,7 @@ public struct TMDRefactor {
         }
 
         let formatted = format(resultLines.joined(separator: "\n"))
-        _ = try TmdParser.parseThrowing(string: formatted)
+        _ = try TMDParser.parseThrowing(string: formatted)
         return formatted
     }
 
@@ -282,7 +282,7 @@ public struct TMDRefactor {
         section: String? = nil,
         octaveShift: Int = 0
     ) throws -> String {
-        let sheet = try TmdParser.parseThrowing(string: source)
+        let sheet = try TMDParser.parseThrowing(string: source)
         var matching = sheet.entries.filter { $0.assignment == sourceInstrument }
         if let sec = section {
             matching = matching.filter { $0.name == sec }
@@ -358,7 +358,7 @@ public struct TMDRefactor {
         }
 
         let formatted = format(combined)
-        _ = try TmdParser.parseThrowing(string: formatted)
+        _ = try TMDParser.parseThrowing(string: formatted)
         return formatted
     }
 
@@ -370,7 +370,7 @@ public struct TMDRefactor {
         section: String? = nil,
         intervalSteps: Int
     ) throws -> String {
-        let sheet = try TmdParser.parseThrowing(string: source)
+        let sheet = try TMDParser.parseThrowing(string: source)
         var matching = sheet.entries.filter { $0.assignment == sourceInstrument }
         if let sec = section {
             matching = matching.filter { $0.name == sec }
@@ -459,13 +459,13 @@ public struct TMDRefactor {
         }
 
         let formatted = format(combined)
-        _ = try TmdParser.parseThrowing(string: formatted)
+        _ = try TMDParser.parseThrowing(string: formatted)
         return formatted
     }
 
     /// Unrolls / inlines score playback orders into a linear score sequence.
     public static func inlineOrders(source: String) throws -> String {
-        let sheet = try TmdParser.parseThrowing(string: source)
+        let sheet = try TMDParser.parseThrowing(string: source)
         guard !sheet.playback.isEmpty else { return source }
 
         var seenInstruments: [String] = []
@@ -1024,7 +1024,7 @@ public struct TMDRefactor {
 
         // Optimize each paragraph independently so one indivisible track does not block other tracks
         var current = source
-        if let sheet = try? TmdParser.parseThrowing(string: current) {
+        if let sheet = try? TMDParser.parseThrowing(string: current) {
             for p in sheet.entries {
                 var paraCurrent = current
                 let pTarget = TMDRefactorTarget(section: p.name, instrument: p.assignment)
