@@ -1857,22 +1857,22 @@ func testPlaybackOrderModifiersShareStateTransition() throws {
 }
 
 @Test func testTmdSkillDefinitionAndInstallation() throws {
-    #expect(TmdSkill.skillName == "tmd")
-    #expect(TmdSkill.skillMarkdown.contains("name: tmd"))
-    #expect(TmdSkill.skillMarkdown.contains("::SCORE::"))
-    #expect(TmdSkill.skillMarkdown.contains("--install-skills"))
-    #expect(TmdSkill.skillMarkdown.contains("Modular Section-Based Chunking"))
-    #expect(TmdSkill.skillMarkdown.contains("Human Composition Principles"))
-    #expect(TmdSkill.skillMarkdown.contains("AI Co-Composing Patterns"))
-    #expect(TmdSkill.skillMarkdown.contains("Contrapuntal Techniques: Canon and Fugue"))
-    #expect(TmdSkill.skillMarkdown.contains("Strict Canon with Measure Offsets"))
-    #expect(TmdSkill.skillMarkdown.contains("Fugue Architecture"))
+    #expect(TMDSkill.skillName == "tmd")
+    #expect(TMDSkill.skillMarkdown.contains("name: tmd"))
+    #expect(TMDSkill.skillMarkdown.contains("::SCORE::"))
+    #expect(TMDSkill.skillMarkdown.contains("--install-skills"))
+    #expect(TMDSkill.skillMarkdown.contains("Modular Section-Based Chunking"))
+    #expect(TMDSkill.skillMarkdown.contains("Human Composition Principles"))
+    #expect(TMDSkill.skillMarkdown.contains("AI Co-Composing Patterns"))
+    #expect(TMDSkill.skillMarkdown.contains("Contrapuntal Techniques: Canon and Fugue"))
+    #expect(TMDSkill.skillMarkdown.contains("Strict Canon with Measure Offsets"))
+    #expect(TMDSkill.skillMarkdown.contains("Fugue Architecture"))
 
     let tempDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(
         "tmd-skill-test-\(UUID().uuidString)")
     let targetSkillDir = tempDir.appendingPathComponent("skills/tmd")
 
-    let results = TmdSkill.installSkills(to: [targetSkillDir])
+    let results = TMDSkill.installSkills(to: [targetSkillDir])
     #expect(results.count == 1)
     #expect(results[0].success)
 
@@ -1880,7 +1880,7 @@ func testPlaybackOrderModifiersShareStateTransition() throws {
     #expect(FileManager.default.fileExists(atPath: installedFile.path))
 
     let content = try String(contentsOf: installedFile, encoding: .utf8)
-    #expect(content == TmdSkill.skillMarkdown)
+    #expect(content == TMDSkill.skillMarkdown)
 
     try? FileManager.default.removeItem(at: tempDir)
 }

@@ -124,7 +124,7 @@ struct TmdCLICommand: ParsableCommand {
     func run() throws {
         if installSkills {
             print("Installing TMD skill for AI agents...")
-            let results = TmdSkill.installSkills()
+            let results = TMDSkill.installSkills()
             if results.isEmpty {
                 print("No AI agent directories found to install into.")
             } else {
