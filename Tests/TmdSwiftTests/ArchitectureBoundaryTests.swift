@@ -39,3 +39,20 @@ func inspectorAnalyzersHaveExplicitSourceBoundaries() {
         #expect(FileManager.default.fileExists(atPath: analysisRoot.appendingPathComponent(file).path))
     }
 }
+
+@Test("Text I/O and source refactoring stay outside the syntax core")
+func toolResponsibilitiesHaveExplicitSourceBoundaries() {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let sourceRoot = packageRoot.appendingPathComponent("Sources/TmdSwift")
+    let files = [
+        "IO/TMDTextIO.swift",
+        "Refactoring/Refactor.swift",
+    ]
+
+    for file in files {
+        #expect(FileManager.default.fileExists(atPath: sourceRoot.appendingPathComponent(file).path))
+    }
+}
