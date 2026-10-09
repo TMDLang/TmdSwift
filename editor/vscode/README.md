@@ -34,7 +34,6 @@ Official Visual Studio Code extension providing language support, syntax highlig
   - `TMD: Export to ABC Notation (.abc)`
   - `TMD: Export to LilyPond (.ly)`
   - `TMD: Render to PDF via LilyPond (.pdf)`
-  - `TMD: Render to WAV Audio (.wav)`
   - `TMD: Install AI Agent Skills`
 - **Diagnostics & Formatting**:
   - Automatically checks beat counts in bar lines (`|`) on save and open.

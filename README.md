@@ -292,7 +292,7 @@ The repository includes an official VS Code extension in [`editor/vscode`](edito
 - **Song Inspector**: Run `TMD: Inspect Song Profile` to display vocal tessitura, pitch ranges, duration, chord vocabulary, and arrangement density directly in an Output Channel.
 - **In-Editor Arrangement Operations**: Interactive commands to double/halve rhythm resolution, duplicate tracks with octave shifts, generate natural harmonies, rename instruments/sections globally, or inline orders.
 - **GitHub Copilot Chat & LM Tools**: Chat participant `@tmd` (`/check`, `/inspect`, `/compose`, `/fix`, `/explain`) and language model tools (`tmd_check`, `tmd_inspect`, `tmd_format`, `tmd_get_specification`).
-- **Export & Render Commands**: Export to MIDI, REAPER, MusicXML, ABC, LilyPond, PDF, VOCALOID (.vsq, .vsqx), UTAU (.ust), or offline WAV audio.
+- **Export & Render Commands**: Export to MIDI, MusicXML, ABC, LilyPond (.ly), PDF, VOCALOID (.vsq, .vsqx), or UTAU (.ust).
 
 To install locally:
 ```bash

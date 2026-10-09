@@ -103,12 +103,6 @@
         "enablement": "editorLangId == tmd"
       },
       {
-        "command": "tmd.renderWAV",
-        "title": "%tmd.commands.renderWAV%",
-        "category": "TMD",
-        "enablement": "editorLangId == tmd"
-      },
-      {
         "command": "tmd.exportVSQX",
         "title": "%tmd.commands.exportVSQX%",
         "category": "TMD",
@@ -382,7 +376,7 @@
           "group": "tmd_export@3"
         },
         {
-          "command": "tmd.renderWAV",
+          "command": "tmd.exportLilyPond",
           "when": "editorLangId == tmd",
           "group": "tmd_export@4"
         },

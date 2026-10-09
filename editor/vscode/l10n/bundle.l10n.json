@@ -44,7 +44,6 @@
   "ABC notation exported successfully to {0}": "ABC notation exported successfully to {0}",
   "LilyPond file exported successfully to {0}": "LilyPond file exported successfully to {0}",
   "PDF rendered successfully to {0}": "PDF rendered successfully to {0}",
-  "WAV rendered successfully to {0}": "WAV rendered successfully to {0}",
   "VOCALOID3/4 (.vsqx) exported successfully to {0}": "VOCALOID3/4 (.vsqx) exported successfully to {0}",
   "VOCALOID2 (.vsq) exported successfully to {0}": "VOCALOID2 (.vsq) exported successfully to {0}",
   "UTAU (.ust) exported successfully to {0}": "UTAU (.ust) exported successfully to {0}",

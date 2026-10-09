@@ -7,7 +7,6 @@
   "tmd.commands.exportABC": "Export to ABC Notation (.abc)",
   "tmd.commands.exportLilyPond": "Export to LilyPond (.ly)",
   "tmd.commands.renderPDF": "Render to PDF via LilyPond (.pdf)",
-  "tmd.commands.renderWAV": "Render to WAV Audio (.wav)",
   "tmd.commands.exportVSQX": "Export to VOCALOID3/4 (.vsqx)",
   "tmd.commands.exportVSQ": "Export to VOCALOID2 (.vsq)",
   "tmd.commands.exportUST": "Export to UTAU (.ust)",

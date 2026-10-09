@@ -721,14 +721,6 @@ function activate(context) {
         runTmdExport([filePath, '--pdf-output', outputPath], vscode.l10n.t('PDF rendered successfully to {0}', path.basename(outputPath)), outputPath);
     }));
 
-    // 6. Render to WAV Audio (.wav)
-    context.subscriptions.push(vscode.commands.registerCommand('tmd.renderWAV', () => {
-        const filePath = getActiveTmdFilePath();
-        if (!filePath) return;
-        const outputPath = filePath.replace(/\.[^/.]+$/, '') + '.wav';
-        runTmdExport([filePath, '-w', outputPath], vscode.l10n.t('WAV rendered successfully to {0}', path.basename(outputPath)), outputPath);
-    }));
-
     // 6.1. Export to VOCALOID3/4 (.vsqx)
     context.subscriptions.push(vscode.commands.registerCommand('tmd.exportVSQX', () => {
         const filePath = getActiveTmdFilePath();

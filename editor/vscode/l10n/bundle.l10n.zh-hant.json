@@ -44,7 +44,6 @@
   "ABC notation exported successfully to {0}": "ABC 記譜法已成功匯出至 {0}",
   "LilyPond file exported successfully to {0}": "LilyPond 檔案已成功匯出至 {0}",
   "PDF rendered successfully to {0}": "PDF 已成功繪製至 {0}",
-  "WAV rendered successfully to {0}": "WAV 音訊已成功渲染至 {0}",
   "VOCALOID3/4 (.vsqx) exported successfully to {0}": "VOCALOID3/4 (.vsqx) 已成功匯出至 {0}",
   "VOCALOID2 (.vsq) exported successfully to {0}": "VOCALOID2 (.vsq) 已成功匯出至 {0}",
   "UTAU (.ust) exported successfully to {0}": "UTAU (.ust) 已成功匯出至 {0}",

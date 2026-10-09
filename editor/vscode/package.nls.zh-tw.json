@@ -7,7 +7,6 @@
   "tmd.commands.exportABC": "匯出為 ABC 記譜法 (.abc)",
   "tmd.commands.exportLilyPond": "匯出為 LilyPond 樂譜 (.ly)",
   "tmd.commands.renderPDF": "透過 LilyPond 繪製成 PDF (.pdf)",
-  "tmd.commands.renderWAV": "渲染為 WAV 音訊 (.wav)",
   "tmd.commands.exportVSQX": "匯出為 VOCALOID3/4 (.vsqx)",
   "tmd.commands.exportVSQ": "匯出為 VOCALOID2 (.vsq)",
   "tmd.commands.exportUST": "匯出為 UTAU 專案 (.ust)",
