@@ -748,7 +748,7 @@ struct MacroEvaluatorTests {
             """
         let sheet = try #require(TmdParser.parse(string: input))
         let throwingResult = try TmdMacroEvaluator.expandThrowing(sheet)
-        let compatibilityResult = TmdMacroEvaluator.expand(sheet)
+        let compatibilityResult = TmdMacroEvaluator.expandOrTrap(sheet)
 
         #expect(compatibilityResult == throwingResult)
 

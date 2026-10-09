@@ -481,4 +481,87 @@ struct TmdLSPTests {
         let symbolResp = sentMessages.last ?? ""
         #expect(symbolResp.contains("Test Score") || symbolResp.contains("verse"))
     }
+
+    @Test("Completion engine interprets position.character as UTF-16 code unit offset")
+    func testCompletionUTF16OffsetsWithAstralCharacters() throws {
+        // "/* 🎉 */ " has 8 Swift Characters but 9 UTF-16 code units because 🎉 is a surrogate pair.
+        let macroLine = "/* 🎉 */ -> ()"
+        let utf16CursorAfterOpenParen = ("/* 🎉 */ -> (" as NSString).length
+        #expect(utf16CursorAfterOpenParen == 13)
+
+        let macroItems = TmdLSPCompletionEngine.complete(
+            source: macroLine,
+            position: TmdLSPPosition(line: 0, character: utf16CursorAfterOpenParen)
+        )
+        let canonItem = macroItems.first(where: { $0.label == "canon" })
+        #expect(canonItem != nil, "Completion should recognize cursor after '(' using UTF-16 offset")
+        #expect(canonItem?.insertText?.hasSuffix(")") == false)
+
+        let attrLine = "/* 🎉 */ A:Timpani[]"
+        let utf16CursorAfterBracket = ("/* 🎉 */ A:Timpani[" as NSString).length
+        let attrItems = TmdLSPCompletionEngine.complete(
+            source: attrLine,
+            position: TmdLSPPosition(line: 0, character: utf16CursorAfterBracket)
+        )
+        #expect(attrItems.map(\.label).contains("pitchMode=fixed"))
+    }
+
+    @Test("Measure diagnostic range uses actual line UTF-16 length instead of hardcoded 80")
+    func testDiagnosticRangeUsesActualLineLength() throws {
+        let measureLine = "    | 1 2 3 |"
+        let source = """
+            ::SCORE::
+            != 120
+            ?= C
+            <4/4>
+
+            A:Piano@|0|{
+                <4*>
+            \(measureLine)
+            }
+            -> A ->#
+            """
+        let diags = TmdLSPDiagnosticEngine.diagnose(source: source)
+        let measureDiag = try #require(diags.first(where: { $0.source == "tmd-measure-checker" }))
+        #expect(measureDiag.range.start.character == 0)
+        #expect(measureDiag.range.end.character == measureLine.utf16.count)
+        #expect(measureDiag.range.end.character != 80)
+    }
+
+    @Test("TmdCLI registers TmdLSPCommand in subcommands and propagates PDF export failures")
+    func testCLISubcommandRegistrationAndPDFExitCode() throws {
+        let packageRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let mainSwift = try String(
+            contentsOf: packageRoot.appendingPathComponent("Sources/TmdCLI/main.swift"),
+            encoding: .utf8
+        )
+
+        #expect(
+            mainSwift.range(
+                of: #"subcommands:\s*\[[^\]]*TmdLSPCommand\.self"#,
+                options: .regularExpression
+            ) != nil,
+            "TmdCLICommand.configuration.subcommands should include TmdLSPCommand.self"
+        )
+
+        #expect(
+            mainSwift.range(
+                of: #"lilypond exited with status[^}]*throw ExitCode\.failure"#,
+                options: .regularExpression
+            ) != nil,
+            "Non-zero lilypond exit status during --pdf-output must throw ExitCode.failure"
+        )
+
+        #expect(
+            mainSwift.range(
+                of: #"Could not invoke lilypond:[^}]*throw ExitCode\.failure"#,
+                options: .regularExpression
+            ) != nil,
+            "Failed lilypond invocation during --pdf-output must throw ExitCode.failure"
+        )
+    }
 }

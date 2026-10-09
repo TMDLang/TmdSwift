@@ -263,7 +263,7 @@ struct MusicXMLValidationTests {
         let xmlData = Data(xml.utf8)
         #if os(macOS)
             let doc = try XMLDocument(data: xmlData, options: [])
-            guard let root = doc.rootElement() else {
+            guard doc.rootElement() != nil else {
                 Issue.record("No root element")
                 return
             }

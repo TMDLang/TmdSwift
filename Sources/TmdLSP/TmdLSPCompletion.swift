@@ -92,7 +92,15 @@ public struct TmdLSPCompletionEngine {
         let lines = source.components(separatedBy: "\n")
         guard position.line < lines.count else { return [] }
         let currentLine = lines[position.line]
-        let prefix = String(currentLine.prefix(position.character))
+        let utf16 = currentLine.utf16
+        let clampedOffset = min(max(0, position.character), utf16.count)
+        let utf16SplitIndex = utf16.index(utf16.startIndex, offsetBy: clampedOffset)
+        let splitIndex =
+            utf16SplitIndex.samePosition(in: currentLine)
+            ?? currentLine.unicodeScalars.index(before: utf16SplitIndex).samePosition(
+                in: currentLine)
+            ?? currentLine.startIndex
+        let prefix = String(currentLine[..<splitIndex])
 
         // 1. Check for S-Expression macro completion: inside "-> (" or "(" or "(<word>"
         let trimmedPrefix = prefix.trimmingCharacters(in: .whitespaces)
@@ -110,7 +118,7 @@ public struct TmdLSPCompletionEngine {
             return false
         }()
 
-        let remainder = String(currentLine.dropFirst(position.character))
+        let remainder = String(currentLine[splitIndex...])
         let nextChar = remainder.first
 
         if prefix.range(of: #":\s*[A-Za-z][A-Za-z0-9_-]*\[$"#, options: .regularExpression) != nil {

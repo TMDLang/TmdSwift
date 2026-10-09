@@ -32,6 +32,7 @@ struct TmdCLICommand: ParsableCommand {
             TmdFormatCommand.self,
             TmdOutlineCommand.self,
             TmdRefactorCommand.self,
+            TmdLSPCommand.self,
         ]
     )
 
@@ -280,6 +281,7 @@ struct TmdCLICommand: ParsableCommand {
         if let pdfPath = pdfOutput {
             let tempLyURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(
                 UUID().uuidString + ".ly")
+            defer { try? FileManager.default.removeItem(at: tempLyURL) }
             let lyString = TmdLilyPondGenerator.generateLilyPond(from: sheet)
             try? lyString.write(to: tempLyURL, atomically: true, encoding: .utf8)
 
@@ -297,13 +299,16 @@ struct TmdCLICommand: ParsableCommand {
                     print(
                         "Warning: lilypond exited with status \(process.terminationStatus). Make sure lilypond is installed (e.g. `brew install lilypond`)."
                     )
+                    throw ExitCode.failure
                 }
+            } catch let error as ExitCode {
+                throw error
             } catch {
                 print(
                     "Could not invoke lilypond: \(error.localizedDescription). You can export the .ly file directly using `-l`."
                 )
+                throw ExitCode.failure
             }
-            try? FileManager.default.removeItem(at: tempLyURL)
         }
 
         // Export to ABC notation if requested
