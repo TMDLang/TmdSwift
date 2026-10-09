@@ -275,6 +275,30 @@ function runTmdExport(args, successMessage, outputFilePath) {
     });
 }
 
+function extractScoreTitle(text, fallback = 'TMD Score') {
+    if (typeof text === 'string') {
+        const match = text.match(/^\s*\*\*([^*]+)\*\*\s*$/m) || text.match(/\*\*([^*]+)\*\*/);
+        if (match && match[1].trim()) {
+            return match[1].trim();
+        }
+    }
+    return fallback;
+}
+
+function extractScoreKeySignature(text, fallback = 'C') {
+    if (typeof text === 'string') {
+        const movableDoMatch = text.match(/^\s*\?\s*=\s*([A-Ga-g][#'b,m]*)/m);
+        if (movableDoMatch && movableDoMatch[1]) {
+            return movableDoMatch[1].trim();
+        }
+        const keyHeaderMatch = text.match(/^\s*key\s*=\s*([A-Ga-g][#'b,m]*)/im);
+        if (keyHeaderMatch && keyHeaderMatch[1]) {
+            return keyHeaderMatch[1].trim();
+        }
+    }
+    return fallback;
+}
+
 const TMD_TEMPLATES = [
     {
         id: 'starter',
@@ -294,7 +318,7 @@ const TMD_TEMPLATES = [
  - 高低八度：1^ (高音), 1_ (低音)
  - 升降記號：1' (升), 7, (降)
  - 延音線：-
- - 休止符：. 或 0
+ - 休止符：0
  - 和弦標記：[1], [4], [5] 或 [C], [F], [G]
  - 段落格式：段落名:樂器名@|小節偏移|{ <時值網格*> ... }
 */
@@ -380,7 +404,7 @@ intro:Chord@|0|{
 
 intro:Lead@|0|{
     <4*>
-    | . . . . | . . . . |
+    | 0 0 0 0 | 0 0 0 0 |
     | 1 2 3 5 | 6 5 3 1 |
 }
 
@@ -860,7 +884,7 @@ function activate(context) {
                 const key = getActiveKeySignature();
                 const preview = `::SCORE::\n** Hummed Preview **\n! = 120\n? = ${key}\n<4/4>\n\n${message.tmd}\n\n-> hummed ->#\n`;
                 fs.writeFileSync(tempPath, preview, 'utf8');
-                runCliFile(getTmdExecutable(), [tempPath, '-p'], (error, stdout, stderr) => {
+                runCliFile(getTmdExecutable(), [tempPath, '--play'], (error, stdout, stderr) => {
                     try { fs.unlinkSync(tempPath); } catch (_) {}
                     if (error) vscode.window.showErrorMessage(`TMD humming preview failed: ${(stderr || error.message).trim()}`);
                 });
@@ -1034,13 +1058,9 @@ function activate(context) {
                     const scoreBaseName = path.basename(filePath);
 
                     // Extract score name from file header if available
-                    let displayTitle = scoreBaseName;
-                    if (activeDoc) {
-                        const match = activeDoc.getText().match(/^\s*name\s*:\s*(.+)$/m);
-                        if (match) {
-                            displayTitle = match[1].trim();
-                        }
-                    }
+                    let displayTitle = activeDoc
+                        ? extractScoreTitle(activeDoc.getText(), scoreBaseName)
+                        : scoreBaseName;
 
                     if (options.section && options.instrument) {
                         displayTitle += ` [${options.section}:${options.instrument}]`;
@@ -1050,14 +1070,10 @@ function activate(context) {
                         displayTitle += ` [Track: ${options.instrument}]`;
                     }
 
-                    // Extract key signature (?= or {!K:...}) if available
-                    let keySignature = 'C';
-                    if (activeDoc) {
-                        const keyMatch = activeDoc.getText().match(/^\s*(?:\?=|key)\s*:\s*([A-Ga-g][#'b,]?)/m);
-                        if (keyMatch) {
-                            keySignature = keyMatch[1];
-                        }
-                    }
+                    // Extract key signature (?= or key=) if available
+                    const keySignature = activeDoc
+                        ? extractScoreKeySignature(activeDoc.getText(), 'C')
+                        : 'C';
 
                     currentMidiPanel.webview.postMessage({
                         command: 'loadMidi',
@@ -1090,7 +1106,7 @@ function activate(context) {
             term = vscode.window.createTerminal(termName);
         }
         term.show();
-        term.sendText(`"${tmdBin}" "${filePath}" -p`);
+        term.sendText(`"${tmdBin}" "${filePath}" --play`);
     }));
 
     // 8. Install AI Skills
@@ -1270,8 +1286,7 @@ function activate(context) {
     function getActiveKeySignature() {
         const activeDoc = vscode.window.activeTextEditor?.document;
         if (activeDoc) {
-            const match = activeDoc.getText().match(/^\s*(?:\?=|key)\s*:\s*([A-Ga-g][#'b,]?)/m);
-            if (match) return match[1];
+            return extractScoreKeySignature(activeDoc.getText(), 'C');
         }
         return 'C';
     }
@@ -2272,7 +2287,7 @@ function activate(context) {
                 item.iconPath = new vscode.ThemeIcon('file-submodule');
             } else if (node.name === 'Sections') {
                 item.iconPath = new vscode.ThemeIcon('list-tree');
-            } else if (node.name === 'Orders') {
+            } else if (node.name === 'Playback' || node.name === 'Orders') {
                 item.iconPath = new vscode.ThemeIcon('git-commit');
             } else {
                 item.iconPath = new vscode.ThemeIcon('symbol-event');
@@ -3050,14 +3065,12 @@ function escapeHtml(str) {
  * Compiles a raw TMD snippet into MIDI (Base64) and renders an interactive Markdown card.
  */
 function renderTmdMarkdownCard(rawTmd) {
-    const titleMatch = rawTmd.match(/\*\*([^\*]+)\*\*/);
-    const title = titleMatch ? titleMatch[1].trim() : 'TMD Score';
+    const title = extractScoreTitle(rawTmd, 'TMD Score');
 
     const tempoMatch = rawTmd.match(/!=\s*([0-9.]+)/);
     const tempo = tempoMatch ? tempoMatch[1].trim() : '';
 
-    const keyMatch = rawTmd.match(/\?=\s*([A-Ga-g][b#m]*)/);
-    const key = keyMatch ? keyMatch[1].trim() : '';
+    const key = extractScoreKeySignature(rawTmd, '');
 
     const meterMatch = rawTmd.match(/<([0-9]+\/[0-9]+)>/);
     const meter = meterMatch ? meterMatch[1].trim() : '';
@@ -3167,5 +3180,8 @@ function extendMarkdownIt(md) {
 module.exports = {
     activate,
     deactivate,
-    extendMarkdownIt
+    extendMarkdownIt,
+    TMD_TEMPLATES,
+    extractScoreTitle,
+    extractScoreKeySignature
 };
