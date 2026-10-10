@@ -146,7 +146,7 @@ func vscodeBundledSkillMarkdownMatchesTmdSkillSSOT() throws {
     let vscodeSkill = try String(
         contentsOf: packageRoot.appendingPathComponent("editor/vscode/skill.md"),
         encoding: .utf8
-    )
+    ).replacingOccurrences(of: "\r\n", with: "\n")
 
     #expect(TmdSkill.skillMarkdown.contains("[pitchMode=fixed]"))
     #expect(vscodeSkill == TmdSkill.skillMarkdown)
