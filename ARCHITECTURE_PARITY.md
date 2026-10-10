@@ -6,7 +6,7 @@ the Swift and TypeScript implementations.
 | Responsibility | TmdSwift | Tmd-TS | Status |
 | --- | --- | --- | --- |
 | Syntax lexer, parser, AST/source model | `Sources/TmdSwift/Syntax/TmdParser.swift`, `Sources/TmdSwift/Syntax/Lexer.swift`, `Sources/TmdSwift/Syntax/Token.swift`, `Sources/TmdSwift/Syntax/Types.swift`, `Sources/TmdSwift/Syntax/TmdParseDiagnostics.swift` | `src/syntax/parser.ts`, `types.ts` | Aligned |
-| Measure validation and diagnostics | `Sources/TmdSwift/Validation/TmdMeasureChecker.swift`, `Sources/TmdSwift/Validation/TmdMeasureLexerFallback.swift` | `src/validation/measure_check.ts` | Aligned |
+| Measure validation and diagnostics | `Sources/TmdSwift/Validation/TmdMeasureChecker.swift`, `Sources/TmdSwift/Validation/TmdMeasureLexerFallback.swift`, `Sources/TmdSwift/Validation/TmdScoreValidator.swift` | `src/validation/measure_check.ts`, `src/validation/score_validator.ts` | Aligned |
 | Inspector facade, profiles, analyzers, localization | `Sources/TmdSwift/Analysis/` | `src/analysis/` | Aligned |
 | Playback timeline and measure rendering | `Sources/TmdSwift/Playback/` | `src/playback/` | Aligned |
 | Source refactoring | `Sources/TmdSwift/Refactoring/TmdRefactor.swift` | `src/refactoring/refactor.ts` | Aligned |
