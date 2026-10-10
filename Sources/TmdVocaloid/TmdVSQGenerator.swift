@@ -22,6 +22,38 @@ public struct VocaloidExportOptions: Sendable, Equatable {
     }
 }
 
+/// Shared monophonic note representation used by VOCALOID `.vsq` and `.vsqx` exporters.
+struct VocaloidNoteItem: Sendable, Equatable {
+    let tick: Int
+    let dur: Int
+    let pitch: Int
+    let lyric: String
+    let phoneme: String
+
+    static func extractNotes(
+        from timeline: PlaybackTimeline,
+        preMeasureTicks: Int,
+        ticksPerQuarter: UInt16,
+        defaultLyric: String
+    ) -> [VocaloidNoteItem] {
+        var noteItems: [VocaloidNoteItem] = []
+        for event in timeline.monophonicEvents() {
+            guard case .note(let note) = event.content else { continue }
+            let pitch = TmdMIDIGenerator.noteToMIDIPitch(note, keyOffset: event.state.keyOffset)
+            guard (0...127).contains(pitch) else { continue }
+            let posTicks = (event.position * Double(ticksPerQuarter)).rounded()
+            let durTicks = (event.duration * Double(ticksPerQuarter)).rounded()
+            let tick = preMeasureTicks + (posTicks.isFinite ? max(0, Int(posTicks)) : 0)
+            let dur = max(1, durTicks.isFinite ? Int(durTicks) : 1)
+            let phoneme = VocaloidPhoneme.resolvePhoneme(for: defaultLyric)
+            noteItems.append(
+                VocaloidNoteItem(
+                    tick: tick, dur: dur, pitch: pitch, lyric: defaultLyric, phoneme: phoneme))
+        }
+        return noteItems
+    }
+}
+
 /// Exporter for VOCALOID2 `.vsq` format.
 ///
 /// A `.vsq` file is a Standard MIDI File (SMF Format 1) containing text meta events (`0xFF 0x01`)
@@ -68,29 +100,13 @@ public struct TmdVSQGenerator: Sendable {
         instrumentName: String,
         options: VocaloidExportOptions
     ) -> Data {
-        let preMeasureTicks = UInt32(options.preMeasure * 4 * Int(ticksPerQuarter))
-
-        // Collect note items
-        struct NoteItem {
-            let tick: UInt32
-            let dur: UInt32
-            let pitch: UInt8
-            let lyric: String
-            let phoneme: String
-        }
-
-        var noteItems: [NoteItem] = []
-        for event in timeline.events {
-            guard case .note(let note) = event.content else { continue }
-            let tick = preMeasureTicks + midiTick(event.position)
-            let dur = max(1, midiTick(event.duration))
-            let pitch = TmdMIDIGenerator.noteToMIDIPitch(note, keyOffset: event.state.keyOffset)
-            guard (0...127).contains(pitch) else { continue }
-            let lyric = options.defaultLyric
-            let phoneme = VocaloidPhoneme.resolvePhoneme(for: lyric)
-            noteItems.append(
-                NoteItem(tick: tick, dur: dur, pitch: UInt8(pitch), lyric: lyric, phoneme: phoneme))
-        }
+        let preMeasureTicks = options.preMeasure * 4 * Int(ticksPerQuarter)
+        let noteItems = VocaloidNoteItem.extractNotes(
+            from: timeline,
+            preMeasureTicks: preMeasureTicks,
+            ticksPerQuarter: ticksPerQuarter,
+            defaultLyric: options.defaultLyric
+        )
 
         // Build INI content
         var ini = ""
@@ -178,20 +194,17 @@ public struct TmdVSQGenerator: Sendable {
 
         // Add standard MIDI Note On / Note Off events
         for note in noteItems {
+            let tick = UInt32(max(0, note.tick))
+            let dur = UInt32(max(1, note.dur))
+            let pitch = UInt8(clamping: note.pitch)
             midiEvents.append(
                 MIDIEvent(
-                    tick: note.tick, message: .noteOn(channel: 0, note: note.pitch, velocity: 64)))
-            let offTick = note.tick + note.dur
+                    tick: tick, message: .noteOn(channel: 0, note: pitch, velocity: 64)))
+            let offTick = tick + dur
             midiEvents.append(
-                MIDIEvent(tick: offTick, message: .noteOff(channel: 0, note: note.pitch)))
+                MIDIEvent(tick: offTick, message: .noteOff(channel: 0, note: pitch)))
         }
 
         return TmdMIDIEncoder.encodeTrack(events: midiEvents)
-    }
-
-    private static func midiTick(_ quarterNotes: Double) -> UInt32 {
-        let ticks = (quarterNotes * Double(ticksPerQuarter)).rounded()
-        guard ticks.isFinite else { return 0 }
-        return UInt32(min(max(0, ticks), Double(UInt32.max)))
     }
 }

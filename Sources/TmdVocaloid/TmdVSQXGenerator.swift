@@ -29,29 +29,13 @@ public struct TmdVSQXGenerator: Sendable {
         let ticksPerBar = (beatCount * 4 * Int(ticksPerQuarter)) / beatNoteVal
         let preMeasureTicks = preMeasure * ticksPerBar
 
-        // Collect musical part notes
-        struct VSQXNote {
-            let posTick: Int
-            let durTick: Int
-            let noteNum: Int
-            let lyric: String
-            let phnm: String
-        }
-
-        var notes: [VSQXNote] = []
-        var maxTick = 0
-        for event in timeline.events {
-            guard case .note(let note) = event.content else { continue }
-            let tick = preMeasureTicks + Int((event.position * Double(ticksPerQuarter)).rounded())
-            let dur = max(1, Int((event.duration * Double(ticksPerQuarter)).rounded()))
-            let pitch = TmdMIDIGenerator.noteToMIDIPitch(note, keyOffset: event.state.keyOffset)
-            guard (0...127).contains(pitch) else { continue }
-            let lyric = options.defaultLyric
-            let phnm = VocaloidPhoneme.resolvePhoneme(for: lyric)
-            notes.append(
-                VSQXNote(posTick: tick, durTick: dur, noteNum: pitch, lyric: lyric, phnm: phnm))
-            maxTick = max(maxTick, tick + dur)
-        }
+        let notes = VocaloidNoteItem.extractNotes(
+            from: timeline,
+            preMeasureTicks: preMeasureTicks,
+            ticksPerQuarter: ticksPerQuarter,
+            defaultLyric: options.defaultLyric
+        )
+        let maxTick = notes.map { $0.tick + $0.dur }.max() ?? 0
 
         let totalPartDuration = max(ticksPerBar * 4, maxTick + ticksPerBar)
 
@@ -158,12 +142,12 @@ public struct TmdVSQXGenerator: Sendable {
         for note in notes {
             xml += """
                       <note>
-                        <t>\(note.posTick)</t>
-                        <dur>\(note.durTick)</dur>
-                        <n>\(note.noteNum)</n>
+                        <t>\(note.tick)</t>
+                        <dur>\(note.dur)</dur>
+                        <n>\(note.pitch)</n>
                         <v>64</v>
                         <y><![CDATA[\(escapeCDATA(note.lyric))]]></y>
-                        <p><![CDATA[\(escapeCDATA(note.phnm))]]></p>
+                        <p><![CDATA[\(escapeCDATA(note.phoneme))]]></p>
                         <nStyle>
                           <v id="accent">50</v>
                           <v id="bendDep">0</v>

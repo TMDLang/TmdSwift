@@ -73,7 +73,7 @@ public struct TmdUSTGenerator: Sendable {
         var noteIndex = 0
         var lyricIndex = 0
 
-        for event in timeline.events {
+        for event in timeline.monophonicEvents() {
             // Fill any timeline gap prior to this event with a Rest (Lyric=R)
             if event.position > currentPosition {
                 let gapDuration = event.position - currentPosition

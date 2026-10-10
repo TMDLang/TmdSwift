@@ -125,4 +125,25 @@ struct UTAUTests {
         #expect(ust.contains("Tempo=100.00"))
         #expect(ust.contains("Tempo=150.00"))
     }
+
+    @Test("Test UTAU monophonic reduction of simultaneous multi-notes (1+3+5 picks highest pitch 5=67)")
+    func testUSTMonophonicMultiNoteReduction() throws {
+        let tmdContent = """
+            ::SCORE::
+            != 120
+            ?= C
+            <4/4>
+            Verse:Vocal@|0|{
+                <4*>
+                1+3+5 2
+            }
+            """
+        let sheet = try TmdParser.parseThrowing(string: tmdContent)
+        let ust = TmdUSTGenerator.generateUST(
+            from: sheet, options: USTExportOptions(lyrics: ["あ", "い"]))
+
+        #expect(ust.contains("[#0000]\r\nLength=480\r\nLyric=あ\r\nNoteNum=67"))
+        #expect(ust.contains("[#0001]\r\nLength=480\r\nLyric=い\r\nNoteNum=62"))
+        #expect(!ust.contains("[#0002]"))
+    }
 }

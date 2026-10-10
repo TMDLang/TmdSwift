@@ -85,6 +85,38 @@ public struct PlaybackTimeline: Equatable, Sendable {
         self.duration = duration
         self.assignment = assignment
     }
+
+    /// Returns timeline events with simultaneous `.note` events collapsed to the highest-pitched note,
+    /// suitable for monophonic singing-synthesizer exporters (VSQ, VSQX, UST).
+    public func monophonicEvents() -> [PlaybackEvent] {
+        var result: [PlaybackEvent] = []
+        var i = 0
+        while i < events.count {
+            let ev = events[i]
+            if case .note(let note) = ev.content {
+                var bestEvent = ev
+                var bestPitch = note.midiPitch(keyOffset: ev.state.keyOffset)
+                var j = i + 1
+                while j < events.count && abs(events[j].position - ev.position) < 1e-4 {
+                    let nextEv = events[j]
+                    if case .note(let nextNote) = nextEv.content {
+                        let p = nextNote.midiPitch(keyOffset: nextEv.state.keyOffset)
+                        if p > bestPitch {
+                            bestPitch = p
+                            bestEvent = nextEv
+                        }
+                    }
+                    j += 1
+                }
+                result.append(bestEvent)
+                i = j
+            } else {
+                result.append(ev)
+                i += 1
+            }
+        }
+        return result
+    }
 }
 
 /// A semantic playback issue found before target-specific rendering.

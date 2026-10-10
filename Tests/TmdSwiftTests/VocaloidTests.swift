@@ -74,4 +74,43 @@ struct VocaloidTests {
         #expect(vsqx.contains("<dur>"))
         #expect(vsqx.contains("<n>"))
     }
+
+    @Test("Test monophonic reduction of simultaneous multi-notes (1+3+5 picks highest pitch 5=67)")
+    func testMonophonicMultiNoteReduction() throws {
+        let tmdContent = """
+            ::SCORE::
+            ** Poly Vocal Test **
+            != 120
+            ?= C
+            <4/4>
+            Verse:Vocal@|0|{
+                <4*>
+                1+3+5 2
+            }
+            """
+        let sheet = try TmdParser.parseThrowing(string: tmdContent)
+
+        // VSQX should emit exactly 2 <note> elements: first with <n>67</n> (G4), second with <n>62</n> (D4)
+        let vsqx = TmdVSQXGenerator.generateVSQX(from: sheet)
+        let noteCount = vsqx.components(separatedBy: "<note>").count - 1
+        #expect(noteCount == 2)
+        #expect(vsqx.contains("<n>67</n>"))
+        #expect(vsqx.contains("<n>62</n>"))
+        #expect(!vsqx.contains("<n>60</n>"))
+        #expect(!vsqx.contains("<n>64</n>"))
+
+        // VSQ INI text inside SMF should have 2 extracted notes (67 and 62) and no ID#0003
+        let timeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Vocal")
+        let extracted = VocaloidNoteItem.extractNotes(
+            from: timeline, preMeasureTicks: 7680, ticksPerQuarter: 480, defaultLyric: "a")
+        #expect(extracted.count == 2)
+        #expect(extracted[0].pitch == 67)
+        #expect(extracted[1].pitch == 62)
+
+        let vsqData = TmdVSQGenerator.generateVSQ(from: sheet)
+        let vsqAscii = String(decoding: vsqData, as: UTF8.self)
+        #expect(vsqAscii.contains("Note#=67"))
+        #expect(!vsqAscii.contains("Note#=60"))
+        #expect(!vsqAscii.contains("[ID#0003]"))
+    }
 }
