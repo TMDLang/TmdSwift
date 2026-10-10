@@ -53,16 +53,7 @@ public struct TmdParseError: Error, Equatable, CustomStringConvertible, Localize
 
         // Diagnostic Hint 3: Missing time grid directive like <4*>
         if expectedTokens.count == 1 && expectedTokens[0] == "<" {
-            var isGridCandidate = false
-            switch token {
-            case .number, .note, .identifier:
-                isGridCandidate = true
-            default:
-                if text == "1" {
-                    isGridCandidate = true
-                }
-            }
-            if isGridCandidate {
+            if token.isGridCandidate(text: text) {
                 result.append(
                     "Hint: Each section inside `{ ... }` must start with a time grid directive like `<4*>` or `<8*>` before note events"
                 )

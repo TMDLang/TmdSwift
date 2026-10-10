@@ -23,16 +23,7 @@ extension Sheet {
         }
         lines.append("Playback:     \(playback.count)")
         for (idx, order) in playback.enumerated() {
-            switch order {
-            case .name(let n):
-                lines.append("  [\(idx + 1)] -> \(n)")
-            case .relative(let rel):
-                lines.append("  [\(idx + 1)] -> {?\(rel)}")
-            case .absolute(let abs):
-                lines.append("  [\(idx + 1)] -> {?=\(abs)}")
-            case .macro(let expr):
-                lines.append("  [\(idx + 1)] -> \(expr)")
-            }
+            lines.append("  [\(idx + 1)] -> \(order.format())")
         }
         return lines.joined(separator: "\n")
     }
@@ -87,15 +78,7 @@ extension Sheet: CustomStringConvertible {
 extension Note {
     /// Formats note into TMD representation (e.g. `1`, `1'`, `7,`, `3^`, `4_`).
     public func format() -> String {
-        var str = "\(degree.rawValue)"
-        switch accidental {
-        case .sharp:
-            str += "'"
-        case .flat:
-            str += ","
-        case .natural:
-            break
-        }
+        var str = "\(degree.rawValue)\(accidental.tmdSymbol)"
         if octave > 0 {
             str += String(repeating: "^", count: octave)
         } else if octave < 0 {
@@ -183,9 +166,10 @@ extension Section {
     }
 }
 
-extension SectionDirective {
+extension SectionDirectiveKind {
+    /// Formats a section directive kind into TMD representation.
     public func format() -> String {
-        return switch kind {
+        switch self {
         case .tempo(let value):
             "{!=\(value.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(value)) : String(value))}"
         case .relativeTempo(let value):
@@ -203,6 +187,12 @@ extension SectionDirective {
         case .timeSignature(let beat):
             "{<\(beat.count)/\(beat.noteValue)>}"
         }
+    }
+}
+
+extension SectionDirective {
+    public func format() -> String {
+        kind.format()
     }
 }
 

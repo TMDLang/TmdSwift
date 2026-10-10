@@ -224,12 +224,7 @@ public enum TmdMacroEvaluator {
                 return (names.joined(separator: "_"), combinedSections)
             }
 
-            let themeName: String
-            switch themeArg {
-            case .symbol(let s): themeName = s
-            case .number(let n): themeName = String(n)
-            case .list: themeName = ""
-            }
+            let themeName = themeArg.themeIdentifier
 
             if let p = abstractMap[themeName] {
                 return (themeName, p.sections)

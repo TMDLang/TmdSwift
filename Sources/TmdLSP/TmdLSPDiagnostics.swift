@@ -20,29 +20,40 @@ public struct TmdLSPDiagnosticEngine {
                 start: TmdLSPPosition(line: startLine, character: startCol),
                 end: TmdLSPPosition(line: endLine, character: endCol)
             )
-            let severity = diag.severity == .error ? 1 : 2
+            let severity = diag.severity.lspSeverityCode
             var msg = diag.message
             if let suggestion = diag.suggestion, !suggestion.isEmpty, !msg.contains(suggestion) {
                 msg += " (\(suggestion))"
             }
-            let sourceName: String
-            switch diag.rule {
-            case .measureBeat:
-                sourceName = "tmd-measure-checker"
-            case .syntax:
-                sourceName = "tmd-parser"
-            default:
-                sourceName = "tmd-validator"
-            }
             return TmdLSPDiagnostic(
                 range: range,
                 severity: severity,
-                source: sourceName,
+                source: diag.rule.lspSourceName,
                 message: msg
             )
         }
     }
 }
 
-// MARK: - LSP Server Handler & Event Loop
+private extension TmdDiagnosticSeverity {
+    var lspSeverityCode: Int {
+        switch self {
+        case .error: 1
+        case .warning: 2
+        }
+    }
+}
+
+private extension TmdDiagnosticRule {
+    var lspSourceName: String {
+        switch self {
+        case .measureBeat:
+            "tmd-measure-checker"
+        case .syntax:
+            "tmd-parser"
+        default:
+            "tmd-validator"
+        }
+    }
+}
 

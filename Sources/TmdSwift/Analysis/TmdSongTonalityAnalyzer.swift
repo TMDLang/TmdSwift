@@ -456,13 +456,7 @@ public enum TmdSongTonalityAnalyzer {
     }
 
     public static func modeLabel(_ mode: TmdTonalityMode, localizer: TmdLocalizer) -> String {
-        switch mode {
-        case .major: localizer.text(.major)
-        case .minor: localizer.text(.minor)
-        case .modal: localizer.text(.modeModal)
-        case .ambiguous: localizer.text(.modeAmbiguous)
-        case .insufficient: localizer.text(.modeInsufficient)
-        }
+        mode.localizedLabel(using: localizer)
     }
 
     private static func keyName(forTonicOffset tonic: Int) -> String {
@@ -486,6 +480,19 @@ public enum TmdSongTonalityAnalyzer {
         case 10: return -2  // Bb
         case 5: return -1  // F
         default: return 0
+        }
+    }
+}
+
+extension TmdTonalityMode {
+    /// Localized display label for this tonality mode.
+    public func localizedLabel(using localizer: TmdLocalizer) -> String {
+        switch self {
+        case .major: localizer.text(.major)
+        case .minor: localizer.text(.minor)
+        case .modal: localizer.text(.modeModal)
+        case .ambiguous: localizer.text(.modeAmbiguous)
+        case .insufficient: localizer.text(.modeInsufficient)
         }
     }
 }

@@ -133,26 +133,7 @@ public struct TmdLilyPondGenerator {
     }
 
     private static func formatDirective(_ directive: PlaybackDirectiveEvent) -> String {
-        switch directive.kind {
-        case .tempo, .relativeTempo:
-            let cmd = resolveTempo(
-                beat: directive.state.timeSignature, quarterBPM: directive.state.tempo)
-            return "\(cmd) "
-        case .timeSignature(let beat):
-            return "\\time \(beat.count)/\(beat.noteValue) "
-        case .absoluteKey(let key):
-            return "\\key \(lilyPondKey(key)) "
-        case .explicitKey(let key):
-            return "\\key \(lilyPondKey(key)) "
-        case .dynamics(let mark):
-            return "\\\(mark.rawValue) "
-        case .relativeKey:
-            let semitone = ((directive.state.keyOffset % 12) + 12) % 12
-            let keyTonic = PitchMapping.lilyPondNames[semitone]
-            return "\\key \(keyTonic) \\major "
-        case .fixedPitch:
-            return "\\key c \\major "
-        }
+        directive.lilyPondString
     }
 
     private static func formatMeasureEvent(_ event: MeasureEvent, percussion: Bool) -> String {
@@ -242,7 +223,7 @@ public struct TmdLilyPondGenerator {
         }
     }
 
-    private static func lilyPondKey(_ key: String) -> String {
+    fileprivate static func lilyPondKey(_ key: String) -> String {
         let trimmed = key.trimmingCharacters(in: .whitespaces)
         guard let first = trimmed.first else { return "c \\major" }
         var isMinor = false
@@ -280,5 +261,28 @@ public struct TmdLilyPondGenerator {
 
     private static func escapeLilyPond(_ string: String) -> String {
         return string.replacingOccurrences(of: "\"", with: "\\\"")
+    }
+}
+
+private extension PlaybackDirectiveEvent {
+    var lilyPondString: String {
+        switch kind {
+        case .tempo, .relativeTempo:
+            let cmd = TmdLilyPondGenerator.resolveTempo(
+                beat: state.timeSignature, quarterBPM: state.tempo)
+            return "\(cmd) "
+        case .timeSignature(let beat):
+            return "\\time \(beat.count)/\(beat.noteValue) "
+        case .absoluteKey(let key), .explicitKey(let key):
+            return "\\key \(TmdLilyPondGenerator.lilyPondKey(key)) "
+        case .dynamics(let mark):
+            return "\\\(mark.rawValue) "
+        case .relativeKey:
+            let semitone = ((state.keyOffset % 12) + 12) % 12
+            let keyTonic = PitchMapping.lilyPondNames[semitone]
+            return "\\key \(keyTonic) \\major "
+        case .fixedPitch:
+            return "\\key c \\major "
+        }
     }
 }

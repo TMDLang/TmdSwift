@@ -355,7 +355,7 @@ public enum TmdScoreValidator {
             var macroSymbols = Set<String>()
             for order in sheet.playback {
                 if case .macro(let sexpr) = order {
-                    collectSExprSymbols(sexpr, into: &macroSymbols)
+                    sexpr.collectSymbols(into: &macroSymbols)
                 }
             }
 
@@ -668,19 +668,6 @@ public enum TmdScoreValidator {
     private static func isRecognizedExtendedChordSuffix(_ suffix: String) -> Bool {
         let lower = suffix.lowercased().trimmingCharacters(in: .whitespaces)
         return extendedChordQualities.contains(lower)
-    }
-
-    private static func collectSExprSymbols(_ sexpr: SExpr, into set: inout Set<String>) {
-        switch sexpr {
-        case .symbol(let s):
-            set.insert(s)
-        case .number:
-            break
-        case .list(let items):
-            for item in items {
-                collectSExprSymbols(item, into: &set)
-            }
-        }
     }
 
     private static func normalizeInstrumentKey(_ name: String) -> String {

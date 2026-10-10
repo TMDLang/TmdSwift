@@ -77,6 +77,34 @@ public enum Token: Equatable, Sendable {
         case .eof: return "end of input"
         }
     }
+
+    /// Integer value of a numeric or bare single-digit note token, if applicable.
+    public var intValue: Int? {
+        switch self {
+        case .number(let n): return n
+        case .positiveNumber(let n): return n
+        case .note(let note): return note.degree.rawValue
+        default: return nil
+        }
+    }
+
+    /// Whether this token represents a transposable musical unit (`.note` or `.chord`).
+    public var isTransposableUnit: Bool {
+        switch self {
+        case .note, .chord: return true
+        default: return false
+        }
+    }
+
+    /// Whether this token looks like a note/number/identifier where a section `<n*>` grid was expected.
+    public func isGridCandidate(text: String) -> Bool {
+        switch self {
+        case .number, .note, .identifier:
+            return true
+        default:
+            return text == "1"
+        }
+    }
 }
 
 /// A source position measured in both scalar offset and human-readable line/column.

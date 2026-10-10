@@ -118,25 +118,7 @@ public struct TmdABCGenerator {
     }
 
     private static func formatDirective(_ directive: PlaybackDirectiveEvent) -> String {
-        switch directive.kind {
-        case .tempo, .relativeTempo:
-            let cmd = resolveTempo(
-                beat: directive.state.timeSignature, quarterBPM: directive.state.tempo)
-            return "\(cmd) "
-        case .timeSignature(let beat):
-            return "M:\(beat.count)/\(beat.noteValue) "
-        case .absoluteKey(let key):
-            return "K:\(abcKey(key)) "
-        case .explicitKey(let key):
-            return "K:\(abcKey(key)) "
-        case .dynamics(let mark):
-            return "!\(mark.rawValue)! "
-        case .relativeKey:
-            let key = PitchMapping.tonicScaleInfo(forKeyOffset: directive.state.keyOffset).name
-            return "K:\(key) "
-        case .fixedPitch:
-            return "K:C "
-        }
+        directive.abcString
     }
 
     private static func formatMeasureEvent(
@@ -244,7 +226,7 @@ public struct TmdABCGenerator {
         return "\(prefix)\(letter)"
     }
 
-    private static func abcKey(_ key: String) -> String {
+    fileprivate static func abcKey(_ key: String) -> String {
         let trimmed = key.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return "C" }
         var isMinor = false
@@ -265,5 +247,26 @@ public struct TmdABCGenerator {
         }
         return isMinor ? "\(majorName)m" : majorName
     }
+}
 
+private extension PlaybackDirectiveEvent {
+    var abcString: String {
+        switch kind {
+        case .tempo, .relativeTempo:
+            let cmd = TmdABCGenerator.resolveTempo(
+                beat: state.timeSignature, quarterBPM: state.tempo)
+            return "\(cmd) "
+        case .timeSignature(let beat):
+            return "M:\(beat.count)/\(beat.noteValue) "
+        case .absoluteKey(let key), .explicitKey(let key):
+            return "K:\(TmdABCGenerator.abcKey(key)) "
+        case .dynamics(let mark):
+            return "!\(mark.rawValue)! "
+        case .relativeKey:
+            let key = PitchMapping.tonicScaleInfo(forKeyOffset: state.keyOffset).name
+            return "K:\(key) "
+        case .fixedPitch:
+            return "K:C "
+        }
+    }
 }

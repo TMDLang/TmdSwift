@@ -103,7 +103,7 @@ public struct TmdMusicXMLGenerator {
                 default:
                     break
                 }
-                content += generatePlaybackDirectiveXML(directive)
+                content += directive.musicXMLString
             }
 
             let expectedMeasureDuration = max(
@@ -379,52 +379,6 @@ public struct TmdMusicXMLGenerator {
         }
     }
 
-    private static func generatePlaybackDirectiveXML(_ directive: PlaybackDirectiveEvent) -> String
-    {
-        switch directive.kind {
-        case .tempo, .relativeTempo:
-            let metronome = resolveMetronome(
-                beat: directive.state.timeSignature, quarterBPM: directive.state.tempo)
-            let dotTag = metronome.isDotted ? "<beat-unit-dot/>" : ""
-            return """
-                        <direction placement=\"above\">
-                          <direction-type><metronome><beat-unit>\(metronome.beatUnit)</beat-unit>\(dotTag)<per-minute>\(metronome.perMinute)</per-minute></metronome></direction-type>
-                          <sound tempo=\"\(directive.state.tempo)\"/>
-                        </direction>
-
-                """
-        case .timeSignature(let beat):
-            return """
-                        <attributes><time><beats>\(beat.count)</beats><beat-type>\(beat.noteValue)</beat-type></time></attributes>
-
-                """
-        case .absoluteKey(let key):
-            return
-                "        <attributes><key><fifths>\(keySignatureToFifths(key))</fifths></key></attributes>\n"
-        case .explicitKey(let key):
-            let parsed = parseKeyModeAndFifths(key)
-            let modeTag = parsed.mode != nil ? "<mode>\(parsed.mode!)</mode>" : ""
-            return
-                "        <attributes><key><fifths>\(parsed.fifths)</fifths>\(modeTag)</key></attributes>\n"
-        case .dynamics(let mark):
-            return """
-                    <direction placement="below">
-                      <direction-type>
-                        <dynamics>
-                          <\(mark.rawValue)/>
-                        </dynamics>
-                      </direction-type>
-                    </direction>
-
-                """
-        case .relativeKey:
-            let fifths = semitoneOffsetToFifths(directive.state.keyOffset)
-            return "        <attributes><key><fifths>\(fifths)</fifths></key></attributes>\n"
-        case .fixedPitch:
-            return "        <attributes><key><fifths>0</fifths></key></attributes>\n"
-        }
-    }
-
     private static func generatePercussionXML(pattern: String, duration: Int, divisions: Int)
         -> String
     {
@@ -556,43 +510,8 @@ public struct TmdMusicXMLGenerator {
         let rootStep = spelledRoot.step
         let rootAlter = spelledRoot.alter
 
-        let kindText: String
-        let kindValue: String
-        switch chord.quality {
-        case .major:
-            kindValue = "major"
-            kindText = chord.description
-        case .minor:
-            kindValue = "minor"
-            kindText = chord.description
-        case .dominant7:
-            kindValue = "dominant"
-            kindText = chord.description
-        case .major7:
-            kindValue = "major-seventh"
-            kindText = chord.description
-        case .minor7:
-            kindValue = "minor-seventh"
-            kindText = chord.description
-        case .diminished:
-            kindValue = "diminished"
-            kindText = chord.description
-        case .halfDiminished:
-            kindValue = "half-diminished"
-            kindText = chord.description
-        case .augmented:
-            kindValue = "augmented"
-            kindText = chord.description
-        case .suspended:
-            kindValue = "suspended-fourth"
-            kindText = chord.description
-        case .power:
-            kindValue = "power"
-            kindText = chord.description
-        case .custom:
-            kindValue = "other"
-            kindText = chord.description
-        }
+        let kindText = chord.description
+        let kindValue = chord.quality.musicXMLKindValue
 
         var xml = """
                   <harmony>
@@ -662,3 +581,69 @@ public struct TmdMusicXMLGenerator {
             .replacingOccurrences(of: "'", with: "&apos;")
     }
 }
+
+private extension ChordQuality {
+    var musicXMLKindValue: String {
+        switch self {
+        case .major: "major"
+        case .minor: "minor"
+        case .dominant7: "dominant"
+        case .major7: "major-seventh"
+        case .minor7: "minor-seventh"
+        case .diminished: "diminished"
+        case .halfDiminished: "half-diminished"
+        case .augmented: "augmented"
+        case .suspended: "suspended-fourth"
+        case .power: "power"
+        case .custom: "other"
+        }
+    }
+}
+
+private extension PlaybackDirectiveEvent {
+    var musicXMLString: String {
+        switch kind {
+        case .tempo, .relativeTempo:
+            let metronome = TmdMusicXMLGenerator.resolveMetronome(
+                beat: state.timeSignature, quarterBPM: state.tempo)
+            let dotTag = metronome.isDotted ? "<beat-unit-dot/>" : ""
+            return """
+                        <direction placement=\"above\">
+                          <direction-type><metronome><beat-unit>\(metronome.beatUnit)</beat-unit>\(dotTag)<per-minute>\(metronome.perMinute)</per-minute></metronome></direction-type>
+                          <sound tempo=\"\(state.tempo)\"/>
+                        </direction>
+
+                """
+        case .timeSignature(let beat):
+            return """
+                        <attributes><time><beats>\(beat.count)</beats><beat-type>\(beat.noteValue)</beat-type></time></attributes>
+
+                """
+        case .absoluteKey(let key):
+            return
+                "        <attributes><key><fifths>\(PitchMapping.keySignatureToFifths(key))</fifths></key></attributes>\n"
+        case .explicitKey(let key):
+            let parsed = TmdMusicXMLGenerator.parseKeyModeAndFifths(key)
+            let modeTag = parsed.mode != nil ? "<mode>\(parsed.mode!)</mode>" : ""
+            return
+                "        <attributes><key><fifths>\(parsed.fifths)</fifths>\(modeTag)</key></attributes>\n"
+        case .dynamics(let mark):
+            return """
+                    <direction placement="below">
+                      <direction-type>
+                        <dynamics>
+                          <\(mark.rawValue)/>
+                        </dynamics>
+                      </direction-type>
+                    </direction>
+
+                """
+        case .relativeKey:
+            let fifths = TmdMusicXMLGenerator.semitoneOffsetToFifths(state.keyOffset)
+            return "        <attributes><key><fifths>\(fifths)</fifths></key></attributes>\n"
+        case .fixedPitch:
+            return "        <attributes><key><fifths>0</fifths></key></attributes>\n"
+        }
+    }
+}
+

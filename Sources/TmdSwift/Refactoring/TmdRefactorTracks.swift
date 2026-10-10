@@ -149,26 +149,13 @@ extension TmdRefactor {
         let duplicatedParagraphs: [Entry] = matching.map { orig in
             let clonedSections = orig.sections.map { sec in
                 let clonedGroups = sec.unitGroups.map { g in
-                    let clonedUnits = g.units.map { u -> Unit in
-                        switch u {
-                        case .note(let note):
-                            return .note(
-                                Note(
-                                    accidental: note.accidental,
-                                    degree: note.degree,
-                                    octave: note.octave + octaveShift
-                                ))
-                        case .multiNote(let notes):
-                            let newNotes = notes.map { note in
-                                Note(
-                                    accidental: note.accidental,
-                                    degree: note.degree,
-                                    octave: note.octave + octaveShift
-                                )
-                            }
-                            return .multiNote(newNotes)
-                        default:
-                            return u
+                    let clonedUnits = g.units.map { u in
+                        u.mapNotes { note in
+                            Note(
+                                accidental: note.accidental,
+                                degree: note.degree,
+                                octave: note.octave + octaveShift
+                            )
                         }
                     }
                     return UnitGroup(units: clonedUnits, length: g.length)
@@ -238,38 +225,19 @@ extension TmdRefactor {
         let harmonizedParagraphs: [Entry] = matching.map { orig in
             let clonedSections = orig.sections.map { sec in
                 let clonedGroups = sec.unitGroups.map { g in
-                    let clonedUnits = g.units.map { u -> Unit in
-                        switch u {
-                        case .note(let note):
+                    let clonedUnits = g.units.map { u in
+                        u.mapNotes { note in
                             let currentDeg = note.degree.rawValue  // 1..7
                             let zeroIndexed = currentDeg - 1  // 0..6
                             let newZero = zeroIndexed + steps
                             let newDegVal = (((newZero % 7) + 7) % 7) + 1
                             let octaveDelta = Int(floor(Double(newZero) / 7.0))
                             let newDegree = ScaleDegree(rawValue: newDegVal) ?? note.degree
-                            return .note(
-                                Note(
-                                    accidental: note.accidental,
-                                    degree: newDegree,
-                                    octave: note.octave + octaveDelta
-                                ))
-                        case .multiNote(let notes):
-                            let newNotes = notes.map { note in
-                                let currentDeg = note.degree.rawValue
-                                let zeroIndexed = currentDeg - 1
-                                let newZero = zeroIndexed + steps
-                                let newDegVal = (((newZero % 7) + 7) % 7) + 1
-                                let octaveDelta = Int(floor(Double(newZero) / 7.0))
-                                let newDegree = ScaleDegree(rawValue: newDegVal) ?? note.degree
-                                return Note(
-                                    accidental: note.accidental,
-                                    degree: newDegree,
-                                    octave: note.octave + octaveDelta
-                                )
-                            }
-                            return .multiNote(newNotes)
-                        default:
-                            return u
+                            return Note(
+                                accidental: note.accidental,
+                                degree: newDegree,
+                                octave: note.octave + octaveDelta
+                            )
                         }
                     }
                     return UnitGroup(units: clonedUnits, length: g.length)

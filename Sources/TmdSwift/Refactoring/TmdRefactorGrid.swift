@@ -340,14 +340,7 @@ extension TmdRefactor {
         guard !line.trimmingCharacters(in: .whitespaces).hasPrefix("<") else {
             return false
         }
-        return Lexer(string: line).tokenize().contains { token in
-            switch token {
-            case .note, .chord:
-                return true
-            default:
-                return false
-            }
-        }
+        return Lexer(string: line).tokenize().contains(where: \.isTransposableUnit)
     }
 
     // MARK: - Private Formatting Helpers

@@ -337,12 +337,6 @@ public enum TmdTonalityVisualizer {
     }
 
     private static func modeLabel(_ mode: TmdTonalityMode, localizer: TmdLocalizer) -> String {
-        switch mode {
-        case .major: localizer.text(.major)
-        case .minor: localizer.text(.minor)
-        case .modal: localizer.text(.modeModal)
-        case .ambiguous: localizer.text(.modeAmbiguous)
-        case .insufficient: localizer.text(.modeInsufficient)
-        }
+        mode.localizedLabel(using: localizer)
     }
 }

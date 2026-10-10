@@ -14,8 +14,8 @@ internal enum TmdMeasureLexerFallback {
                     tokensWithRanges[i + 2].token == .slash,
                     tokensWithRanges[i + 4].token == .closeAngle
                 {
-                    let c = intValueOfToken(tokensWithRanges[i + 1].token) ?? 4
-                    let n = intValueOfToken(tokensWithRanges[i + 3].token) ?? 4
+                    let c = tokensWithRanges[i + 1].token.intValue ?? 4
+                    let n = tokensWithRanges[i + 3].token.intValue ?? 4
                     beat = Beat(count: c, noteValue: n)
                     break
                 }
@@ -83,17 +83,9 @@ internal enum TmdMeasureLexerFallback {
                             sign = -1
                             _ = advance()
                         }
-                        if let numTok = current() {
-                            if case .number(let n) = numTok.token {
-                                startOffset = sign * n
-                                _ = advance()
-                            } else if case .positiveNumber(let n) = numTok.token {
-                                startOffset = sign * n
-                                _ = advance()
-                            } else if case .note(let note) = numTok.token {
-                                startOffset = sign * note.degree.rawValue
-                                _ = advance()
-                            }
+                        if let numTok = current(), let val = numTok.token.intValue {
+                            startOffset = sign * val
+                            _ = advance()
                         }
                         if current()?.token == .pipe { _ = advance() }
                     } else if case .identifier = current()?.token {
@@ -150,7 +142,7 @@ internal enum TmdMeasureLexerFallback {
                             && tokensWithRanges[pos + 2].token == .asterisk
                         {
                             _ = advance()  // <
-                            if let lenTok = advance(), let val = intValueOfToken(lenTok.token) {
+                            if let lenTok = advance(), let val = lenTok.token.intValue {
                                 noteLength = val
                             }
                             _ = advance()  // *
@@ -209,10 +201,10 @@ internal enum TmdMeasureLexerFallback {
                         var timeSignature: Beat?
                         if current()?.token == .openAngle {
                             _ = advance()  // <
-                            let count = current().flatMap { intValueOfToken($0.token) }
+                            let count = current()?.token.intValue
                             if count != nil { _ = advance() }
                             if current()?.token == .slash { _ = advance() }
-                            let noteValue = current().flatMap { intValueOfToken($0.token) }
+                            let noteValue = current()?.token.intValue
                             if noteValue != nil { _ = advance() }
                             if current()?.token == .closeAngle { _ = advance() }
                             if let count, let noteValue, count > 0, noteValue > 0 {
@@ -512,14 +504,5 @@ internal enum TmdMeasureLexerFallback {
         let endMeasure: Int
         let quarterNotes: Double
         let endQuarterNotes: Double
-    }
-
-    private static func intValueOfToken(_ token: Token) -> Int? {
-        switch token {
-        case .number(let n): return n
-        case .positiveNumber(let n): return n
-        case .note(let note): return note.degree.rawValue
-        default: return nil
-        }
     }
 }

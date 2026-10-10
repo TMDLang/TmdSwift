@@ -192,12 +192,7 @@ public enum TmdMeasureRenderer {
                 let clDur = clEnd - clStart
                 if clDur <= 0 { continue }
 
-                let isNote: Bool
-                switch event.content {
-                case .note: isNote = true
-                default: isNote = false
-                }
-
+                let isNote = event.content.isNote
                 let tieStop = isNote && (evStart < mStart)
                 let tieStart = isNote && (evEnd > mEnd)
 

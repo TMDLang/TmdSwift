@@ -133,7 +133,14 @@ public enum TextEncodingDetector {
 
     /// User-friendly display name for a given String.Encoding.
     public static func displayName(for encoding: String.Encoding) -> String {
-        switch encoding {
+        encoding.displayName
+    }
+}
+
+extension String.Encoding {
+    /// User-friendly display name for this text encoding.
+    public var displayName: String {
+        switch self {
         case .utf8:
             "UTF-8"
         case .utf16, .utf16BigEndian, .utf16LittleEndian:
@@ -153,7 +160,7 @@ public enum TextEncodingDetector {
         case .isoLatin1:
             "ISO-8859-1"
         default:
-            "Encoding (\(encoding.rawValue))"
+            "Encoding (\(rawValue))"
         }
     }
 }

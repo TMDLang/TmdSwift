@@ -6,6 +6,22 @@ public enum PlaybackContent: Equatable, Sendable {
     case chord(ChordSymbol)
     case rest
     case percussion(String)
+
+    /// Whether this event produces audible sound (as opposed to `.rest`).
+    public var isSounding: Bool {
+        switch self {
+        case .note, .chord, .percussion: true
+        case .rest: false
+        }
+    }
+
+    /// Whether this event is a single pitched `.note`.
+    public var isNote: Bool {
+        switch self {
+        case .note: true
+        default: false
+        }
+    }
 }
 
 /// The playback state effective at a point on the timeline.
@@ -311,7 +327,7 @@ public enum TmdPlaybackRenderer {
             }
             .map(\.element)
             .map { directive in
-                state = apply(directive.kind, to: state)
+                state = directive.kind.applied(to: state)
                 return PlaybackDirectiveEvent(
                     position: directive.position, kind: directive.kind, state: state)
             }
@@ -348,7 +364,7 @@ public enum TmdPlaybackRenderer {
                     sortedDirectives[directiveIndex].position <= sectionPosition
                 {
                     let directive = sortedDirectives[directiveIndex]
-                    state = apply(directive.kind, to: state, fixedPitch: fixedPitch)
+                    state = directive.kind.applied(to: state, fixedPitch: fixedPitch)
                     directives.append(
                         PlaybackDirectiveEvent(
                             position: position,
@@ -443,7 +459,7 @@ public enum TmdPlaybackRenderer {
                                     newIndices.append(events.count - 1)
                                 }
                             default:
-                                if let content = content(of: unit) {
+                                if let content = unit.playbackContent {
                                     events.append(
                                         PlaybackEvent(
                                             position: slotPosition,
@@ -464,7 +480,7 @@ public enum TmdPlaybackRenderer {
 
             while directiveIndex < sortedDirectives.count {
                 let directive = sortedDirectives[directiveIndex]
-                state = apply(directive.kind, to: state)
+                state = directive.kind.applied(to: state)
                 directives.append(
                     PlaybackDirectiveEvent(position: position, kind: directive.kind, state: state))
                 directiveIndex += 1
@@ -472,71 +488,6 @@ public enum TmdPlaybackRenderer {
         }
 
         return (events, directives, state, position - start)
-    }
-
-    private static func content(of unit: Unit) -> PlaybackContent? {
-        switch unit {
-        case .note(let note): .note(note)
-        case .chord(let chord): .chord(chord)
-        case .rest: .rest
-        case .percussion(let pattern): .percussion(pattern)
-        case .multiNote: nil
-        case .tie: nil
-        }
-    }
-
-    private static func apply(_ kind: SectionDirectiveKind, to state: PlaybackState)
-        -> PlaybackState
-    {
-        return switch kind {
-        case .tempo(let value):
-            PlaybackState(
-                tempo: max(1, value), keyOffset: state.keyOffset,
-                timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
-        case .relativeTempo(let value):
-            PlaybackState(
-                tempo: max(1, state.tempo + value), keyOffset: state.keyOffset,
-                timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
-        case .absoluteKey(let value):
-            PlaybackState(
-                tempo: state.tempo, keyOffset: KeySignature(string: value).semitoneOffset,
-                timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
-        case .relativeKey(let value):
-            PlaybackState(
-                tempo: state.tempo, keyOffset: state.keyOffset + value,
-                timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
-        case .explicitKey:
-            // `key=` is notation metadata only. Unlike `?=` and relative
-            // movable-do directives, it must not alter the sounding pitch
-            // context.
-            state
-        case .dynamics(let mark):
-            PlaybackState(
-                tempo: state.tempo, keyOffset: state.keyOffset, timeSignature: state.timeSignature,
-                dynamicLevel: mark)
-        case .fixedPitch:
-            PlaybackState(
-                tempo: state.tempo, keyOffset: 0, timeSignature: state.timeSignature,
-                dynamicLevel: state.dynamicLevel)
-        case .timeSignature(let beat):
-            PlaybackState(
-                tempo: state.tempo, keyOffset: state.keyOffset, timeSignature: beat,
-                dynamicLevel: state.dynamicLevel)
-        }
-    }
-
-    private static func apply(
-        _ kind: SectionDirectiveKind, to state: PlaybackState, fixedPitch: Bool
-    ) -> PlaybackState {
-        if fixedPitch {
-            switch kind {
-            case .absoluteKey, .relativeKey, .fixedPitch:
-                return state
-            default:
-                break
-            }
-        }
-        return apply(kind, to: state)
     }
 
     /// Calculates total quarter-note duration of a section/paragraph name in a sheet,
@@ -588,5 +539,65 @@ public enum TmdPlaybackRenderer {
                 cursor.advance(by: paragraphDuration)
         }
         return minPosition
+    }
+}
+
+private extension Unit {
+    var playbackContent: PlaybackContent? {
+        switch self {
+        case .note(let note): .note(note)
+        case .chord(let chord): .chord(chord)
+        case .rest: .rest
+        case .percussion(let pattern): .percussion(pattern)
+        case .multiNote, .tie: nil
+        }
+    }
+}
+
+private extension SectionDirectiveKind {
+    func applied(to state: PlaybackState, fixedPitch: Bool = false) -> PlaybackState {
+        if fixedPitch {
+            switch self {
+            case .absoluteKey, .relativeKey, .fixedPitch:
+                return state
+            default:
+                break
+            }
+        }
+        return switch self {
+        case .tempo(let value):
+            PlaybackState(
+                tempo: max(1, value), keyOffset: state.keyOffset,
+                timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
+        case .relativeTempo(let value):
+            PlaybackState(
+                tempo: max(1, state.tempo + value), keyOffset: state.keyOffset,
+                timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
+        case .absoluteKey(let value):
+            PlaybackState(
+                tempo: state.tempo, keyOffset: KeySignature(string: value).semitoneOffset,
+                timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
+        case .relativeKey(let value):
+            PlaybackState(
+                tempo: state.tempo, keyOffset: state.keyOffset + value,
+                timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
+        case .explicitKey:
+            // `key=` is notation metadata only. Unlike `?=` and relative
+            // movable-do directives, it must not alter the sounding pitch
+            // context.
+            state
+        case .dynamics(let mark):
+            PlaybackState(
+                tempo: state.tempo, keyOffset: state.keyOffset, timeSignature: state.timeSignature,
+                dynamicLevel: mark)
+        case .fixedPitch:
+            PlaybackState(
+                tempo: state.tempo, keyOffset: 0, timeSignature: state.timeSignature,
+                dynamicLevel: state.dynamicLevel)
+        case .timeSignature(let beat):
+            PlaybackState(
+                tempo: state.tempo, keyOffset: state.keyOffset, timeSignature: beat,
+                dynamicLevel: state.dynamicLevel)
+        }
     }
 }

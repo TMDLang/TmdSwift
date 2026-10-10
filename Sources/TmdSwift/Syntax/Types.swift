@@ -51,6 +51,15 @@ public enum Accidental: Equatable, Hashable, Sendable {
         case .flat: -1
         }
     }
+
+    /// The TMD syntax symbol (`""`, `"'"`, or `","`) for this accidental.
+    public var tmdSymbol: String {
+        switch self {
+        case .natural: ""
+        case .sharp: "'"
+        case .flat: ","
+        }
+    }
 }
 
 /// A typed TMD key signature consisting of a tonic and an optional accidental.
@@ -88,11 +97,7 @@ public struct KeySignature: Equatable, Hashable, Sendable, CustomStringConvertib
     }
 
     public var description: String {
-        switch accidental {
-        case .natural: tonic.letter
-        case .sharp: "\(tonic.letter)'"
-        case .flat: "\(tonic.letter),"
-        }
+        "\(tonic.letter)\(accidental.tmdSymbol)"
     }
 
     /// Chromatic offset of this key's tonic from C.
@@ -123,12 +128,7 @@ public struct ChordRoot: Equatable, Hashable, Sendable, CustomStringConvertible 
             isScaleDegree
             ? String(degree.rawValue)
             : degree.letter
-        let acc =
-            switch accidental {
-            case .natural: value
-            case .sharp: "\(value)'"
-            case .flat: "\(value),"
-            }
+        let acc = "\(value)\(accidental.tmdSymbol)"
         let oct =
             if octave > 0 {
                 String(repeating: "^", count: octave)
@@ -174,6 +174,56 @@ public enum ChordQuality: Equatable, Hashable, Sendable {
         case .suspended: [0, 5, 7]
         case .power: [0, 7]
         case .custom: [0, 4, 7]
+        }
+    }
+
+    /// Diatonic step and semitone intervals above the chord root used for diatonic chord spelling.
+    public var diatonicVoicingIntervals: [(diatonicSteps: Int, semitones: Int)] {
+        switch self {
+        case .major, .custom: [(0, 0), (2, 4), (4, 7)]
+        case .minor: [(0, 0), (2, 3), (4, 7)]
+        case .dominant7: [(0, 0), (2, 4), (4, 7), (6, 10)]
+        case .major7: [(0, 0), (2, 4), (4, 7), (6, 11)]
+        case .minor7: [(0, 0), (2, 3), (4, 7), (6, 10)]
+        case .diminished: [(0, 0), (2, 3), (4, 6)]
+        case .halfDiminished: [(0, 0), (2, 3), (4, 6), (6, 10)]
+        case .augmented: [(0, 0), (2, 4), (4, 8)]
+        case .suspended: [(0, 0), (3, 5), (4, 7)]
+        case .power: [(0, 0), (4, 7)]
+        }
+    }
+
+    /// Canonical TMD chord quality suffix.
+    public var tmdSuffix: String {
+        switch self {
+        case .major: ""
+        case .minor: "m"
+        case .dominant7: "7"
+        case .major7: "maj7"
+        case .minor7: "m7"
+        case .diminished: "dim"
+        case .halfDiminished: "m7-5"
+        case .augmented: "aug"
+        case .suspended: "sus"
+        case .power: "5"
+        case .custom(let value): value
+        }
+    }
+
+    /// Creates a `ChordQuality` from a TMD chord quality suffix string.
+    public init(suffix: String) {
+        switch suffix.lowercased() {
+        case "": self = .major
+        case "m": self = .minor
+        case "7": self = .dominant7
+        case "maj7": self = .major7
+        case "m7": self = .minor7
+        case "dim": self = .diminished
+        case "m7-5", "ø": self = .halfDiminished
+        case "aug", "+": self = .augmented
+        case "sus", "sus4": self = .suspended
+        case "5": self = .power
+        default: self = .custom(suffix)
         }
     }
 }
@@ -242,7 +292,7 @@ public struct ChordSymbol: Equatable, Hashable, Sendable, ExpressibleByStringLit
                 let bassRoot = Self.parseRoot(from: Array(bassPart))?.root
                 self.init(
                     root: parsedMain.root,
-                    quality: Self.quality(for: parsedMain.remaining),
+                    quality: ChordQuality(suffix: parsedMain.remaining),
                     bass: bassRoot
                 )
                 return
@@ -250,7 +300,7 @@ public struct ChordSymbol: Equatable, Hashable, Sendable, ExpressibleByStringLit
         }
 
         if let parsed = Self.parseRoot(from: Array(value)) {
-            self.init(root: parsed.root, quality: Self.quality(for: parsed.remaining))
+            self.init(root: parsed.root, quality: ChordQuality(suffix: parsed.remaining))
             return
         }
 
@@ -262,39 +312,8 @@ public struct ChordSymbol: Equatable, Hashable, Sendable, ExpressibleByStringLit
     }
 
     public var description: String {
-        let rootText = root.description
-        let suffix =
-            switch quality {
-            case .major: ""
-            case .minor: "m"
-            case .dominant7: "7"
-            case .major7: "maj7"
-            case .minor7: "m7"
-            case .diminished: "dim"
-            case .halfDiminished: "m7-5"
-            case .augmented: "aug"
-            case .suspended: "sus"
-            case .power: "5"
-            case .custom(let value): value
-            }
         let bassText = bass.map { "/\($0.description)" } ?? ""
-        return rootText + suffix + bassText
-    }
-
-    private static func quality(for suffix: String) -> ChordQuality {
-        switch suffix.lowercased() {
-        case "": return .major
-        case "m": return .minor
-        case "7": return .dominant7
-        case "maj7": return .major7
-        case "m7": return .minor7
-        case "dim": return .diminished
-        case "m7-5", "ø": return .halfDiminished
-        case "aug", "+": return .augmented
-        case "sus", "sus4": return .suspended
-        case "5": return .power
-        default: return .custom(suffix)
-        }
+        return root.description + quality.tmdSuffix + bassText
     }
 }
 
@@ -516,19 +535,7 @@ public enum PitchMapping {
             defaultLetterOctave: 3,
             defaultDegreeOctave: 4
         )
-        let intervals: [(diatonicSteps: Int, semitones: Int)] =
-            switch chord.quality {
-            case .major, .custom: [(0, 0), (2, 4), (4, 7)]
-            case .minor: [(0, 0), (2, 3), (4, 7)]
-            case .dominant7: [(0, 0), (2, 4), (4, 7), (6, 10)]
-            case .major7: [(0, 0), (2, 4), (4, 7), (6, 11)]
-            case .minor7: [(0, 0), (2, 3), (4, 7), (6, 10)]
-            case .diminished: [(0, 0), (2, 3), (4, 6)]
-            case .halfDiminished: [(0, 0), (2, 3), (4, 6), (6, 10)]
-            case .augmented: [(0, 0), (2, 4), (4, 8)]
-            case .suspended: [(0, 0), (3, 5), (4, 7)]
-            case .power: [(0, 0), (4, 7)]
-            }
+        let intervals = chord.quality.diatonicVoicingIntervals
 
         var pitches: [SpelledPitch] = intervals.map { interval in
             let totalSteps = rootPitch.stepIndex + interval.diatonicSteps
@@ -697,11 +704,7 @@ public enum PitchMapping {
     }
 
     public static func accidentalSymbol(_ accidental: Accidental) -> String {
-        switch accidental {
-        case .natural: ""
-        case .sharp: "'"
-        case .flat: ","
-        }
+        accidental.tmdSymbol
     }
 }
 
@@ -779,6 +782,18 @@ public enum Unit: Equatable {
 
     /// A multi-note group (dyad, polyphonic cluster, or non-chord simultaneous notes) connected by `+` (e.g. `1+3`).
     case multiNote([Note])
+
+    /// Transforms any pitched `Note` or `[Note]` inside this `Unit`, leaving chords, rests, ties, and percussion unchanged.
+    public func mapNotes(_ transform: (Note) -> Note) -> Unit {
+        switch self {
+        case .note(let note):
+            return .note(transform(note))
+        case .multiNote(let notes):
+            return .multiNote(notes.map(transform))
+        default:
+            return self
+        }
+    }
 }
 
 /// A rhythmic unit group or tuplet grouping.
@@ -981,6 +996,29 @@ public enum SExpr: Equatable, Hashable, Sendable, CustomStringConvertible {
             return String(n)
         case .list(let items):
             return "(" + items.map(\.description).joined(separator: " ") + ")"
+        }
+    }
+
+    /// Atomic identifier string when used as a prototype/theme argument (`symbol` or `number`), or `""` for lists.
+    public var themeIdentifier: String {
+        switch self {
+        case .symbol(let s): return s
+        case .number(let n): return String(n)
+        case .list: return ""
+        }
+    }
+
+    /// Recursively collects all `.symbol` strings inside this S-Expression into `set`.
+    public func collectSymbols(into set: inout Set<String>) {
+        switch self {
+        case .symbol(let s):
+            set.insert(s)
+        case .number:
+            break
+        case .list(let items):
+            for item in items {
+                item.collectSymbols(into: &set)
+            }
         }
     }
 }

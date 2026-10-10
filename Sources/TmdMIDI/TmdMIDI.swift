@@ -42,14 +42,7 @@ public struct TmdMIDIGenerator {
         var melodyChannel = 0
         for (_, instrument) in distinctInstruments.enumerated() {
             let timeline = TmdPlaybackRenderer.render(sheet: effectiveSheet, instrument: instrument)
-            guard
-                timeline.events.contains(where: { event in
-                    switch event.content {
-                    case .note, .chord, .percussion: return true
-                    case .rest: return false
-                    }
-                })
-            else { continue }
+            guard timeline.events.contains(where: \.content.isSounding) else { continue }
             let midiInstrument = MIDIInstrument.resolve(instrument)
             let channel: UInt8
             if midiInstrument.isPercussion {
@@ -77,15 +70,8 @@ public struct TmdMIDIGenerator {
             MIDIEvent(tick: 0, message: .tempo(sheet.speed > 0 ? sheet.speed : 120)),
             MIDIEvent(tick: 0, message: .timeSignature(sheet.beat)),
         ]
-        let directives = timeline.directives.compactMap { directive -> MIDIEvent? in
-            let tick = midiTick(directive.position, ticksPerQuarter: ticksPerQuarter)
-            switch directive.kind {
-            case .tempo, .relativeTempo:
-                return MIDIEvent(tick: tick, message: .tempo(directive.state.tempo))
-            case .timeSignature:
-                return MIDIEvent(tick: tick, message: .timeSignature(directive.state.timeSignature))
-            case .absoluteKey, .relativeKey, .explicitKey, .dynamics, .fixedPitch: return nil
-            }
+        let directives = timeline.directives.compactMap {
+            $0.conductorMIDIEvent(ticksPerQuarter: ticksPerQuarter)
         }
         return initial + directives
     }
@@ -182,7 +168,7 @@ public struct TmdMIDIGenerator {
             ))
     }
 
-    private static func midiTick(_ quarterNotes: Double, ticksPerQuarter: UInt16) -> UInt32 {
+    fileprivate static func midiTick(_ quarterNotes: Double, ticksPerQuarter: UInt16) -> UInt32 {
         let ticks = (quarterNotes * Double(ticksPerQuarter)).rounded()
         guard ticks.isFinite else { return 0 }
         return clampedUInt32(ticks)
@@ -249,3 +235,18 @@ public struct TmdMIDIGenerator {
     }
 
 }
+
+private extension PlaybackDirectiveEvent {
+    func conductorMIDIEvent(ticksPerQuarter: UInt16) -> MIDIEvent? {
+        let tick = TmdMIDIGenerator.midiTick(position, ticksPerQuarter: ticksPerQuarter)
+        switch kind {
+        case .tempo, .relativeTempo:
+            return MIDIEvent(tick: tick, message: .tempo(state.tempo))
+        case .timeSignature(let beat):
+            return MIDIEvent(tick: tick, message: .timeSignature(beat))
+        case .dynamics, .absoluteKey, .explicitKey, .relativeKey, .fixedPitch:
+            return nil
+        }
+    }
+}
+

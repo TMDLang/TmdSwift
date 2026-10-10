@@ -34,27 +34,22 @@ public struct TmdReaperGenerator {
 
         let sortedDirectives = conductorTimeline.directives.sorted { $0.position < $1.position }
 
-        for directive in sortedDirectives {
-            switch directive.kind {
-            case .tempo, .relativeTempo, .timeSignature:
-                let last = segments[segments.count - 1]
-                if directive.position > last.quarterStart {
-                    let deltaQuarters = directive.position - last.quarterStart
-                    let deltaSeconds = deltaQuarters * (60.0 / last.bpm)
-                    let secondStart = last.secondStart + deltaSeconds
-                    segments.append(
-                        TempoSegment(
-                            quarterStart: directive.position,
-                            secondStart: secondStart,
-                            bpm: directive.state.tempo,
-                            timeSignature: directive.state.timeSignature
-                        ))
-                } else if directive.position == last.quarterStart {
-                    segments[segments.count - 1].bpm = directive.state.tempo
-                    segments[segments.count - 1].timeSignature = directive.state.timeSignature
-                }
-            case .absoluteKey, .relativeKey, .explicitKey, .dynamics, .fixedPitch:
-                break
+        for directive in sortedDirectives where directive.kind.affectsTempoOrMeter {
+            let last = segments[segments.count - 1]
+            if directive.position > last.quarterStart {
+                let deltaQuarters = directive.position - last.quarterStart
+                let deltaSeconds = deltaQuarters * (60.0 / last.bpm)
+                let secondStart = last.secondStart + deltaSeconds
+                segments.append(
+                    TempoSegment(
+                        quarterStart: directive.position,
+                        secondStart: secondStart,
+                        bpm: directive.state.tempo,
+                        timeSignature: directive.state.timeSignature
+                    ))
+            } else if directive.position == last.quarterStart {
+                segments[segments.count - 1].bpm = directive.state.tempo
+                segments[segments.count - 1].timeSignature = directive.state.timeSignature
             }
         }
 
@@ -119,14 +114,7 @@ public struct TmdReaperGenerator {
 
         for instrument in distinctInstruments {
             let instTimeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: instrument)
-            guard
-                instTimeline.events.contains(where: { event in
-                    switch event.content {
-                    case .note, .chord, .percussion: return true
-                    case .rest: return false
-                    }
-                })
-            else { continue }
+            guard instTimeline.events.contains(where: \.content.isSounding) else { continue }
             let midiInst = MIDIInstrument.resolve(instrument)
             let channel: UInt8
             if midiInst.isPercussion {
@@ -166,39 +154,16 @@ public struct TmdReaperGenerator {
             var lastTick: UInt32 = 0
             var eventLines: [String] = []
 
-            func toHex2(_ n: UInt8) -> String {
-                String(format: "%02x", n)
-            }
-
             for evt in sortedEvents {
                 let delta = evt.tick >= lastTick ? evt.tick - lastTick : 0
                 lastTick = evt.tick
-                switch evt.message {
-                case .noteOn(let ch, let note, let velocity):
-                    let status = toHex2(0x90 | (ch & 0x0F))
-                    let data1 = toHex2(note & 0x7F)
-                    let data2 = toHex2(velocity & 0x7F)
-                    eventLines.append("        E \(delta) \(status) \(data1) \(data2)")
-                case .noteOff(let ch, let note):
-                    let status = toHex2(0x80 | (ch & 0x0F))
-                    let data1 = toHex2(note & 0x7F)
-                    eventLines.append("        E \(delta) \(status) \(data1) 00")
-                case .programChange(let ch, let prog):
-                    let status = toHex2(0xC0 | (ch & 0x0F))
-                    let data1 = toHex2(prog & 0x7F)
-                    eventLines.append("        E \(delta) \(status) \(data1)")
-                case .controlChange(let ch, let ctrl, let val):
-                    let status = toHex2(0xB0 | (ch & 0x0F))
-                    let data1 = toHex2(ctrl & 0x7F)
-                    let data2 = toHex2(val & 0x7F)
-                    eventLines.append("        E \(delta) \(status) \(data1) \(data2)")
-                case .trackName, .tempo, .timeSignature, .endOfTrack, .text, .customMeta:
-                    break
+                if let line = evt.message.reaperEventLine(delta: delta) {
+                    eventLines.append(line)
                 }
             }
 
             if !events.isEmpty {
-                let status = toHex2(0xB0 | (channel & 0x0F))
+                let status = String(format: "%02x", 0xB0 | (channel & 0x0F))
                 eventLines.append("        E 0 \(status) 7b 00")
             }
 
@@ -318,3 +283,43 @@ public struct TmdReaperGenerator {
         return 0x1000000 | native
     }
 }
+
+private extension SectionDirectiveKind {
+    var affectsTempoOrMeter: Bool {
+        switch self {
+        case .tempo, .relativeTempo, .timeSignature:
+            true
+        case .dynamics, .absoluteKey, .explicitKey, .relativeKey, .fixedPitch:
+            false
+        }
+    }
+}
+
+private extension MIDIMessage {
+    func reaperEventLine(delta: UInt32) -> String? {
+        switch self {
+        case .programChange(let ch, let prog):
+            let status = String(format: "%02x", 0xC0 | (ch & 0x0F))
+            let d1 = String(format: "%02x", prog & 0x7F)
+            return "        E \(delta) \(status) \(d1) 00"
+        case .controlChange(let ch, let cc, let val):
+            let status = String(format: "%02x", 0xB0 | (ch & 0x0F))
+            let d1 = String(format: "%02x", cc & 0x7F)
+            let d2 = String(format: "%02x", val & 0x7F)
+            return "        E \(delta) \(status) \(d1) \(d2)"
+        case .noteOn(let ch, let note, let vel):
+            let status = String(format: "%02x", 0x90 | (ch & 0x0F))
+            let d1 = String(format: "%02x", note & 0x7F)
+            let d2 = String(format: "%02x", vel & 0x7F)
+            return "        E \(delta) \(status) \(d1) \(d2)"
+        case .noteOff(let ch, let note):
+            let status = String(format: "%02x", 0x80 | (ch & 0x0F))
+            let d1 = String(format: "%02x", note & 0x7F)
+            return "        E \(delta) \(status) \(d1) 00"
+        case .trackName, .tempo, .timeSignature, .endOfTrack, .text, .customMeta:
+            return nil
+        }
+    }
+}
+
+
