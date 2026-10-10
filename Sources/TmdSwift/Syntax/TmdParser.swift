@@ -432,7 +432,7 @@ private struct TokenParser {
 
                     if current == .openBrace || current == .relativeOrderPrefix
                         || current == .absoluteOrderPrefix || current == .keySignaturePrefix
-                        || current == .relativeTempoPrefix
+                        || current == .explicitKeyPrefix || current == .relativeTempoPrefix
                     {
                         if let directive = parseSectionDirective(
                             position: unitGroups.reduce(0) { $0 + $1.length })
@@ -632,10 +632,12 @@ private struct TokenParser {
     }
 
     private mutating func parseSectionDirective(position: Int) -> SectionDirective? {
+        let directiveTokenPos = pos
         let startsWithBrace = match(.openBrace)
         guard
             startsWithBrace || current == .relativeOrderPrefix || current == .absoluteOrderPrefix
-                || current == .keySignaturePrefix || current == .relativeTempoPrefix
+                || current == .keySignaturePrefix || current == .explicitKeyPrefix
+                || current == .relativeTempoPrefix
         else { return nil }
         // `{?` and `{?=` are emitted as single lexer tokens which already
         // consume the opening brace; all directive forms still end in `}`.
@@ -682,7 +684,7 @@ private struct TokenParser {
             if let delta = Int(value) {
                 return SectionDirective(position: position, kind: .relativeKey(delta))
             } else if value.lowercased() == "fixed" {
-                recordFailure(at: position, expected: ["entry attribute [pitchMode=fixed]"])
+                recordFailure(at: directiveTokenPos, expected: ["entry attribute [pitchMode=fixed]"])
                 return nil
             }
         case .absoluteOrderPrefix:
@@ -698,7 +700,7 @@ private struct TokenParser {
                 }
             }
             if value.lowercased() == "fixed" {
-                recordFailure(at: position, expected: ["entry attribute [pitchMode=fixed]"])
+                recordFailure(at: directiveTokenPos, expected: ["entry attribute [pitchMode=fixed]"])
                 return nil
             }
             return SectionDirective(position: position, kind: .absoluteKey(value))
@@ -721,7 +723,7 @@ private struct TokenParser {
                 advance()
             }
             if value.lowercased() == "fixed" {
-                recordFailure(at: position, expected: ["entry attribute [pitchMode=fixed]"])
+                recordFailure(at: directiveTokenPos, expected: ["entry attribute [pitchMode=fixed]"])
                 return nil
             }
             return SectionDirective(position: position, kind: .absoluteKey(value))

@@ -577,7 +577,7 @@ public enum TmdPlaybackRenderer {
 
             while directiveIndex < sortedDirectives.count {
                 let directive = sortedDirectives[directiveIndex]
-                state = directive.kind.applied(to: state)
+                state = directive.kind.applied(to: state, fixedPitch: fixedPitch)
                 directives.append(
                     PlaybackDirectiveEvent(position: position, kind: directive.kind, state: state))
                 directiveIndex += 1

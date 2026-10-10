@@ -717,11 +717,17 @@ public enum PitchMapping {
         if root.hasSuffix("m") && !root.hasSuffix("maj") {
             isMinor = true
             root.removeLast()
+            root = root.trimmingCharacters(in: .whitespaces)
         } else if root.lowercased().hasSuffix("minor") {
             isMinor = true
             root = String(root.dropLast(5)).trimmingCharacters(in: .whitespaces)
+        } else if root.lowercased().hasSuffix("min") {
+            isMinor = true
+            root = String(root.dropLast(3)).trimmingCharacters(in: .whitespaces)
         } else if root.lowercased().hasSuffix("major") {
             root = String(root.dropLast(5)).trimmingCharacters(in: .whitespaces)
+        } else if root.lowercased().hasSuffix("maj") {
+            root = String(root.dropLast(3)).trimmingCharacters(in: .whitespaces)
         }
 
         if isMinor {
@@ -744,9 +750,8 @@ public enum PitchMapping {
                 case "EB", "E,": -6
                 case "AB", "A,": -7
                 default:
-                    if normalizedRoot == "BB" || normalizedRoot == "B,"
-                        || normalizedRoot.hasPrefix("B")
-                            && (normalizedRoot.hasSuffix("B") || normalizedRoot.hasSuffix(","))
+                    if normalizedRoot.hasPrefix("B")
+                        && (normalizedRoot.hasSuffix("B") || normalizedRoot.hasSuffix(","))
                     {
                         -5
                     } else {

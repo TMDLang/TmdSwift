@@ -143,10 +143,7 @@ public enum TmdMeasureRenderer {
         let defaultBeat =
             sheet.beat.count > 0 && sheet.beat.noteValue > 0
             ? sheet.beat : Beat(count: 4, noteValue: 4)
-        let initialMeasureDuration = Double(defaultBeat.count) * 4.0 / Double(defaultBeat.noteValue)
-
-        let totalDuration = max(timeline.duration, initialMeasureDuration)
-        let measureCount = max(1, Int(ceil(totalDuration / initialMeasureDuration)))
+        let totalDuration = timeline.duration
 
         // Pre-build measure intervals
         struct Interval {
@@ -168,7 +165,7 @@ public enum TmdMeasureRenderer {
 
         var nextDirectiveIndex = 0
 
-        while curStart < totalDuration || intervals.count < measureCount {
+        while curStart < totalDuration - 1e-6 || intervals.isEmpty {
             while nextDirectiveIndex < timeSigDirectives.count,
                 timeSigDirectives[nextDirectiveIndex].position <= curStart
             {
@@ -184,6 +181,11 @@ public enum TmdMeasureRenderer {
         }
 
         var measures: [Measure] = []
+        var activeState = PlaybackState(
+            tempo: sheet.speed > 0 ? sheet.speed : 120,
+            keyOffset: sheet.keySignature.semitoneOffset,
+            timeSignature: defaultBeat
+        )
 
         for (mIdx, interval) in intervals.enumerated() {
             let mStart = interval.start
@@ -193,6 +195,22 @@ public enum TmdMeasureRenderer {
 
             let directivesInMeasure = timeline.directives.filter {
                 $0.position >= mStart && $0.position < mEnd
+            }
+
+            let epsilon = 1e-4
+            activeState = PlaybackState(
+                tempo: activeState.tempo,
+                keyOffset: activeState.keyOffset,
+                timeSignature: mBeat,
+                dynamicLevel: activeState.dynamicLevel
+            )
+            for dir in directivesInMeasure where dir.position <= mStart + epsilon {
+                activeState = PlaybackState(
+                    tempo: dir.state.tempo,
+                    keyOffset: dir.state.keyOffset,
+                    timeSignature: mBeat,
+                    dynamicLevel: dir.state.dynamicLevel
+                )
             }
 
             // Find overlapping playback events
@@ -229,15 +247,8 @@ public enum TmdMeasureRenderer {
             // Fill gaps with rests to guarantee conservation of measure duration
             var paddedEvents: [MeasureEvent] = []
             var cursor = 0.0
-            let state =
-                rawMeasureEvents.first?.state
-                ?? PlaybackState(
-                    tempo: sheet.speed > 0 ? sheet.speed : 120,
-                    keyOffset: sheet.keySignature.semitoneOffset,
-                    timeSignature: mBeat
-                )
+            let state = rawMeasureEvents.first?.state ?? activeState
 
-            let epsilon = 1e-4
             for ev in rawMeasureEvents {
                 let gap = ev.startOffset - cursor
                 if gap > epsilon {
@@ -275,6 +286,22 @@ public enum TmdMeasureRenderer {
                     events: paddedEvents,
                     directives: directivesInMeasure
                 ))
+
+            if let lastEvent = rawMeasureEvents.last {
+                activeState = lastEvent.state
+            }
+            if let lastDirective = directivesInMeasure.last {
+                let lastEventPos = rawMeasureEvents.last.map { mStart + $0.startOffset } ?? -1.0
+                if lastDirective.position >= lastEventPos - epsilon {
+                    activeState = lastDirective.state
+                }
+            }
+            activeState = PlaybackState(
+                tempo: activeState.tempo,
+                keyOffset: activeState.keyOffset,
+                timeSignature: mBeat,
+                dynamicLevel: activeState.dynamicLevel
+            )
         }
 
         return measures

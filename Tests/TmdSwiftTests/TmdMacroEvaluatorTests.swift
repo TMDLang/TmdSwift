@@ -753,4 +753,121 @@ struct MacroEvaluatorTests {
         #expect(compatibilityResult == throwingResult)
 
     }
+
+    @Test("Issue #39: TmdMacroEvaluator.expandThrowing preserves declaredKey")
+    func testMacroEvaluatorPreservesDeclaredKey() throws {
+        let input = """
+            ::SCORE::
+            ** Declared Key Preservation **
+            != 120
+            ?= C
+            key= Am
+            <4/4>
+
+            Theme {
+                <4*>
+                6, 7, 1 2
+            }
+
+            -> (play Theme Violin) ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: input))
+        #expect(sheet.declaredKey == "Am")
+        let expanded = try TmdMacroEvaluator.expandThrowing(sheet)
+        #expect(expanded.declaredKey == "Am")
+    }
+
+    @Test("Issue #39: TmdMeasureRenderer preserves tempo and keyOffset on rest-only measures and avoids extra measures on time-sig expansion")
+    func testMeasureRendererStateRetentionAndTimeSignatureChange() throws {
+        let input = """
+            ::SCORE::
+            ** Measure Renderer State & TimeSig **
+            != 100
+            ?= C
+            <2/4>
+
+            PartA:Piano@|0|{
+                <4*>
+                {!= 140} {?+2} 1 2 | {<4/4>} 0 0 0 0
+            }
+
+            -> PartA ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: input))
+        let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Piano")
+        // Measure 0 is 2/4 (2 beats), Measure 1 is 4/4 (4 beats) = 6 beats total -> exactly 2 measures
+        #expect(measures.count == 2)
+        #expect(measures[0].tempo == 140)
+        #expect(measures[0].keyOffset == 2)
+        // Measure 1 is rest-only (0 0 0 0) and must retain tempo=140 and keyOffset=2
+        #expect(measures[1].tempo == 140)
+        #expect(measures[1].keyOffset == 2)
+        #expect(measures[1].events.allSatisfy { $0.state.tempo == 140 && $0.state.keyOffset == 2 })
+    }
+
+    @Test("Issue #39: Trailing key directive in fixedPitch paragraph does not shift keyOffset")
+    func testTrailingDirectiveInFixedPitchParagraph() throws {
+        let input = """
+            ::SCORE::
+            ** Fixed Pitch Trailing Directive **
+            != 120
+            ?= C
+            <4/4>
+
+            PartA:Piano [pitchMode=fixed] @|0|{
+                <4*>
+                1 2 3 4 {?+5}
+            }
+
+            -> PartA ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: input))
+        let timeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+        let trailingKeyDir = try #require(timeline.directives.last)
+        #expect(trailingKeyDir.state.keyOffset == 0)
+    }
+
+    @Test("Issue #39: Lexer rolls back unquoted ~ without consuming subsequent note token")
+    func testLexerUnquotedTildeRollback() throws {
+        let lexer = Lexer(string: "~ 1 2")
+        let tokens = lexer.tokenize()
+        #expect(tokens.count == 4) // .identifier("~"), .note(1), .note(2), .eof
+        #expect(tokens[0] == Token.identifier("~"))
+        if case .note(let n1) = tokens[1] {
+            #expect(n1.degree.rawValue == 1)
+        } else {
+            Issue.record("Expected second token to be .note(1)")
+        }
+    }
+
+    @Test("Issue #39: Parser reports accurate source line on {?=fixed} and PitchMapping.parseKeyModeAndFifths supports min suffix")
+    func testParserFixedDirectiveFailurePositionAndMinSuffix() throws {
+        let invalidInput = """
+            ::SCORE::
+            ** Fixed Directive Diagnostic **
+            != 120
+            ?= C
+            <4/4>
+
+            PartA:Piano@|0|{
+                <4*>
+                {?=fixed} 1 2 3 4
+            }
+
+            -> PartA ->#
+            """
+        do {
+            _ = try TmdParser.parseThrowing(string: invalidInput)
+            Issue.record("Expected TmdParseError for {?=fixed}")
+        } catch let error as TmdParseError {
+            #expect(error.range.start.line == 9)
+        }
+
+        let amin = PitchMapping.parseKeyModeAndFifths("Amin")
+        #expect(amin.fifths == 0)
+        #expect(amin.mode == "minor")
+        let fSharpMin = PitchMapping.parseKeyModeAndFifths("F# min")
+        #expect(fSharpMin.fifths == 3)
+        #expect(fSharpMin.mode == "minor")
+    }
 }

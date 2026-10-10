@@ -712,6 +712,7 @@ public enum TmdMacroEvaluator {
             name: sheet.name,
             speed: sheet.speed,
             keySignature: sheet.keySignature,
+            declaredKey: sheet.declaredKey,
             beat: sheet.beat,
             entries: concreteParagraphs,
             playback: newOrders,

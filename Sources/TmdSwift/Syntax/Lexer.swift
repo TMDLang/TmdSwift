@@ -134,6 +134,7 @@ public final class Lexer {
         // Song metadata. Credit shorthand uses `~ "..."`; named metadata uses
         // `=~:__KEY__= "..."`.
         if c == "~" || (c == "=" && peek(offset: 1) == "~") {
+            let metaStartPos = index
             let named = c == "="
             if named {
                 advance()
@@ -171,6 +172,7 @@ public final class Lexer {
                 }
                 return .metadata(key, value)
             }
+            index = metaStartPos
         }
 
         // -># or ->
