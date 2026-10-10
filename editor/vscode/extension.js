@@ -729,6 +729,14 @@ function activate(context) {
         runTmdExport([filePath, '-a', outputPath], vscode.l10n.t('ABC notation exported successfully to {0}', path.basename(outputPath)), outputPath);
     }));
 
+    // 3.1. Export to Music Braille (.brl)
+    context.subscriptions.push(vscode.commands.registerCommand('tmd.exportBraille', () => {
+        const filePath = getActiveTmdFilePath();
+        if (!filePath) return;
+        const outputPath = filePath.replace(/\.[^/.]+$/, '') + '.brl';
+        runTmdExport([filePath, '-b', outputPath], vscode.l10n.t('Music Braille exported successfully to {0}', path.basename(outputPath)), outputPath);
+    }));
+
     // 4. Export to LilyPond (.ly)
     context.subscriptions.push(vscode.commands.registerCommand('tmd.exportLilyPond', () => {
         const filePath = getActiveTmdFilePath();

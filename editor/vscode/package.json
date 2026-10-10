@@ -121,6 +121,12 @@
         "enablement": "editorLangId == tmd"
       },
       {
+        "command": "tmd.exportBraille",
+        "title": "%tmd.commands.exportBraille%",
+        "category": "TMD",
+        "enablement": "editorLangId == tmd"
+      },
+      {
         "command": "tmd.openMidiPlayer",
         "title": "%tmd.commands.openMidiPlayer%",
         "category": "TMD",
@@ -399,6 +405,11 @@
           "command": "tmd.exportUST",
           "when": "editorLangId == tmd",
           "group": "tmd_export@8"
+        },
+        {
+          "command": "tmd.exportBraille",
+          "when": "editorLangId == tmd",
+          "group": "tmd_export@9"
         },
         {
           "command": "tmd.formatDocument",

@@ -45,6 +45,10 @@ let package = Package(
             targets: ["TmdChordPro"]
         ),
         .library(
+            name: "TmdBraille",
+            targets: ["TmdBraille"]
+        ),
+        .library(
             name: "TmdSkill",
             targets: ["TmdSkill"]
         ),
@@ -102,6 +106,10 @@ let package = Package(
             dependencies: ["TmdSwift"]
         ),
         .target(
+            name: "TmdBraille",
+            dependencies: ["TmdSwift"]
+        ),
+        .target(
             name: "TmdReaper",
             dependencies: ["TmdSwift", "TmdMIDI"]
         ),
@@ -131,6 +139,7 @@ let package = Package(
                 "TmdLilyPond",
                 "TmdABC",
                 "TmdChordPro",
+                "TmdBraille",
                 "TmdReaper",
                 "TmdAudio",
                 "TmdSkill",
@@ -144,8 +153,8 @@ let package = Package(
             name: "TmdSwiftTests",
             dependencies: [
                 "TmdSwift", "TmdLSP", "TmdMIDI", "TmdMusicXML", "TmdLilyPond", "TmdABC",
-                "TmdChordPro", "TmdReaper", "TmdAudio", "TmdSkill", "TmdUtils", "TmdVocaloid",
-                "TmdUTAU",
+                "TmdChordPro", "TmdBraille", "TmdReaper", "TmdAudio", "TmdSkill", "TmdUtils",
+                "TmdVocaloid", "TmdUTAU",
             ]
         ),
     ],

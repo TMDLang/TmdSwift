@@ -10,6 +10,7 @@
   "tmd.commands.exportVSQX": "Export to VOCALOID3/4 (.vsqx)",
   "tmd.commands.exportVSQ": "Export to VOCALOID2 (.vsq)",
   "tmd.commands.exportUST": "Export to UTAU (.ust)",
+  "tmd.commands.exportBraille": "Export to Music Braille (.brl)",
   "tmd.commands.openMidiPlayer": "Play Score in Web MIDI Player",
   "tmd.commands.playAudio": "Play Audio Preview in Terminal",
   "tmd.commands.installSkills": "Install AI Agent Skills",

@@ -10,6 +10,7 @@
   "tmd.commands.exportVSQX": "匯出為 VOCALOID3/4 (.vsqx)",
   "tmd.commands.exportVSQ": "匯出為 VOCALOID2 (.vsq)",
   "tmd.commands.exportUST": "匯出為 UTAU 專案 (.ust)",
+  "tmd.commands.exportBraille": "匯出為盲文點字樂譜 (.brl)",
   "tmd.commands.openMidiPlayer": "在 Web MIDI 播放器中播放",
   "tmd.commands.playAudio": "在終端機中播放音訊預聽",
   "tmd.commands.installSkills": "安裝 AI Agent 專用 TMD 技能",

@@ -2,6 +2,7 @@ import ArgumentParser
 import Foundation
 import TmdABC
 import TmdAudio
+import TmdBraille
 import TmdChordPro
 import TmdLSP
 import TmdLilyPond
@@ -83,6 +84,21 @@ struct TmdCLICommand: ParsableCommand {
         name: [.customShort("c"), .customLong("chordpro-output"), .customLong("cho-output")],
         help: "Export to ChordPro (.cho) file at the specified path.")
     var chordproOutput: String?
+
+    @Option(
+        name: [.customShort("b"), .customLong("braille-output"), .customLong("brl-output")],
+        help: "Export to Music Braille (.brl / .brf) file at the specified path.")
+    var brailleOutput: String?
+
+    @Option(
+        name: [.customLong("brf-output")],
+        help: "Export to North American Braille ASCII (.brf) file at the specified path.")
+    var brfOutput: String?
+
+    @Option(
+        name: [.customLong("braille-layout")],
+        help: "Music Braille layout mode: part-by-part (default) or bar-over-bar.")
+    var brailleLayout: String = "part-by-part"
 
     @Option(name: [.long], help: "Render PDF score using lilypond compiler.")
     var pdfOutput: String?
@@ -177,6 +193,7 @@ struct TmdCLICommand: ParsableCommand {
         let isExporting =
             (midiOutput != nil || reaperOutput != nil || musicxmlOutput != nil
                 || lilypondOutput != nil || abcOutput != nil || chordproOutput != nil
+                || brailleOutput != nil || brfOutput != nil
                 || pdfOutput != nil || wavOutput != nil || vsqOutput != nil || vsqxOutput != nil
                 || ustOutput != nil)
 
@@ -336,6 +353,55 @@ struct TmdCLICommand: ParsableCommand {
                     "ChordPro exported successfully to \(choPath) (\(choString.utf8.count) bytes)")
             } catch {
                 print("Error saving ChordPro file: \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        }
+
+        // Export to Music Braille (.brl / .brf) if requested
+        let resolvedBrailleLayout: TmdBrailleLayout =
+            brailleLayout.lowercased().contains("bar") ? .barOverBar : .partByPart
+        if let brlPath = brailleOutput {
+            let encoding: TmdBrailleEncoding =
+                brlPath.lowercased().hasSuffix(".brf") ? .ascii : .unicode
+            let brlString = TmdBrailleGenerator.generateBraille(
+                from: sheet,
+                options: TmdBrailleOptions(
+                    encoding: encoding,
+                    layout: resolvedBrailleLayout,
+                    targetSection: section,
+                    targetInstrument: instrument
+                )
+            )
+            let outURL = URL(fileURLWithPath: brlPath)
+            do {
+                try brlString.write(to: outURL, atomically: true, encoding: .utf8)
+                print(
+                    "Music Braille exported successfully to \(brlPath) (\(brlString.utf8.count) bytes)"
+                )
+            } catch {
+                print("Error saving Music Braille file: \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        }
+
+        if let brfPath = brfOutput {
+            let brfString = TmdBrailleGenerator.generateBraille(
+                from: sheet,
+                options: TmdBrailleOptions(
+                    encoding: .ascii,
+                    layout: resolvedBrailleLayout,
+                    targetSection: section,
+                    targetInstrument: instrument
+                )
+            )
+            let outURL = URL(fileURLWithPath: brfPath)
+            do {
+                try brfString.write(to: outURL, atomically: true, encoding: .utf8)
+                print(
+                    "Music Braille (BRF) exported successfully to \(brfPath) (\(brfString.utf8.count) bytes)"
+                )
+            } catch {
+                print("Error saving Music Braille (BRF) file: \(error.localizedDescription)")
                 throw ExitCode.failure
             }
         }
