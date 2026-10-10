@@ -831,4 +831,14 @@ struct TmdRefactorTests {
         #expect(transposed.contains("verse:Bass@|0|{\n    <4*>\n    | 1_ - 5_ - |"))
         #expect(transposed.contains("chorus:Lead@|0|{\n    <4*>\n    | 5 6 7 1^ |"))
     }
+
+    @Test func testRefactorTargetResolveSSOT() {
+        #expect(TmdRefactorTarget.resolve(section: nil, instrument: nil) == nil)
+        let secOnly = TmdRefactorTarget.resolve(section: "verse", instrument: nil)
+        #expect(secOnly?.section == "verse")
+        #expect(secOnly?.instrument == nil)
+        let instOnly = TmdRefactorTarget.resolve(section: nil, instrument: "Piano")
+        #expect(instOnly?.section == nil)
+        #expect(instOnly?.instrument == "Piano")
+    }
 }

@@ -309,3 +309,18 @@ func measureCheckerSeparatesASTAndLexerFallback() throws {
         contentsOf: validationRoot.appendingPathComponent("TmdMeasureChecker.swift"))
     #expect(!checker.contains("private static func checkWithLexer"))
 }
+
+@Test("CLI refactor subcommands share a single I/O and target filter OptionGroup")
+func cliRefactorSubcommandsUseSharedIOAndFilterOptionGroups() throws {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let refactorCLIPath = packageRoot.appendingPathComponent(
+        "Sources/TmdCLI/TmdRefactorCommands.swift")
+    let source = try String(contentsOf: refactorCLIPath, encoding: .utf8)
+    #expect(source.contains("struct TmdRefactorIOOptions: ParsableArguments"))
+    #expect(source.contains("struct TmdRefactorFilterOptions: ParsableArguments"))
+    let readOccurrences = source.components(separatedBy: "TmdTextIO.readUTF8").count - 1
+    #expect(readOccurrences == 1)
+}

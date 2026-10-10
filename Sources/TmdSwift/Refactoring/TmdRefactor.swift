@@ -25,13 +25,19 @@ public enum TmdRefactorError: Error, LocalizedError, Equatable {
 }
 
 /// Target selector for scoped refactoring operations.
-public struct TmdRefactorTarget: Sendable {
+public struct TmdRefactorTarget: Sendable, Equatable {
     public var section: String?
     public var instrument: String?
 
     public init(section: String? = nil, instrument: String? = nil) {
         self.section = section
         self.instrument = instrument
+    }
+
+    /// Resolves an optional target selector when at least one of `section` or `instrument` is non-nil.
+    public static func resolve(section: String?, instrument: String?) -> TmdRefactorTarget? {
+        guard section != nil || instrument != nil else { return nil }
+        return TmdRefactorTarget(section: section, instrument: instrument)
     }
 
     /// Returns whether the given section and instrument match this target selector.
