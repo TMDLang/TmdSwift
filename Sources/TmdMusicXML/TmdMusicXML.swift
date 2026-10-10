@@ -108,8 +108,10 @@ public struct TmdMusicXMLGenerator {
 
             let expectedMeasureDuration = max(
                 1, Int((measure.nominalDuration * Double(divisions)).rounded()))
-            var durations: [Int] = measure.events.map { event in
-                max(1, Int((event.duration * Double(divisions)).rounded()))
+            let eventGroups = measure.simultaneousEventGroups
+            var durations: [Int] = eventGroups.map { group in
+                let groupDur = group.map(\.duration).max() ?? 0
+                return max(1, Int((groupDur * Double(divisions)).rounded()))
             }
             // Balance durations to conserve measure nominal duration
             let totalDur = durations.reduce(0, +)
@@ -120,40 +122,45 @@ public struct TmdMusicXMLGenerator {
                 durations[lastIdx] = max(1, durations[lastIdx] + diff)
             }
 
-            for (idx, event) in measure.events.enumerated() {
+            for (idx, group) in eventGroups.enumerated() {
                 let duration = durations[idx]
-                switch event.content {
-                case .note(let note):
-                    let spelled = PitchMapping.spell(note: note, keyOffset: event.state.keyOffset)
-                    var octaveAlters = measureStepAlters[spelled.octave] ?? defaultKeyStepAlters
-                    let expectedAlter = octaveAlters[spelled.stepIndex]
-                    var accidentalText: String? = nil
-                    if spelled.alter != expectedAlter && !event.tieStop {
-                        octaveAlters[spelled.stepIndex] = spelled.alter
-                        measureStepAlters[spelled.octave] = octaveAlters
-                        accidentalText = musicXMLAccidentalName(forAlter: spelled.alter)
+                var emittedNoteInGroup = false
+                for event in group {
+                    switch event.content {
+                    case .note(let note):
+                        let spelled = PitchMapping.spell(note: note, keyOffset: event.state.keyOffset)
+                        var octaveAlters = measureStepAlters[spelled.octave] ?? defaultKeyStepAlters
+                        let expectedAlter = octaveAlters[spelled.stepIndex]
+                        var accidentalText: String? = nil
+                        if spelled.alter != expectedAlter && !event.tieStop {
+                            octaveAlters[spelled.stepIndex] = spelled.alter
+                            measureStepAlters[spelled.octave] = octaveAlters
+                            accidentalText = musicXMLAccidentalName(forAlter: spelled.alter)
+                        }
+                        content += generateNoteXML(
+                            note: note,
+                            duration: duration,
+                            divisions: divisions,
+                            keyOffset: event.state.keyOffset,
+                            tieStart: event.tieStart,
+                            tieStop: event.tieStop,
+                            accidentalText: accidentalText,
+                            isChordContinuation: emittedNoteInGroup
+                        )
+                        emittedNoteInGroup = true
+                    case .chord(let chord):
+                        content += generateChordXML(
+                            chord: chord,
+                            duration: duration,
+                            divisions: divisions,
+                            keyOffset: event.state.keyOffset
+                        )
+                    case .rest:
+                        content += generateRestXML(duration: duration, divisions: divisions)
+                    case .percussion(let pattern):
+                        content += generatePercussionXML(
+                            pattern: pattern, duration: duration, divisions: divisions)
                     }
-                    content += generateNoteXML(
-                        note: note,
-                        duration: duration,
-                        divisions: divisions,
-                        keyOffset: event.state.keyOffset,
-                        tieStart: event.tieStart,
-                        tieStop: event.tieStop,
-                        accidentalText: accidentalText
-                    )
-                case .chord(let chord):
-                    content += generateChordXML(
-                        chord: chord,
-                        duration: duration,
-                        divisions: divisions,
-                        keyOffset: event.state.keyOffset
-                    )
-                case .rest:
-                    content += generateRestXML(duration: duration, divisions: divisions)
-                case .percussion(let pattern):
-                    content += generatePercussionXML(
-                        pattern: pattern, duration: duration, divisions: divisions)
                 }
             }
             xml += "    <measure number=\"\(measure.index + 1)\">\n\(content)    </measure>\n\n"
@@ -462,11 +469,15 @@ public struct TmdMusicXMLGenerator {
         keyOffset: Int,
         tieStart: Bool = false,
         tieStop: Bool = false,
-        accidentalText: String? = nil
+        accidentalText: String? = nil,
+        isChordContinuation: Bool = false
     ) -> String {
         let (step, alter, octave) = pitchToStepAlterOctave(note: note, keyOffset: keyOffset)
-        var xml = """
-                    <note>
+        var xml = "        <note>\n"
+        if isChordContinuation {
+            xml += "          <chord/>\n"
+        }
+        xml += """
                       <pitch>
                         <step>\(step)</step>
 

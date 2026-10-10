@@ -2,6 +2,7 @@ import Foundation
 import Testing
 import TmdABC
 import TmdAudio
+import TmdBraille
 import TmdLilyPond
 import TmdMIDI
 import TmdMusicXML
@@ -2536,6 +2537,46 @@ func testMultiNoteParsingAndFormatting() throws {
     #expect(noteEvents[1].position == 0.0)
     #expect(noteEvents[0].duration == 1.0)
     #expect(noteEvents[1].duration == 1.0)
+}
+
+@Test("Test multi-note simultaneous rendering across MusicXML, LilyPond, ABC, and Braille")
+func testMultiNoteMeasureBasedExporters() throws {
+    let source = """
+        ::SCORE::
+        ** MultiNote Exporters **
+        != 120
+        ?= C
+        <4/4>
+
+        main:Piano@|0|{
+            <4*>
+            | 1+3+5 2+4 3+5 1 |
+        }
+
+        -> main ->#
+        """
+    let sheet = try TmdParser.parseThrowing(string: source)
+
+    // 1. MusicXML: 1+3+5 has 1 base <note> and 2 <chord/> <note>s, and each quarter note has duration 48 (not clamped)
+    let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
+    #expect(xml.contains("<chord/>"))
+    #expect(xml.components(separatedBy: "<chord/>").count - 1 == 4)  // 2 in 1+3+5, 1 in 2+4, 1 in 3+5
+    #expect(!xml.contains("<duration>1</duration>"))
+
+    // 2. LilyPond: renders simultaneous notes as <c' e' g'>4 <d' f'>4 <e' g'>4 c'4
+    let ly = TmdLilyPondGenerator.generateLilyPond(from: sheet)
+    #expect(ly.contains("<c' e' g'>4 <d' f'>4 <e' g'>4 c'4"))
+
+    // 3. ABC: renders simultaneous notes as [ceg]4 [df]4 [eg]4 c4
+    let abc = TmdABCGenerator.generateABC(from: sheet)
+    #expect(abc.contains("[ceg]4 [df]4 [eg]4 c4"))
+
+    // 4. Braille: renders 1+3+5 as C4 quarter ("?) followed by 3rd (+) and 5th (9) -> "?+9
+    let brf = TmdBrailleGenerator.generateBraille(
+        from: sheet,
+        options: TmdBrailleOptions(encoding: .ascii)
+    )
+    #expect(brf.contains("\"?+9"))
 }
 
 @Test("Test multi-note with tie extension")

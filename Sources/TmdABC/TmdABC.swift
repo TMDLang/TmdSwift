@@ -76,9 +76,9 @@ public struct TmdABCGenerator {
                 }
                 result += formatDirective(directive)
             }
-            for event in measure.events {
-                result += formatMeasureEvent(
-                    event,
+            for group in measure.simultaneousEventGroups {
+                result += formatMeasureEventGroup(
+                    group,
                     defaultKeyStepAlters: currentKeyStepAlters,
                     measureStepAlters: &measureStepAlters
                 )
@@ -119,6 +119,37 @@ public struct TmdABCGenerator {
 
     private static func formatDirective(_ directive: PlaybackDirectiveEvent) -> String {
         directive.abcString
+    }
+
+    private static func formatMeasureEventGroup(
+        _ group: [MeasureEvent],
+        defaultKeyStepAlters: [Int],
+        measureStepAlters: inout [Int: [Int]]
+    ) -> String {
+        guard let first = group.first else { return "" }
+        let noteEvents = group.compactMap { ev -> (Note, MeasureEvent)? in
+            if case .note(let n) = ev.content { return (n, ev) }
+            return nil
+        }
+        if noteEvents.count > 1 {
+            let multiplier = max(1, Int((first.duration * 4).rounded()))
+            let suffix = multiplier > 1 ? "\(multiplier)" : ""
+            let tie = noteEvents.contains { $0.1.tieStart } ? "-" : ""
+            let pitches = noteEvents.map { note, ev in
+                noteToABCPitch(
+                    note,
+                    keyOffset: ev.state.keyOffset,
+                    defaultKeyStepAlters: defaultKeyStepAlters,
+                    measureStepAlters: &measureStepAlters
+                )
+            }
+            return "[\(pitches.joined())]\(suffix)\(tie)"
+        }
+        return formatMeasureEvent(
+            first,
+            defaultKeyStepAlters: defaultKeyStepAlters,
+            measureStepAlters: &measureStepAlters
+        )
     }
 
     private static func formatMeasureEvent(

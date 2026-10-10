@@ -100,8 +100,8 @@ public struct TmdLilyPondGenerator {
             for directive in measure.directives {
                 result += formatDirective(directive)
             }
-            for event in measure.events {
-                result += formatMeasureEvent(event, percussion: percussion)
+            for group in measure.simultaneousEventGroups {
+                result += formatMeasureEventGroup(group, percussion: percussion)
                 result += " "
             }
             result += "|\n  "
@@ -134,6 +134,32 @@ public struct TmdLilyPondGenerator {
 
     private static func formatDirective(_ directive: PlaybackDirectiveEvent) -> String {
         directive.lilyPondString
+    }
+
+    private static func formatMeasureEventGroup(_ group: [MeasureEvent], percussion: Bool) -> String
+    {
+        guard let first = group.first else { return "" }
+        let noteEvents = group.compactMap { ev -> (Note, MeasureEvent)? in
+            if case .note(let n) = ev.content { return (n, ev) }
+            return nil
+        }
+        if noteEvents.count > 1 {
+            let decomposed = NotationDuration.decompose(quarterNotes: first.duration)
+            let pitches = noteEvents.map { note, ev in
+                noteToLilyPondPitch(note, keyOffset: ev.state.keyOffset)
+            }
+            let chordBody = "<\(pitches.joined(separator: " "))>"
+            let hasTieStart = noteEvents.contains { $0.1.tieStart }
+            var parts: [String] = []
+            for (idx, d) in decomposed.enumerated() {
+                let durStr = "\(d.baseDenominator)\(d.isDotted ? "." : "")"
+                let isLast = (idx == decomposed.count - 1)
+                let tie = (isLast ? (hasTieStart ? "~" : "") : "~")
+                parts.append("\(chordBody)\(durStr)\(tie)")
+            }
+            return parts.joined(separator: " ")
+        }
+        return formatMeasureEvent(first, percussion: percussion)
     }
 
     private static func formatMeasureEvent(_ event: MeasureEvent, percussion: Bool) -> String {

@@ -309,18 +309,7 @@ public struct TmdBrailleGenerator {
                 continue
             }
 
-            // Group simultaneous events in the measure by startOffset
-            var groups: [[MeasureEvent]] = []
-            for ev in measure.events {
-                if let lastGroup = groups.last,
-                    let firstInLast = lastGroup.first,
-                    abs(ev.startOffset - firstInLast.startOffset) < 1e-4
-                {
-                    groups[groups.count - 1].append(ev)
-                } else {
-                    groups.append([ev])
-                }
-            }
+            let groups = measure.simultaneousEventGroups
 
             var measureCells = ""
             var consumedDirectiveIndices: Set<Int> = []

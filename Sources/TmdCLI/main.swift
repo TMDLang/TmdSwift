@@ -198,20 +198,24 @@ struct TmdCLICommand: ParsableCommand {
                 || ustOutput != nil)
 
         if isExporting && !force {
-            let issues = TmdMeasureChecker.check(source: fileContent)
-            if !issues.isEmpty {
+            let diagnostics = TmdScoreValidator.validate(
+                source: fileContent,
+                options: TmdValidationOptions(file: inputPath)
+            )
+            let errors = diagnostics.filter { $0.severity == .error }
+            if !errors.isEmpty {
                 print(
-                    "❌ Export aborted: Found \(issues.count) measure discrepancy issue\(issues.count == 1 ? "" : "s") in \(inputPath):"
+                    "❌ Export aborted: Found \(errors.count) validation error\(errors.count == 1 ? "" : "s") in \(inputPath):"
                 )
-                for issue in issues.prefix(10) {
-                    print("  - \(issue)")
+                for issue in errors.prefix(10) {
+                    print("  - \(issue.description)")
                 }
-                if issues.count > 10 {
+                if errors.count > 10 {
                     print(
-                        "  ... and \(issues.count - 10) more issues. Run `tmd check \(inputPath)` to see all."
+                        "  ... and \(errors.count - 10) more errors. Run `tmd check \(inputPath)` to see all."
                     )
                 }
-                print("\nUse --force (-f) to ignore measure errors and force export.")
+                print("\nUse --force (-f) to ignore validation errors and force export.")
                 throw ExitCode.failure
             }
         }

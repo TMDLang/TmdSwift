@@ -115,6 +115,23 @@ public struct Measure: Equatable, Sendable {
         self.events = events
         self.directives = directives
     }
+
+    /// Groups events in the measure that start at the same offset (within `1e-4` quarter notes)
+    /// into simultaneous event groups (such as `.multiNote` dyads/chords).
+    public var simultaneousEventGroups: [[MeasureEvent]] {
+        var groups: [[MeasureEvent]] = []
+        for ev in events {
+            if let lastGroup = groups.last,
+                let firstInLast = lastGroup.first,
+                abs(ev.startOffset - firstInLast.startOffset) < 1e-4
+            {
+                groups[groups.count - 1].append(ev)
+            } else {
+                groups.append([ev])
+            }
+        }
+        return groups
+    }
 }
 
 /// Renders format-independent timeline events into discrete, duration-conserved measures.
