@@ -211,4 +211,46 @@ struct ChordProValidationTests {
         #expect(choContent.contains("{key: F}"))
         #expect(choContent.contains("| [F] [C] |"))
     }
+
+    @Test func testDiatonicScaleDegreeAndExplicitChordSpelling() throws {
+        // In F major, [4] is [Bb] and [1/3] is [F/A]
+        let tmdF = """
+            ::SCORE::
+            ** Flat Key ChordPro **
+            != 120
+            ?= F
+            <4/4>
+
+            Verse:Guitar@|0|{
+                <4*>
+                | [1] - [4] - |
+                | [1/3] - [Bb/D] - |
+            }
+            -> Verse ->#
+            """
+        let sheetF = try TmdParser.parseThrowing(string: tmdF)
+        let choF = TmdChordProGenerator.generateChordPro(from: sheetF)
+        #expect(choF.contains("| [F] [Bb] | [F/A] [Bb/D] |"))
+        #expect(!choF.contains("[A']"))
+        #expect(!choF.contains("[A#]"))
+
+        // In Db major (?= D,), [4] is [Gb]; in B major (?= B), [3m] is [D#m]
+        let tmdDbB = """
+            ::SCORE::
+            ** Db and B Major ChordPro **
+            != 120
+            ?= D,
+            <4/4>
+
+            Verse:Guitar@|0|{
+                <4*>
+                | [1] - [4] - |
+                | {?= B} [1] - [3m] - |
+            }
+            -> Verse ->#
+            """
+        let sheetDbB = try TmdParser.parseThrowing(string: tmdDbB)
+        let choDbB = TmdChordProGenerator.generateChordPro(from: sheetDbB)
+        #expect(choDbB.contains("| [Db] [Gb] | [B] [D#m] |"))
+    }
 }

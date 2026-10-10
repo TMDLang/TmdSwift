@@ -542,4 +542,74 @@ struct MusicXMLValidationTests {
             xmlBoundary.contains(
                 "<step>B</step>\n            <alter>1</alter>\n            <octave>4</octave>"))
     }
+
+    @Test func testMusicXMLAccidentalTagEmissionAndStateMachine() throws {
+        // 1. Intra-measure accidental state machine in C major: | 1' 1 1, 7' |
+        let tmdC = """
+            ::SCORE::
+            ** MusicXML Accidental State Machine **
+            != 120
+            ?= C
+            <4/4>
+
+            A:Piano@|0|{
+                <4*>
+                | 1' 1 1, 7' |
+            }
+            -> A ->#
+            """
+        let sheetC = try TmdParser.parseThrowing(string: tmdC)
+        let xmlC = TmdMusicXMLGenerator.generateMusicXML(from: sheetC)
+
+        // 1' (C#4) -> <accidental>sharp</accidental>
+        // 1  (C4)  -> <accidental>natural</accidental> (cancels prior C#4 in same measure)
+        // 1, (Cb4) -> <accidental>flat</accidental>
+        // 7' (B#4) -> <accidental>sharp</accidental>
+        #expect(xmlC.contains("<accidental>sharp</accidental>"))
+        #expect(xmlC.contains("<accidental>natural</accidental>"))
+        #expect(xmlC.contains("<accidental>flat</accidental>"))
+
+        // 2. Re-sharping a key-signature sharp after a natural in D major: | 7_ 7,_ 7_ 1 |
+        // In D major (F#, C#):
+        // - First 7_ (C#4) matches key signature -> no <accidental>
+        // - 7,_ (C4 natural) cancels key signature -> <accidental>natural</accidental>
+        // - Second 7_ (C#4) re-sharps after natural -> <accidental>sharp</accidental>
+        let tmdD = """
+            ::SCORE::
+            ** MusicXML Key Cancellation and Re-sharp **
+            != 120
+            ?= D
+            key= D
+            <4/4>
+
+            A:Piano@|0|{
+                <4*>
+                | 7_ 7,_ 7_ 1 |
+            }
+            -> A ->#
+            """
+        let sheetD = try TmdParser.parseThrowing(string: tmdD)
+        let xmlD = TmdMusicXMLGenerator.generateMusicXML(from: sheetD)
+        #expect(xmlD.components(separatedBy: "<accidental>natural</accidental>").count - 1 == 1)
+        #expect(xmlD.components(separatedBy: "<accidental>sharp</accidental>").count - 1 == 1)
+
+        // 3. Divergence between movable-do ?= D and inline {key= F#m}:
+        // Degree 4 in ?= D is G4 natural, while F#m has G# in its key signature -> must emit <accidental>natural</accidental>
+        let tmdDiverge = """
+            ::SCORE::
+            ** MusicXML Key Divergence **
+            != 120
+            ?= D
+            <4/4>
+
+            A:Piano@|0|{
+                <4*>
+                | {key= F#m} 1 2 3 4 |
+            }
+            -> A ->#
+            """
+        let sheetDiverge = try TmdParser.parseThrowing(string: tmdDiverge)
+        let xmlDiverge = TmdMusicXMLGenerator.generateMusicXML(from: sheetDiverge)
+        #expect(xmlDiverge.contains("<accidental>natural</accidental>"))
+    }
 }

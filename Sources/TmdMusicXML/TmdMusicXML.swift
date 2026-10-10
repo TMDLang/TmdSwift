@@ -74,13 +74,35 @@ public struct TmdMusicXMLGenerator {
         let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: instrument)
         var xml = ""
 
+        let initialKey =
+            sheet.declaredKey
+            ?? PitchMapping.tonicScaleInfo(forKeyOffset: sheet.keySignature.semitoneOffset).name
+        var defaultKeyStepAlters = PitchMapping.keySignatureStepAlters(forKey: initialKey)
+
         for measure in measures {
             var content = ""
+            var measureStepAlters: [Int: [Int]] = [:]
             if measure.index == 0 {
                 content += generateAttributesXML(
                     sheet: sheet, instrument: instrument, divisions: divisions)
             }
             for directive in measure.directives {
+                switch directive.kind {
+                case .explicitKey(let key):
+                    defaultKeyStepAlters = PitchMapping.keySignatureStepAlters(forKey: key)
+                    measureStepAlters.removeAll()
+                case .absoluteKey, .relativeKey:
+                    let newKey = PitchMapping.tonicScaleInfo(
+                        forKeyOffset: directive.state.keyOffset
+                    ).name
+                    defaultKeyStepAlters = PitchMapping.keySignatureStepAlters(forKey: newKey)
+                    measureStepAlters.removeAll()
+                case .fixedPitch:
+                    defaultKeyStepAlters = PitchMapping.keySignatureStepAlters(forKey: "C")
+                    measureStepAlters.removeAll()
+                default:
+                    break
+                }
                 content += generatePlaybackDirectiveXML(directive)
             }
 
@@ -102,13 +124,23 @@ public struct TmdMusicXMLGenerator {
                 let duration = durations[idx]
                 switch event.content {
                 case .note(let note):
+                    let spelled = PitchMapping.spell(note: note, keyOffset: event.state.keyOffset)
+                    var octaveAlters = measureStepAlters[spelled.octave] ?? defaultKeyStepAlters
+                    let expectedAlter = octaveAlters[spelled.stepIndex]
+                    var accidentalText: String? = nil
+                    if spelled.alter != expectedAlter && !event.tieStop {
+                        octaveAlters[spelled.stepIndex] = spelled.alter
+                        measureStepAlters[spelled.octave] = octaveAlters
+                        accidentalText = musicXMLAccidentalName(forAlter: spelled.alter)
+                    }
                     content += generateNoteXML(
                         note: note,
                         duration: duration,
                         divisions: divisions,
                         keyOffset: event.state.keyOffset,
                         tieStart: event.tieStart,
-                        tieStop: event.tieStop
+                        tieStop: event.tieStop,
+                        accidentalText: accidentalText
                     )
                 case .chord(let chord):
                     content += generateChordXML(
@@ -195,13 +227,34 @@ public struct TmdMusicXMLGenerator {
         return nil
     }
 
-    private static func generateDurationElementsXML(duration: Int, divisions: Int) -> String {
+    private static func musicXMLAccidentalName(forAlter alter: Int) -> String? {
+        switch alter {
+        case 0: return "natural"
+        case 1: return "sharp"
+        case -1: return "flat"
+        case 2: return "double-sharp"
+        case -2: return "flat-flat"
+        default: return alter > 2 ? "double-sharp" : (alter < -2 ? "flat-flat" : nil)
+        }
+    }
+
+    private static func generateDurationElementsXML(
+        duration: Int,
+        divisions: Int,
+        accidentalText: String? = nil
+    ) -> String {
         guard let info = durationInfo(duration: duration, divisions: divisions) else {
+            if let accidentalText {
+                return "          <accidental>\(accidentalText)</accidental>\n"
+            }
             return ""
         }
         var xml = "          <type>\(info.type)</type>\n"
         for _ in 0..<info.dots {
             xml += "          <dot/>\n"
+        }
+        if let accidentalText {
+            xml += "          <accidental>\(accidentalText)</accidental>\n"
         }
         if let tm = info.timeModification {
             xml += """
@@ -454,7 +507,8 @@ public struct TmdMusicXMLGenerator {
         divisions: Int,
         keyOffset: Int,
         tieStart: Bool = false,
-        tieStop: Bool = false
+        tieStop: Bool = false,
+        accidentalText: String? = nil
     ) -> String {
         let (step, alter, octave) = pitchToStepAlterOctave(note: note, keyOffset: keyOffset)
         var xml = """
@@ -478,7 +532,8 @@ public struct TmdMusicXMLGenerator {
         if tieStart {
             xml += "          <tie type=\"start\"/>\n"
         }
-        xml += generateDurationElementsXML(duration: duration, divisions: divisions)
+        xml += generateDurationElementsXML(
+            duration: duration, divisions: divisions, accidentalText: accidentalText)
         if tieStart || tieStop {
             xml += "          <notations>\n"
             if tieStop {

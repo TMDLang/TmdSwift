@@ -52,7 +52,10 @@ public struct TmdChordProGenerator: Sendable {
             lines.append("{arranger: \(arr)}")
         }
 
-        lines.append("{key: \(sheet.keySignature.description)}")
+        let initialKeyName =
+            sheet.declaredKey
+            ?? PitchMapping.tonicScaleInfo(forKeyOffset: sheet.keySignature.semitoneOffset).name
+        lines.append("{key: \(initialKeyName)}")
 
         if sheet.beat.count > 0 && sheet.beat.noteValue > 0 {
             lines.append("{time: \(sheet.beat.count)/\(sheet.beat.noteValue)}")
@@ -135,7 +138,9 @@ public struct TmdChordProGenerator: Sendable {
 
             lines.append("")
             if currentKeyOffset != emittedKeyOffset {
-                lines.append("{key: \(sectionKey.description)}")
+                let modulatedKeyName = PitchMapping.tonicScaleInfo(forKeyOffset: currentKeyOffset)
+                    .name
+                lines.append("{key: \(modulatedKeyName)}")
                 emittedKeyOffset = currentKeyOffset
             }
             lines.append("{comment: \(pName)}")
@@ -174,29 +179,33 @@ public struct TmdChordProGenerator: Sendable {
         return lines.joined(separator: "\n") + "\n"
     }
 
-    private static let chromaticNames = [
-        "C", "C'", "D", "D'", "E", "F", "F'", "G", "G'", "A", "A'", "B",
-    ]
-
     private static func keySignature(for offset: Int) -> KeySignature {
-        let normalized = ((offset % 12) + 12) % 12
-        return KeySignature(string: chromaticNames[normalized])
+        let keyName = PitchMapping.tonicScaleInfo(forKeyOffset: offset).name
+        return KeySignature(string: keyName)
+    }
+
+    private static func formatSpelledRoot(_ spelled: SpelledPitch) -> String {
+        let acc: String
+        switch spelled.alter {
+        case 1: acc = "#"
+        case -1: acc = "b"
+        case 2: acc = "##"
+        case -2: acc = "bb"
+        default: acc = ""
+        }
+        return "\(spelled.step)\(acc)"
     }
 
     private static func chordText(_ chord: ChordSymbol, keyOffset: Int) -> String {
-        let root =
-            chord.root.isScaleDegree
-            ? chromaticNames[((keyOffset + chord.root.semitoneOffset) % 12 + 12) % 12]
-            : chord.root.description
+        let root = formatSpelledRoot(
+            PitchMapping.spell(chordRoot: chord.root, keyOffset: keyOffset))
         let suffix = String(chord.description.dropFirst(chord.root.description.count))
         guard let bass = chord.bass else { return root + suffix }
         let qualitySuffix =
             suffix.split(separator: "/", maxSplits: 1, omittingEmptySubsequences: false).first.map(
                 String.init) ?? ""
-        let bassText =
-            bass.isScaleDegree
-            ? chromaticNames[((keyOffset + bass.semitoneOffset) % 12 + 12) % 12]
-            : bass.description
+        let bassText = formatSpelledRoot(
+            PitchMapping.spell(chordRoot: bass, keyOffset: keyOffset))
         return root + qualitySuffix + "/" + bassText
     }
 }

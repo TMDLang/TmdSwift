@@ -166,6 +166,14 @@ private struct TokenParser {
                 if case .identifier(let s) = current {
                     key = s
                     advance()
+                    if case .identifier(let nextS) = current, nextS.hasPrefix(",") {
+                        key += nextS
+                        advance()
+                        if case .identifier(let modeS) = current, modeS == "m" {
+                            key += modeS
+                            advance()
+                        }
+                    }
                 } else if case .note(let note) = current {
                     key = String(note.degree.rawValue)
                     advance()
@@ -178,6 +186,14 @@ private struct TokenParser {
                 if case .identifier(let s) = current {
                     key = s
                     advance()
+                    if case .identifier(let nextS) = current, nextS.hasPrefix(",") {
+                        key += nextS
+                        advance()
+                        if case .identifier(let modeS) = current, modeS == "m" {
+                            key += modeS
+                            advance()
+                        }
+                    }
                 } else if case .note(let note) = current {
                     key = String(note.degree.rawValue)
                     advance()
@@ -692,6 +708,14 @@ private struct TokenParser {
             if case .identifier(let s) = current {
                 value = s
                 advance()
+                if case .identifier(let nextS) = current, nextS.hasPrefix(",") {
+                    value += nextS
+                    advance()
+                    if case .identifier(let modeS) = current, modeS == "m" {
+                        value += modeS
+                        advance()
+                    }
+                }
             } else if case .note(let n) = current {
                 value = String(n.degree.rawValue)
                 advance()
@@ -707,6 +731,14 @@ private struct TokenParser {
             if case .identifier(let s) = current {
                 value = s
                 advance()
+                if case .identifier(let nextS) = current, nextS.hasPrefix(",") {
+                    value += nextS
+                    advance()
+                    if case .identifier(let modeS) = current, modeS == "m" {
+                        value += modeS
+                        advance()
+                    }
+                }
             } else if case .note(let n) = current {
                 value = String(n.degree.rawValue)
                 advance()
