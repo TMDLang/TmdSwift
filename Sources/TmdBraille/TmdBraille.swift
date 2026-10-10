@@ -76,7 +76,7 @@ public struct TmdBrailleGenerator {
         // 1. Score Title Header (Grade 1 Uncontracted Literary Braille)
         let title = workingSheet.name.trimmingCharacters(in: .whitespacesAndNewlines)
         if !title.isEmpty {
-            asciiLines.append(encodeLiteraryText(title))
+            asciiLines.append(title.brailleLiteraryString)
         }
 
         // 2. Metronome + Initial Key Signature + Initial Time Signature (Par. 14-18)
@@ -88,7 +88,7 @@ public struct TmdBrailleGenerator {
                 forKeyOffset: workingSheet.keySignature.semitoneOffset
             ).name
         let keySigAscii = encodeKeySignature(forKey: initialKey)
-        let timeSigAscii = encodeTimeSignature(workingSheet.beat)
+        let timeSigAscii = workingSheet.beat.brailleTimeSignature
         asciiLines.append("\(metronomeAscii) \(keySigAscii)\(timeSigAscii)")
 
         if instruments.isEmpty {
@@ -104,7 +104,7 @@ public struct TmdBrailleGenerator {
         switch options.layout {
         case .partByPart:
             for track in renderedTracks {
-                let prefix = partPrefixAscii(for: track.instrument)
+                let prefix = track.instrument.braillePartPrefixAscii
                 let body = joinTrackMeasuresAscii(track.measures)
                 asciiLines.append("\(prefix) \(body)<K")
             }
@@ -112,8 +112,8 @@ public struct TmdBrailleGenerator {
         case .barOverBar:
             // Instrument list & upward interval direction indicator (Par. 20-1, 20-6)
             for track in renderedTracks {
-                let heading = encodeLiteraryText(track.instrument)
-                let prefix = partPrefixAscii(for: track.instrument)
+                let heading = track.instrument.brailleLiteraryString
+                let prefix = track.instrument.braillePartPrefixAscii
                 asciiLines.append("\(heading) \(prefix)")
             }
             let maxMeasures = renderedTracks.map { $0.measures.count }.max() ?? 0
@@ -121,7 +121,7 @@ public struct TmdBrailleGenerator {
                 asciiLines.append("#\(encodeUpperDigits(mIdx + 1))")
                 let isLastMeasure = (mIdx == maxMeasures - 1)
                 for track in renderedTracks {
-                    let prefix = partPrefixAscii(for: track.instrument)
+                    let prefix = track.instrument.braillePartPrefixAscii
                     let mAscii =
                         mIdx < track.measures.count ? track.measures[mIdx].ascii : "M"
                     let suffix = isLastMeasure ? "<K" : ""
@@ -255,7 +255,7 @@ public struct TmdBrailleGenerator {
                 case .timeSignature(let beat):
                     if beat != activeBeat {
                         activeBeat = beat
-                        preDirectives.append(encodeTimeSignature(beat))
+                        preDirectives.append(beat.brailleTimeSignature)
                         forceOctave = true
                     }
                 case .tempo, .relativeTempo:
@@ -479,11 +479,7 @@ public struct TmdBrailleGenerator {
                 lastPitch = (base.spelled.octave, base.spelled.stepIndex)
                 forceOctave = false
 
-                let noteCell = encodeNoteCell(
-                    stepIndex: base.spelled.stepIndex,
-                    baseDenominator: atom.baseDenominator,
-                    isDotted: atom.isDotted
-                )
+                let noteCell = atom.brailleNoteCell(stepIndex: base.spelled.stepIndex)
 
                 // Intervals for remaining notes (Table 5A)
                 var intervalsStr = ""
@@ -530,8 +526,8 @@ public struct TmdBrailleGenerator {
         // 2. Chord Symbol event
         if case .chord(let chord) = first.content {
             if isChordTrack {
-                let sym = encodeChordSymbolLiterary(chord: chord, keyOffset: first.state.keyOffset)
-                let stem = atoms.first.map { encodeChordStemSign($0) } ?? "_'"
+                let sym = chord.brailleLiteraryString(keyOffset: first.state.keyOffset)
+                let stem = atoms.first?.brailleChordStemSign ?? "_'"
                 return "\(sym)\(stem)"
             } else {
                 // Mode B: Voiced Interval Realization (Table 5A)
@@ -558,11 +554,7 @@ public struct TmdBrailleGenerator {
                     lastPitch = (base.octave, base.stepIndex)
                     forceOctave = false
 
-                    let noteCell = encodeNoteCell(
-                        stepIndex: base.stepIndex,
-                        baseDenominator: atom.baseDenominator,
-                        isDotted: atom.isDotted
-                    )
+                    let noteCell = atom.brailleNoteCell(stepIndex: base.stepIndex)
                     let baseDiatonic = base.octave * 7 + base.stepIndex
                     var intervalsStr = ""
                     for member in voiced.dropFirst() {
@@ -589,7 +581,7 @@ public struct TmdBrailleGenerator {
         if case .percussion(let pattern) = first.content {
             let clean = pattern.filter { !$0.isWhitespace && $0 != "(" && $0 != ")" }
             guard !clean.isEmpty else {
-                return atoms.map { encodeRestCell($0) }.joined()
+                return atoms.map(\.brailleRestCell).joined()
             }
             let subDur = first.duration / Double(clean.count)
             let subAtom =
@@ -598,7 +590,7 @@ public struct TmdBrailleGenerator {
             var out = ""
             for ch in clean {
                 if ch == "-" || ch == "." {
-                    out += encodeRestCell(subAtom)
+                    out += subAtom.brailleRestCell
                     continue
                 }
                 let (stepIdx, oct) = percussionStepAndOctave(for: ch)
@@ -611,54 +603,17 @@ public struct TmdBrailleGenerator {
                     ) ? encodeOctaveMark(oct) : ""
                 lastPitch = (oct, stepIdx)
                 forceOctave = false
-                out +=
-                    "\(octStr)\(encodeNoteCell(stepIndex: stepIdx, baseDenominator: subAtom.baseDenominator, isDotted: subAtom.isDotted))"
+                out += "\(octStr)\(subAtom.brailleNoteCell(stepIndex: stepIdx))"
             }
             return out
         }
 
         // 4. Rest event
         let prefix = isChordTrack ? "\"" : ""
-        return atoms.map { "\(prefix)\(encodeRestCell($0))" }.joined()
+        return atoms.map { "\(prefix)\($0.brailleRestCell)" }.joined()
     }
 
     // MARK: - Braille Primitives & Tables
-
-    private static let wholeOr16thCells = ["Y", "Z", "&", "=", "(", "!", ")"]
-    private static let halfOr32ndCells = ["N", "O", "P", "Q", "R", "S", "T"]
-    private static let quarterOr64thCells = ["?", ":", "$", "]", "\\", "[", "W"]
-    private static let eighthOr128thCells = ["D", "E", "F", "G", "H", "I", "J"]
-
-    private static func encodeNoteCell(
-        stepIndex: Int,
-        baseDenominator: Int,
-        isDotted: Bool
-    ) -> String {
-        let idx = max(0, min(6, stepIndex))
-        let cell: String
-        switch baseDenominator {
-        case 1, 16:
-            cell = wholeOr16thCells[idx]
-        case 2, 32:
-            cell = halfOr32ndCells[idx]
-        case 4, 64:
-            cell = quarterOr64thCells[idx]
-        default:
-            cell = eighthOr128thCells[idx]
-        }
-        return isDotted ? "\(cell)'" : cell
-    }
-
-    private static func encodeRestCell(_ atom: NotationDuration) -> String {
-        let cell: String
-        switch atom.baseDenominator {
-        case 1, 16: cell = "M"
-        case 2, 32: cell = "U"
-        case 4, 64: cell = "V"
-        default: cell = "X"
-        }
-        return atom.isDotted ? "\(cell)'" : cell
-    }
 
     private static func encodeFullMeasureRests(count: Int) -> String {
         guard count > 0 else { return "" }
@@ -698,7 +653,7 @@ public struct TmdBrailleGenerator {
         return true
     }
 
-    private static func encodeAccidental(alter: Int) -> String {
+    fileprivate static func encodeAccidental(alter: Int) -> String {
         if alter <= -2 { return "<<" }
         if alter == -1 { return "<" }
         if alter == 0 { return "*" }
@@ -729,13 +684,7 @@ public struct TmdBrailleGenerator {
         return "#\(encodeUpperDigits(count))\(sign)"
     }
 
-    private static func encodeTimeSignature(_ beat: Beat) -> String {
-        let c = max(1, beat.count)
-        let n = max(1, beat.noteValue)
-        return "#\(encodeUpperDigits(c))\(encodeLowerDigits(n))"
-    }
-
-    private static func encodeUpperDigits(_ number: Int) -> String {
+    fileprivate static func encodeUpperDigits(_ number: Int) -> String {
         let upperMap: [Character: String] = [
             "1": "A", "2": "B", "3": "C", "4": "D", "5": "E",
             "6": "F", "7": "G", "8": "H", "9": "I", "0": "J",
@@ -743,147 +692,12 @@ public struct TmdBrailleGenerator {
         return String(max(0, number)).compactMap { upperMap[$0] }.joined()
     }
 
-    private static func encodeLowerDigits(_ number: Int) -> String {
+    fileprivate static func encodeLowerDigits(_ number: Int) -> String {
         let lowerMap: [Character: String] = [
             "1": "1", "2": "2", "3": "3", "4": "4", "5": "5",
             "6": "6", "7": "7", "8": "8", "9": "9", "0": "0",
         ]
         return String(max(0, number)).compactMap { lowerMap[$0] }.joined()
-    }
-
-    private static func encodeLiteraryText(_ text: String) -> String {
-        var out = ""
-        var inNumber = false
-        for ch in text {
-            if ch.isNumber {
-                if !inNumber {
-                    out += "#"
-                    inNumber = true
-                }
-                if let digit = Int(String(ch)) {
-                    out += encodeUpperDigits(digit)
-                }
-            } else {
-                inNumber = false
-                if ch.isUppercase && ch.isASCII {
-                    out += ",\(String(ch).uppercased())"
-                } else if ch.isLowercase && ch.isASCII {
-                    out += String(ch).uppercased()
-                } else if ch == " " {
-                    out += " "
-                } else if ch == "-" || ch == "_" {
-                    out += "-"
-                }
-            }
-        }
-        return out
-    }
-
-    private static func encodeChordSymbolLiterary(chord: ChordSymbol, keyOffset: Int) -> String {
-        let rootPitch = PitchMapping.spell(chordRoot: chord.root, keyOffset: keyOffset)
-        var out = ",\(rootPitch.step.uppercased())"
-        if rootPitch.alter != 0 {
-            out += encodeAccidental(alter: rootPitch.alter)
-        }
-        switch chord.quality {
-        case .major:
-            break
-        case .minor:
-            out += "M"
-        case .dominant7:
-            out += "#G"
-        case .major7:
-            out += "MAJ#G"
-        case .minor7:
-            out += "M#G"
-        case .diminished:
-            out += "DIM"
-        case .halfDiminished:
-            out += "M#G-#E"
-        case .augmented:
-            out += "AUG"
-        case .suspended:
-            out += "SUS#D"
-        case .power:
-            out += "#E"
-        case .custom(let suffix):
-            out += encodeLiteraryText(suffix)
-        }
-        if let bass = chord.bass {
-            let bassPitch = PitchMapping.spell(chordRoot: bass, keyOffset: keyOffset)
-            out += "/,\(bassPitch.step.uppercased())"
-            if bassPitch.alter != 0 {
-                out += encodeAccidental(alter: bassPitch.alter)
-            }
-        }
-        return out
-    }
-
-    private static func encodeChordStemSign(_ atom: NotationDuration) -> String {
-        let base: String
-        switch atom.baseDenominator {
-        case 1: base = "_'"
-        case 2: base = "_K"
-        case 4: base = "_A"
-        case 8: base = "_B"
-        case 16: base = "_L"
-        default: base = "_1"
-        }
-        return atom.isDotted ? "\(base)'" : base
-    }
-
-    private static func partPrefixAscii(for assignment: String) -> String {
-        let trimmed = assignment.trimmingCharacters(in: .whitespacesAndNewlines)
-        let lower = trimmed.lowercased()
-        switch lower {
-        case "piano": return ">PN'"
-        case "pianorh", "righthand": return ".>"
-        case "pianolh", "lefthand": return "_>"
-        case "organpedal": return "^>"
-        case "violin": return ">VL'"
-        case "violin1", "v1": return ">VL1'"
-        case "violin2", "v2": return ">VL2'"
-        case "violin3", "v3": return ">VL3'"
-        case "viola": return ">VLA'"
-        case "cello", "violoncello": return ">VC'"
-        case "contrabass", "doublebass": return ">CB'"
-        case "bass": return ">BS'"
-        case "guitar": return ">GT'"
-        case "flute": return ">FL'"
-        case "oboe": return ">OB'"
-        case "clarinet": return ">CL'"
-        case "bassoon": return ">BSN'"
-        case "horn": return ">HN'"
-        case "trumpet": return ">TR'"
-        case "trombone": return ">TBN'"
-        case "tuba": return ">TBA'"
-        case "timpani": return ">TIM'"
-        case "drums", "percussion": return ">DR'"
-        case "soprano": return ">S'"
-        case "alto": return ">A'"
-        case "tenor": return ">T'"
-        case "vocal", "solo": return "\">"
-        case "chord", "chords": return "3>"
-        default:
-            // Deterministic fallback rule (Section 6.2)
-            let letters = lower.filter { $0.isLetter && $0.isASCII }
-            let digits = lower.filter { $0.isNumber }
-            let abbr: String
-            if letters.count <= 3 {
-                abbr = letters.isEmpty ? "PN" : letters.uppercased()
-            } else {
-                let first = String(letters.first!).uppercased()
-                let vowels: Set<Character> = ["a", "e", "i", "o", "u"]
-                let consonants = letters.dropFirst().filter { !vowels.contains($0) }
-                if consonants.count >= 2 {
-                    abbr = first + String(consonants.prefix(2)).uppercased()
-                } else {
-                    abbr = String(letters.prefix(3)).uppercased()
-                }
-            }
-            let numSuffix = digits.isEmpty ? "" : digits
-            return ">\(abbr)\(numSuffix)'"
-        }
     }
 
     private static func isChordSymbolAssignment(_ instrument: String) -> Bool {
@@ -958,5 +772,201 @@ public struct TmdBrailleGenerator {
             }
         }
         return String(result)
+    }
+}
+
+// MARK: - Domain Type Braille Extensions
+
+private extension ChordQuality {
+    /// North American Braille ASCII literary suffix for the chord quality (Section 5.2, Table 12A).
+    var brailleLiterarySuffix: String {
+        switch self {
+        case .major:
+            return ""
+        case .minor:
+            return "M"
+        case .dominant7:
+            return "#G"
+        case .major7:
+            return "MAJ#G"
+        case .minor7:
+            return "M#G"
+        case .diminished:
+            return "DIM"
+        case .halfDiminished:
+            return "M#G-#E"
+        case .augmented:
+            return "AUG"
+        case .suspended:
+            return "SUS#D"
+        case .power:
+            return "#E"
+        case .custom(let suffix):
+            return suffix.brailleLiteraryString
+        }
+    }
+}
+
+private extension ChordSymbol {
+    /// Encodes a `ChordSymbol` into Grade 1 Literary + Music Braille ASCII (`Section 5.2 Mode A`).
+    func brailleLiteraryString(keyOffset: Int) -> String {
+        let rootPitch = PitchMapping.spell(chordRoot: root, keyOffset: keyOffset)
+        var out = ",\(rootPitch.step.uppercased())"
+        if rootPitch.alter != 0 {
+            out += TmdBrailleGenerator.encodeAccidental(alter: rootPitch.alter)
+        }
+        out += quality.brailleLiterarySuffix
+        if let bass {
+            let bassPitch = PitchMapping.spell(chordRoot: bass, keyOffset: keyOffset)
+            out += "/,\(bassPitch.step.uppercased())"
+            if bassPitch.alter != 0 {
+                out += TmdBrailleGenerator.encodeAccidental(alter: bassPitch.alter)
+            }
+        }
+        return out
+    }
+}
+
+private extension NotationDuration {
+    private static let wholeOr16thCells = ["Y", "Z", "&", "=", "(", "!", ")"]
+    private static let halfOr32ndCells = ["N", "O", "P", "Q", "R", "S", "T"]
+    private static let quarterOr64thCells = ["?", ":", "$", "]", "\\", "[", "W"]
+    private static let eighthOr128thCells = ["D", "E", "F", "G", "H", "I", "J"]
+
+    /// Encodes a pitched note cell (`Section 3.1, Table 1`) for the given diatonic step (`0 = C` ... `6 = B`).
+    func brailleNoteCell(stepIndex: Int) -> String {
+        let idx = max(0, min(6, stepIndex))
+        let cell: String
+        switch baseDenominator {
+        case 1, 16:
+            cell = Self.wholeOr16thCells[idx]
+        case 2, 32:
+            cell = Self.halfOr32ndCells[idx]
+        case 4, 64:
+            cell = Self.quarterOr64thCells[idx]
+        default:
+            cell = Self.eighthOr128thCells[idx]
+        }
+        return isDotted ? "\(cell)'" : cell
+    }
+
+    /// Encodes a rest cell (`Section 3.2, Table 2`).
+    var brailleRestCell: String {
+        let cell: String
+        switch baseDenominator {
+        case 1, 16: cell = "M"
+        case 2, 32: cell = "U"
+        case 4, 64: cell = "V"
+        default: cell = "X"
+        }
+        return isDotted ? "\(cell)'" : cell
+    }
+
+    /// Encodes a rhythmic stem sign for lead-sheet chord symbols (`Section 5.2, Table 13`).
+    var brailleChordStemSign: String {
+        let base: String
+        switch baseDenominator {
+        case 1: base = "_'"
+        case 2: base = "_K"
+        case 4: base = "_A"
+        case 8: base = "_B"
+        case 16: base = "_L"
+        default: base = "_1"
+        }
+        return isDotted ? "\(base)'" : base
+    }
+}
+
+private extension Beat {
+    /// Encodes a time signature into Music Braille ASCII (`Section 4.2, Table 7B`).
+    var brailleTimeSignature: String {
+        let c = max(1, count)
+        let n = max(1, noteValue)
+        return "#\(TmdBrailleGenerator.encodeUpperDigits(c))\(TmdBrailleGenerator.encodeLowerDigits(n))"
+    }
+}
+
+private extension String {
+    /// Transliterates text into uncontracted Grade 1 Literary Braille ASCII.
+    var brailleLiteraryString: String {
+        var out = ""
+        var inNumber = false
+        for ch in self {
+            if ch.isNumber {
+                if !inNumber {
+                    out += "#"
+                    inNumber = true
+                }
+                if let digit = Int(String(ch)) {
+                    out += TmdBrailleGenerator.encodeUpperDigits(digit)
+                }
+            } else {
+                inNumber = false
+                if ch.isUppercase && ch.isASCII {
+                    out += ",\(String(ch).uppercased())"
+                } else if ch.isLowercase && ch.isASCII {
+                    out += String(ch).uppercased()
+                } else if ch == " " {
+                    out += " "
+                } else if ch == "-" || ch == "_" {
+                    out += "-"
+                }
+            }
+        }
+        return out
+    }
+
+    /// Resolves the canonical Music Braille part prefix (`Section 6.2`) for a TMD assignment name.
+    var braillePartPrefixAscii: String {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        let lower = trimmed.lowercased()
+        switch lower {
+        case "piano": return ">PN'"
+        case "pianorh", "righthand": return ".>"
+        case "pianolh", "lefthand": return "_>"
+        case "organpedal": return "^>"
+        case "violin": return ">VL'"
+        case "violin1", "v1": return ">VL1'"
+        case "violin2", "v2": return ">VL2'"
+        case "violin3", "v3": return ">VL3'"
+        case "viola": return ">VLA'"
+        case "cello", "violoncello": return ">VC'"
+        case "contrabass", "doublebass": return ">CB'"
+        case "bass": return ">BS'"
+        case "guitar": return ">GT'"
+        case "flute": return ">FL'"
+        case "oboe": return ">OB'"
+        case "clarinet": return ">CL'"
+        case "bassoon": return ">BSN'"
+        case "horn": return ">HN'"
+        case "trumpet": return ">TR'"
+        case "trombone": return ">TBN'"
+        case "tuba": return ">TBA'"
+        case "timpani": return ">TIM'"
+        case "drums", "percussion": return ">DR'"
+        case "soprano": return ">S'"
+        case "alto": return ">A'"
+        case "tenor": return ">T'"
+        case "vocal", "solo": return "\">"
+        case "chord", "chords": return "3>"
+        default:
+            let letters = lower.filter { $0.isLetter && $0.isASCII }
+            let digits = lower.filter { $0.isNumber }
+            let abbr: String
+            if letters.count <= 3 {
+                abbr = letters.isEmpty ? "PN" : letters.uppercased()
+            } else {
+                let first = String(letters.first!).uppercased()
+                let vowels: Set<Character> = ["a", "e", "i", "o", "u"]
+                let consonants = letters.dropFirst().filter { !vowels.contains($0) }
+                if consonants.count >= 2 {
+                    abbr = first + String(consonants.prefix(2)).uppercased()
+                } else {
+                    abbr = String(letters.prefix(3)).uppercased()
+                }
+            }
+            let numSuffix = digits.isEmpty ? "" : digits
+            return ">\(abbr)\(numSuffix)'"
+        }
     }
 }
