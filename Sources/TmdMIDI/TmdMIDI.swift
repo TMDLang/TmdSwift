@@ -121,16 +121,7 @@ public struct TmdMIDIGenerator {
             case .percussion(let pattern):
                 let step = max(1, duration / UInt32(clamping: max(1, pattern.count)))
                 for (index, character) in pattern.enumerated() {
-                    if let pitch = percussionMIDIPitch(for: character) {
-                        let velocity: UInt8 =
-                            switch character {
-                            case "D", "d", "B", "b": 118  // Strong Kick
-                            case "C", "c": 115  // Exploding Crash Cymbal
-                            case "S", "s": 105  // Crisp Snare
-                            case "T", "t": 100  // Tom-toms
-                            case "O", "o": 90  // Open Hi-Hat
-                            default: 78  // Background Closed Hi-Hat
-                            }
+                    if let stroke = PercussionStroke(character: character) {
                         let offset = UInt32(clamping: index).multipliedReportingOverflow(by: step)
                         let noteStart = start.addingReportingOverflow(offset.partialValue)
                         appendNote(
@@ -138,8 +129,8 @@ public struct TmdMIDIGenerator {
                             start: noteStart.overflow ? UInt32.max : noteStart.partialValue,
                             duration: step,
                             channel: 9,
-                            pitch: pitch,
-                            velocity: velocity
+                            pitch: stroke.midiPitch,
+                            velocity: stroke.defaultVelocity
                         )
                     }
                 }
@@ -184,17 +175,6 @@ public struct TmdMIDIGenerator {
     /// Converts scale degree (1~7) + accidental + octave into MIDI pitch (Middle C = 60).
     public static func noteToMIDIPitch(_ note: Note, keyOffset: Int) -> Int {
         note.midiPitch(keyOffset: keyOffset)
-    }
-
-    private static func percussionMIDIPitch(for character: Character) -> Int? {
-        [
-            "D": 36, "d": 36, "B": 36, "b": 36,  // Bass Drum 1 (Kick)
-            "S": 38, "s": 38,  // Acoustic Snare
-            "X": 42, "x": 42,  // Closed Hi-Hat
-            "O": 46, "o": 46,  // Open Hi-Hat
-            "T": 45, "t": 45,  // Low-Mid Tom
-            "C": 49, "c": 49,  // Crash Cymbal 1
-        ][character]
     }
 
     /// Resolves chord names (degree numbers like `1`, `6m`, `4`, `5`, or chord names like `Cmaj7`).

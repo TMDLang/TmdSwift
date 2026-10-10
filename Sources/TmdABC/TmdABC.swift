@@ -9,7 +9,7 @@ public struct TmdABCGenerator {
 
     /// Generates ABC notation string from a Sheet.
     public static func generateABC(from inputSheet: Sheet) -> String {
-        let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
+        let (sheet, instruments) = inputSheet.preparedForExport()
         var abc = ""
 
         // Header fields
@@ -24,8 +24,6 @@ public struct TmdABCGenerator {
         let effectiveKey = sheet.declaredKey ?? sheet.keySignature.description
         abc += "K:\(abcKey(effectiveKey))\n\n"
 
-        let instruments = sheet.distinctInstruments(fallbackToDefault: false)
-
         // Output Voice headers
         for (idx, inst) in instruments.enumerated() {
             let vId = "V\(idx + 1)"
@@ -37,7 +35,7 @@ public struct TmdABCGenerator {
         for (idx, inst) in instruments.enumerated() {
             let vId = "V\(idx + 1)"
             abc += "[V:\(vId)]\n"
-            if paragraphsContainPercussion(sheet.entries, instrument: inst) {
+            if sheet.containsPercussionUnits(forInstrument: inst) {
                 abc += "%%MIDI channel 10\n"
             }
             abc += generateTrackMusic(instrument: inst, sheet: sheet)
@@ -174,9 +172,7 @@ public struct TmdABCGenerator {
         case .rest:
             return "z\(suffix)"
         case .percussion(let pattern):
-            let pitches = pattern.compactMap {
-                ["X": "^F", "x": "^F", "T": "A", "t": "A", "S": "D", "s": "D"][$0]
-            }
+            let pitches = PercussionStroke.parse(pattern: pattern).compactMap(\.abcPitch)
             if pitches.isEmpty { return "z\(suffix)" }
             let count = pitches.count
             let base = multiplier / count
@@ -187,21 +183,6 @@ public struct TmdABCGenerator {
                 return "\(pitch)\(s)"
             }.joined(separator: " ")
         }
-    }
-
-    private static func paragraphsContainPercussion(_ entries: [Entry], instrument: String) -> Bool
-    {
-        entries.filter { ($0.assignment ?? "").caseInsensitiveCompare(instrument) == .orderedSame }
-            .contains { paragraph in
-                paragraph.sections.contains { section in
-                    section.unitGroups.contains { group in
-                        group.units.contains {
-                            if case .percussion = $0 { return true }
-                            return false
-                        }
-                    }
-                }
-            }
     }
 
     // MARK: - Pitch Helpers

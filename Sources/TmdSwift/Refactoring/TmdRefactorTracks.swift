@@ -74,28 +74,12 @@ extension TmdRefactor {
         var insideParagraph = false
         var keepParagraph = false
 
-        let headerPattern =
-            "^([a-zA-Z0-9_\\u4e00-\\u9fa5-]+)\\s*:\\s*([a-zA-Z0-9_\\u4e00-\\u9fa5-]+)(@[^{]*)?\\s*\\{"
-        let headerRegex = try? NSRegularExpression(pattern: headerPattern, options: [])
-
         for rawLine in rawLines {
             let trimmed = rawLine.trimmingCharacters(in: .whitespaces)
 
-            var isHeader = false
-            var pInst = ""
-            if let regex = headerRegex {
-                let range = NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)
-                if let match = regex.firstMatch(in: trimmed, options: [], range: range),
-                    let instRange = Range(match.range(at: 2), in: trimmed)
-                {
-                    isHeader = true
-                    pInst = String(trimmed[instRange])
-                }
-            }
-
-            if isHeader {
+            if let header = parseParagraphHeaderLine(trimmed) {
                 insideParagraph = true
-                keepParagraph = (pInst == instrument)
+                keepParagraph = (header.instrument == instrument)
                 if keepParagraph {
                     resultLines.append(rawLine)
                 }

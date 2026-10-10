@@ -1165,4 +1165,57 @@ public struct Sheet: Equatable {
 
         return distinct.first ?? "Vocal"
     }
+
+    /// Returns `true` if any entry assigned to `instrument` (case-insensitively) contains a `.percussion` unit.
+    public func containsPercussionUnits(forInstrument instrument: String) -> Bool {
+        entries
+            .filter { ($0.assignment ?? "").caseInsensitiveCompare(instrument) == .orderedSame }
+            .contains { entry in
+                entry.sections.contains { section in
+                    section.unitGroups.contains { group in
+                        group.units.contains {
+                            if case .percussion = $0 { return true }
+                            return false
+                        }
+                    }
+                }
+            }
+    }
+
+    /// Returns `true` if `instrument` is a percussion track by name keyword or by containing `.percussion` units.
+    public func isPercussionTrack(instrument: String) -> Bool {
+        let lower = instrument.lowercased()
+        let aliases = [
+            "drum", "drums", "groove", "percussion", "perc", "beat", "drumkit", "kit",
+            "cajon", "snare", "kick", "hihat",
+        ]
+        if aliases.contains(where: { lower.contains($0) }) {
+            return true
+        }
+        return containsPercussionUnits(forInstrument: instrument)
+    }
+
+    /// Returns `true` if `instrument` conventionally uses bass clef (`F` clef on line 4).
+    public static func isBassClefInstrument(_ instrument: String) -> Bool {
+        let lower = instrument.lowercased()
+        let bassKeywords = [
+            "bass", "cello", "tuba", "contrabass", "bassoon", "trombone", "baritone", "timpani",
+        ]
+        return bassKeywords.contains { lower.contains($0) }
+    }
+
+    /// Returns `true` if `instrument` is a dedicated chord-symbol assignment (`CHORD` or `CHORDS`).
+    public static func isChordSymbolTrack(_ instrument: String) -> Bool {
+        let lower = instrument.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return lower == "chord" || lower == "chords"
+    }
+
+    /// Expands all S-Expression macros on this sheet and returns the expanded sheet along with its ordered distinct instruments.
+    public func preparedForExport(fallbackToDefault: Bool = false) -> (
+        sheet: Sheet, instruments: [String]
+    ) {
+        let expanded = TmdMacroEvaluator.expandOrTrap(self)
+        return (expanded, expanded.distinctInstruments(fallbackToDefault: fallbackToDefault))
+    }
 }
+

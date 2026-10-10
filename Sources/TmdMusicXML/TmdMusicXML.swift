@@ -9,7 +9,7 @@ public struct TmdMusicXMLGenerator {
 
     /// Generates MusicXML UTF-8 string from a Sheet.
     public static func generateMusicXML(from inputSheet: Sheet) -> String {
-        let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
+        let (sheet, instruments) = inputSheet.preparedForExport()
         let metadataCreators = sheet.metadata.sorted { $0.key < $1.key }.map { key, value in
             let type =
                 key.lowercased() == "lyrics"
@@ -32,8 +32,6 @@ public struct TmdMusicXMLGenerator {
               </identification>
 
             """
-
-        let instruments = sheet.distinctInstruments(fallbackToDefault: false)
 
         // Part List
         xml += "  <part-list>\n"
@@ -287,41 +285,14 @@ public struct TmdMusicXMLGenerator {
         return xml
     }
 
-    private static func isPercussionInstrument(_ instrument: String, sheet: Sheet) -> Bool {
-        let lower = instrument.lowercased()
-        let aliases = [
-            "drum", "drums", "groove", "percussion", "beat", "drumkit", "cajon", "snare", "kick",
-            "hihat",
-        ]
-        if aliases.contains(where: { lower.contains($0) }) { return true }
-        return sheet.entries.filter { $0.assignment == instrument }.contains { paragraph in
-            paragraph.sections.contains { section in
-                section.unitGroups.contains { group in
-                    group.units.contains {
-                        if case .percussion = $0 { return true }
-                        return false
-                    }
-                }
-            }
-        }
-    }
-
-    private static func isBassClefInstrument(_ instrument: String) -> Bool {
-        let lower = instrument.lowercased()
-        let bassKeywords = [
-            "bass", "cello", "tuba", "contrabass", "bassoon", "trombone", "baritone", "timpani",
-        ]
-        return bassKeywords.contains { lower.contains($0) }
-    }
-
     private static func generateClefXML(instrument: String, sheet: Sheet) -> String {
-        if isPercussionInstrument(instrument, sheet: sheet) {
+        if sheet.isPercussionTrack(instrument: instrument) {
             return """
                         <clef>
                           <sign>percussion</sign>
                         </clef>
                 """
-        } else if isBassClefInstrument(instrument) {
+        } else if Sheet.isBassClefInstrument(instrument) {
             return """
                         <clef>
                           <sign>F</sign>
@@ -389,31 +360,22 @@ public struct TmdMusicXMLGenerator {
     private static func generatePercussionXML(pattern: String, duration: Int, divisions: Int)
         -> String
     {
-        let notes = pattern.compactMap { character -> (String, Int)? in
-            switch character {
-            case "D", "d", "B", "b": return ("F", 4)  // Bass Drum 1 (Kick) - F4
-            case "S", "s": return ("D", 5)  // Acoustic Snare - D5
-            case "X", "x": return ("F", 5)  // Closed Hi-Hat - F5
-            case "O", "o": return ("G", 5)  // Open Hi-Hat - G5
-            case "T", "t": return ("A", 4)  // Low-Mid Tom - A4
-            case "C", "c": return ("A", 5)  // Crash Cymbal 1 - A5
-            default: return nil
-            }
-        }
-        if notes.isEmpty {
+        let strokes = PercussionStroke.parse(pattern: pattern)
+        if strokes.isEmpty {
             return generateRestXML(duration: duration, divisions: divisions)
         }
-        let count = notes.count
+        let count = strokes.count
         let base = duration / count
         let remainder = duration % count
         var xml = ""
-        for (i, (step, octave)) in notes.enumerated() {
+        for (i, stroke) in strokes.enumerated() {
+            let pos = stroke.unpitchedDisplayPosition
             let noteDur = base + (i < remainder ? 1 : 0)
             xml += """
                         <note>
                           <unpitched>
-                            <display-step>\(step)</display-step>
-                            <display-octave>\(octave)</display-octave>
+                            <display-step>\(pos.step)</display-step>
+                            <display-octave>\(pos.octave)</display-octave>
                           </unpitched>
                           <duration>\(noteDur)</duration>
 

@@ -32,19 +32,7 @@ extension TmdRefactor {
 
         let isFullScore =
             source.contains("::SCORE::")
-            || (try? NSRegularExpression(
-                pattern:
-                    "(^|\\n)\\s*[a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+:[a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+@",
-                options: []))?
-                .firstMatch(
-                    in: source, options: [], range: NSRange(location: 0, length: nsSource.length))
-                != nil
-
-        let headerRegex = try? NSRegularExpression(
-            pattern:
-                "^([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)\\s*:\\s*([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)(@[^{]*)?\\s*\\{",
-            options: []
-        )
+            || rawLines.contains { parseParagraphHeaderLine($0.trimmingCharacters(in: .whitespaces)) != nil }
 
         for rawLine in rawLines {
             let trimmed = rawLine.trimmingCharacters(in: .whitespaces)
@@ -61,16 +49,10 @@ extension TmdRefactor {
                 continue
             }
 
-            let nsTrimmed = trimmed as NSString
-            if let m = headerRegex?.firstMatch(
-                in: trimmed, options: [], range: NSRange(location: 0, length: nsTrimmed.length))
-            {
+            if let header = parseParagraphHeaderLine(trimmed) {
                 insideParagraph = true
-                let pSec = nsTrimmed.substring(with: m.range(at: 1))
-                let pInst = nsTrimmed.substring(with: m.range(at: 2))
                 inMatchingPara =
-                    (target?.section == nil || target?.section == pSec)
-                    && (target?.instrument == nil || target?.instrument == pInst)
+                    target?.matches(section: header.section, instrument: header.instrument) ?? true
                 resultLines.append(rawLine)
                 continue
             }

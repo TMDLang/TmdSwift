@@ -193,8 +193,8 @@ public struct TmdBrailleGenerator {
             $0.assignment?.caseInsensitiveCompare(instrument) == .orderedSame
                 && $0.pitchMode == .fixed
         }
-        let isChordTrack = isChordSymbolAssignment(instrument)
-        let isPercussion = isPercussionAssignment(instrument, entries: sheet.entries)
+        let isChordTrack = Sheet.isChordSymbolTrack(instrument)
+        let isPercussion = sheet.isPercussionTrack(instrument: instrument)
 
         var activeWrittenKey =
             isFixedPitchTrack
@@ -582,7 +582,10 @@ public struct TmdBrailleGenerator {
                     out += subAtom.brailleRestCell
                     continue
                 }
-                let (stepIdx, oct) = percussionStepAndOctave(for: ch)
+                let pos =
+                    PercussionStroke(character: ch)?.unpitchedDisplayPosition
+                    ?? PercussionStroke.snare.unpitchedDisplayPosition
+                let (stepIdx, oct) = (pos.stepIndex, pos.octave)
                 let octStr =
                     shouldEmitOctave(
                         currOctave: oct,
@@ -687,43 +690,6 @@ public struct TmdBrailleGenerator {
             "6": "6", "7": "7", "8": "8", "9": "9", "0": "0",
         ]
         return String(max(0, number)).compactMap { lowerMap[$0] }.joined()
-    }
-
-    private static func isChordSymbolAssignment(_ instrument: String) -> Bool {
-        let lower = instrument.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return lower == "chord" || lower == "chords"
-    }
-
-    private static func isPercussionAssignment(_ instrument: String, entries: [Entry]) -> Bool {
-        let lower = instrument.lowercased()
-        if lower.contains("drum") || lower.contains("perc") || lower.contains("kit") {
-            return true
-        }
-        return entries.contains { entry in
-            guard entry.assignment?.caseInsensitiveCompare(instrument) == .orderedSame else {
-                return false
-            }
-            return entry.sections.contains { sec in
-                sec.unitGroups.contains { grp in
-                    grp.units.contains {
-                        if case .percussion = $0 { return true }
-                        return false
-                    }
-                }
-            }
-        }
-    }
-
-    private static func percussionStepAndOctave(for token: Character) -> (stepIndex: Int, octave: Int) {
-        switch token {
-        case "D", "d", "B", "b": return (3, 4)  // F4
-        case "T", "t": return (5, 4)  // A4
-        case "S", "s": return (1, 5)  // D5
-        case "X", "x": return (3, 5)  // F5
-        case "O", "o": return (4, 5)  // G5
-        case "C", "c": return (5, 5)  // A5
-        default: return (1, 5)
-        }
     }
 
     /// Returns true if the given Braille ASCII character contains dot 1, dot 2, or dot 3.

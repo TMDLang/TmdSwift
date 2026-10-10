@@ -33,10 +33,50 @@ public struct TmdRefactorTarget: Sendable {
         self.section = section
         self.instrument = instrument
     }
+
+    /// Returns whether the given section and instrument match this target selector.
+    public func matches(section: String, instrument: String) -> Bool {
+        (self.section == nil || self.section == section)
+            && (self.instrument == nil || self.instrument == instrument)
+    }
 }
 
 /// Provides source-preserving formatting and refactoring operations on TMD score documents.
 public struct TmdRefactor {
+
+    private static let paragraphHeaderRegex = try! NSRegularExpression(
+        pattern:
+            "^([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)\\s*:\\s*([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)(@[^{]*)?\\s*\\{",
+        options: []
+    )
+
+    private static let gridSubdivisionRegex = try! NSRegularExpression(
+        pattern: "^<(\\d+)\\*>",
+        options: []
+    )
+
+    /// Parses a paragraph header line (`<section>:<instrument>@... {`) and returns `(section, instrument)` if matched.
+    static func parseParagraphHeaderLine(_ trimmedLine: String) -> (section: String, instrument: String)? {
+        let nsTrimmed = trimmedLine as NSString
+        let range = NSRange(location: 0, length: nsTrimmed.length)
+        guard let match = paragraphHeaderRegex.firstMatch(in: trimmedLine, options: [], range: range) else {
+            return nil
+        }
+        return (
+            section: nsTrimmed.substring(with: match.range(at: 1)),
+            instrument: nsTrimmed.substring(with: match.range(at: 2))
+        )
+    }
+
+    /// Parses a grid subdivision marker line (`<N*>`) and returns `N` if matched.
+    static func parseGridSubdivisionLine(_ trimmedLine: String) -> Int? {
+        let nsTrimmed = trimmedLine as NSString
+        let range = NSRange(location: 0, length: nsTrimmed.length)
+        guard let match = gridSubdivisionRegex.firstMatch(in: trimmedLine, options: [], range: range) else {
+            return nil
+        }
+        return Int(nsTrimmed.substring(with: match.range(at: 1))) ?? 4
+    }
 
     /// Formats a TMD source string preserving comments and line layout while normalizing whitespace and bar tokens.
     public static func format(_ source: String) -> String {

@@ -10,26 +10,13 @@ extension TmdRefactor {
         var inMatchingPara = false
         var insideParagraph = false
 
-        let headerRegex = try NSRegularExpression(
-            pattern:
-                "^([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)\\s*:\\s*([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)(@[^{]*)?\\s*\\{",
-            options: []
-        )
-        let gridRegex = try NSRegularExpression(pattern: "^<(\\d+)\\*>", options: [])
-
         for rawLine in rawLines {
             let trimmed = rawLine.trimmingCharacters(in: .whitespaces)
 
-            let nsTrimmed = trimmed as NSString
-            let match = headerRegex.firstMatch(
-                in: trimmed, options: [], range: NSRange(location: 0, length: nsTrimmed.length))
-            if let m = match {
+            if let header = parseParagraphHeaderLine(trimmed) {
                 insideParagraph = true
-                let pSec = nsTrimmed.substring(with: m.range(at: 1))
-                let pInst = nsTrimmed.substring(with: m.range(at: 2))
                 inMatchingPara =
-                    (target?.section == nil || target?.section == pSec)
-                    && (target?.instrument == nil || target?.instrument == pInst)
+                    target?.matches(section: header.section, instrument: header.instrument) ?? true
                 resultLines.append(rawLine)
                 continue
             }
@@ -46,11 +33,7 @@ extension TmdRefactor {
                 continue
             }
 
-            let gMatch = gridRegex.firstMatch(
-                in: trimmed, options: [], range: NSRange(location: 0, length: nsTrimmed.length))
-            if let gm = gMatch {
-                let lenStr = nsTrimmed.substring(with: gm.range(at: 1))
-                let curLen = Int(lenStr) ?? 4
+            if let curLen = parseGridSubdivisionLine(trimmed) {
                 let newLen = curLen * 2
                 let indent = String(rawLine.prefix(while: { $0 == " " || $0 == "\t" }))
                 resultLines.append("\(indent)<\(newLen)*>")
@@ -80,26 +63,13 @@ extension TmdRefactor {
         var inMatchingPara = false
         var insideParagraph = false
 
-        let headerRegex = try NSRegularExpression(
-            pattern:
-                "^([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)\\s*:\\s*([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)(@[^{]*)?\\s*\\{",
-            options: []
-        )
-        let gridRegex = try NSRegularExpression(pattern: "^<(\\d+)\\*>", options: [])
-
         for rawLine in rawLines {
             let trimmed = rawLine.trimmingCharacters(in: .whitespaces)
-            let nsTrimmed = trimmed as NSString
 
-            let match = headerRegex.firstMatch(
-                in: trimmed, options: [], range: NSRange(location: 0, length: nsTrimmed.length))
-            if let m = match {
+            if let header = parseParagraphHeaderLine(trimmed) {
                 insideParagraph = true
-                let pSec = nsTrimmed.substring(with: m.range(at: 1))
-                let pInst = nsTrimmed.substring(with: m.range(at: 2))
                 inMatchingPara =
-                    (target?.section == nil || target?.section == pSec)
-                    && (target?.instrument == nil || target?.instrument == pInst)
+                    target?.matches(section: header.section, instrument: header.instrument) ?? true
                 resultLines.append(rawLine)
                 continue
             }
@@ -116,11 +86,7 @@ extension TmdRefactor {
                 continue
             }
 
-            let gMatch = gridRegex.firstMatch(
-                in: trimmed, options: [], range: NSRange(location: 0, length: nsTrimmed.length))
-            if let gm = gMatch {
-                let lenStr = nsTrimmed.substring(with: gm.range(at: 1))
-                let curLen = Int(lenStr) ?? 4
+            if let curLen = parseGridSubdivisionLine(trimmed) {
                 if curLen % 2 != 0 {
                     throw TmdRefactorError.invalidOperation("Cannot halve odd grid <\(curLen)*>")
                 }

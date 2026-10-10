@@ -9,7 +9,7 @@ public struct TmdLilyPondGenerator {
 
     /// Generates LilyPond `.ly` file content from a Sheet.
     public static func generateLilyPond(from inputSheet: Sheet) -> String {
-        let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
+        let (sheet, instruments) = inputSheet.preparedForExport()
         let composer = sheet.metadata["composer"] ?? "TMD"
         let initialTempoCommand = resolveTempo(
             beat: sheet.beat, quarterBPM: sheet.speed > 0 ? sheet.speed : 120)
@@ -36,8 +36,6 @@ public struct TmdLilyPondGenerator {
 
             """
 
-        let instruments = sheet.distinctInstruments(fallbackToDefault: false)
-
         var identifierMap: [String: String] = [:]
         var usedNames: Set<String> = []
         for (idx, inst) in instruments.enumerated() {
@@ -56,7 +54,7 @@ public struct TmdLilyPondGenerator {
         // Generate track music definitions for each instrument
         for inst in instruments {
             let varName = identifierMap[inst] ?? "Track"
-            let isDrum = paragraphsContainPercussion(sheet.entries, instrument: inst)
+            let isDrum = sheet.containsPercussionUnits(forInstrument: inst)
             ly += "\(varName) = \(isDrum ? "\\drummode " : ""){\n"
             ly += "  \\global\n"
             ly += generateTrackMusic(instrument: inst, sheet: sheet, percussion: isDrum)
@@ -68,7 +66,7 @@ public struct TmdLilyPondGenerator {
         ly += "  <<\n"
         for inst in instruments {
             let varName = identifierMap[inst] ?? "Track"
-            let isDrum = paragraphsContainPercussion(sheet.entries, instrument: inst)
+            let isDrum = sheet.containsPercussionUnits(forInstrument: inst)
             let staffType = isDrum ? "DrumStaff" : "Staff"
             ly += """
                     \\new \(staffType) = "\(escapeLilyPond(inst))" \\with {
@@ -191,16 +189,7 @@ public struct TmdLilyPondGenerator {
                 "r\(d.baseDenominator)\(d.isDotted ? "." : "")"
             }.joined(separator: " ")
         case .percussion(let pattern):
-            let percMap = [
-                "X": "hh", "x": "hh",
-                "O": "hho", "o": "hho",
-                "T": "toml", "t": "toml",
-                "S": "sn", "s": "sn",
-                "D": "bd", "d": "bd",
-                "B": "bd", "b": "bd",
-                "C": "cymc", "c": "cymc",
-            ]
-            let names = pattern.compactMap { percMap[String($0)] }
+            let names = PercussionStroke.parse(pattern: pattern).map(\.lilyPondDrumName)
             if names.isEmpty {
                 return decomposed.map { d in "r\(d.baseDenominator)\(d.isDotted ? "." : "")" }
                     .joined(separator: " ")
@@ -210,21 +199,6 @@ public struct TmdLilyPondGenerator {
                 return names.map { "\($0)\(durStr)" }.joined(separator: " ")
             }.joined(separator: " ")
         }
-    }
-
-    private static func paragraphsContainPercussion(_ entries: [Entry], instrument: String) -> Bool
-    {
-        entries.filter { ($0.assignment ?? "").caseInsensitiveCompare(instrument) == .orderedSame }
-            .contains { paragraph in
-                paragraph.sections.contains { section in
-                    section.unitGroups.contains { group in
-                        group.units.contains {
-                            if case .percussion = $0 { return true }
-                            return false
-                        }
-                    }
-                }
-            }
     }
 
     // MARK: - Pitch & Duration Helpers

@@ -22,7 +22,7 @@ public struct TmdChordProGenerator: Sendable {
         from inputSheet: Sheet,
         options: ChordProOptions = ChordProOptions()
     ) -> String {
-        let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
+        let (sheet, distinctInstruments) = inputSheet.preparedForExport()
         var lines: [String] = []
 
         // Title and Metadata directives
@@ -66,7 +66,6 @@ public struct TmdChordProGenerator: Sendable {
         }
 
         // Determine target track: pick guitar/chords instrument or first instrument
-        let distinctInstruments = sheet.distinctInstruments(fallbackToDefault: false)
         let regex = try? NSRegularExpression(
             pattern: "guitar|chord|lead|piano", options: .caseInsensitive)
         let targetInstrument =
