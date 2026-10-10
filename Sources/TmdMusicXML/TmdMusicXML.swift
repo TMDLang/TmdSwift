@@ -331,30 +331,8 @@ public struct TmdMusicXMLGenerator {
     public static func resolveMetronome(beat: Beat, quarterBPM: Double) -> (
         beatUnit: String, isDotted: Bool, perMinute: Int
     ) {
-        // Compound meter: denominator is 8 and numerator is a multiple of 3 (> 3, e.g. 6/8, 9/8, 12/8)
-        if beat.noteValue == 8 && beat.count > 3 && beat.count % 3 == 0 {
-            // Beat unit is a dotted-quarter note (value = 1.5 quarters)
-            let bpm = quarterBPM / 1.5
-            return ("quarter", true, Int(bpm.rounded()))
-        }
-        // Beat unit based on time signature denominator
-        switch beat.noteValue {
-        case 2:
-            // Half note (value = 2.0 quarters)
-            let bpm = quarterBPM / 2.0
-            return ("half", false, Int(bpm.rounded()))
-        case 8:
-            // Eighth note (value = 0.5 quarters)
-            let bpm = quarterBPM * 2.0
-            return ("eighth", false, Int(bpm.rounded()))
-        case 16:
-            // 16th note (value = 0.25 quarters)
-            let bpm = quarterBPM * 4.0
-            return ("16th", false, Int(bpm.rounded()))
-        default:
-            // Default: quarter note
-            return ("quarter", false, Int(quarterBPM.rounded()))
-        }
+        let m = beat.metronomeTempo(forQuarterBPM: quarterBPM)
+        return (m.beatUnit, m.isDotted, m.perMinute)
     }
 
     private static func generatePercussionXML(pattern: String, duration: Int, divisions: Int)

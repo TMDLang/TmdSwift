@@ -322,4 +322,69 @@ struct ScoreValidatorTests {
         #expect(!validatorSrc.contains("knownInstrumentKeywords"))
         #expect(!validatorSrc.contains("private static let extendedChordQualities"))
     }
+
+    @Test func testPlaybackTimelineAndExporterSSOT() throws {
+        // 1. Sheet.effectivePlaybackOrders fallback when playback is empty
+        let sheetNoOrders = try TmdParser.parseThrowing(
+            string: """
+                ::SCORE::
+                != 120
+                ?= C
+                <4/4>
+                Intro:Piano@|0|{
+                    <4*>
+                    | 1 2 3 4 |
+                }
+                Verse:Piano@|0|{
+                    <4*>
+                    | 5 6 7 1^ |
+                }
+                ->#
+                """)
+        #expect(sheetNoOrders.effectivePlaybackOrders == [.name("Intro"), .name("Verse")])
+
+        // 2. TmdPlaybackRenderer.buildTempoSegments and quarterToSeconds
+        let tempoSheet = try TmdParser.parseThrowing(
+            string: """
+                ::SCORE::
+                != 120
+                ?= C
+                <4/4>
+                A:Piano@|0|{
+                    <4*>
+                    | 1 2 3 4 | {!= 60} 1 2 3 4 |
+                }
+                -> A ->#
+                """)
+        let conductor = TmdPlaybackRenderer.renderConductor(sheet: tempoSheet)
+        let segments = TmdPlaybackRenderer.buildTempoSegments(
+            initialTempo: tempoSheet.speed,
+            initialBeat: tempoSheet.beat,
+            directives: conductor.directives
+        )
+        #expect(segments.count == 2)
+        // First 4 beats at 120 BPM = 2.0s; next 4 beats at 60 BPM = 4.0s -> total 6.0s at beat 8
+        let secAt8 = TmdPlaybackRenderer.quarterToSeconds(8.0, segments: segments)
+        #expect(abs(secAt8 - 6.0) < 1e-6)
+
+        // 3. MIDIInstrument.allocateChannel and stereoPanHeuristic
+        var nextMelody: UInt8 = 8
+        let ch1 = MIDIInstrument.piano.allocateChannel(nextMelodicChannel: &nextMelody)
+        let ch2 = MIDIInstrument.violin.allocateChannel(nextMelodicChannel: &nextMelody)
+        let chPerc = MIDIInstrument.percussion.allocateChannel(nextMelodicChannel: &nextMelody)
+        #expect(ch1 == 8)
+        #expect(ch2 == 10)  // Skips channel 9
+        #expect(chPerc == 9)
+        #expect(MIDIInstrument.stereoPanHeuristic(for: "Guitar-L") == .left)
+        #expect(MIDIInstrument.stereoPanHeuristic(for: "Piano_Right") == .right)
+        #expect(MIDIInstrument.stereoPanHeuristic(for: "Lead") == .center)
+
+        // 4. Beat.metronomeTempo (compound meter 6/8 at 120 quarter BPM -> dotted quarter = 80)
+        let compound = Beat(count: 6, noteValue: 8).metronomeTempo(forQuarterBPM: 120)
+        #expect(compound.beatUnit == "quarter")
+        #expect(compound.lilyPondUnit == "4.")
+        #expect(compound.abcUnit == "3/8")
+        #expect(compound.isDotted == true)
+        #expect(compound.perMinute == 80)
+    }
 }

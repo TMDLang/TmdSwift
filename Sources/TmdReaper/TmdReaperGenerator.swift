@@ -2,13 +2,6 @@ import Foundation
 import TmdMIDI
 import TmdSwift
 
-private struct TempoSegment {
-    var quarterStart: Double
-    var secondStart: Double
-    var bpm: Double
-    var timeSignature: Beat
-}
-
 /// Exporter for REAPER project files (.rpp) with tempo maps, markers, and inline MIDI data.
 public struct TmdReaperGenerator {
     public static let defaultPPQ: UInt16 = 960
@@ -20,59 +13,15 @@ public struct TmdReaperGenerator {
         let conductorTimeline = TmdPlaybackRenderer.renderConductor(sheet: sheet)
 
         // Build timeline tempo segments
-        let initialBpm = sheet.speed > 0 ? sheet.speed : 120
-        let initialTimeSig = sheet.beat
-
-        var segments: [TempoSegment] = [
-            TempoSegment(
-                quarterStart: 0,
-                secondStart: 0,
-                bpm: initialBpm,
-                timeSignature: initialTimeSig
-            )
-        ]
-
         let sortedDirectives = conductorTimeline.directives.sorted { $0.position < $1.position }
-
-        for directive in sortedDirectives where directive.kind.affectsTempoOrMeter {
-            let last = segments[segments.count - 1]
-            if directive.position > last.quarterStart {
-                let deltaQuarters = directive.position - last.quarterStart
-                let deltaSeconds = deltaQuarters * (60.0 / last.bpm)
-                let secondStart = last.secondStart + deltaSeconds
-                segments.append(
-                    TempoSegment(
-                        quarterStart: directive.position,
-                        secondStart: secondStart,
-                        bpm: directive.state.tempo,
-                        timeSignature: directive.state.timeSignature
-                    ))
-            } else if directive.position == last.quarterStart {
-                segments[segments.count - 1].bpm = directive.state.tempo
-                segments[segments.count - 1].timeSignature = directive.state.timeSignature
-            }
-        }
-
-        let quarterToSeconds: (Double) -> Double = { quarter in
-            if quarter <= 0 { return 0 }
-            var seg = segments[0]
-            for s in segments.reversed() {
-                if quarter >= s.quarterStart {
-                    seg = s
-                    break
-                }
-            }
-            let deltaQuarters = quarter - seg.quarterStart
-            return seg.secondStart + deltaQuarters * (60.0 / seg.bpm)
-        }
+        let segments = TmdPlaybackRenderer.buildTempoSegments(
+            initialTempo: sheet.speed,
+            initialBeat: sheet.beat,
+            directives: sortedDirectives
+        )
 
         // Section markers
-        let orders: [Playback] =
-            !sheet.playback.isEmpty
-            ? sheet.playback
-            : sheet.entries.map(\.name).reduce(into: [String]()) { names, name in
-                if !names.contains(name) { names.append(name) }
-            }.map(Playback.name)
+        let orders = sheet.effectivePlaybackOrders
 
         var currentQuarter = 0.0
         var markerId = 1
@@ -92,7 +41,8 @@ public struct TmdReaperGenerator {
                 }
                 let paragraphDuration = TmdPlaybackRenderer.duration(
                     of: name, in: sheet, beat: markerTimeSignature)
-                let secondPos = quarterToSeconds(currentQuarter)
+                let secondPos = TmdPlaybackRenderer.quarterToSeconds(
+                    currentQuarter, segments: segments)
                 markerLines.append(
                     String(format: "  MARKER %d %.8f \"%@\" 0", markerId, secondPos, name))
                 markerId += 1
@@ -116,22 +66,13 @@ public struct TmdReaperGenerator {
             let instTimeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: instrument)
             guard instTimeline.events.contains(where: \.content.isSounding) else { continue }
             let midiInst = MIDIInstrument.resolve(instrument)
-            let channel: UInt8
-            if midiInst.isPercussion {
-                channel = 9
-            } else {
-                if melodyChannel == 9 { melodyChannel += 1 }
-                channel = melodyChannel % 16
-                melodyChannel += 1
-            }
+            let channel = midiInst.allocateChannel(nextMelodicChannel: &melodyChannel)
 
             // Pan
-            var pan: Double = 0.0
-            let lower = instrument.lowercased()
-            if lower.contains("left") || lower.contains("-l") {
-                pan = -0.8
-            } else if lower.contains("right") || lower.contains("-r") {
-                pan = 0.8
+            let pan: Double = switch MIDIInstrument.stereoPanHeuristic(for: instrument) {
+            case .left: -0.8
+            case .right: 0.8
+            case .center: 0.0
             }
 
             // Color
@@ -147,7 +88,9 @@ public struct TmdReaperGenerator {
             )
 
             let totalDurationQuarters = max(instTimeline.duration, currentQuarter)
-            let totalTrackSeconds = max(1.0, quarterToSeconds(totalDurationQuarters))
+            let totalTrackSeconds = max(
+                1.0, TmdPlaybackRenderer.quarterToSeconds(totalDurationQuarters, segments: segments)
+            )
 
             // Serialize inline MIDI events
             let sortedEvents = events.sorted { $0.tick < $1.tick }
@@ -281,17 +224,6 @@ public struct TmdReaperGenerator {
         }
         let native = (r & 0xFF) | ((g & 0xFF) << 8) | ((b & 0xFF) << 16)
         return 0x1000000 | native
-    }
-}
-
-private extension SectionDirectiveKind {
-    var affectsTempoOrMeter: Bool {
-        switch self {
-        case .tempo, .relativeTempo, .timeSignature:
-            true
-        case .dynamics, .absoluteKey, .explicitKey, .relativeKey, .fixedPitch:
-            false
-        }
     }
 }
 

@@ -579,4 +579,35 @@ public enum MIDIInstrument: Equatable, Sendable {
     public var isPercussion: Bool {
         self == .percussion
     }
+
+    /// Stereo pan heuristic derived from an instrument track name (`-L`, `left`, `-R`, `right`).
+    public enum StereoPanPosition: String, Equatable, Sendable {
+        case left
+        case center
+        case right
+    }
+
+    /// Infers stereo pan orientation from an instrument name.
+    public static func stereoPanHeuristic(for instrumentName: String) -> StereoPanPosition {
+        let lower = instrumentName.lowercased()
+        if lower.contains("left") || lower.contains("-l") {
+            return .left
+        } else if lower.contains("right") || lower.contains("-r") {
+            return .right
+        }
+        return .center
+    }
+
+    /// Allocates a 0-based MIDI channel (0...15), reserving channel 9 (GM channel 10) for percussion.
+    public func allocateChannel(nextMelodicChannel: inout UInt8) -> UInt8 {
+        if isPercussion {
+            return 9
+        }
+        if nextMelodicChannel == 9 {
+            nextMelodicChannel += 1
+        }
+        let channel = nextMelodicChannel % 16
+        nextMelodicChannel = (nextMelodicChannel + 1) % 16
+        return channel
+    }
 }

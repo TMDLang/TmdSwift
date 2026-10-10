@@ -39,19 +39,12 @@ public struct TmdMIDIGenerator {
                     sheet: effectiveSheet, timeline: timeline, ticksPerQuarter: ticksPerQuarter
                 ))
         ]
-        var melodyChannel = 0
+        var melodyChannel: UInt8 = 0
         for (_, instrument) in distinctInstruments.enumerated() {
             let timeline = TmdPlaybackRenderer.render(sheet: effectiveSheet, instrument: instrument)
             guard timeline.events.contains(where: \.content.isSounding) else { continue }
             let midiInstrument = MIDIInstrument.resolve(instrument)
-            let channel: UInt8
-            if midiInstrument.isPercussion {
-                channel = 9
-            } else {
-                if melodyChannel == 9 { melodyChannel += 1 }  // Skip percussion channel 10 (index 9)
-                channel = UInt8(melodyChannel % 16)
-                melodyChannel += 1
-            }
+            let channel = midiInstrument.allocateChannel(nextMelodicChannel: &melodyChannel)
             trackData.append(
                 TmdMIDIEncoder.encodeTrack(
                     events: instrumentEvents(
@@ -90,15 +83,17 @@ public struct TmdMIDIGenerator {
                     tick: 0,
                     message: .programChange(channel: channel, program: midiInstrument.program)))
         }
-        let lower = instrument.lowercased()
-        if lower.contains("left") || lower.contains("-l") {
+        switch MIDIInstrument.stereoPanHeuristic(for: instrument) {
+        case .left:
             events.append(
                 MIDIEvent(
                     tick: 0, message: .controlChange(channel: channel, controller: 10, value: 20)))
-        } else if lower.contains("right") || lower.contains("-r") {
+        case .right:
             events.append(
                 MIDIEvent(
                     tick: 0, message: .controlChange(channel: channel, controller: 10, value: 108)))
+        case .center:
+            break
         }
         for event in timeline.events {
             let start = midiTick(event.position, ticksPerQuarter: ticksPerQuarter)

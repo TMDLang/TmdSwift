@@ -5,11 +5,7 @@ public enum TmdSongTimingAnalyzer {
     public static func analyze(
         sheet: Sheet, timelineDirectives: [PlaybackDirectiveEvent]
     ) -> TmdTimingProfile {
-        let orders = sheet.playback.isEmpty
-            ? sheet.entries.map(\.name).reduce(into: [String]()) {
-                if !$0.contains($1) { $0.append($1) }
-            }.map(Playback.name)
-            : sheet.playback
+        let orders = sheet.effectivePlaybackOrders
 
         var state = PlaybackState(
             tempo: sheet.speed > 0 ? sheet.speed : 120.0,
@@ -52,7 +48,7 @@ public enum TmdSongTimingAnalyzer {
                     if directive.position > cursor {
                         let segment = directive.position - cursor
                         durationSeconds += segment * 60.0 / tempo
-                        measureCount += segment / measureDuration(for: meter)
+                        measureCount += segment / TmdPlaybackRenderer.measureDuration(for: meter)
                         cursor = directive.position
                     }
                     tempo = directive.state.tempo
@@ -61,7 +57,7 @@ public enum TmdSongTimingAnalyzer {
                 if endPosition > cursor {
                     let segment = endPosition - cursor
                     durationSeconds += segment * 60.0 / tempo
-                    measureCount += segment / measureDuration(for: meter)
+                    measureCount += segment / TmdPlaybackRenderer.measureDuration(for: meter)
                 }
 
                 let occurrence = sectionOccurrences[secName, default: 0] + 1
@@ -96,9 +92,5 @@ public enum TmdSongTimingAnalyzer {
             totalDurationSeconds: currentSeconds,
             totalMeasures: totalMeasures,
             sections: sections)
-    }
-
-    private static func measureDuration(for beat: Beat) -> Double {
-        Double(max(1, beat.count)) * 4.0 / Double(max(1, beat.noteValue))
     }
 }

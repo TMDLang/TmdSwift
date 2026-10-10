@@ -93,26 +93,8 @@ public struct TmdABCGenerator {
     }
 
     public static func resolveTempo(beat: Beat, quarterBPM: Double) -> String {
-        // Compound meter: denominator is 8 and numerator is a multiple of 3 (> 3, e.g. 6/8, 9/8, 12/8)
-        if beat.noteValue == 8 && beat.count > 3 && beat.count % 3 == 0 {
-            // Beat unit is a dotted-quarter note (in ABC represented as 3/8)
-            let bpm = Int((quarterBPM / 1.5).rounded())
-            return "Q:3/8=\(bpm)"
-        }
-        switch beat.noteValue {
-        case 2:
-            let bpm = Int((quarterBPM / 2.0).rounded())
-            return "Q:1/2=\(bpm)"
-        case 8:
-            let bpm = Int((quarterBPM * 2.0).rounded())
-            return "Q:1/8=\(bpm)"
-        case 16:
-            let bpm = Int((quarterBPM * 4.0).rounded())
-            return "Q:1/16=\(bpm)"
-        default:
-            let bpm = Int(quarterBPM.rounded())
-            return "Q:1/4=\(bpm)"
-        }
+        let m = beat.metronomeTempo(forQuarterBPM: quarterBPM)
+        return "Q:\(m.abcUnit)=\(m.perMinute)"
     }
 
     private static func formatDirective(_ directive: PlaybackDirectiveEvent) -> String {

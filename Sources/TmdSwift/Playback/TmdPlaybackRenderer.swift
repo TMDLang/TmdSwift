@@ -136,6 +136,21 @@ public struct PlaybackTempoConflict: Equatable, Sendable {
     public let tempos: [Double]
 }
 
+/// A contiguous segment of uniform tempo and time signature on the playback timeline.
+public struct TempoSegment: Equatable, Sendable {
+    public var quarterStart: Double
+    public var secondStart: Double
+    public var bpm: Double
+    public var timeSignature: Beat
+
+    public init(quarterStart: Double, secondStart: Double, bpm: Double, timeSignature: Beat) {
+        self.quarterStart = quarterStart
+        self.secondStart = secondStart
+        self.bpm = bpm
+        self.timeSignature = timeSignature
+    }
+}
+
 /// Expands immutable TMD AST data into a shared playback timeline.
 public enum TmdPlaybackRenderer {
     private struct PlaybackOrderCursor {
@@ -173,12 +188,62 @@ public enum TmdPlaybackRenderer {
     }
 
     private static func orders(for sheet: Sheet) -> [Playback] {
-        guard !sheet.playback.isEmpty else {
-            return sheet.entries.map(\.name).reduce(into: [String]()) { names, name in
-                if !names.contains(name) { names.append(name) }
-            }.map(Playback.name)
+        sheet.effectivePlaybackOrders
+    }
+
+    /// Builds piece-wise linear tempo segments from conductor directives.
+    public static func buildTempoSegments(
+        initialTempo: Double,
+        initialBeat: Beat = Beat(),
+        directives: [PlaybackDirectiveEvent]
+    ) -> [TempoSegment] {
+        let startBpm = initialTempo > 0 ? initialTempo : 120.0
+        var segments: [TempoSegment] = [
+            TempoSegment(
+                quarterStart: 0,
+                secondStart: 0,
+                bpm: startBpm,
+                timeSignature: initialBeat
+            )
+        ]
+        let sortedDirectives = directives.sorted { $0.position < $1.position }
+        for directive in sortedDirectives {
+            let affectsTempoOrMeter: Bool = switch directive.kind {
+            case .tempo, .relativeTempo, .timeSignature: true
+            case .dynamics, .absoluteKey, .explicitKey, .relativeKey, .fixedPitch: false
+            }
+            guard affectsTempoOrMeter else { continue }
+            let last = segments[segments.count - 1]
+            if directive.position > last.quarterStart {
+                let deltaQuarters = directive.position - last.quarterStart
+                let deltaSeconds = deltaQuarters * (60.0 / last.bpm)
+                let secondStart = last.secondStart + deltaSeconds
+                segments.append(
+                    TempoSegment(
+                        quarterStart: directive.position,
+                        secondStart: secondStart,
+                        bpm: directive.state.tempo,
+                        timeSignature: directive.state.timeSignature
+                    )
+                )
+            } else if directive.position == last.quarterStart {
+                segments[segments.count - 1].bpm = directive.state.tempo
+                segments[segments.count - 1].timeSignature = directive.state.timeSignature
+            }
         }
-        return sheet.playback
+        return segments
+    }
+
+    /// Converts a quarter-note position into elapsed seconds using piece-wise tempo segments.
+    public static func quarterToSeconds(_ quarter: Double, segments: [TempoSegment]) -> Double {
+        if quarter <= 0 || segments.isEmpty { return 0 }
+        var seg = segments[0]
+        for s in segments.reversed() where quarter >= s.quarterStart {
+            seg = s
+            break
+        }
+        let deltaQuarters = quarter - seg.quarterStart
+        return seg.secondStart + deltaQuarters * (60.0 / seg.bpm)
     }
 
     private static func initialState(for sheet: Sheet) -> PlaybackState {

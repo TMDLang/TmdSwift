@@ -108,26 +108,8 @@ public struct TmdLilyPondGenerator {
     }
 
     public static func resolveTempo(beat: Beat, quarterBPM: Double) -> String {
-        // Compound meter: denominator is 8 and numerator is a multiple of 3 (> 3, e.g. 6/8, 9/8, 12/8)
-        if beat.noteValue == 8 && beat.count > 3 && beat.count % 3 == 0 {
-            // Beat unit is a dotted-quarter note (4.)
-            let bpm = Int((quarterBPM / 1.5).rounded())
-            return "\\tempo 4. = \(bpm)"
-        }
-        switch beat.noteValue {
-        case 2:
-            let bpm = Int((quarterBPM / 2.0).rounded())
-            return "\\tempo 2 = \(bpm)"
-        case 8:
-            let bpm = Int((quarterBPM * 2.0).rounded())
-            return "\\tempo 8 = \(bpm)"
-        case 16:
-            let bpm = Int((quarterBPM * 4.0).rounded())
-            return "\\tempo 16 = \(bpm)"
-        default:
-            let bpm = Int(quarterBPM.rounded())
-            return "\\tempo 4 = \(bpm)"
-        }
+        let m = beat.metronomeTempo(forQuarterBPM: quarterBPM)
+        return "\\tempo \(m.lilyPondUnit) = \(m.perMinute)"
     }
 
     private static func formatDirective(_ directive: PlaybackDirectiveEvent) -> String {

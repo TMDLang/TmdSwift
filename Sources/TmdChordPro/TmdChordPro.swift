@@ -74,18 +74,7 @@ public struct TmdChordProGenerator: Sendable {
             } ?? distinctInstruments.first ?? "Piano"
 
         // Group sections by order
-        var seenNames = Set<String>()
-        var uniqueParagraphNames: [String] = []
-        for paragraph in sheet.entries {
-            if seenNames.insert(paragraph.name).inserted {
-                uniqueParagraphNames.append(paragraph.name)
-            }
-        }
-
-        let orders: [Playback] =
-            !sheet.playback.isEmpty
-            ? sheet.playback
-            : uniqueParagraphNames.map { .name($0) }
+        let orders = sheet.effectivePlaybackOrders
 
         let measuresPerLine = max(1, options.measuresPerLine)
         var currentKeyOffset = sheet.keySignature.semitoneOffset

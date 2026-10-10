@@ -21,6 +21,82 @@ public struct Beat: Equatable, Sendable {
         self.count = count
         self.noteValue = noteValue
     }
+
+    /// Resolves the canonical metronome beat unit and BPM for a quarter-note tempo (`quarterBPM`),
+    /// including compound-meter dotted-quarter conversion (e.g. `6/8`, `9/8`, `12/8`).
+    public func metronomeTempo(forQuarterBPM quarterBPM: Double) -> MetronomeTempo {
+        if noteValue == 8 && count > 3 && count % 3 == 0 {
+            let bpm = Int((quarterBPM / 1.5).rounded())
+            return MetronomeTempo(
+                beatUnit: "quarter",
+                lilyPondUnit: "4.",
+                abcUnit: "3/8",
+                isDotted: true,
+                perMinute: bpm
+            )
+        }
+        switch noteValue {
+        case 2:
+            let bpm = Int((quarterBPM / 2.0).rounded())
+            return MetronomeTempo(
+                beatUnit: "half",
+                lilyPondUnit: "2",
+                abcUnit: "1/2",
+                isDotted: false,
+                perMinute: bpm
+            )
+        case 8:
+            let bpm = Int((quarterBPM * 2.0).rounded())
+            return MetronomeTempo(
+                beatUnit: "eighth",
+                lilyPondUnit: "8",
+                abcUnit: "1/8",
+                isDotted: false,
+                perMinute: bpm
+            )
+        case 16:
+            let bpm = Int((quarterBPM * 4.0).rounded())
+            return MetronomeTempo(
+                beatUnit: "16th",
+                lilyPondUnit: "16",
+                abcUnit: "1/16",
+                isDotted: false,
+                perMinute: bpm
+            )
+        default:
+            let bpm = Int(quarterBPM.rounded())
+            return MetronomeTempo(
+                beatUnit: "quarter",
+                lilyPondUnit: "4",
+                abcUnit: "1/4",
+                isDotted: false,
+                perMinute: bpm
+            )
+        }
+    }
+}
+
+/// Canonical metronome representation resolved from a `Beat` time signature and quarter-note BPM.
+public struct MetronomeTempo: Equatable, Sendable {
+    public let beatUnit: String
+    public let lilyPondUnit: String
+    public let abcUnit: String
+    public let isDotted: Bool
+    public let perMinute: Int
+
+    public init(
+        beatUnit: String,
+        lilyPondUnit: String,
+        abcUnit: String,
+        isDotted: Bool,
+        perMinute: Int
+    ) {
+        self.beatUnit = beatUnit
+        self.lilyPondUnit = lilyPondUnit
+        self.abcUnit = abcUnit
+        self.isDotted = isDotted
+        self.perMinute = perMinute
+    }
 }
 
 /// Accidental symbol modifying the pitch (natural, sharp, or flat).
@@ -1257,6 +1333,17 @@ public struct Sheet: Equatable {
     ) {
         let expanded = TmdMacroEvaluator.expandOrTrap(self)
         return (expanded, expanded.distinctInstruments(fallbackToDefault: fallbackToDefault))
+    }
+
+    /// Returns `playback` when explicitly specified, or falls back to playing each distinct entry section name in appearance order.
+    public var effectivePlaybackOrders: [Playback] {
+        guard playback.isEmpty else { return playback }
+        var seen = Set<String>()
+        var names: [String] = []
+        for entry in entries where seen.insert(entry.name).inserted {
+            names.append(entry.name)
+        }
+        return names.map(Playback.name)
     }
 }
 
