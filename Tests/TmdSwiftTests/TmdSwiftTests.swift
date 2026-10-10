@@ -444,7 +444,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     #expect(sheet?.speed == 133.0)
     #expect(sheet?.beat.count == 4)
     #expect(sheet?.beat.noteValue == 4)
-    #expect(sheet?.entries.count == 10)
+    #expect(sheet?.entries.count == 11)
     #expect(sheet?.playback.count == 13)
 
     // Verify summary()
@@ -510,6 +510,63 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     #expect(
         testedCount >= 20,
         "Expected at least 20 sample TMD scores to be tested, found \(testedCount)")
+}
+
+@Test func testAllSampleScoresPassMeasureAndSyntaxChecks() throws {
+    let sampleDir = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("sample")
+
+    let enumerator = FileManager.default.enumerator(
+        at: sampleDir,
+        includingPropertiesForKeys: [.isRegularFileKey]
+    )
+
+    var checkedCount = 0
+    while let fileURL = enumerator?.nextObject() as? URL {
+        let ext = fileURL.pathExtension
+        let relativePath = fileURL.path.replacingOccurrences(of: sampleDir.path + "/", with: "")
+        guard ext == "tmd" || (ext == "md" && relativePath.hasPrefix("embed/")) else { continue }
+        let source = try String(contentsOf: fileURL, encoding: .utf8)
+
+        let snippets: [String]
+        if ext == "md" {
+            let parts = source.components(separatedBy: "```tmd")
+            snippets = parts.dropFirst().compactMap { part in
+                part.components(separatedBy: "```").first?.trimmingCharacters(in: .whitespacesAndNewlines)
+            }.filter { $0.hasPrefix("::SCORE::") }
+        } else {
+            snippets = [source]
+        }
+
+        for snippet in snippets {
+            let issues = TmdMeasureChecker.check(source: snippet)
+            #expect(
+                issues.isEmpty,
+                "Sample \(relativePath) has \(issues.count) measure/syntax issue(s): \(issues.map(\.description).joined(separator: "; "))"
+            )
+
+            let sheet = try TmdParser.parseThrowing(string: snippet)
+            for entry in sheet.entries {
+                for section in entry.sections {
+                    for group in section.unitGroups {
+                        for unit in group.units {
+                            if case .chord(let chord) = unit, case .custom(let raw) = chord.quality {
+                                Issue.record(
+                                    "Sample \(relativePath) (\(entry.name):\(entry.assignment ?? "")) has unrecognized chord suffix '\(raw)' in [\(chord.description)]"
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        checkedCount += 1
+    }
+
+    #expect(checkedCount >= 28, "Expected at least 28 sample files to be checked, found \(checkedCount)")
 }
 
 @Test func testFileURLAndEncoding() throws {

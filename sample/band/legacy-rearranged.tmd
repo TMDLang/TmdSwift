@@ -35,7 +35,7 @@ intro:Bass@|0| {
 intro:Drum@|0| {
     <4*>
     | x x X x | x x X x | x x X x | x x X x |
-    | x x X x | x x X x | x x X x | x x (xxxx)%(--) X |
+    | x x X x | x x X x | x x X x | x x (xxxx)%(-) X |
 }
 
 /* =============================================================

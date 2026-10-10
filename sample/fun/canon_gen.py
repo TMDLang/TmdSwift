@@ -507,11 +507,11 @@ class CanonGenerator:
         tonic_mid = "1" if self.is_minor else "5"
         tonic_third = "3" if self.is_minor else "3"
 
-        outro_lines.append(f"outro:{self.bass_instrument}@|0|{{ <1*> {tonic_bass}--- | }}")
+        outro_lines.append(f"outro:{self.bass_instrument}@|0|{{ <4*> | {tonic_bass} - - - | }}")
         cadence_notes = [tonic_high, tonic_mid, tonic_third]
         for i, voice in enumerate(self.voice_instruments):
             note = cadence_notes[i % len(cadence_notes)]
-            outro_lines.append(f"outro:{voice}@|0|{{ <1*> {note}--- | }}")
+            outro_lines.append(f"outro:{voice}@|0|{{ <4*> | {note} - - - | }}")
         outro_lines.append("")
         return "\n".join(outro_lines)
 

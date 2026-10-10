@@ -300,7 +300,11 @@ public final class Lexer {
         case "-":
             advance()
             return .tie
-        case "+" where !(peek(offset: 1).map { $0 >= "0" && $0 <= "9" } ?? false):
+        case "+"
+        where !(peek(offset: 1).map { $0 >= "0" && $0 <= "9" } ?? false)
+            || ((peek(offset: 1).map { $0 >= "1" && $0 <= "7" } ?? false)
+                && (peek(offset: 2).map { $0 == "'" || $0 == "," || $0 == "^" || $0 == "_" }
+                    ?? false)):
             advance()
             return .plus
         case "[":
