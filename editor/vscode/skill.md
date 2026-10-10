@@ -40,10 +40,10 @@ intro:Piano@|0|{
 1. **Header**: `::SCORE::` (must be at the beginning of the score).
 2. **Title**: `** Title **` (enclosed in double asterisks).
 3. **Tempo**: `!= 120` (in BPM, supports integer or decimals like `!= 120.5`).
-4. **Movable-do base**: `?= C` (sets the pitch of numbered degree `1`; it is not a major/minor declaration).
-5. **Explicit tonality**: `key= Bm` or `Key= C` (stores the actual declared key and mode separately from `?=`).
+4. **Pitch Center / Key Signature**: `?= C` (movable-do base tonic letter `C`..`B`, optional sharp `'` or flat `,`, e.g., `?= A'`, `?= E,`).
+5. **Declared Key Signature (Optional)**: `key= Bm` or `Key= Bm` (explicit musical tonality for sheet music key signature engraving, e.g. `key= Bm` paired with `?= D`).
 6. **Time Signature**: `<4/4>` (numerator/denominator, e.g. `<3/4>`, `<6/8>`).
-7. **Paragraphs / Instrument Tracks**: `name:instrument@|offset|{ ... }`.
+7. **Entries / Assignment Tracks**: `name:assignment@|offset|{ ... }`.
 8. **Playback Flow**: `-> section1 -> section2 ->#` (must start with `->` and terminate with `->#`).
 
 ---
@@ -170,16 +170,30 @@ Can be written as:
 - Chords can also take octaves: `[6_m]` (lower octave minor sixth), `[1^]`
 - Chords can be sustained with ties: `[Cmaj7] - - -`
 
-### 5.7 Percussion
-Percussion tracks accept velocity / pitch tokens:
-- `X`, `x`, `T`, `t`, `S`, `s` representing high-to-low / strong-to-weak percussion hits.
+### 5.7 Percussion & Drums (Channel 10)
+Percussion tracks (`Drums`, `Percussion`, `Groove`) send MIDI events to standard General MIDI Channel 10:
+- Standard Drum Hits:
+  - `B` / `D`: Bass Drum (Kick Drum 1, MIDI pitch 36).
+  - `S`: Snare Drum (Acoustic Snare, MIDI pitch 38).
+  - `X`: Closed Hi-Hat (MIDI pitch 42).
+  - `O`: Open Hi-Hat (MIDI pitch 46).
+  - `T`: Low-Mid Tom (MIDI pitch 45).
+  - `C`: Crash Cymbal 1 (MIDI pitch 49).
+- Lowercase letters (`b`, `d`, `s`, `x`, `o`, `t`, `c`) represent lighter velocity / ghost hits.
 Example:
 ```tmd
 intro:Drums@|0|{
     <16*>
-    XsTt x-- XtXs X-x- ts
+    X-X- S-X- X-X- S-X-
+    B-0- 0-0- B-B- 0-0-
 }
 ```
+
+> **Note on Timpani vs. Drum Kit**:
+> Timpani (Program 47) is a **pitched melodic instrument**, NOT General MIDI Channel 10 percussion.
+> - Acoustic Timpani kettle drums operate in the pitch range `D2` to `A3` (MIDI 38–57).
+> - In standard TMD soundfonts (e.g., Apple DLS `gs_instruments.dls`), Timpani produces its deepest, resonant orchestral thunder ("咚！咚！咚！") when written in the lower octave: `2__` (D2, MIDI 38) to `1_` (C3, MIDI 48).
+> - Since Timpani is tuned to specific harmonic fundamental pitches, use the canonical entry attribute `[pitchMode=fixed]` on the paragraph header (e.g. `intro:Timpani[pitchMode=fixed]@|0|{ ... }`, or legacy `{?= fixed}` inside the section) so global order transpositions (e.g. `-> {?+3} -> C`) do not shift kettle pitches unexpectedly.
 
 ### 5.8 Tuplets and Rhythmic Groupings
 Syntax:
@@ -193,21 +207,23 @@ The number of dashes in `%(...)` defines how many base beats the group occupies:
 
 ---
 
-## 6. Section Directives (Mid-Score Changes)
+## 6. Section Directives (Mid-Score & Local Track Changes)
 
 You can place inline directives anywhere inside a section between notes:
 - `{!= 140}`: Absolute tempo change (BPM).
 - `{!+ 10}`: Relative tempo change (+10 BPM).
-- `{?= D}`: Absolute movable-do base change to D.
-- `{key= Bm}`: Explicit tonality change to B minor, independent from movable-do playback context.
-- `{ppp}`, `{pp}`, `{p}`, `{mp}`, `{mf}`, `{f}`, `{ff}`, `{fff}`: Set playback velocity and emit engraved dynamic marks.
+- `{?= D}`: Absolute pitch center / movable-do base change to D.
 - `{?+ 2}`: Relative key transposition up 2 semitones.
+- `{?- 2}`: Relative key transposition down 2 semitones.
+- `{key= F#m}`: Mid-score explicit key signature change for sheet engraving (e.g. F# minor).
+- `{p}`, `{f}`, `{pp}`, `{mp}`, `{mf}`, `{ff}`: Dynamics markings (controls MIDI playback velocity and renders dynamic hairpins/symbols in MusicXML, LilyPond, ABC).
+- `[pitchMode=fixed]` on the entry header (e.g. `section:Timpani[pitchMode=fixed]@|0|{ ... }`) or inline `{?= fixed}`: Forces **Fixed Pitch** for this track entry (locks `keyOffset = 0`, immune to song-level playback transpositions like `-> {?+3} -> ...`). Ideal for Timpani, Sound FX, or non-transposing tracks.
 - `{<3/4>}`: Time signature change to 3/4.
 
 Example:
 ```tmd
 <4*>
-1 2 {!=140} 3 4
+| {p} 1 2 {f} 3 4 |
 ```
 
 ---
@@ -226,6 +242,13 @@ Rules:
   - `{?+3}`: Modulate up 3 semitones.
   - `{?-2}`: Modulate down 2 semitones.
   - `{?=G}`: Modulate to absolute key G.
+- Supports S-Expression macro combinators:
+  - `(play <Theme> <Instrument>)`: Bind abstract theme to an instrument track.
+  - `(loop <Theme> <Instrument> <times>)`: Repeat theme sequentially.
+  - `(canon <Theme> (<Inst1> <Inst2> ...) <bar_offset>)`: Auto-stagger voices in strict canon.
+  - `(layer <expr1> <expr2> ...)`: Concurrently play multiple voices/sections.
+  - `(seq <expr1> <expr2> ...)`: Sequentially chain multiple expressions.
+  - `(vary <Theme> <modifiers...>)`: Transform motives with pitch transposition (`+7`), inversion (`flip`), retrograde (`reverse`), or modal shift (`minor`/`major`).
 - Ends with `->#` (terminator).
 
 ---

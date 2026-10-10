@@ -202,7 +202,7 @@ public enum TmdSkill {
         > Timpani (Program 47) is a **pitched melodic instrument**, NOT General MIDI Channel 10 percussion.
         > - Acoustic Timpani kettle drums operate in the pitch range `D2` to `A3` (MIDI 38–57).
         > - In standard TMD soundfonts (e.g., Apple DLS `gs_instruments.dls`), Timpani produces its deepest, resonant orchestral thunder ("咚！咚！咚！") when written in the lower octave: `2__` (D2, MIDI 38) to `1_` (C3, MIDI 48).
-        > - Since Timpani is tuned to specific harmonic fundamental pitches, use `{?= fixed}` inside Timpani sections so global order transpositions (e.g. `-> {?+3} -> C`) do not shift kettle pitches unexpectedly.
+        > - Since Timpani is tuned to specific harmonic fundamental pitches, use the canonical entry attribute `[pitchMode=fixed]` on the paragraph header (e.g. `intro:Timpani[pitchMode=fixed]@|0|{ ... }`, or legacy `{?= fixed}` inside the section) so global order transpositions (e.g. `-> {?+3} -> C`) do not shift kettle pitches unexpectedly.
 
         ### 5.8 Tuplets and Rhythmic Groupings
         Syntax:
@@ -226,7 +226,7 @@ public enum TmdSkill {
         - `{?- 2}`: Relative key transposition down 2 semitones.
         - `{key= F#m}`: Mid-score explicit key signature change for sheet engraving (e.g. F# minor).
         - `{p}`, `{f}`, `{pp}`, `{mp}`, `{mf}`, `{ff}`: Dynamics markings (controls MIDI playback velocity and renders dynamic hairpins/symbols in MusicXML, LilyPond, ABC).
-        - `{?= fixed}` (or `{? fixed}`): Forces **Fixed Pitch** for this track section (locks `keyOffset = 0`, immune to song-level playback transpositions like `-> {?+3} -> ...`). Ideal for Timpani, Sound FX, or non-transposing tracks.
+        - `[pitchMode=fixed]` on the entry header (e.g. `section:Timpani[pitchMode=fixed]@|0|{ ... }`) or inline `{?= fixed}`: Forces **Fixed Pitch** for this track entry (locks `keyOffset = 0`, immune to song-level playback transpositions like `-> {?+3} -> ...`). Ideal for Timpani, Sound FX, or non-transposing tracks.
         - `{<3/4>}`: Time signature change to 3/4.
 
         Example:
