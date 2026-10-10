@@ -232,5 +232,47 @@ struct ABCValidationTests {
 
         // Section inline directive {key= F#m} -> K:F#m
         #expect(abc.contains("K:F#m"))
+        // In measure 2 under K:F#m (3 sharps: F#, C#, G#), degree 4 in ?= D is G4 natural -> must emit =g4
+        #expect(abc.contains("=g4"))
+    }
+
+    @Test func testABCOctaveAndIntraMeasureAccidentalMemory() throws {
+        // 1. In ?= D, degree 7_ is C#4 (c4) and 7,_ is C4 natural (=c4, NOT =C4 in octave 3 from double-counted delta).
+        let tmdD = """
+            ::SCORE::
+            ** ABC Octave in D **
+            != 120
+            ?= D
+            <4/4>
+
+            A:Piano@|0|{
+                <4*>
+                | 7_ 7,_ 7_ 1 |
+            }
+            -> A ->#
+            """
+        let sheetD = try TmdParser.parseThrowing(string: tmdD)
+        let abcD = TmdABCGenerator.generateABC(from: sheetD)
+        // First 7_ is c4, second 7,_ is =c4 (octave 4, not =C4), third 7_ in same measure must re-sharp as ^c4!
+        #expect(abcD.contains("c4 =c4 ^c4 d4"))
+
+        // 2. Intra-measure accidental cancellation and octave boundary in C major:
+        // | 1' 1 1, 7' | -> ^c4 =c4 _c4 ^b4
+        let tmdC = """
+            ::SCORE::
+            ** ABC Intra-Measure Memory **
+            != 120
+            ?= C
+            <4/4>
+
+            A:Piano@|0|{
+                <4*>
+                | 1' 1 1, 7' |
+            }
+            -> A ->#
+            """
+        let sheetC = try TmdParser.parseThrowing(string: tmdC)
+        let abcC = TmdABCGenerator.generateABC(from: sheetC)
+        #expect(abcC.contains("^c4 =c4 _c4 ^b4"))
     }
 }

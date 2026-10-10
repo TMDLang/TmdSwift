@@ -497,14 +497,9 @@ public struct TmdMusicXMLGenerator {
         chord: ChordSymbol, duration: Int, divisions: Int, keyOffset: Int
     ) -> String {
         // Output chord harmony symbol & note representation
-        let semitone: Int
-        if chord.root.isScaleDegree {
-            semitone = ((keyOffset + chord.root.semitoneOffset) % 12 + 12) % 12
-        } else {
-            semitone = (chord.root.semitoneOffset % 12 + 12) % 12
-        }
-        let rootStep = PitchMapping.musicXMLSteps[semitone]
-        let rootAlter = PitchMapping.musicXMLAlters[semitone]
+        let spelledRoot = PitchMapping.spell(chordRoot: chord.root, keyOffset: keyOffset)
+        let rootStep = spelledRoot.step
+        let rootAlter = spelledRoot.alter
 
         let kindText: String
         let kindValue: String
@@ -557,14 +552,9 @@ public struct TmdMusicXMLGenerator {
         xml += "        <kind text=\"\(escapeXML(kindText))\">\(kindValue)</kind>\n"
 
         if let bass = chord.bass {
-            let bassSemitone: Int
-            if bass.isScaleDegree {
-                bassSemitone = ((keyOffset + bass.semitoneOffset) % 12 + 12) % 12
-            } else {
-                bassSemitone = (bass.semitoneOffset % 12 + 12) % 12
-            }
-            let bassStep = PitchMapping.musicXMLSteps[bassSemitone]
-            let bassAlter = PitchMapping.musicXMLAlters[bassSemitone]
+            let spelledBass = PitchMapping.spell(chordRoot: bass, keyOffset: keyOffset)
+            let bassStep = spelledBass.step
+            let bassAlter = spelledBass.alter
             xml += """
                         <bass>
                           <bass-step>\(escapeXML(bassStep))</bass-step>
@@ -595,87 +585,16 @@ public struct TmdMusicXMLGenerator {
     ) {
         let degree = note.degree.rawValue
         guard (1...7).contains(degree) else { return ("C", 0, 4) }
-        let midiPitch = note.midiPitch(keyOffset: keyOffset)
-
-        // Convert MIDI pitch to Step + Alter + Octave
-        let semitone = ((midiPitch % 12) + 12) % 12
-        let step = PitchMapping.musicXMLSteps[semitone]
-        let alter = PitchMapping.musicXMLAlters[semitone]
-        let octave = (midiPitch / 12) - 1
-
-        return (step, alter, octave)
+        let spelled = PitchMapping.spell(note: note, keyOffset: keyOffset)
+        return (spelled.step, spelled.alter, spelled.octave)
     }
 
     private static func keySignatureToFifths(_ key: String) -> Int {
-        let trimmed = key.trimmingCharacters(in: .whitespaces).uppercased()
-        switch trimmed {
-        case "C": return 0
-        case "G": return 1
-        case "D": return 2
-        case "A": return 3
-        case "E": return 4
-        case "B": return 5
-        case "F#", "F'": return 6
-        case "F": return -1
-        case "BB", "B,": return -2
-        case "EB", "E,": return -3
-        case "AB", "A,": return -4
-        case "A#", "A'": return -5  // or 7 sharps
-        case "DB", "D,": return -5
-        case "GB", "G,": return -6
-        default: return 0
-        }
+        PitchMapping.keySignatureToFifths(key)
     }
 
     public static func parseKeyModeAndFifths(_ key: String) -> (fifths: Int, mode: String?) {
-        let trimmed = key.trimmingCharacters(in: .whitespaces)
-        var root = trimmed
-        var isMinor = false
-        if root.hasSuffix("m") && !root.hasSuffix("maj") {
-            isMinor = true
-            root.removeLast()
-        } else if root.lowercased().hasSuffix("minor") {
-            isMinor = true
-            root = String(root.dropLast(5)).trimmingCharacters(in: .whitespaces)
-        } else if root.lowercased().hasSuffix("major") {
-            root = String(root.dropLast(5)).trimmingCharacters(in: .whitespaces)
-        }
-
-        // Relative major fifths mapping for minor keys:
-        // Am -> C (0), Em -> G (1), Bm -> D (2), F#m -> A (3), C#m -> E (4), G#m -> B (5), D#m -> F# (6)
-        // Dm -> F (-1), Gm -> Bb (-2), Cm -> Eb (-3), Fm -> Ab (-4), Bbm -> Db (-5), Ebm -> Gb (-6)
-        if isMinor {
-            let normalizedRoot = root.uppercased()
-            let minorFifths: Int =
-                switch normalizedRoot {
-                case "A": 0
-                case "E": 1
-                case "B": 2
-                case "F#", "F'": 3
-                case "C#", "C'": 4
-                case "G#", "G'": 5
-                case "D#", "D'": 6
-                case "D": -1
-                case "G": -2
-                case "C": -3
-                case "F": -4
-                case "BB", "B,": -5
-                case "EB", "E,": -6
-                case "AB", "A,": -7
-                default:
-                    if normalizedRoot == "BB" || normalizedRoot == "B,"
-                        || normalizedRoot.hasPrefix("B")
-                            && (normalizedRoot.hasSuffix("B") || normalizedRoot.hasSuffix(","))
-                    {
-                        -5
-                    } else {
-                        keySignatureToFifths(root) - 3
-                    }
-                }
-            return (minorFifths, "minor")
-        } else {
-            return (keySignatureToFifths(root), "major")
-        }
+        PitchMapping.parseKeyModeAndFifths(key)
     }
 
     private static func escapeXML(_ string: String) -> String {

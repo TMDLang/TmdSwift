@@ -232,49 +232,14 @@ public struct TmdLilyPondGenerator {
     private static func noteToLilyPondPitch(_ note: Note, keyOffset: Int) -> String {
         let degree = note.degree.rawValue
         guard (1...7).contains(degree) else { return "c'" }
-        let midiPitch = note.midiPitch(keyOffset: keyOffset)
-
-        return midiPitchToLilyPond(midiPitch)
+        let spelled = PitchMapping.spell(note: note, keyOffset: keyOffset)
+        return PitchMapping.lilyPondPitch(spelled)
     }
 
     private static func chordToLilyPondPitches(_ chord: ChordSymbol, keyOffset: Int) -> [String] {
-        let root: Int
-        if chord.root.isScaleDegree {
-            root =
-                60 + keyOffset + chord.root.degree.semitoneOffset
-                + chord.root.accidental.semitoneOffset
-        } else {
-            root = 48 + chord.root.semitoneOffset
+        return PitchMapping.spellChordVoicing(chord, keyOffset: keyOffset).map {
+            PitchMapping.lilyPondPitch($0)
         }
-        var pitches: [Int] = chord.quality.semitoneIntervals.map { root + $0 }
-        if let bass = chord.bass {
-            let bassPitch: Int
-            if bass.isScaleDegree {
-                bassPitch =
-                    36 + keyOffset + bass.degree.semitoneOffset + bass.accidental.semitoneOffset
-                    + (bass.octave * 12)
-            } else {
-                bassPitch = 36 + bass.semitoneOffset
-            }
-            if !pitches.contains(bassPitch) {
-                pitches.insert(bassPitch, at: 0)
-            }
-        }
-        return pitches.map { midiPitchToLilyPond($0) }
-    }
-
-    private static func midiPitchToLilyPond(_ pitch: Int) -> String {
-        // LilyPond base: c' is Middle C (MIDI 60)
-        let semitone = ((pitch % 12) + 12) % 12
-        let octave = (pitch / 12) - 1  // Middle C is octave 4 in standard convention, octave 3 in LilyPond reference
-
-        var name = PitchMapping.lilyPondNames[semitone]
-        if octave > 3 {
-            name += String(repeating: "'", count: octave - 3)
-        } else if octave < 3 {
-            name += String(repeating: ",", count: 3 - octave)
-        }
-        return name
     }
 
     private static func lilyPondKey(_ key: String) -> String {

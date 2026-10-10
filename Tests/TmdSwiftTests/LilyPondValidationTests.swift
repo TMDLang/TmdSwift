@@ -223,4 +223,53 @@ struct LilyPondValidationTests {
         // Section inline directive {key= F#m} -> \key fis \minor
         #expect(ly.contains("\\key fis \\minor"))
     }
+
+    @Test func testLilyPondFlatKeyAndAccidentalSpelling() throws {
+        let tmd = """
+            ::SCORE::
+            ** LilyPond Flat Key Spelling **
+            != 120
+            ?= F
+            key= F
+            <4/4>
+
+            A:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
+                | [4] - - - |
+            }
+            -> A ->#
+            """
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let ly = TmdLilyPondGenerator.generateLilyPond(from: sheet)
+
+        #expect(ly.contains("\\key f \\major"))
+        // In F major, 1 2 3 4 = F4 G4 A4 Bb4 -> f'4 g'4 a'4 bes'4 (never ais'4)
+        #expect(ly.contains("f'4 g'4 a'4 bes'4"))
+        #expect(!ly.contains("ais'4"))
+        // Chord [4] in F major is Bb major triad -> <bes d' f'>1 (never ais)
+        #expect(ly.contains("bes"))
+        #expect(!ly.contains("ais"))
+
+        // Explicit flat and octave boundary in C major: 1, (Cb4 -> ces') and 7, (Bb4 -> bes')
+        let tmdC = """
+            ::SCORE::
+            ** LilyPond Chromatic Flats **
+            != 120
+            ?= C
+            <4/4>
+
+            A:Piano@|0|{
+                <4*>
+                | 1, 3, 7, 7' |
+            }
+            -> A ->#
+            """
+        let sheetC = try TmdParser.parseThrowing(string: tmdC)
+        let lyC = TmdLilyPondGenerator.generateLilyPond(from: sheetC)
+        #expect(lyC.contains("ces'4"))
+        #expect(lyC.contains("es'4"))
+        #expect(lyC.contains("bes'4"))
+        #expect(lyC.contains("bis'4"))
+    }
 }

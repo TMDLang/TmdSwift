@@ -341,11 +341,47 @@ public enum ScaleDegree: Int, CaseIterable, Equatable, Sendable {
     }
 }
 
+/// A diatonically spelled pitch with step, alteration, scientific octave, and MIDI pitch.
+public struct SpelledPitch: Equatable, Sendable {
+    public let stepIndex: Int
+    public let step: String
+    public let alter: Int
+    public let octave: Int
+    public let midiPitch: Int
+
+    public init(stepIndex: Int, step: String, alter: Int, octave: Int, midiPitch: Int) {
+        self.stepIndex = stepIndex
+        self.step = step
+        self.alter = alter
+        self.octave = octave
+        self.midiPitch = midiPitch
+    }
+}
+
+/// Diatonic scale degree and accidental profile for a tonic key offset.
+public struct TonicScaleInfo: Equatable, Sendable {
+    public let name: String
+    /// Accidental offset (-1, 0, 1) for steps C=0, D=1, E=2, F=3, G=4, A=5, B=6.
+    public let stepAccidentals: [Int]
+    /// Diatonic step (0..6) for scale degrees 1..7 (index 0..6).
+    public let degreeSteps: [Int]
+
+    public init(name: String, stepAccidentals: [Int], degreeSteps: [Int]) {
+        self.name = name
+        self.stepAccidentals = stepAccidentals
+        self.degreeSteps = degreeSteps
+    }
+}
+
 /// Shared pitch-name mappings used by the text and binary exporters.
 public enum PitchMapping {
     public static let tmdKeyNames = [
         "C", "C'", "D", "E,", "E", "F", "F'", "G", "A,", "A", "B,", "B",
     ]
+
+    public static let stepNames = ["C", "D", "E", "F", "G", "A", "B"]
+    public static let stepLowerNames = ["c", "d", "e", "f", "g", "a", "b"]
+    public static let naturalStepSemitones = [0, 2, 4, 5, 7, 9, 11]
 
     public static let musicXMLSteps = ["C", "C", "D", "D", "E", "F", "F", "G", "G", "A", "A", "B"]
     public static let musicXMLAlters = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0]
@@ -365,6 +401,279 @@ public enum PitchMapping {
 
     public static func keyName(forSemitone semitone: Int) -> String {
         tmdKeyNames[normalizedSemitone(semitone)]
+    }
+
+    public static func tonicScaleInfo(forKeyOffset keyOffset: Int) -> TonicScaleInfo {
+        switch normalizedSemitone(keyOffset) {
+        case 0:
+            return TonicScaleInfo(
+                name: "C", stepAccidentals: [0, 0, 0, 0, 0, 0, 0],
+                degreeSteps: [0, 1, 2, 3, 4, 5, 6])
+        case 1:
+            return TonicScaleInfo(
+                name: "Db", stepAccidentals: [0, -1, -1, 0, -1, -1, -1],
+                degreeSteps: [1, 2, 3, 4, 5, 6, 0])
+        case 2:
+            return TonicScaleInfo(
+                name: "D", stepAccidentals: [1, 0, 0, 1, 0, 0, 0],
+                degreeSteps: [1, 2, 3, 4, 5, 6, 0])
+        case 3:
+            return TonicScaleInfo(
+                name: "Eb", stepAccidentals: [0, 0, -1, 0, 0, -1, -1],
+                degreeSteps: [2, 3, 4, 5, 6, 0, 1])
+        case 4:
+            return TonicScaleInfo(
+                name: "E", stepAccidentals: [1, 1, 0, 1, 1, 0, 0],
+                degreeSteps: [2, 3, 4, 5, 6, 0, 1])
+        case 5:
+            return TonicScaleInfo(
+                name: "F", stepAccidentals: [0, 0, 0, 0, 0, 0, -1],
+                degreeSteps: [3, 4, 5, 6, 0, 1, 2])
+        case 6:
+            return TonicScaleInfo(
+                name: "F#", stepAccidentals: [1, 1, 1, 1, 1, 1, 0],
+                degreeSteps: [3, 4, 5, 6, 0, 1, 2])
+        case 7:
+            return TonicScaleInfo(
+                name: "G", stepAccidentals: [0, 0, 0, 1, 0, 0, 0],
+                degreeSteps: [4, 5, 6, 0, 1, 2, 3])
+        case 8:
+            return TonicScaleInfo(
+                name: "Ab", stepAccidentals: [0, -1, -1, 0, 0, -1, -1],
+                degreeSteps: [5, 6, 0, 1, 2, 3, 4])
+        case 9:
+            return TonicScaleInfo(
+                name: "A", stepAccidentals: [1, 0, 0, 1, 1, 0, 0],
+                degreeSteps: [5, 6, 0, 1, 2, 3, 4])
+        case 10:
+            return TonicScaleInfo(
+                name: "Bb", stepAccidentals: [0, 0, -1, 0, 0, 0, -1],
+                degreeSteps: [6, 0, 1, 2, 3, 4, 5])
+        case 11:
+            return TonicScaleInfo(
+                name: "B", stepAccidentals: [1, 1, 0, 1, 1, 1, 0],
+                degreeSteps: [6, 0, 1, 2, 3, 4, 5])
+        default:
+            return TonicScaleInfo(
+                name: "C", stepAccidentals: [0, 0, 0, 0, 0, 0, 0],
+                degreeSteps: [0, 1, 2, 3, 4, 5, 6])
+        }
+    }
+
+    /// Spells a numbered-notation `Note` into its canonical diatonic step, alteration, and scientific octave.
+    public static func spell(note: Note, keyOffset: Int) -> SpelledPitch {
+        let info = tonicScaleInfo(forKeyOffset: keyOffset)
+        let degIdx = max(0, min(6, note.degree.rawValue - 1))
+        let stepIndex = info.degreeSteps[degIdx]
+        let alter = info.stepAccidentals[stepIndex] + note.accidental.semitoneOffset
+        let midiPitch = note.midiPitch(keyOffset: keyOffset)
+        let naturalSemitone = naturalStepSemitones[stepIndex]
+        let octave = (midiPitch - naturalSemitone - alter) / 12 - 1
+        return SpelledPitch(
+            stepIndex: stepIndex,
+            step: stepNames[stepIndex],
+            alter: alter,
+            octave: octave,
+            midiPitch: midiPitch
+        )
+    }
+
+    /// Spells a `ChordRoot` (either movable-do degree or explicit letter root) into a `SpelledPitch`.
+    public static func spell(
+        chordRoot: ChordRoot,
+        keyOffset: Int,
+        defaultLetterOctave: Int = 3,
+        defaultDegreeOctave: Int = 4
+    ) -> SpelledPitch {
+        if chordRoot.isScaleDegree {
+            let note = Note(
+                accidental: chordRoot.accidental,
+                degree: chordRoot.degree,
+                octave: chordRoot.octave + (defaultDegreeOctave - 4)
+            )
+            return spell(note: note, keyOffset: keyOffset)
+        } else {
+            let stepIndex = max(0, min(6, chordRoot.degree.rawValue - 1))
+            let alter = chordRoot.accidental.semitoneOffset
+            let octave = defaultLetterOctave + chordRoot.octave
+            let naturalSemitone = naturalStepSemitones[stepIndex]
+            let midiPitch = (octave + 1) * 12 + naturalSemitone + alter
+            return SpelledPitch(
+                stepIndex: stepIndex,
+                step: stepNames[stepIndex],
+                alter: alter,
+                octave: octave,
+                midiPitch: midiPitch
+            )
+        }
+    }
+
+    /// Spells all chord members (including optional slash bass) diatonically relative to the spelled chord root.
+    public static func spellChordVoicing(_ chord: ChordSymbol, keyOffset: Int) -> [SpelledPitch] {
+        let rootPitch = spell(
+            chordRoot: chord.root,
+            keyOffset: keyOffset,
+            defaultLetterOctave: 3,
+            defaultDegreeOctave: 4
+        )
+        let intervals: [(diatonicSteps: Int, semitones: Int)] =
+            switch chord.quality {
+            case .major, .custom: [(0, 0), (2, 4), (4, 7)]
+            case .minor: [(0, 0), (2, 3), (4, 7)]
+            case .dominant7: [(0, 0), (2, 4), (4, 7), (6, 10)]
+            case .major7: [(0, 0), (2, 4), (4, 7), (6, 11)]
+            case .minor7: [(0, 0), (2, 3), (4, 7), (6, 10)]
+            case .diminished: [(0, 0), (2, 3), (4, 6)]
+            case .halfDiminished: [(0, 0), (2, 3), (4, 6), (6, 10)]
+            case .augmented: [(0, 0), (2, 4), (4, 8)]
+            case .suspended: [(0, 0), (3, 5), (4, 7)]
+            case .power: [(0, 0), (4, 7)]
+            }
+
+        var pitches: [SpelledPitch] = intervals.map { interval in
+            let totalSteps = rootPitch.stepIndex + interval.diatonicSteps
+            let memberStepIndex = totalSteps % 7
+            let memberOctave = rootPitch.octave + (totalSteps / 7)
+            let memberMidi = rootPitch.midiPitch + interval.semitones
+            let naturalMidi = (memberOctave + 1) * 12 + naturalStepSemitones[memberStepIndex]
+            let memberAlter = memberMidi - naturalMidi
+            return SpelledPitch(
+                stepIndex: memberStepIndex,
+                step: stepNames[memberStepIndex],
+                alter: memberAlter,
+                octave: memberOctave,
+                midiPitch: memberMidi
+            )
+        }
+
+        if let bass = chord.bass {
+            let bassPitch = spell(
+                chordRoot: bass,
+                keyOffset: keyOffset,
+                defaultLetterOctave: 2,
+                defaultDegreeOctave: 2
+            )
+            if !pitches.contains(where: { $0.midiPitch == bassPitch.midiPitch }) {
+                pitches.insert(bassPitch, at: 0)
+            }
+        }
+        return pitches
+    }
+
+    /// Formats a `SpelledPitch` as a standard Dutch LilyPond pitch token (with Middle C = `c'`).
+    public static func lilyPondPitch(_ spelled: SpelledPitch) -> String {
+        let base = stepLowerNames[max(0, min(6, spelled.stepIndex))]
+        let acc: String
+        if spelled.alter == 1 {
+            acc = "is"
+        } else if spelled.alter >= 2 {
+            acc = "isis"
+        } else if spelled.alter == -1 {
+            acc = "es"
+        } else if spelled.alter <= -2 {
+            acc = "eses"
+        } else {
+            acc = ""
+        }
+        let oct: String
+        if spelled.octave > 3 {
+            oct = String(repeating: "'", count: spelled.octave - 3)
+        } else if spelled.octave < 3 {
+            oct = String(repeating: ",", count: 3 - spelled.octave)
+        } else {
+            oct = ""
+        }
+        return "\(base)\(acc)\(oct)"
+    }
+
+    public static func keySignatureToFifths(_ key: String) -> Int {
+        let trimmed = key.trimmingCharacters(in: .whitespaces).uppercased()
+        switch trimmed {
+        case "C": return 0
+        case "G": return 1
+        case "D": return 2
+        case "A": return 3
+        case "E": return 4
+        case "B": return 5
+        case "F#", "F'": return 6
+        case "C#", "C'": return 7
+        case "F": return -1
+        case "BB", "B,": return -2
+        case "EB", "E,": return -3
+        case "AB", "A,": return -4
+        case "A#", "A'": return -2
+        case "DB", "D,": return -5
+        case "GB", "G,": return -6
+        case "CB", "C,": return -7
+        default: return 0
+        }
+    }
+
+    public static func parseKeyModeAndFifths(_ key: String) -> (fifths: Int, mode: String?) {
+        let trimmed = key.trimmingCharacters(in: .whitespaces)
+        var root = trimmed
+        var isMinor = false
+        if root.hasSuffix("m") && !root.hasSuffix("maj") {
+            isMinor = true
+            root.removeLast()
+        } else if root.lowercased().hasSuffix("minor") {
+            isMinor = true
+            root = String(root.dropLast(5)).trimmingCharacters(in: .whitespaces)
+        } else if root.lowercased().hasSuffix("major") {
+            root = String(root.dropLast(5)).trimmingCharacters(in: .whitespaces)
+        }
+
+        if isMinor {
+            let normalizedRoot = root.uppercased()
+            let minorFifths: Int =
+                switch normalizedRoot {
+                case "A": 0
+                case "E": 1
+                case "B": 2
+                case "F#", "F'": 3
+                case "C#", "C'": 4
+                case "G#", "G'": 5
+                case "D#", "D'": 6
+                case "A#", "A'": 7
+                case "D": -1
+                case "G": -2
+                case "C": -3
+                case "F": -4
+                case "BB", "B,": -5
+                case "EB", "E,": -6
+                case "AB", "A,": -7
+                default:
+                    if normalizedRoot == "BB" || normalizedRoot == "B,"
+                        || normalizedRoot.hasPrefix("B")
+                            && (normalizedRoot.hasSuffix("B") || normalizedRoot.hasSuffix(","))
+                    {
+                        -5
+                    } else {
+                        keySignatureToFifths(root) - 3
+                    }
+                }
+            return (minorFifths, "minor")
+        } else {
+            return (keySignatureToFifths(root), "major")
+        }
+    }
+
+    /// Returns the 7 default step alterations (C=0 .. B=6) implied by a written key signature string.
+    public static func keySignatureStepAlters(forKey key: String) -> [Int] {
+        let fifths = parseKeyModeAndFifths(key).fifths
+        var alters = [0, 0, 0, 0, 0, 0, 0]
+        if fifths > 0 {
+            let sharpOrder = [3, 0, 4, 1, 5, 2, 6]  // F, C, G, D, A, E, B
+            for i in 0..<min(7, fifths) {
+                alters[sharpOrder[i]] = 1
+            }
+        } else if fifths < 0 {
+            let flatOrder = [6, 2, 5, 1, 4, 0, 3]  // B, E, A, D, G, C, F
+            for i in 0..<min(7, -fifths) {
+                alters[flatOrder[i]] = -1
+            }
+        }
+        return alters
     }
 
     public static func semitoneToDegreeAccidental(_ semitone: Int) -> (

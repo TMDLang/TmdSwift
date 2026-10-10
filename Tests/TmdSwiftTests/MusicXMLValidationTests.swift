@@ -483,4 +483,63 @@ struct MusicXMLValidationTests {
         // Inline directive {key= F#m} -> 3 sharps, minor mode
         #expect(xml.contains("<key><fifths>3</fifths><mode>minor</mode></key>"))
     }
+
+    @Test func testMusicXMLFlatKeyAndAccidentalSpelling() throws {
+        // In F major (1 flat: Bb), degree 4 is Bb4 (step B, alter -1, octave 4), not A#4.
+        // Also test explicit flat 3, (Ab4 in F major) and Cb4 (1, in C major -> step C, alter -1, octave 4).
+        let tmdF = """
+            ::SCORE::
+            ** Flat Key Spelling **
+            != 120
+            ?= F
+            key= F
+            <4/4>
+
+            A:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
+                | [4] - [Bb/D] - |
+            }
+            -> A ->#
+            """
+        let sheetF = try TmdParser.parseThrowing(string: tmdF)
+        let xmlF = TmdMusicXMLGenerator.generateMusicXML(from: sheetF)
+
+        #expect(xmlF.contains("<fifths>-1</fifths>"))
+        // Degree 4 in F major must be B flat (step B, alter -1, octave 4), never A# (step A, alter 1)
+        #expect(
+            xmlF.contains(
+                "<step>B</step>\n            <alter>-1</alter>\n            <octave>4</octave>"))
+        #expect(!xmlF.contains("<step>A</step>\n            <alter>1</alter>"))
+        // Chord [4] and [Bb/D] root must also be B flat (root-step B, root-alter -1)
+        #expect(
+            xmlF.contains("<root-step>B</root-step>\n          <root-alter>-1</root-alter>"))
+        #expect(!xmlF.contains("<root-step>A</root-step>\n          <root-alter>1</root-alter>"))
+
+        // Boundary octave test: 1, in C major is Cb4 (step C, alter -1, octave 4) and 7' is B#4 (step B, alter 1, octave 4)
+        let tmdBoundary = """
+            ::SCORE::
+            ** Octave Boundary Accidentals **
+            != 120
+            ?= C
+            <4/4>
+
+            A:Piano@|0|{
+                <4*>
+                | 1, 7, 7' 1 |
+            }
+            -> A ->#
+            """
+        let sheetBoundary = try TmdParser.parseThrowing(string: tmdBoundary)
+        let xmlBoundary = TmdMusicXMLGenerator.generateMusicXML(from: sheetBoundary)
+        #expect(
+            xmlBoundary.contains(
+                "<step>C</step>\n            <alter>-1</alter>\n            <octave>4</octave>"))
+        #expect(
+            xmlBoundary.contains(
+                "<step>B</step>\n            <alter>-1</alter>\n            <octave>4</octave>"))
+        #expect(
+            xmlBoundary.contains(
+                "<step>B</step>\n            <alter>1</alter>\n            <octave>4</octave>"))
+    }
 }
