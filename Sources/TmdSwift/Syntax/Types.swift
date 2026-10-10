@@ -232,6 +232,24 @@ public enum ChordQuality: Equatable, Hashable, Sendable {
 public struct ChordSymbol: Equatable, Hashable, Sendable, ExpressibleByStringLiteral,
     CustomStringConvertible
 {
+    public static let extendedChordQualities: Set<String> = [
+        "6", "m6", "min6", "6/9", "69", "m6/9",
+        "9", "maj9", "m9", "min9",
+        "add9", "add2", "add4", "add11",
+        "11", "m11", "min11", "maj11",
+        "13", "maj13", "m13", "min13",
+        "sus2", "sus4", "7sus4", "7sus2", "9sus4",
+        "dim7", "aug7", "m7b5",
+        "7b5", "7#5", "7b9", "7#9", "7#11", "7b13",
+        "m(maj7)", "mmaj7", "maj7#11", "maj7#5",
+    ]
+
+    public static func isRecognizedExtendedQuality(_ suffix: String) -> Bool {
+        extendedChordQualities.contains(
+            suffix.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        )
+    }
+
     public let root: ChordRoot
     public let quality: ChordQuality
     public let bass: ChordRoot?
@@ -921,6 +939,29 @@ public struct Section: Equatable {
         self.unitGroups = unitGroups
         self.directives = directives
         self.barlinePositions = barlinePositions
+    }
+
+    /// Returns a copy of this section with all pitched `Note` / `[Note]` units transformed by `transform`.
+    public func mapNotes(_ transform: (Note) -> Note) -> Section {
+        let newGroups = unitGroups.map { group in
+            UnitGroup(
+                units: group.units.map { $0.mapNotes(transform) },
+                length: group.length
+            )
+        }
+        return Section(
+            noteLength: noteLength,
+            unitGroups: newGroups,
+            directives: directives,
+            barlinePositions: barlinePositions
+        )
+    }
+}
+
+extension Array where Element == Section {
+    /// Returns a copy of all sections with every pitched `Note` / `[Note]` unit transformed by `transform`.
+    public func mapNotes(_ transform: (Note) -> Note) -> [Section] {
+        map { $0.mapNotes(transform) }
     }
 }
 

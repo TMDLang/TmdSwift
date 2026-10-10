@@ -89,55 +89,6 @@ public struct TmdValidationOptions: Equatable, Sendable {
 /// Unified 6-stage TMD Score Validator and Semantic Linter (`TmdScoreValidator`).
 public enum TmdScoreValidator {
 
-    private static let extendedChordQualities: Set<String> = [
-        "6", "m6", "6/9", "9", "maj9", "m9", "add9", "add2", "add4", "add11",
-        "11", "m11", "maj11", "13", "maj13", "m13",
-        "sus2", "sus4", "7sus4", "7sus2", "9sus4",
-        "dim7", "m7b5", "7b5", "7#5", "7b9", "7#9", "7#11", "7b13",
-        "mmaj7", "maj7#11", "maj7#5", "m6/9",
-    ]
-
-    private static let knownInstrumentKeywords: [String] = [
-        // Drums / Percussion
-        "drum", "drums", "groove", "percussion", "beat", "drumkit", "cajon", "snare", "kick",
-        "hihat", "timpani", "kettledrum", "taiko", "tom", "cymbal", "woodblock", "agogo",
-        "steeldrum", "steelpan", "tinkle", "bell", "chimes", "tubular", "vibraphone", "vibes",
-        "musicbox", "xylophone", "marimba", "dulcimer", "santur", "celesta", "glock",
-        // Guitars & Plucked
-        "guitar", "nylon", "steel", "jazz", "clean", "muted", "overdrive", "od", "distortion",
-        "dist", "fuzz", "heavy", "metal", "harmonics", "ukulele", "banjo", "sitar", "shamisen",
-        "koto", "guzheng", "zheng", "pipa", "lute", "mandolin", "harp", "kalimba", "mbira",
-        // Bass
-        "bass", "fretless", "slap", "contrabass", "doublebass", "upright",
-        // Strings
-        "violin", "viola", "cello", "violoncello", "fiddle", "string", "strings", "pizzicato",
-        "pizz", "tremolo", "orchestra", "orchhit", "erhu",
-        // Brass
-        "trumpet", "cornet", "trombone", "tuba", "horn", "brass", "flugelhorn", "euphonium",
-        // Woodwinds / Pipe / Reed
-        "sax", "saxophone", "barisax", "oboe", "englishhorn", "coranglais", "bassoon", "fagott",
-        "clarinet", "piccolo", "flute", "pipe", "recorder", "panflute", "bottle", "shakuhachi",
-        "whistle", "ocarina", "bagpipe", "shanai", "shehnai", "dizi", "xiao", "suona", "sheng",
-        // Keys / Organ / Synth
-        "piano", "keyboard", "grand", "clavinet", "clavi", "harpsichord", "cembalo", "ep",
-        "rhodes", "wurlitzer", "dx7", "fmep", "honky", "organ", "drawbar", "b3", "hammond",
-        "accordion", "bandoneon", "harmonica", "pad", "polysynth", "newage", "metallic",
-        "bowed", "sweep", "halo", "warm", "lead", "square", "saw", "calliope", "charang",
-        "chiff", "fifths", "synth", "arp", "arpeggio", "pluck", "sub", "motif", "accomp",
-        // Vocal / Choir / Chords
-        "vocal", "voice", "choir", "chorus", "miku", "utau", "teto", "sing", "melody",
-        "soprano", "alto", "tenor", "baritone", "chord", "chords",
-        // Sound Effects
-        "fretnoise", "breath", "seashore", "ocean", "bird", "telephone", "phone", "helicopter",
-        "chopper", "applause", "clapping", "cheer", "gunshot", "gun", "soundtrack",
-        "atmosphere", "brightness", "goblins", "crystal", "echoes", "scifi", "sci-fi", "fxrain",
-        // CJK Common Track Names
-        "鋼琴", "吉他", "木吉他", "電吉他", "貝斯", "鼓", "爵士鼓", "打擊", "小提琴", "中提琴",
-        "大提琴", "低音提琴", "弦樂", "長笛", "短笛", "雙簧管", "單簧管", "豎笛", "低音管",
-        "薩克斯風", "小號", "長號", "法國號", "低音號", "銅管", "古箏", "二胡", "琵琶",
-        "竹笛", "主唱", "人聲", "合唱", "和弦", "主旋律",
-    ]
-
     /// Validates a TMD score string and returns all Error and Warning diagnostics.
     public static func validate(
         source: String,
@@ -666,8 +617,7 @@ public enum TmdScoreValidator {
     }
 
     private static func isRecognizedExtendedChordSuffix(_ suffix: String) -> Bool {
-        let lower = suffix.lowercased().trimmingCharacters(in: .whitespaces)
-        return extendedChordQualities.contains(lower)
+        ChordSymbol.isRecognizedExtendedQuality(suffix)
     }
 
     private static func normalizeInstrumentKey(_ name: String) -> String {
@@ -681,16 +631,7 @@ public enum TmdScoreValidator {
     }
 
     private static func isRecognizedInstrument(_ name: String) -> Bool {
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if let prog = UInt8(trimmed), prog <= 127 { return true }
-        for prefix in ["prog:", "program:", "prg:", "p:", "prog", "program", "prg"] {
-            if trimmed.hasPrefix(prefix) {
-                let suffix = trimmed.dropFirst(prefix.count).trimmingCharacters(
-                    in: .whitespacesAndNewlines)
-                if let prog = UInt8(suffix), prog <= 127 { return true }
-            }
-        }
-        return knownInstrumentKeywords.contains { trimmed.contains($0) }
+        MIDIInstrument.isRecognized(name)
     }
 
     private static func findEntryLine(

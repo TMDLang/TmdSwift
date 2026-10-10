@@ -118,71 +118,18 @@ extension TmdRefactor {
         section: String? = nil,
         octaveShift: Int = 0
     ) throws -> String {
-        let sheet = try TmdParser.parseThrowing(string: source)
-        var matching = sheet.entries.filter { $0.assignment == sourceInstrument }
-        if let sec = section {
-            matching = matching.filter { $0.name == sec }
-        }
-        if matching.isEmpty {
-            if let sec = section {
-                throw TmdRefactorError.trackNotFound("\(sec):\(sourceInstrument)")
-            }
-            throw TmdRefactorError.instrumentNotFound(sourceInstrument)
-        }
-
-        let duplicatedParagraphs: [Entry] = matching.map { orig in
-            let clonedSections = orig.sections.map { sec in
-                let clonedGroups = sec.unitGroups.map { g in
-                    let clonedUnits = g.units.map { u in
-                        u.mapNotes { note in
-                            Note(
-                                accidental: note.accidental,
-                                degree: note.degree,
-                                octave: note.octave + octaveShift
-                            )
-                        }
-                    }
-                    return UnitGroup(units: clonedUnits, length: g.length)
-                }
-                return Section(
-                    noteLength: sec.noteLength, unitGroups: clonedGroups,
-                    directives: sec.directives, barlinePositions: sec.barlinePositions)
-            }
-            return Entry(
-                name: orig.name,
-                assignment: targetInstrument,
-                start: orig.start,
-                sections: clonedSections,
-                executionTime: orig.executionTime,
-                showProgram: orig.showProgram
+        try cloneAndInsertTrack(
+            source: source,
+            sourceInstrument: sourceInstrument,
+            targetInstrument: targetInstrument,
+            section: section
+        ) { note in
+            Note(
+                accidental: note.accidental,
+                degree: note.degree,
+                octave: note.octave + octaveShift
             )
         }
-
-        let newParagraphsText =
-            duplicatedParagraphs
-            .map { $0.format() }
-            .joined(separator: "\n")
-
-        var combined: String
-        let orderPattern = "(^|\\n)\\s*->"
-        if let regex = try? NSRegularExpression(pattern: orderPattern, options: []),
-            let match = regex.firstMatch(
-                in: source, options: [],
-                range: NSRange(source.startIndex..<source.endIndex, in: source))
-        {
-            let matchedRange = Range(match.range, in: source)!
-            let insertPos = source.index(
-                matchedRange.lowerBound, offsetBy: source[matchedRange.lowerBound] == "\n" ? 1 : 0)
-            combined =
-                String(source[..<insertPos]) + "\n" + newParagraphsText + "\n"
-                + String(source[insertPos...])
-        } else {
-            combined = source + "\n\n" + newParagraphsText
-        }
-
-        let formatted = format(combined)
-        _ = try TmdParser.parseThrowing(string: formatted)
-        return formatted
     }
 
     /// Generates diatonic harmony (e.g. parallel 3rd up: intervalSteps = 2, 3rd down: intervalSteps = -2).
@@ -192,6 +139,23 @@ extension TmdRefactor {
         harmonyInstrument: String,
         section: String? = nil,
         intervalSteps: Int
+    ) throws -> String {
+        try cloneAndInsertTrack(
+            source: source,
+            sourceInstrument: sourceInstrument,
+            targetInstrument: harmonyInstrument,
+            section: section
+        ) { note in
+            transposeNoteDiatonicSteps(note, steps: intervalSteps)
+        }
+    }
+
+    private static func cloneAndInsertTrack(
+        source: String,
+        sourceInstrument: String,
+        targetInstrument: String,
+        section: String?,
+        transformNote: (Note) -> Note
     ) throws -> String {
         let sheet = try TmdParser.parseThrowing(string: source)
         var matching = sheet.entries.filter { $0.assignment == sourceInstrument }
@@ -205,47 +169,24 @@ extension TmdRefactor {
             throw TmdRefactorError.instrumentNotFound(sourceInstrument)
         }
 
-        let steps = intervalSteps
-        let harmonizedParagraphs: [Entry] = matching.map { orig in
-            let clonedSections = orig.sections.map { sec in
-                let clonedGroups = sec.unitGroups.map { g in
-                    let clonedUnits = g.units.map { u in
-                        u.mapNotes { note in
-                            let currentDeg = note.degree.rawValue  // 1..7
-                            let zeroIndexed = currentDeg - 1  // 0..6
-                            let newZero = zeroIndexed + steps
-                            let newDegVal = (((newZero % 7) + 7) % 7) + 1
-                            let octaveDelta = Int(floor(Double(newZero) / 7.0))
-                            let newDegree = ScaleDegree(rawValue: newDegVal) ?? note.degree
-                            return Note(
-                                accidental: note.accidental,
-                                degree: newDegree,
-                                octave: note.octave + octaveDelta
-                            )
-                        }
-                    }
-                    return UnitGroup(units: clonedUnits, length: g.length)
-                }
-                return Section(
-                    noteLength: sec.noteLength, unitGroups: clonedGroups,
-                    directives: sec.directives, barlinePositions: sec.barlinePositions)
-            }
-            return Entry(
+        let clonedParagraphs: [Entry] = matching.map { orig in
+            Entry(
                 name: orig.name,
-                assignment: harmonyInstrument,
+                assignment: targetInstrument,
+                pitchMode: orig.pitchMode,
                 start: orig.start,
-                sections: clonedSections,
+                sections: orig.sections.mapNotes(transformNote),
                 executionTime: orig.executionTime,
                 showProgram: orig.showProgram
             )
         }
 
         let newParagraphsText =
-            harmonizedParagraphs
+            clonedParagraphs
             .map { $0.format() }
             .joined(separator: "\n")
 
-        var combined: String
+        let combined: String
         let orderPattern = "(^|\\n)\\s*->"
         if let regex = try? NSRegularExpression(pattern: orderPattern, options: []),
             let match = regex.firstMatch(

@@ -263,4 +263,63 @@ struct ScoreValidatorTests {
         #expect(lspDiags.contains { $0.severity == 1 })
         #expect(lspDiags.contains { $0.severity == 2 })
     }
+
+    @Test func testValidationAndTransformSSOT() throws {
+        // 1. ChordSymbol.extendedChordQualities / isRecognizedExtendedQuality (unified with tmd-ts)
+        #expect(ChordSymbol.extendedChordQualities.contains("add9"))
+        #expect(ChordSymbol.extendedChordQualities.contains("m7b5"))
+        #expect(ChordSymbol.extendedChordQualities.contains("m(maj7)"))
+        #expect(ChordSymbol.extendedChordQualities.contains("min9"))
+        #expect(ChordSymbol.extendedChordQualities.contains("aug7"))
+        #expect(ChordSymbol.isRecognizedExtendedQuality("7#11"))
+        #expect(ChordSymbol.isRecognizedExtendedQuality("69"))
+        #expect(!ChordSymbol.isRecognizedExtendedQuality("weirdquality"))
+
+        // 2. MIDIInstrument.isRecognized (including GM, CJK, vocal, and role keywords)
+        #expect(MIDIInstrument.isRecognized("Piano"))
+        #expect(MIDIInstrument.isRecognized("prog:40"))
+        #expect(MIDIInstrument.isRecognized("Perc"))
+        #expect(MIDIInstrument.isRecognized("Gtr"))
+        #expect(MIDIInstrument.isRecognized("Uke"))
+        #expect(MIDIInstrument.isRecognized("Vox"))
+        #expect(MIDIInstrument.isRecognized("Miku"))
+        #expect(MIDIInstrument.isRecognized("鋼琴"))
+        #expect(MIDIInstrument.isRecognized("電吉他"))
+        #expect(MIDIInstrument.isRecognized("古箏"))
+        #expect(!MIDIInstrument.isRecognized("Unknown"))
+        #expect(!MIDIInstrument.isRecognized("UnknownMartianZorg"))
+
+        // 3. Section.mapNotes / [Section].mapNotes
+        let sheet = try TmdParser.parseThrowing(
+            string: """
+                ::SCORE::
+                != 120
+                ?= C
+                <4/4>
+                A:Piano@|0|{
+                    <4*>
+                    | 1 2+4 [C] 0 |
+                }
+                -> A ->#
+                """)
+        let sec = try #require(sheet.entries.first?.sections.first)
+        let shiftedSections = [sec].mapNotes { note in
+            TmdRefactor.transposeNoteDiatonicSteps(note, steps: 2)
+        }
+        let formattedSection = shiftedSections.first?.format() ?? ""
+        #expect(formattedSection.contains("3 4+6 [C] 0"))
+
+        // 4. TmdScoreValidator source does not duplicate knownInstrumentKeywords or extendedChordQualities
+        let packageRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let validatorSrc = try String(
+            contentsOf: packageRoot.appendingPathComponent(
+                "Sources/TmdSwift/Validation/TmdScoreValidator.swift"),
+            encoding: .utf8
+        )
+        #expect(!validatorSrc.contains("knownInstrumentKeywords"))
+        #expect(!validatorSrc.contains("private static let extendedChordQualities"))
+    }
 }

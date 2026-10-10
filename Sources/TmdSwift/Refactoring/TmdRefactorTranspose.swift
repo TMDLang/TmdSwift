@@ -91,6 +91,20 @@ extension TmdRefactor {
         return PitchMapping.keyName(forSemitone: newOffset)
     }
 
+    /// Transposes a numbered-notation `Note` by `steps` diatonic scale steps, wrapping 1..7 and adjusting octave.
+    public static func transposeNoteDiatonicSteps(_ note: Note, steps: Int) -> Note {
+        let zeroIndexed = note.degree.rawValue - 1
+        let newZero = zeroIndexed + steps
+        let newDegVal = (((newZero % 7) + 7) % 7) + 1
+        let octaveDelta = Int(floor(Double(newZero) / 7.0))
+        let newDegree = ScaleDegree(rawValue: newDegVal) ?? note.degree
+        return Note(
+            accidental: note.accidental,
+            degree: newDegree,
+            octave: note.octave + octaveDelta
+        )
+    }
+
     static func transposeTmdNote(
         _ noteStr: String,
         semitones: Int,
@@ -111,7 +125,9 @@ extension TmdRefactor {
             return noteStr
         }
 
-        guard let deg = Int(nsStr.substring(with: match.range(at: 1))) else { return noteStr }
+        guard let deg = Int(nsStr.substring(with: match.range(at: 1))),
+            let scaleDegree = ScaleDegree(rawValue: deg)
+        else { return noteStr }
         let acc =
             match.range(at: 2).location != NSNotFound
             ? nsStr.substring(with: match.range(at: 2)) : ""
@@ -127,19 +143,17 @@ extension TmdRefactor {
         }
 
         if diatonicSteps != 0 && semitones == 0 {
-            let zeroIndexed = deg - 1
-            let newZero = zeroIndexed + diatonicSteps
-            let newDeg = (((newZero % 7) + 7) % 7) + 1
-            let addedOctaves = Int(floor(Double(newZero) / 7.0))
-            let finalOctave = octaveDelta + addedOctaves
-
+            let shifted = transposeNoteDiatonicSteps(
+                Note(accidental: .natural, degree: scaleDegree, octave: octaveDelta),
+                steps: diatonicSteps
+            )
             var newOctStr = ""
-            if finalOctave > 0 {
-                newOctStr = String(repeating: "^", count: finalOctave)
-            } else if finalOctave < 0 {
-                newOctStr = String(repeating: "_", count: -finalOctave)
+            if shifted.octave > 0 {
+                newOctStr = String(repeating: "^", count: shifted.octave)
+            } else if shifted.octave < 0 {
+                newOctStr = String(repeating: "_", count: -shifted.octave)
             }
-            return "\(newDeg)\(acc)\(newOctStr)"
+            return "\(shifted.degree.rawValue)\(acc)\(newOctStr)"
         }
 
         var accSemitone = 0
