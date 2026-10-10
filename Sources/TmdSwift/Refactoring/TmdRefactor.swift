@@ -52,7 +52,7 @@ public struct TmdRefactor {
 
     private static let paragraphHeaderRegex = try! NSRegularExpression(
         pattern:
-            "^([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)\\s*:\\s*([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)(@[^{]*)?\\s*\\{",
+            "^([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)\\s*:\\s*([a-zA-Z0-9_\\-\\u4e00-\\u9fa5]+)(?:\\s*\\[[^\\]]*\\])?\\s*(@[^{]*)?\\s*\\{",
         options: []
     )
 

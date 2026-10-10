@@ -247,7 +247,9 @@ public enum TmdMeasureRenderer {
             // Fill gaps with rests to guarantee conservation of measure duration
             var paddedEvents: [MeasureEvent] = []
             var cursor = 0.0
-            let state = rawMeasureEvents.first?.state ?? activeState
+            let state =
+                (rawMeasureEvents.first.map { $0.startOffset <= epsilon } ?? false)
+                ? rawMeasureEvents.first!.state : activeState
 
             for ev in rawMeasureEvents {
                 let gap = ev.startOffset - cursor

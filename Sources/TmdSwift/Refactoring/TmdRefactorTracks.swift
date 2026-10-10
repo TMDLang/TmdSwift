@@ -4,11 +4,11 @@ extension TmdRefactor {
     public static func renameInstrument(
         in source: String, from oldInstrument: String, to newInstrument: String
     ) throws -> String {
-        // A paragraph header has the syntax: <name>:<instrument>@...
-        // We match <name>:<oldInstrument>@ and replace with <name>:<newInstrument>@
+        // A paragraph header has the syntax: <name>:<instrument>[optional attr]@...
         let pattern =
             "([A-Za-z0-9_\\-\\u4e00-\\u9fa5]+)\\s*:\\s*"
-            + NSRegularExpression.escapedPattern(for: oldInstrument) + "\\s*@"
+            + NSRegularExpression.escapedPattern(for: oldInstrument)
+            + "\\s*(\\[[^\\]]*\\])?\\s*@"
         guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
             return source
         }
@@ -21,7 +21,7 @@ extension TmdRefactor {
         }
 
         let replaced = regex.stringByReplacingMatches(
-            in: source, options: [], range: range, withTemplate: "$1:\(newInstrument)@")
+            in: source, options: [], range: range, withTemplate: "$1:\(newInstrument)$2@")
         // Verify valid TMD score after rename
         _ = try TmdParser.parseThrowing(string: replaced)
         return replaced
@@ -215,7 +215,7 @@ extension TmdRefactor {
 
         var seenInstruments: [String] = []
         for p in sheet.entries {
-            let assignment = p.assignment ?? ""
+            guard let assignment = p.assignment, !assignment.isEmpty else { continue }
             if !seenInstruments.contains(assignment) {
                 seenInstruments.append(assignment)
             }
@@ -223,8 +223,8 @@ extension TmdRefactor {
 
         var linearParagraphs: [Entry] = []
         for inst in seenInstruments {
-            var combinedUnitGroups: [UnitGroup] = []
-            var baseNoteLength = 4
+            var combinedSections: [Section] = []
+            var sourceEntries: [Entry] = []
 
             for ord in sheet.playback {
                 guard case .name(let sName) = ord else { continue }
@@ -235,22 +235,43 @@ extension TmdRefactor {
                 else {
                     continue
                 }
+                sourceEntries.append(para)
                 for sec in para.sections {
-                    baseNoteLength = sec.noteLength
-                    combinedUnitGroups.append(contentsOf: sec.unitGroups)
+                    if let prev = combinedSections.last, prev.noteLength == sec.noteLength {
+                        combinedSections.removeLast()
+                        let offset = prev.unitGroups.reduce(0) { $0 + $1.length }
+                        let shiftedDirectives = sec.directives.map {
+                            SectionDirective(position: $0.position + offset, kind: $0.kind)
+                        }
+                        let shiftedBarlines = sec.barlinePositions.map { $0 + offset }
+                        let mergedBarlines = Array(Set(prev.barlinePositions + shiftedBarlines))
+                            .sorted()
+                        combinedSections.append(
+                            Section(
+                                noteLength: prev.noteLength,
+                                unitGroups: prev.unitGroups + sec.unitGroups,
+                                directives: prev.directives + shiftedDirectives,
+                                barlinePositions: mergedBarlines
+                            ))
+                    } else {
+                        combinedSections.append(sec)
+                    }
                 }
             }
+
+            let pitchModes = Set(sourceEntries.map(\.pitchMode))
+            let executionTimes = Set(sourceEntries.compactMap(\.executionTime))
+            let showPrograms = Set(sourceEntries.compactMap(\.showProgram))
 
             linearParagraphs.append(
                 Entry(
                     name: "linear",
                     assignment: inst,
+                    pitchMode: pitchModes.count == 1 ? pitchModes.first! : .transposing,
                     start: 0,
-                    sections: [
-                        Section(
-                            noteLength: baseNoteLength, unitGroups: combinedUnitGroups,
-                            directives: [])
-                    ]
+                    sections: combinedSections,
+                    executionTime: executionTimes.count == 1 ? executionTimes.first : nil,
+                    showProgram: showPrograms.count == 1 ? showPrograms.first : nil
                 ))
         }
 
@@ -258,6 +279,7 @@ extension TmdRefactor {
             name: sheet.name,
             speed: sheet.speed,
             keySignature: sheet.keySignature,
+            declaredKey: sheet.declaredKey,
             beat: sheet.beat,
             entries: linearParagraphs,
             playback: [.name("linear")],

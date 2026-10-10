@@ -93,12 +93,13 @@ public enum TmdSongTonalityAnalyzer {
             let fixedPitch = sheet.entries
                 .filter { $0.name == sec.name }
                 .contains { paragraph in
-                    paragraph.sections.contains { section in
-                        section.directives.contains { directive in
-                            if case .fixedPitch = directive.kind { return true }
-                            return false
+                    paragraph.pitchMode == .fixed
+                        || paragraph.sections.contains { section in
+                            section.directives.contains { directive in
+                                if case .fixedPitch = directive.kind { return true }
+                                return false
+                            }
                         }
-                    }
                 }
             // PlaybackState.keyOffset already includes the initial score key.
             // Adding sheet.keySignature here would apply that key twice for
@@ -164,11 +165,11 @@ public enum TmdSongTonalityAnalyzer {
         var prevFifths = circleOfFifthsStep(tonicOffset: prevOffset)
         for sec in sectionProfiles {
             let current = sec.inferredTonality
-            if let previous = previousInference, isStable(previous), isStable(current),
-                current.tonic != previous.tonic || current.mode != previous.mode,
-                let currentTonic = current.tonic
+            guard isStable(current), let currentTonic = current.tonic else { continue }
+            let currentOffset = pitchClassOffset(currentTonic)
+            if let previous = previousInference, isStable(previous),
+                current.tonic != previous.tonic || current.mode != previous.mode
             {
-                let currentOffset = pitchClassOffset(currentTonic)
                 let diff = currentOffset - prevOffset
                 let semitoneDiff = diff >= 0 ? "+\(diff)" : "\(diff)"
                 var stepDiff = circleOfFifthsStep(tonicOffset: currentOffset) - prevFifths
@@ -188,10 +189,10 @@ public enum TmdSongTonalityAnalyzer {
                     TmdTonalityTransition(
                         sectionName: sec.sectionName, tonic: currentTonic, mode: current.mode,
                         semitoneDiff: diff, fifthsStepDiff: stepDiff))
-                prevOffset = currentOffset
-                prevFifths = circleOfFifthsStep(tonicOffset: currentOffset)
             }
             previousInference = current
+            prevOffset = currentOffset
+            prevFifths = circleOfFifthsStep(tonicOffset: currentOffset)
         }
 
         let modulationStory: String

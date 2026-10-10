@@ -841,4 +841,140 @@ struct TmdRefactorTests {
         #expect(instOnly?.section == nil)
         #expect(instOnly?.instrument == "Piano")
     }
+
+    @Test("Issue #40: Refactoring supports [pitchMode=fixed] headers and key= header formatting")
+    func testFixedPitchRefactoringAndKeyHeaderFormatting() throws {
+        let input = """
+            ::SCORE::
+            != 120
+            ?= C
+            key=Am
+            <4/4>
+
+            verse:Drums [pitchMode=fixed] @|0|{
+                <4*>
+                | 1 2 3 4 |
+            }
+
+            -> verse ->#
+            """
+        let renamed = try TmdRefactor.renameInstrument(in: input, from: "Drums", to: "Percussion")
+        #expect(renamed.contains("verse:Percussion[pitchMode=fixed]@|0|{"))
+
+        let doubled = try TmdRefactor.doubleGrid(source: input)
+        #expect(doubled.contains("<8*>"))
+        #expect(doubled.contains("| 1 - 2 - 3 - 4 - |"))
+        #expect(doubled.contains("key= Am"))
+    }
+
+    @Test("Issue #40: inlineOrders preserves per-section noteLength, directives, declaredKey, and pitchMode")
+    func testInlineOrdersPreservesSectionsDirectivesAndDeclaredKey() throws {
+        let input = """
+            ::SCORE::
+            != 120
+            ?= C
+            key= Am
+            <4/4>
+
+            partA:Piano [pitchMode=fixed] @|0|{
+                <4*>
+                | {!= 140} 1 2 3 4 |
+            }
+
+            partB:Piano [pitchMode=fixed] @|0|{
+                <8*>
+                | 1 2 3 4 5 6 7 1^ |
+            }
+
+            -> partA -> partB ->#
+            """
+        let inlined = try TmdRefactor.inlineOrders(source: input)
+        #expect(inlined.contains("key= Am"))
+        #expect(inlined.contains("linear:Piano[pitchMode=fixed]@|0|{"))
+        #expect(inlined.contains("<4*>"))
+        #expect(inlined.contains("<8*>"))
+        #expect(inlined.contains("{!=140}"))
+        #expect(TmdMeasureChecker.check(source: inlined).isEmpty)
+    }
+
+    @Test("Issue #40: doubleGrid splits compact unspaced note runs like 12 into 1 - 2 -")
+    func testDoubleGridSplitsCompactUnspacedNoteRuns() throws {
+        let input = """
+            ::SCORE::
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Piano@|0|{
+                <4*>
+                | 12 3 4 |
+            }
+
+            -> verse ->#
+            """
+        let doubled = try TmdRefactor.doubleGrid(source: input)
+        #expect(doubled.contains("| 1 - 2 - 3 - 4 - |"))
+        #expect(TmdMeasureChecker.check(source: doubled).isEmpty)
+    }
+
+    @Test("Issue #40: TmdMeasureLexerFallback handles [pitchMode=fixed], compound percussion/dot-ties, and currentBeat")
+    func testMeasureLexerFallbackFixedPitchPercussionAndBeat() {
+        // Broken syntax at end (unclosed -> () forces TmdMeasureChecker to use TmdMeasureLexerFallback
+        let source = """
+            ::SCORE::
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Drums [pitchMode=fixed] @|0|{
+                <4*>
+                | {<3/4>} X-X- .. |
+            }
+
+            -> verse -> (play ->#
+            """
+        let issues = TmdMeasureChecker.check(source: source)
+        #expect(issues.count == 1)
+        #expect(issues[0].expectedUnits == 3)
+        #expect(issues[0].actualUnits == 6)
+        #expect(issues[0].beat == Beat(count: 3, noteValue: 4))
+    }
+
+    @Test("Issue #40: TonalityAnalyzer detects [pitchMode=fixed], preserves modulation across insufficient section, and PitchRangeAnalyzer tracks mid-section meter change")
+    func testTonalityAndPitchRangeAnalyzersFixedPitchAndModulation() throws {
+        let input = """
+            ::SCORE::
+            != 120
+            ?= C
+            <2/4>
+
+            secA:Piano [pitchMode=fixed] @|0|{
+                <4*>
+                | 1 3 | 5 1^ | 1 3 | 5 1^ |
+            }
+
+            secEmpty:Piano [pitchMode=fixed] @|0|{
+                <4*>
+                | 0 0 |
+            }
+
+            secB:Piano [pitchMode=fixed] @|0|{
+                <4*>
+                | 2 4' | {<4/4>} 6 2^ 2 5^ |
+            }
+
+            -> secA -> secEmpty -> secB ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: input))
+        let report = TmdSongInspector.inspect(sheet: sheet)
+        let tonality = try #require(report.tonality)
+        #expect(tonality.sections[0].playbackContext.fixedPitch == true)
+        #expect(!tonality.inferredModulationPath.isEmpty)
+
+        // secA: 4 measures of 2/4 (measures 1..4)
+        // secEmpty: 1 measure of 2/4 (measure 5)
+        // secB: starts at measure 6 (1 measure of 2/4 = 2 beats), then {<4/4>} measure 7 has 5^ at beat offset 5 (3 beats into measure 7 -> still measure 7, not measure 8!)
+        let pianoRange = try #require(report.instrumentRanges.first { $0.instrument == "Piano" })
+        #expect(pianoRange.highestNote.measure == 7)
+    }
 }

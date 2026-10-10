@@ -53,11 +53,16 @@ extension TmdRefactor {
                 in: .whitespaces)
             return "?= \(value)" + commentSuffix
         }
+        if trimmed.lowercased().hasPrefix("key=") || trimmed.lowercased().hasPrefix("key =") {
+            let eqIdx = trimmed.firstIndex(of: "=")!
+            let value = trimmed[trimmed.index(after: eqIdx)...].trimmingCharacters(in: .whitespaces)
+            return "key= \(value)" + commentSuffix
+        }
         if trimmed.hasPrefix("<") && trimmed.hasSuffix(">") && trimmed.contains("/") {
             return trimmed + commentSuffix
         }
 
-        // Paragraph header line: e.g. intro:Piano@|0|{
+        // Paragraph header line: e.g. intro:Piano@|0|{ or intro:Piano [pitchMode=fixed] @|0|{
         if trimmed.contains(":") && trimmed.contains("@") && trimmed.hasSuffix("{") {
             let parts = trimmed.split(separator: ":", maxSplits: 1)
             if parts.count == 2 {
@@ -65,7 +70,15 @@ extension TmdRefactor {
                 let rest = parts[1].trimmingCharacters(in: .whitespaces)
                 let atParts = rest.split(separator: "@", maxSplits: 1)
                 if atParts.count == 2 {
-                    let inst = atParts[0].trimmingCharacters(in: .whitespaces)
+                    let instRaw = atParts[0].trimmingCharacters(in: .whitespaces)
+                    let inst: String
+                    if let bracketIdx = instRaw.firstIndex(of: "[") {
+                        let baseInst = instRaw[..<bracketIdx].trimmingCharacters(in: .whitespaces)
+                        let attr = instRaw[bracketIdx...].trimmingCharacters(in: .whitespaces)
+                        inst = "\(baseInst)\(attr)"
+                    } else {
+                        inst = instRaw
+                    }
                     let timing = atParts[1].trimmingCharacters(in: .whitespaces)
                     return "\(pName):\(inst)@\(timing)" + commentSuffix
                 }

@@ -56,12 +56,21 @@ internal enum TmdMeasureLexerFallback {
                 continue
             }
 
-            // Paragraph header: identifier:identifier@...{
+            // Paragraph header: identifier:identifier[optional attr]@...{
+            let hasParagraphAt =
+                pos + 3 < tokensWithRanges.count
+                && (tokensWithRanges[pos + 3].token == .at
+                    || (pos + 4 < tokensWithRanges.count
+                        && {
+                            if case .chord = tokensWithRanges[pos + 3].token { return true }
+                            return false
+                        }()
+                        && tokensWithRanges[pos + 4].token == .at))
             if case .identifier(let pName) = tok.token,
                 pos + 3 < tokensWithRanges.count,
                 tokensWithRanges[pos + 1].token == .colon,
                 case .identifier = tokensWithRanges[pos + 2].token,
-                tokensWithRanges[pos + 3].token == .at
+                hasParagraphAt
             {
                 let paraStartLine = tok.range.start.line
                 _ = advance()  // pName
@@ -70,6 +79,9 @@ internal enum TmdMeasureLexerFallback {
                 var instName = ""
                 if let instTok = advance(), case .identifier(let iName) = instTok.token {
                     instName = iName
+                }
+                if let attrTok = current(), case .chord = attrTok.token {
+                    _ = advance()
                 }
 
                 // Extract start offset from @|start| if present
@@ -174,7 +186,7 @@ internal enum TmdMeasureLexerFallback {
                                         expectedUnits: expected,
                                         actualUnits: currentMeasureUnits,
                                         noteLength: noteLength,
-                                        beat: beat,
+                                        beat: currentBeat,
                                         snippet: currentMeasureSnippet.joined(separator: " ")
                                     ))
                             }
@@ -413,6 +425,9 @@ internal enum TmdMeasureLexerFallback {
                         var parenDepth = 0
                         while pos < tokensWithRanges.count {
                             guard let pTok = current() else { break }
+                            if pTok.token == .arrow || pTok.token == .arrowEnd {
+                                break
+                            }
                             if pTok.token == .openParen {
                                 parenDepth += 1
                             } else if pTok.token == .closeParen {

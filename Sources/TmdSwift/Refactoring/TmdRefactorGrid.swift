@@ -167,12 +167,44 @@ extension TmdRefactor {
                 continue
             }
 
-            // Regular unit: append a tie '-'
-            outTokens.append(tok)
-            outTokens.append("-")
+            for unit in splitUnspacedUnits(tok) {
+                outTokens.append(unit)
+                outTokens.append("-")
+            }
         }
 
         return outTokens.joined(separator: " ") + commentSuffix
+    }
+
+    private static func splitUnspacedUnits(_ token: String) -> [String] {
+        guard let first = token.first, ("0"..."7").contains(first) else {
+            return [token]
+        }
+        let chars = Array(token)
+        var units: [String] = []
+        var i = 0
+        while i < chars.count {
+            let ch = chars[i]
+            if ("0"..."7").contains(ch) {
+                var unit = String(ch)
+                i += 1
+                if i < chars.count && (chars[i] == "'" || chars[i] == ",") {
+                    unit.append(chars[i])
+                    i += 1
+                }
+                while i < chars.count && (chars[i] == "^" || chars[i] == "_") {
+                    unit.append(chars[i])
+                    i += 1
+                }
+                units.append(unit)
+            } else if ch == "-" {
+                units.append("-")
+                i += 1
+            } else {
+                return [token]
+            }
+        }
+        return units.isEmpty ? [token] : units
     }
 
     static func halveGridInLine(_ line: String) throws -> String {

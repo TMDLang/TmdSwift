@@ -35,7 +35,12 @@ public enum TmdSongPitchRangeAnalyzer {
                 let position = max(section.startPositionQuarterNotes, event.position)
                 var cursor = section.startPositionQuarterNotes
                 var tempo = section.tempo
-                var meter = event.state.timeSignature
+                var meter =
+                    sheet.beat.count > 0 && sheet.beat.noteValue > 0
+                    ? sheet.beat : Beat(count: 4, noteValue: 4)
+                for directive in timelineDirectives where directive.position <= cursor {
+                    meter = directive.state.timeSignature
+                }
                 var elapsedSeconds = 0.0
                 var elapsedMeasures = 0.0
                 for directive in timelineDirectives {
