@@ -612,4 +612,126 @@ struct MusicXMLValidationTests {
         let xmlDiverge = TmdMusicXMLGenerator.generateMusicXML(from: sheetDiverge)
         #expect(xmlDiverge.contains("<accidental>natural</accidental>"))
     }
+
+    @Test func testMusicXMLOddMeterPickupPolymeterAndQuintuplets() throws {
+        let tmd = """
+            ::SCORE::
+            ** Odd Meter Pickup Polymeter Quintuplets **
+            != 120
+            ?= C
+            key= Am
+            <4/4>
+
+            A:Piano@|0|{
+                <8*>
+                | 6_ 6_ 1 2 1 7_ 6_ 5_ | [6m] - [6m] - (6 7 1^ 7 6)%(--) 6 6 |
+            }
+            A:Clarinet@|0|{
+                <4*>
+                | 1^ - 7 - | 1^ - 0 0 |
+            }
+
+            M5:Clarinet@|-1|{
+                <4*>
+                {<5/4>}
+                | 0 0 0 {mp} 5_ 5'_ |
+                | {f} 6_ 1 2 3 2' |
+                {<4/4>}
+            }
+            M5:Piano@|0|{
+                <4*>
+                {<5/4>}
+                | 6_ 1 2 3 4 |
+                {<4/4>}
+            }
+
+            M7:Flute@|-1|{
+                <8*>
+                {<7/8>}
+                | 0 0 0 0 {mf} 3^ 4'^ 5'^ |
+                | {f} 6^ 1^^ 7^ 2^^ 1^^ 7^ 6'^ |
+                {<4/4>}
+            }
+            M7:Piano@|0|{
+                <8*>
+                {<7/8>}
+                | 6_ 1 7_ 2 1 7_ 6'_ |
+                {<4/4>}
+            }
+
+            Poly:Flute@|0|{
+                <8*>
+                {<5/8>}
+                | 6_ 1 3 2' 3 | 6_ 1 3 2' 3 | 5'_ 7_ 2 1 2 | 5'_ 7_ 2 1 2 |
+                | 4'_ 6_ 1 7_ 1 | 3_ 5'_ 7_ 2 3 | 6_ 6'_ 6_ 6^ - |
+                {<4/4>}
+            }
+            Poly:Piano@|0|{
+                <8*>
+                {<7/8>}
+                | 6 5 3 2' 3 1 6_ | 7 6 4' 3 4' 2 7_ | 1^ 7 5' 4' 5' 3 1 |
+                | 2^ 1^ 6 5' 4' 3 2' | 6^ 3^ 1^ 6 6' 6 0 |
+                {<4/4>}
+            }
+
+            -> A -> M5 -> M7 -> Poly ->#
+            """
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
+
+        // Quintuplet time-modification (5:4)
+        #expect(xml.contains("<actual-notes>5</actual-notes>"))
+        #expect(xml.contains("<normal-notes>4</normal-notes>"))
+        // Local polymeter annotation for Flute in Poly
+        #expect(xml.contains("<words>[5/8]</words>"))
+
+        #if os(macOS)
+            let doc = try XMLDocument(data: Data(xml.utf8), options: [])
+            let root = try #require(doc.rootElement())
+            let parts = root.elements(forName: "part")
+            #expect(parts.count == 3)
+
+            let expectedMeasureCounts = parts.map { $0.elements(forName: "measure").count }
+            // 2 (A 4/4) + 1 (M5 5/4) + 1 (M7 7/8) + 5 (Poly 7/8) = 9 measures across all 3 parts
+            #expect(expectedMeasureCounts == [9, 9, 9])
+
+            for part in parts {
+                var currentDivisions = 48
+                var currentBeats = 4
+                var currentBeatType = 4
+                for measure in part.elements(forName: "measure") {
+                    let timeNodes = try measure.nodes(forXPath: "attributes/time")
+                    // At most 1 <time> element per measure
+                    #expect(timeNodes.count <= 1)
+                    if let divStr = (try measure.nodes(forXPath: "attributes/divisions").first)?.stringValue,
+                        let div = Int(divStr)
+                    {
+                        currentDivisions = div
+                    }
+                    if let timeEl = timeNodes.first as? XMLElement,
+                        let bStr = timeEl.elements(forName: "beats").first?.stringValue,
+                        let btStr = timeEl.elements(forName: "beat-type").first?.stringValue,
+                        let b = Int(bStr), let bt = Int(btStr)
+                    {
+                        currentBeats = b
+                        currentBeatType = bt
+                    }
+                    let expectedDur = currentBeats * 4 * currentDivisions / currentBeatType
+                    var actualDur = 0
+                    for child in measure.children ?? [] {
+                        guard let noteEl = child as? XMLElement, noteEl.name == "note" else { continue }
+                        // Every <note> must have a <type> element
+                        #expect(!noteEl.elements(forName: "type").isEmpty)
+                        if noteEl.elements(forName: "chord").first != nil { continue }
+                        if let durStr = noteEl.elements(forName: "duration").first?.stringValue,
+                            let d = Int(durStr)
+                        {
+                            actualDur += d
+                        }
+                    }
+                    #expect(actualDur == expectedDur)
+                }
+            }
+        #endif
+    }
 }

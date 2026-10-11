@@ -46,14 +46,18 @@ public struct TmdMusicXMLGenerator {
         }
         xml += "  </part-list>\n"
 
-        let divisions = 48  // 48 divisions per quarter note gives high subdivision precision and cleanly divides triplets
+        let partMeasures: [(instrument: String, measures: [Measure])] = instruments.map { inst in
+            (instrument: inst, measures: TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: inst))
+        }
+        let divisions = resolveDivisions(for: partMeasures.map(\.measures))
 
         // Generate <part> for each instrument
-        for (idx, inst) in instruments.enumerated() {
+        for (idx, entry) in partMeasures.enumerated() {
             let partID = "P\(idx + 1)"
             xml += "  <part id=\"\(partID)\">\n"
             xml += generatePartMeasures(
-                instrument: inst,
+                instrument: entry.instrument,
+                measures: entry.measures,
                 sheet: sheet,
                 divisions: divisions
             )
@@ -64,28 +68,72 @@ public struct TmdMusicXMLGenerator {
         return xml
     }
 
+    private static func resolveDivisions(for allPartMeasures: [[Measure]]) -> Int {
+        var divisions = 48
+        var needsFactor5 = false
+        var needsFactor7 = false
+        for measures in allPartMeasures {
+            for measure in measures {
+                for event in measure.events {
+                    let q = event.duration
+                    let in48 = q * 48.0
+                    if abs(in48.rounded() - in48) > 1e-3 {
+                        let in240 = q * 240.0
+                        if abs(in240.rounded() - in240) < 1e-3 {
+                            needsFactor5 = true
+                        }
+                        let in336 = q * 336.0
+                        if abs(in336.rounded() - in336) < 1e-3 {
+                            needsFactor7 = true
+                        }
+                    }
+                }
+            }
+        }
+        if needsFactor5 { divisions *= 5 }
+        if needsFactor7 { divisions *= 7 }
+        return divisions
+    }
+
     private static func generatePartMeasures(
         instrument: String,
+        measures: [Measure],
         sheet: Sheet,
         divisions: Int
     ) -> String {
-        let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: instrument)
         var xml = ""
 
         let initialKey =
             sheet.declaredKey
             ?? PitchMapping.tonicScaleInfo(forKeyOffset: sheet.keySignature.semitoneOffset).name
         var defaultKeyStepAlters = PitchMapping.keySignatureStepAlters(forKey: initialKey)
+        var currentBeat = measures.first?.timeSignature ?? sheet.beat
+        var currentLocalBeat: Beat? = nil
 
         for measure in measures {
             var content = ""
             var measureStepAlters: [Int: [Int]] = [:]
             if measure.index == 0 {
+                currentBeat = measure.timeSignature
                 content += generateAttributesXML(
-                    sheet: sheet, instrument: instrument, divisions: divisions)
+                    sheet: sheet,
+                    instrument: instrument,
+                    divisions: divisions,
+                    initialBeat: measure.timeSignature
+                )
+            } else if measure.timeSignature != currentBeat {
+                currentBeat = measure.timeSignature
+                content += """
+                            <attributes><time><beats>\(currentBeat.count)</beats><beat-type>\(currentBeat.noteValue)</beat-type></time></attributes>
+
+                    """
             }
+
             for directive in measure.directives {
                 switch directive.kind {
+                case .timeSignature:
+                    // Handled canonically per measure via measure.timeSignature above
+                    continue
                 case .explicitKey(let key):
                     defaultKeyStepAlters = PitchMapping.keySignatureStepAlters(forKey: key)
                     measureStepAlters.removeAll()
@@ -104,60 +152,114 @@ public struct TmdMusicXMLGenerator {
                 content += directive.musicXMLString
             }
 
+            if let soundingEvent = measure.events.first(where: { $0.content.isSounding }) {
+                let localBeat = soundingEvent.state.timeSignature
+                if localBeat != measure.timeSignature {
+                    if currentLocalBeat != localBeat {
+                        content += """
+                                <direction placement="above">
+                                  <direction-type>
+                                    <words>[\(localBeat.count)/\(localBeat.noteValue)]</words>
+                                  </direction-type>
+                                </direction>
+
+                            """
+                        currentLocalBeat = localBeat
+                    }
+                } else {
+                    currentLocalBeat = nil
+                }
+            } else {
+                currentLocalBeat = nil
+            }
+
             let expectedMeasureDuration = max(
                 1, Int((measure.nominalDuration * Double(divisions)).rounded()))
             let eventGroups = measure.simultaneousEventGroups
-            var durations: [Int] = eventGroups.map { group in
-                let groupDur = group.map(\.duration).max() ?? 0
+            var durations: [Int] = eventGroups.enumerated().map { idx, group in
+                let nonChordEvents = group.filter {
+                    if case .chord = $0.content { return false }
+                    return true
+                }
+                let pool = nonChordEvents.isEmpty ? group : nonChordEvents
+                let poolDur = pool.map(\.duration).max() ?? 0
+                let startOffset = group.first?.startOffset ?? 0
+                let nextOffset =
+                    (idx + 1 < eventGroups.count)
+                    ? (eventGroups[idx + 1].first?.startOffset ?? measure.nominalDuration)
+                    : measure.nominalDuration
+                let maxSpan = max(0.0, nextOffset - startOffset)
+                let groupDur = maxSpan > 1e-6 ? min(poolDur, maxSpan) : poolDur
                 return max(1, Int((groupDur * Double(divisions)).rounded()))
             }
             // Balance durations to conserve measure nominal duration
             let totalDur = durations.reduce(0, +)
             let diff = expectedMeasureDuration - totalDur
             if diff != 0 && !durations.isEmpty {
-                // Adjust the last event or the largest event
                 let lastIdx = durations.count - 1
                 durations[lastIdx] = max(1, durations[lastIdx] + diff)
             }
 
             for (idx, group) in eventGroups.enumerated() {
                 let duration = durations[idx]
-                var emittedNoteInGroup = false
-                for event in group {
-                    switch event.content {
-                    case .note(let note):
-                        let spelled = PitchMapping.spell(note: note, keyOffset: event.state.keyOffset)
-                        var octaveAlters = measureStepAlters[spelled.octave] ?? defaultKeyStepAlters
-                        let expectedAlter = octaveAlters[spelled.stepIndex]
-                        var accidentalText: String? = nil
-                        if spelled.alter != expectedAlter && !event.tieStop {
-                            octaveAlters[spelled.stepIndex] = spelled.alter
-                            measureStepAlters[spelled.octave] = octaveAlters
-                            accidentalText = musicXMLAccidentalName(forAlter: spelled.alter)
+                let hasNonChordInGroup = group.contains {
+                    if case .chord = $0.content { return false }
+                    return true
+                }
+                let chunks = decomposeDivisions(duration, divisions: divisions)
+                for (chunkIdx, chunkDur) in chunks.enumerated() {
+                    let isFirstChunk = (chunkIdx == 0)
+                    let isLastChunk = (chunkIdx == chunks.count - 1)
+                    var emittedNoteInGroup = false
+                    for event in group {
+                        switch event.content {
+                        case .note(let note):
+                            var accidentalText: String? = nil
+                            if isFirstChunk {
+                                let spelled = PitchMapping.spell(
+                                    note: note, keyOffset: event.state.keyOffset)
+                                var octaveAlters =
+                                    measureStepAlters[spelled.octave] ?? defaultKeyStepAlters
+                                let expectedAlter = octaveAlters[spelled.stepIndex]
+                                if spelled.alter != expectedAlter && !event.tieStop {
+                                    octaveAlters[spelled.stepIndex] = spelled.alter
+                                    measureStepAlters[spelled.octave] = octaveAlters
+                                    accidentalText = musicXMLAccidentalName(forAlter: spelled.alter)
+                                }
+                            }
+                            let subTieStop = isFirstChunk ? event.tieStop : true
+                            let subTieStart = isLastChunk ? event.tieStart : true
+                            content += generateNoteXML(
+                                note: note,
+                                duration: chunkDur,
+                                divisions: divisions,
+                                keyOffset: event.state.keyOffset,
+                                tieStart: subTieStart,
+                                tieStop: subTieStop,
+                                accidentalText: accidentalText,
+                                isChordContinuation: emittedNoteInGroup
+                            )
+                            emittedNoteInGroup = true
+                        case .chord(let chord):
+                            if isFirstChunk {
+                                content += generateChordXML(
+                                    chord: chord,
+                                    duration: chunkDur,
+                                    divisions: divisions,
+                                    keyOffset: event.state.keyOffset,
+                                    emitRestNote: !hasNonChordInGroup
+                                )
+                            } else if !hasNonChordInGroup {
+                                content += generateRestXML(duration: chunkDur, divisions: divisions)
+                            }
+                        case .rest:
+                            content += generateRestXML(duration: chunkDur, divisions: divisions)
+                        case .percussion(let pattern):
+                            if isFirstChunk {
+                                content += generatePercussionXML(
+                                    pattern: pattern, duration: duration, divisions: divisions)
+                            }
                         }
-                        content += generateNoteXML(
-                            note: note,
-                            duration: duration,
-                            divisions: divisions,
-                            keyOffset: event.state.keyOffset,
-                            tieStart: event.tieStart,
-                            tieStop: event.tieStop,
-                            accidentalText: accidentalText,
-                            isChordContinuation: emittedNoteInGroup
-                        )
-                        emittedNoteInGroup = true
-                    case .chord(let chord):
-                        content += generateChordXML(
-                            chord: chord,
-                            duration: duration,
-                            divisions: divisions,
-                            keyOffset: event.state.keyOffset
-                        )
-                    case .rest:
-                        content += generateRestXML(duration: duration, divisions: divisions)
-                    case .percussion(let pattern):
-                        content += generatePercussionXML(
-                            pattern: pattern, duration: duration, divisions: divisions)
                     }
                 }
             }
@@ -170,6 +272,44 @@ public struct TmdMusicXMLGenerator {
         let type: String
         let dots: Int
         let timeModification: (actualNotes: Int, normalNotes: Int)?
+    }
+
+    private static func decomposeDivisions(_ totalDivisions: Int, divisions: Int) -> [Int] {
+        let total = max(1, totalDivisions)
+        if durationInfo(duration: total, divisions: divisions) != nil {
+            return [total]
+        }
+        let d = divisions
+        let standardAtoms: [Int] = [
+            4 * d,
+            3 * d,
+            2 * d,
+            d + d / 2,
+            d,
+            d / 2 + d / 4,
+            d / 2,
+            d / 4 + d / 8,
+            d / 4,
+            d / 8,
+            d / 16,
+        ].filter { $0 > 0 }
+
+        var remaining = total
+        var result: [Int] = []
+        while remaining > 0 {
+            if durationInfo(duration: remaining, divisions: divisions) != nil {
+                result.append(remaining)
+                break
+            }
+            if let match = standardAtoms.first(where: { $0 <= remaining }) {
+                result.append(match)
+                remaining -= match
+            } else {
+                result.append(remaining)
+                break
+            }
+        }
+        return result.isEmpty ? [total] : result
     }
 
     private static func durationInfo(duration: Int, divisions: Int) -> NoteDurationInfo? {
@@ -209,24 +349,40 @@ public struct TmdMusicXMLGenerator {
             return NoteDurationInfo(type: "64th", dots: 0, timeModification: nil)
         }
 
+        let normalTypes: [(dur: Int, type: String)] = [
+            (4 * d, "whole"),
+            (2 * d, "half"),
+            (d, "quarter"),
+            (d / 2, "eighth"),
+            (d / 4, "16th"),
+            (d / 8, "32nd"),
+        ]
+
         // Triplet (3:2) durations: duration = (normalDur * 2) / 3
-        if duration == (4 * d * 2) / 3 {
-            return NoteDurationInfo(type: "whole", dots: 0, timeModification: (3, 2))
+        if d.isMultiple(of: 3) {
+            for item in normalTypes where (item.dur * 2).isMultiple(of: 3) {
+                if duration == (item.dur * 2) / 3 {
+                    return NoteDurationInfo(type: item.type, dots: 0, timeModification: (3, 2))
+                }
+            }
         }
-        if duration == (2 * d * 2) / 3 {
-            return NoteDurationInfo(type: "half", dots: 0, timeModification: (3, 2))
+
+        // Quintuplet (5:4) durations: duration = (normalDur * 4) / 5
+        if d.isMultiple(of: 5) {
+            for item in normalTypes where (item.dur * 4).isMultiple(of: 5) {
+                if duration == (item.dur * 4) / 5 {
+                    return NoteDurationInfo(type: item.type, dots: 0, timeModification: (5, 4))
+                }
+            }
         }
-        if duration == (d * 2) / 3 {
-            return NoteDurationInfo(type: "quarter", dots: 0, timeModification: (3, 2))
-        }
-        if duration == (d / 2 * 2) / 3 {
-            return NoteDurationInfo(type: "eighth", dots: 0, timeModification: (3, 2))
-        }
-        if duration == (d / 4 * 2) / 3 {
-            return NoteDurationInfo(type: "16th", dots: 0, timeModification: (3, 2))
-        }
-        if duration == (d / 8 * 2) / 3 {
-            return NoteDurationInfo(type: "32nd", dots: 0, timeModification: (3, 2))
+
+        // Septuplet (7:4) durations: duration = (normalDur * 4) / 7
+        if d.isMultiple(of: 7) {
+            for item in normalTypes where (item.dur * 4).isMultiple(of: 7) {
+                if duration == (item.dur * 4) / 7 {
+                    return NoteDurationInfo(type: item.type, dots: 0, timeModification: (7, 4))
+                }
+            }
         }
 
         return nil
@@ -248,12 +404,9 @@ public struct TmdMusicXMLGenerator {
         divisions: Int,
         accidentalText: String? = nil
     ) -> String {
-        guard let info = durationInfo(duration: duration, divisions: divisions) else {
-            if let accidentalText {
-                return "          <accidental>\(accidentalText)</accidental>\n"
-            }
-            return ""
-        }
+        let info =
+            durationInfo(duration: duration, divisions: divisions)
+            ?? NoteDurationInfo(type: "64th", dots: 0, timeModification: nil)
         var xml = "          <type>\(info.type)</type>\n"
         for _ in 0..<info.dots {
             xml += "          <dot/>\n"
@@ -340,7 +493,9 @@ public struct TmdMusicXMLGenerator {
     {
         let strokes = PercussionStroke.parse(pattern: pattern)
         if strokes.isEmpty {
-            return generateRestXML(duration: duration, divisions: divisions)
+            return decomposeDivisions(duration, divisions: divisions)
+                .map { generateRestXML(duration: $0, divisions: divisions) }
+                .joined()
         }
         let count = strokes.count
         let base = duration / count
@@ -349,26 +504,32 @@ public struct TmdMusicXMLGenerator {
         for (i, stroke) in strokes.enumerated() {
             let pos = stroke.unpitchedDisplayPosition
             let noteDur = base + (i < remainder ? 1 : 0)
-            xml += """
-                        <note>
-                          <unpitched>
-                            <display-step>\(pos.step)</display-step>
-                            <display-octave>\(pos.octave)</display-octave>
-                          </unpitched>
-                          <duration>\(noteDur)</duration>
+            for chunkDur in decomposeDivisions(noteDur, divisions: divisions) {
+                xml += """
+                            <note>
+                              <unpitched>
+                                <display-step>\(pos.step)</display-step>
+                                <display-octave>\(pos.octave)</display-octave>
+                              </unpitched>
+                              <duration>\(chunkDur)</duration>
 
-                """
-            xml += generateDurationElementsXML(duration: noteDur, divisions: divisions)
-            xml += "        </note>\n\n"
+                    """
+                xml += generateDurationElementsXML(duration: chunkDur, divisions: divisions)
+                xml += "        </note>\n\n"
+            }
         }
         return xml
     }
 
-    private static func generateAttributesXML(sheet: Sheet, instrument: String, divisions: Int)
-        -> String
-    {
+    private static func generateAttributesXML(
+        sheet: Sheet,
+        instrument: String,
+        divisions: Int,
+        initialBeat: Beat? = nil
+    ) -> String {
+        let effectiveBeat = initialBeat ?? sheet.beat
         let speed = sheet.speed > 0 ? sheet.speed : 120
-        let initialMetronome = resolveMetronome(beat: sheet.beat, quarterBPM: speed)
+        let initialMetronome = resolveMetronome(beat: effectiveBeat, quarterBPM: speed)
         let dotTag = initialMetronome.isDotted ? "\n            <beat-unit-dot/>" : ""
         let keyInfo: (fifths: Int, mode: String?)
         if let declaredKey = sheet.declaredKey {
@@ -384,8 +545,8 @@ public struct TmdMusicXMLGenerator {
                       <fifths>\(keyInfo.fifths)</fifths>\(modeTag)
                     </key>
                     <time>
-                      <beats>\(sheet.beat.count)</beats>
-                      <beat-type>\(sheet.beat.noteValue)</beat-type>
+                      <beats>\(effectiveBeat.count)</beats>
+                      <beat-type>\(effectiveBeat.noteValue)</beat-type>
                     </time>
             \(generateClefXML(instrument: instrument, sheet: sheet))
                   </attributes>
@@ -454,7 +615,11 @@ public struct TmdMusicXMLGenerator {
     }
 
     private static func generateChordXML(
-        chord: ChordSymbol, duration: Int, divisions: Int, keyOffset: Int
+        chord: ChordSymbol,
+        duration: Int,
+        divisions: Int,
+        keyOffset: Int,
+        emitRestNote: Bool = true
     ) -> String {
         // Output chord harmony symbol & note representation
         let spelledRoot = PitchMapping.spell(chordRoot: chord.root, keyOffset: keyOffset)
@@ -491,15 +656,17 @@ public struct TmdMusicXMLGenerator {
             xml += "        </bass>\n"
         }
 
-        xml += """
-                  </harmony>
-                  <note>
-                    <rest/>
-                    <duration>\(duration)</duration>
+        xml += "      </harmony>\n"
+        if emitRestNote {
+            xml += """
+                      <note>
+                        <rest/>
+                        <duration>\(duration)</duration>
 
-            """
-        xml += generateDurationElementsXML(duration: duration, divisions: divisions)
-        xml += "      </note>\n\n"
+                """
+            xml += generateDurationElementsXML(duration: duration, divisions: divisions)
+            xml += "      </note>\n\n"
+        }
         return xml
     }
 
