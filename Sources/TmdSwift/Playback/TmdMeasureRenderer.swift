@@ -435,17 +435,24 @@ public enum TmdMeasureRenderer {
                 continue
             }
 
-            var interiorByPos: [(position: Double, beats: [Beat])] = []
+            var paragraphSchedules: [[(position: Double, beat: Beat)]] = []
+            var explicitSchedules: [[(position: Double, beat: Beat)]] = []
+            var initialCandidates: [Beat] = []
             var trailingBeats: [Beat] = []
 
             for paragraph in matching {
                 let entryBeat = TmdPlaybackRenderer.entryInitialBeat(
                     for: paragraph, in: sheet, fallback: currentBeat)
+                if !initialCandidates.contains(entryBeat) {
+                    initialCandidates.append(entryBeat)
+                }
                 let pStart =
                     sectionStart + Double(paragraph.start)
                     * TmdPlaybackRenderer.measureDuration(for: entryBeat)
                 let minPos = (paragraph.start < 0 && sectionStart > 0) ? sectionStart : pStart
                 var pos = pStart
+                var pSchedule: [(position: Double, beat: Beat)] = []
+                var hasExplicitInterior = false
 
                 for section in paragraph.sections {
                     let unitDur = 4.0 / Double(max(1, section.noteLength))
@@ -462,28 +469,60 @@ public enum TmdMeasureRenderer {
                                     trailingBeats.append(b)
                                 }
                             } else {
-                                if let idx = interiorByPos.firstIndex(where: {
+                                hasExplicitInterior = true
+                                if let idx = pSchedule.firstIndex(where: {
                                     abs($0.position - shiftedPos) < 1e-4
                                 }) {
-                                    if !interiorByPos[idx].beats.contains(b) {
-                                        interiorByPos[idx].beats.append(b)
-                                    }
+                                    pSchedule[idx] = (position: shiftedPos, beat: b)
                                 } else {
-                                    interiorByPos.append((position: shiftedPos, beats: [b]))
+                                    pSchedule.append((position: shiftedPos, beat: b))
+                                    pSchedule.sort { $0.position < $1.position }
                                 }
                             }
                         }
                     }
                     pos += Double(totalUnits) * unitDur
                 }
+
+                let startShifted = minPos + offset
+                if !pSchedule.contains(where: { abs($0.position - startShifted) < 1e-4 }) {
+                    pSchedule.insert((position: startShifted, beat: entryBeat), at: 0)
+                }
+                paragraphSchedules.append(pSchedule)
+                if hasExplicitInterior {
+                    explicitSchedules.append(pSchedule)
+                }
             }
 
-            interiorByPos.sort { $0.position < $1.position }
-            for group in interiorByPos {
-                let remDur = max(0.0, (sectionEnd + offset) - group.position)
-                let chosen = selectConductorBeat(from: group.beats, sectionDuration: remDur)
-                upsertTimeSignature(at: group.position, beat: chosen)
-                currentBeat = chosen
+            func schedulesEqual(
+                _ lhs: [(position: Double, beat: Beat)],
+                _ rhs: [(position: Double, beat: Beat)]
+            ) -> Bool {
+                guard lhs.count == rhs.count else { return false }
+                for (a, b) in zip(lhs, rhs) {
+                    if abs(a.position - b.position) >= 1e-4 || a.beat != b.beat {
+                        return false
+                    }
+                }
+                return true
+            }
+
+            if !explicitSchedules.isEmpty {
+                let firstExplicit = explicitSchedules[0]
+                let explicitDisagree = explicitSchedules.dropFirst().contains {
+                    !schedulesEqual($0, firstExplicit)
+                }
+                if explicitDisagree {
+                    let chosen = selectConductorBeat(
+                        from: initialCandidates, sectionDuration: secDur)
+                    upsertTimeSignature(at: sectionStart + offset, beat: chosen)
+                    currentBeat = chosen
+                } else {
+                    for item in firstExplicit {
+                        upsertTimeSignature(at: item.position, beat: item.beat)
+                        currentBeat = item.beat
+                    }
+                }
             }
 
             if !trailingBeats.isEmpty {

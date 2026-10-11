@@ -734,4 +734,149 @@ struct MusicXMLValidationTests {
             }
         #endif
     }
+
+    @Test("Issue #52: Mid-section polymeters, coprime tuplets (5:3, 7:5, 11:7), sub-64th grids (<256*>, <1024*>), and extreme octaves")
+    func testIssue52MidSectionPolymetersCoprimeTupletsSub64thAndExtremeOctaves() throws {
+        let oneLine256 = Array(repeating: "1 2 3 5", count: 64).joined(separator: " ")
+        let oneLine1024 = Array(repeating: "1 2 3 5", count: 256).joined(separator: " ")
+        let input = """
+            ::SCORE::
+            ** Issue 52 Stress **
+            != 68
+            ?= C
+            <4/4>
+
+            TupletLab:Piano@|0| {
+                <4*>
+                {<4/4>}
+                | (6_ 1 3)%(-) (1 2 3 4 5)%(---) |
+                <8*>
+                | (6_ 7_ 1 2 3 4' 5')%(-----) (6 5' 4' 3 2')%(---) |
+                | (6_ 7_ 1 2 3 4' 5' 6 7 1^ 6^)%(-------) 0 |
+            }
+
+            MicroMacro:Flute@|0| {
+                <64*>
+                {<1/64>}
+                | 6_ | 7_ | 1 | 2' | 3 | 5' |
+                {<59/64>}
+                | \(Array(repeating: "6", count: 59).joined(separator: " ")) |
+                {<127/64>}
+                | \(Array(repeating: "6", count: 127).joined(separator: " ")) |
+                <4*>
+                {<4/4>}
+            }
+
+            MicroMacro:Piano@|0| {
+                <64*>
+                {<4/4>}
+                | \(Array(repeating: "1", count: 64).joined(separator: " ")) |
+                <256*>
+                | \(oneLine256) |
+                <1024*>
+                | \(oneLine1024) |
+                <4*>
+            }
+
+            ExtremeRange:Piano@|0| {
+                <4*>
+                {<4/4>}
+                | 1_____ 5^^^^^ 1^^^^^^ 0 |
+            }
+
+            -> TupletLab
+            -> MicroMacro
+            -> ExtremeRange
+            ->#
+            """
+
+        let sheet = try TmdParser.parseThrowing(string: input)
+        let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
+
+        // Coprime tuplets: 5:3, 7:5, 11:7
+        #expect(xml.contains("<actual-notes>5</actual-notes>\n            <normal-notes>3</normal-notes>"))
+        #expect(xml.contains("<actual-notes>7</actual-notes>\n            <normal-notes>5</normal-notes>"))
+        #expect(xml.contains("<actual-notes>11</actual-notes>\n            <normal-notes>7</normal-notes>"))
+        // Sub-64th note types
+        #expect(xml.contains("<type>256th</type>"))
+        #expect(xml.contains("<type>1024th</type>"))
+        // No negative or >9 octaves
+        #expect(!xml.contains("<octave>-1</octave>"))
+        #expect(!xml.contains("<octave>10</octave>"))
+        // Local polymeter directions on Flute
+        #expect(xml.contains("<words>[1/64]</words>"))
+        #expect(xml.contains("<words>[59/64]</words>"))
+        #expect(xml.contains("<words>[127/64]</words>"))
+
+        #if os(macOS)
+            let doc = try XMLDocument(data: Data(xml.utf8), options: [])
+            let root = try #require(doc.rootElement())
+            let parts = root.elements(forName: "part")
+            #expect(parts.count == 2)
+
+            let typeMap: [String: Double] = [
+                "whole": 4.0, "half": 2.0, "quarter": 1.0, "eighth": 0.5,
+                "16th": 0.25, "32nd": 0.125, "64th": 0.0625, "128th": 0.03125,
+                "256th": 0.015625, "512th": 0.0078125, "1024th": 0.00390625,
+            ]
+
+            for part in parts {
+                var currentDivisions = 48
+                var currentBeats = 4
+                var currentBeatType = 4
+                let measures = part.elements(forName: "measure")
+                // 3 (TupletLab) + 3 (MicroMacro in 4/4) + 1 (ExtremeRange) = 7 measures
+                #expect(measures.count == 7)
+                for measure in measures {
+                    if let divStr = (try measure.nodes(forXPath: "attributes/divisions").first)?.stringValue,
+                        let div = Int(divStr)
+                    {
+                        currentDivisions = div
+                    }
+                    if let timeEl = (try measure.nodes(forXPath: "attributes/time").first) as? XMLElement,
+                        let bStr = timeEl.elements(forName: "beats").first?.stringValue,
+                        let btStr = timeEl.elements(forName: "beat-type").first?.stringValue,
+                        let b = Int(bStr), let bt = Int(btStr)
+                    {
+                        currentBeats = b
+                        currentBeatType = bt
+                    }
+                    let expectedDur = currentBeats * 4 * currentDivisions / currentBeatType
+                    var actualDur = 0
+                    for child in measure.children ?? [] {
+                        guard let noteEl = child as? XMLElement, noteEl.name == "note" else { continue }
+                        let dur = try #require(Int(noteEl.elements(forName: "duration").first?.stringValue ?? ""))
+                        if noteEl.elements(forName: "chord").first == nil {
+                            actualDur += dur
+                        }
+                        if let octStr = (try noteEl.nodes(forXPath: "pitch/octave").first)?.stringValue,
+                            let oct = Int(octStr)
+                        {
+                            #expect((0...9).contains(oct))
+                        }
+                        let typeStr = try #require(noteEl.elements(forName: "type").first?.stringValue)
+                        let baseQ = try #require(typeMap[typeStr])
+                        let dots = noteEl.elements(forName: "dot").count
+                        var mult = 1.0
+                        var add = 0.5
+                        for _ in 0..<dots {
+                            mult += add
+                            add /= 2.0
+                        }
+                        var q = baseQ * mult
+                        if let tm = noteEl.elements(forName: "time-modification").first,
+                            let act = Int(tm.elements(forName: "actual-notes").first?.stringValue ?? ""),
+                            let norm = Int(tm.elements(forName: "normal-notes").first?.stringValue ?? "")
+                        {
+                            q = q * Double(norm) / Double(act)
+                        }
+                        let expectedNoteDur = Int((q * Double(currentDivisions)).rounded())
+                        #expect(dur == expectedNoteDur)
+                    }
+                    #expect(actualDur == expectedDur)
+                }
+            }
+        #endif
+    }
 }
+
