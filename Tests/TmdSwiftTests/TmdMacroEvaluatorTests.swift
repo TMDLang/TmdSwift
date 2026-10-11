@@ -870,4 +870,89 @@ struct MacroEvaluatorTests {
         #expect(fSharpMin.fifths == 3)
         #expect(fSharpMin.mode == "minor")
     }
+
+    @Test("Issue #45: Validator, Inspector, and CLI do not SIGTRAP when macro expansion fails on a score with concrete entries")
+    func testIssue45ValidatorAndInspectorDoNotTrapOnMacroErrorWithConcreteEntries() throws {
+        let scoreWithMacroError = """
+            ::SCORE::
+            ** Macro Error With Concrete Entry **
+            != 120
+            ?= C
+            <4/4>
+
+            A:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
+            }
+
+            -> A
+            -> (play A Violin)
+            ->#
+            """
+        let sheet = try TmdParser.parseThrowing(string: scoreWithMacroError)
+        #expect(throws: TmdMacroError.self) {
+            try TmdMacroEvaluator.expandThrowing(sheet)
+        }
+
+        // Non-throwing expandOrTrap must skip the invalid macro without SIGTRAP
+        let bestEffort = TmdMacroEvaluator.expandOrTrap(sheet)
+        #expect(bestEffort.playback == [.name("A")])
+
+        // Validator must return E-MACRO-EXPAND without trapping in Stage 2c validateTempoConflicts
+        let diagnostics = TmdScoreValidator.validate(source: scoreWithMacroError)
+        #expect(diagnostics.contains { $0.rule == .macroExpand && $0.severity == .error })
+
+        // Inspector must not trap on unexpandable macros
+        let profile = TmdSongInspector.inspect(sheet: sheet)
+        #expect(profile.title == "Macro Error With Concrete Entry")
+    }
+
+    @Test("Issue #45: (layer (seq ...)) advances bar offsets across sequential child expressions")
+    func testIssue45LayerWithNestedSeqAdvancesBarOffsets() throws {
+        let score = """
+            ::SCORE::
+            ** Layer Seq Offset **
+            != 120
+            ?= C
+            <4/4>
+
+            WeirdMotif {
+                <8*>
+                | 6_ 1 2' 3 6 5 2' 1 | 7_ 1 2' 6_ 3 - 0 0 |
+            }
+
+            WeirdPulse {
+                <8*>
+                | 6_ 0 6'_ 0 6_ 0 5_ 1 | 2_ 0 2'_ 0 3_ - 0 0 |
+            }
+
+            -> (layer
+                (seq
+                    (play (reverse WeirdMotif) Harpsichord)
+                    (play (flip WeirdMotif) Flute)
+                    (play (transpose WeirdMotif 5) Harpsichord))
+                (loop WeirdPulse PizzicatoStrings 3))
+            ->#
+            """
+        let sheet = try TmdParser.parseThrowing(string: score)
+        let expanded = try TmdMacroEvaluator.expandThrowing(sheet)
+
+        let layerEntries = expanded.entries.filter { $0.name.hasPrefix("__layer_") }
+        #expect(layerEntries.count == 4)
+
+        let harpsichordEntries = layerEntries.filter { $0.assignment == "Harpsichord" }.sorted { $0.start < $1.start }
+        let fluteEntry = try #require(layerEntries.first { $0.assignment == "Flute" })
+        let pizzEntry = try #require(layerEntries.first { $0.assignment == "PizzicatoStrings" })
+
+        #expect(harpsichordEntries.count == 2)
+        #expect(harpsichordEntries[0].start == 0)
+        #expect(fluteEntry.start == 2)
+        #expect(harpsichordEntries[1].start == 4)
+        #expect(pizzEntry.start == 0)
+
+        // And ScoreValidator must not report any E-TIMELINE-OVERLAP for the two Harpsichord steps in (seq ...)
+        let diagnostics = TmdScoreValidator.validate(source: score)
+        let errors = diagnostics.filter { $0.severity == .error }
+        #expect(errors.isEmpty)
+    }
 }

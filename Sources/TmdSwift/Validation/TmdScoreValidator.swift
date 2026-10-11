@@ -200,7 +200,7 @@ public enum TmdScoreValidator {
                     rule: .macroExpand,
                     message: macroErr.errorDescription ?? macroErr.message
                 ))
-            expandedSheet = sheet
+            expandedSheet = TmdMacroEvaluator.expandOrTrap(sheet)
         } catch {
             diagnostics.append(
                 TmdScoreDiagnostic(
@@ -211,7 +211,7 @@ public enum TmdScoreValidator {
                     rule: .macroExpand,
                     message: error.localizedDescription
                 ))
-            expandedSheet = sheet
+            expandedSheet = TmdMacroEvaluator.expandOrTrap(sheet)
         }
 
         // 2b. Timeline overlap (E-TIMELINE-OVERLAP)
