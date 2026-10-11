@@ -158,6 +158,9 @@ private struct TokenParser {
                 } else if case .positiveNumber(let n) = current {
                     speed = Double(n)
                     advance()
+                } else if case .note(let note) = current {
+                    speed = Double(note.degree.rawValue)
+                    advance()
                 }
 
             case .keySignaturePrefix:
@@ -646,13 +649,43 @@ private struct TokenParser {
         switch current {
         case .relativeTempoPrefix:
             advance()
+            let sign: Double
+            if current == .tie {
+                advance()
+                sign = -1.0
+            } else {
+                sign = 1.0
+            }
             if case .number(let value) = current {
                 advance()
-                return SectionDirective(position: position, kind: .relativeTempo(Double(value)))
+                return SectionDirective(position: position, kind: .relativeTempo(sign * Double(value)))
             }
             if case .double(let value) = current {
                 advance()
-                return SectionDirective(position: position, kind: .relativeTempo(value))
+                return SectionDirective(position: position, kind: .relativeTempo(sign * value))
+            }
+            if case .note(let note) = current {
+                advance()
+                return SectionDirective(
+                    position: position, kind: .relativeTempo(sign * Double(note.degree.rawValue)))
+            }
+        case .identifier(let s) where s == "!":
+            advance()
+            if current == .tie {
+                advance()
+                if case .number(let value) = current {
+                    advance()
+                    return SectionDirective(position: position, kind: .relativeTempo(-Double(value)))
+                }
+                if case .double(let value) = current {
+                    advance()
+                    return SectionDirective(position: position, kind: .relativeTempo(-value))
+                }
+                if case .note(let note) = current {
+                    advance()
+                    return SectionDirective(
+                        position: position, kind: .relativeTempo(-Double(note.degree.rawValue)))
+                }
             }
         case .speedPrefix:
             advance()
@@ -667,6 +700,10 @@ private struct TokenParser {
             if case .number(let value) = current {
                 advance()
                 return SectionDirective(position: position, kind: .tempo(Double(value)))
+            }
+            if case .note(let note) = current {
+                advance()
+                return SectionDirective(position: position, kind: .tempo(Double(note.degree.rawValue)))
             }
         case .relativeOrderPrefix:
             advance()

@@ -46,7 +46,12 @@ public struct TmdMIDIGenerator {
     ) -> [MIDIEvent] {
         let initial = [
             MIDIEvent(tick: 0, message: .trackName(sheet.name.isEmpty ? "TMD Score" : sheet.name)),
-            MIDIEvent(tick: 0, message: .tempo(sheet.speed > 0 ? sheet.speed : 120)),
+            MIDIEvent(
+                tick: 0,
+                message: .tempo(
+                    sheet.speed > 0
+                        ? TmdPlaybackRenderer.clampTempo(sheet.speed)
+                        : TmdPlaybackRenderer.defaultTempoBPM)),
             MIDIEvent(tick: 0, message: .timeSignature(sheet.beat)),
         ]
         let directives = timeline.directives.compactMap {
