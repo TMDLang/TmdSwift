@@ -215,4 +215,33 @@ struct TmdReaperGeneratorTests {
         #expect(rpp.contains("<SOURCE MIDI"))
         #expect(rpp.contains("HASDATA 1 960 QN"))
     }
+
+    @Test("Issue #41: Reaper emits 2-byte Program Change and defaults tempo to 120 when speed <= 0")
+    func testReaperTwoByteProgramChangeAndDefaultTempo() {
+        let sheet = Sheet(
+            name: "Zero Speed",
+            speed: 0,
+            keySignature: KeySignature(string: "C"),
+            beat: Beat(count: 4, noteValue: 4),
+            entries: [
+                Entry(
+                    name: "A",
+                    assignment: "Violin",
+                    start: 0,
+                    sections: [
+                        Section(
+                            noteLength: 4,
+                            unitGroups: [UnitGroup(units: [.note(Note(degree: .c))], length: 4)]
+                        )
+                    ]
+                )
+            ],
+            playback: [.name("A")]
+        )
+        let rpp = TmdReaperGenerator.generateRPP(from: sheet)
+        #expect(rpp.contains("PT 0.00000000 120.00000000"))
+        // Program Change for Violin (program 40 = 0x28) on channel 0 (0xc0): 2 bytes "E 0 c0 28", no trailing "00"
+        #expect(rpp.contains("E 0 c0 28\n"))
+        #expect(!rpp.contains("E 0 c0 28 00"))
+    }
 }

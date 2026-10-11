@@ -46,24 +46,11 @@ public struct TmdBrailleGenerator {
         from inputSheet: Sheet,
         options: TmdBrailleOptions = TmdBrailleOptions()
     ) -> String {
-        var workingSheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
-
-        if let targetSection = options.targetSection, !targetSection.isEmpty {
-            let filteredEntries = workingSheet.entries.filter {
-                $0.name.caseInsensitiveCompare(targetSection) == .orderedSame
-            }
-            workingSheet = Sheet(
-                name: workingSheet.name,
-                speed: workingSheet.speed,
-                keySignature: workingSheet.keySignature,
-                declaredKey: workingSheet.declaredKey,
-                beat: workingSheet.beat,
-                entries: filteredEntries,
-                playback: [.name(targetSection)],
-                metadata: workingSheet.metadata
-            )
-        }
-
+        let (workingSheet, _) = inputSheet.preparedForExport(
+            fallbackToDefault: false,
+            targetParagraph: options.targetSection,
+            targetInstrument: options.targetInstrument
+        )
         var instruments = distinctMusicalInstruments(in: workingSheet)
         if let targetInstrument = options.targetInstrument, !targetInstrument.isEmpty {
             instruments = instruments.filter {

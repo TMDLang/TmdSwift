@@ -83,6 +83,7 @@ public struct TmdVSQGenerator: Sendable {
         // Track 1: Vocal Track (MIDI Notes + INI Text chunks)
         let vsqTrackData = generateVsqTrack(
             timeline: timeline,
+            beat: sheet.beat,
             instrumentName: selectedInstrument,
             options: options
         )
@@ -97,10 +98,13 @@ public struct TmdVSQGenerator: Sendable {
 
     private static func generateVsqTrack(
         timeline: PlaybackTimeline,
+        beat: Beat,
         instrumentName: String,
         options: VocaloidExportOptions
     ) -> Data {
-        let preMeasureTicks = options.preMeasure * 4 * Int(ticksPerQuarter)
+        let beatCount = beat.count > 0 ? beat.count : 4
+        let beatNoteVal = beat.noteValue > 0 ? beat.noteValue : 4
+        let preMeasureTicks = options.preMeasure * (beatCount * 4 * Int(ticksPerQuarter)) / beatNoteVal
         let noteItems = VocaloidNoteItem.extractNotes(
             from: timeline,
             preMeasureTicks: preMeasureTicks,
@@ -184,11 +188,7 @@ public struct TmdVSQGenerator: Sendable {
         while offset < iniBytes.count {
             let end = min(offset + chunkSize, iniBytes.count)
             let chunkData = Data(iniBytes[offset..<end])
-            if let chunkStr = String(data: chunkData, encoding: .isoLatin1)
-                ?? String(data: chunkData, encoding: .utf8)
-            {
-                midiEvents.append(MIDIEvent(tick: 0, message: .text(chunkStr)))
-            }
+            midiEvents.append(MIDIEvent(tick: 0, message: .customMeta(type: 0x01, data: chunkData)))
             offset += chunkSize
         }
 

@@ -1277,12 +1277,51 @@ public struct Sheet: Equatable {
             return requested
         }
 
-        let regex = try? NSRegularExpression(
-            pattern: "vocal|voice|miku|utau|teto|sing|lead|melody", options: .caseInsensitive)
-        if let matched = distinct.first(where: { inst in
-            regex?.firstMatch(in: inst, range: NSRange(inst.startIndex..., in: inst)) != nil
+        // Tier 1: Explicit primary vocal keywords (e.g. Vocal, MainVocal, LeadVocal, 主唱, 人聲, 歌, 歌聲)
+        if let tier1 = distinct.first(where: {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines).range(
+                of: "^(main_?vocal|lead_?vocal|vocal|voice|主唱|人聲|歌聲|歌|vo)$",
+                options: [.regularExpression, .caseInsensitive]
+            ) != nil
         }) {
-            return matched
+            return tier1
+        }
+
+        let isExcluded: (String) -> Bool = { name in
+            name.range(
+                of: "backing|harm|choir|guitar|synth|pad|bass|drum|beat|solo",
+                options: [.regularExpression, .caseInsensitive]
+            ) != nil
+        }
+
+        // Tier 2: Vocal / virtual singer tokens excluding accompaniment/solo indicators
+        if let tier2 = distinct.first(where: {
+            $0.range(
+                of: "vocal|voice|miku|utau|teto|sing|主唱|人聲|歌聲",
+                options: [.regularExpression, .caseInsensitive]
+            ) != nil && !isExcluded($0)
+        }) {
+            return tier2
+        }
+
+        // Tier 3: Melody or lead keywords (not excluded)
+        if let tier3 = distinct.first(where: {
+            $0.range(
+                of: "melody|lead|主旋律|旋律",
+                options: [.regularExpression, .caseInsensitive]
+            ) != nil && !isExcluded($0)
+        }) {
+            return tier3
+        }
+
+        // Tier 4: Any vocal keyword including backing/harm/choir
+        if let tier4 = distinct.first(where: {
+            $0.range(
+                of: "vocal|voice|miku|utau|teto|sing|melody|choir|soprano|alto|tenor|主唱|人聲|歌聲|旋律",
+                options: [.regularExpression, .caseInsensitive]
+            ) != nil
+        }) {
+            return tier4
         }
 
         return distinct.first ?? "Vocal"
@@ -1304,14 +1343,9 @@ public struct Sheet: Equatable {
             }
     }
 
-    /// Returns `true` if `instrument` is a percussion track by name keyword or by containing `.percussion` units.
+    /// Returns `true` if `instrument` is a percussion track by `MIDIInstrument.resolve` or by containing `.percussion` units.
     public func isPercussionTrack(instrument: String) -> Bool {
-        let lower = instrument.lowercased()
-        let aliases = [
-            "drum", "drums", "groove", "percussion", "perc", "beat", "drumkit", "kit",
-            "cajon", "snare", "kick", "hihat",
-        ]
-        if aliases.contains(where: { lower.contains($0) }) {
+        if MIDIInstrument.resolve(instrument).isPercussion {
             return true
         }
         return containsPercussionUnits(forInstrument: instrument)
@@ -1332,12 +1366,38 @@ public struct Sheet: Equatable {
         return lower == "chord" || lower == "chords"
     }
 
-    /// Expands all S-Expression macros on this sheet and returns the expanded sheet along with its ordered distinct instruments.
-    public func preparedForExport(fallbackToDefault: Bool = false) -> (
-        sheet: Sheet, instruments: [String]
-    ) {
-        let expanded = TmdMacroEvaluator.expandOrTrap(self)
-        return (expanded, expanded.distinctInstruments(fallbackToDefault: fallbackToDefault))
+    /// Expands all S-Expression macros on this sheet, optionally filters by `targetParagraph` and `targetInstrument`,
+    /// and returns the prepared sheet along with its ordered distinct instruments.
+    public func preparedForExport(
+        fallbackToDefault: Bool = false,
+        targetParagraph: String? = nil,
+        targetInstrument: String? = nil
+    ) -> (sheet: Sheet, instruments: [String]) {
+        var sheet = TmdMacroEvaluator.expandOrTrap(self)
+        if let targetParagraph, !targetParagraph.isEmpty {
+            let filteredEntries = sheet.entries.filter {
+                $0.name.caseInsensitiveCompare(targetParagraph) == .orderedSame
+            }
+            sheet = Sheet(
+                name: sheet.name,
+                speed: sheet.speed,
+                keySignature: sheet.keySignature,
+                declaredKey: sheet.declaredKey,
+                beat: sheet.beat,
+                entries: filteredEntries,
+                playback: [.name(targetParagraph)],
+                metadata: sheet.metadata
+            )
+        }
+        var instruments = sheet.distinctInstruments(fallbackToDefault: false)
+        if let targetInstrument, !targetInstrument.isEmpty {
+            instruments = instruments.filter {
+                $0.caseInsensitiveCompare(targetInstrument) == .orderedSame
+            }
+        } else if instruments.isEmpty && fallbackToDefault {
+            instruments = ["Piano"]
+        }
+        return (sheet, instruments)
     }
 
     /// Returns `playback` when explicitly specified, or falls back to playing each distinct entry section name in appearance order.

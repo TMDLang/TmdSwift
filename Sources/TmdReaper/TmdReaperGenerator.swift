@@ -14,8 +14,9 @@ public struct TmdReaperGenerator {
 
         // Build timeline tempo segments
         let sortedDirectives = conductorTimeline.directives.sorted { $0.position < $1.position }
+        let initialTempo = sheet.speed > 0 ? sheet.speed : 120.0
         let segments = TmdPlaybackRenderer.buildTempoSegments(
-            initialTempo: sheet.speed,
+            initialTempo: initialTempo,
             initialBeat: sheet.beat,
             directives: sortedDirectives
         )
@@ -233,7 +234,7 @@ private extension MIDIMessage {
         case .programChange(let ch, let prog):
             let status = String(format: "%02x", 0xC0 | (ch & 0x0F))
             let d1 = String(format: "%02x", prog & 0x7F)
-            return "        E \(delta) \(status) \(d1) 00"
+            return "        E \(delta) \(status) \(d1)"
         case .controlChange(let ch, let cc, let val):
             let status = String(format: "%02x", 0xB0 | (ch & 0x0F))
             let d1 = String(format: "%02x", cc & 0x7F)

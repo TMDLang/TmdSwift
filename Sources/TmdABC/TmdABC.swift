@@ -111,7 +111,7 @@ public struct TmdABCGenerator {
             if case .note(let n) = ev.content { return (n, ev) }
             return nil
         }
-        if noteEvents.count > 1 {
+        if noteEvents.count == group.count && noteEvents.count > 1 {
             let multiplier = max(1, Int((first.duration * 4).rounded()))
             let suffix = multiplier > 1 ? "\(multiplier)" : ""
             let tie = noteEvents.contains { $0.1.tieStart } ? "-" : ""
@@ -124,6 +124,17 @@ public struct TmdABCGenerator {
                 )
             }
             return "[\(pitches.joined())]\(suffix)\(tie)"
+        }
+        if group.count > 1 {
+            return group.map {
+                formatMeasureEvent(
+                    $0,
+                    defaultKeyStepAlters: defaultKeyStepAlters,
+                    measureStepAlters: &measureStepAlters
+                )
+            }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
         }
         return formatMeasureEvent(
             first,
@@ -225,12 +236,20 @@ public struct TmdABCGenerator {
         guard !trimmed.isEmpty else { return "C" }
         var isMinor = false
         var root = trimmed
-        if root.hasSuffix("m") && !root.hasSuffix("maj") {
-            isMinor = true
-            root.removeLast()
-        } else if root.lowercased().hasSuffix("minor") {
+        let lowerRoot = root.lowercased()
+        if lowerRoot.hasSuffix("minor") {
             isMinor = true
             root = String(root.dropLast(5)).trimmingCharacters(in: .whitespaces)
+        } else if lowerRoot.hasSuffix("min") {
+            isMinor = true
+            root = String(root.dropLast(3)).trimmingCharacters(in: .whitespaces)
+        } else if lowerRoot.hasSuffix("major") {
+            root = String(root.dropLast(5)).trimmingCharacters(in: .whitespaces)
+        } else if lowerRoot.hasSuffix("maj") {
+            root = String(root.dropLast(3)).trimmingCharacters(in: .whitespaces)
+        } else if root.hasSuffix("m") {
+            isMinor = true
+            root.removeLast()
         }
         let keySig = KeySignature(string: root)
         let normalized = ((keySig.semitoneOffset % 12) + 12) % 12

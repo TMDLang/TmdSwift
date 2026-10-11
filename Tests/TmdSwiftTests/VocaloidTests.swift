@@ -113,4 +113,68 @@ struct VocaloidTests {
         #expect(!vsqAscii.contains("Note#=60"))
         #expect(!vsqAscii.contains("[ID#0003]"))
     }
+
+    @Test("Issue #41: VSQ preserves UTF-8 non-ASCII lyrics/track names without isoLatin1 double-encoding and computes non-4/4 preMeasureTicks")
+    func testVSQUTF8AndNonFourFourPreMeasure() throws {
+        let tmdContent = """
+            ::SCORE::
+            ** 櫻花歌 **
+            != 120
+            ?= C
+            <3/4>
+            Verse:主唱@|0|{
+                <4*>
+                | 1 2 3 |
+            }
+            -> Verse ->#
+            """
+        let sheet = try TmdParser.parseThrowing(string: tmdContent)
+        let vsqData = TmdVSQGenerator.generateVSQ(
+            from: sheet,
+            options: VocaloidExportOptions(singerName: "Miku", preMeasure: 1, defaultLyric: "あ")
+        )
+        // Extract all 0xFF 0x01 meta events from Track 1 and concatenate their raw bytes
+        var rawTextBytes = Data()
+        let bytes = [UInt8](vsqData)
+        var i = 0
+        while i + 2 < bytes.count {
+            if bytes[i] == 0xFF && bytes[i + 1] == 0x01 {
+                let len = Int(bytes[i + 2])
+                if i + 3 + len <= bytes.count {
+                    rawTextBytes.append(contentsOf: bytes[(i + 3)..<(i + 3 + len)])
+                    i += 3 + len
+                    continue
+                }
+            }
+            i += 1
+        }
+        let iniText = String(data: rawTextBytes, encoding: .utf8) ?? ""
+        #expect(iniText.contains("Name=主唱"))
+        #expect(iniText.contains("L0=\"あ\",\"a\""))
+        // In 3/4 time, 1 preMeasure = 3 * 480 = 1440 ticks (not 1920)
+        #expect(iniText.contains("1440=ID#0001"))
+
+        // Also check Sheet.isPercussionTrack("PercussiveOrgan") and resolveVocalInstrument
+        let organSheet = try TmdParser.parseThrowing(string: """
+            ::SCORE::
+            != 120
+            ?= C
+            <4/4>
+            A:Guitar_Lead@|0|{
+                <4*>
+                | 1 2 3 4 |
+            }
+            A:PercussiveOrgan@|0|{
+                <4*>
+                | 1 3 5 1^ |
+            }
+            A:主唱@|0|{
+                <4*>
+                | 5 6 5 3 |
+            }
+            -> A ->#
+            """)
+        #expect(!organSheet.isPercussionTrack(instrument: "PercussiveOrgan"))
+        #expect(organSheet.resolveVocalInstrument() == "主唱")
+    }
 }

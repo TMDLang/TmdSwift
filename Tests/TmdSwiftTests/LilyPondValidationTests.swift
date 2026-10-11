@@ -272,4 +272,31 @@ struct LilyPondValidationTests {
         #expect(lyC.contains("bes'4"))
         #expect(lyC.contains("bis'4"))
     }
+
+    @Test("Issue #41: LilyPond preserves simultaneous chord + note events and recognizes min/maj key suffixes")
+    func testLilyPondSimultaneousChordAndNoteAndMinKey() throws {
+        let tmd = """
+            ::SCORE::
+            != 120
+            ?= C
+            key= Amin
+            <4/4>
+
+            A:Piano@|0|{
+                <4*>
+                | [C] 2 3 4 |
+            }
+            A:Piano@|0|{
+                <4*>
+                | 5 - - - |
+            }
+            -> A ->#
+            """
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let ly = TmdLilyPondGenerator.generateLilyPond(from: sheet)
+        #expect(ly.contains("\\key a \\minor"))
+        // Beat 1 has simultaneous [C] (<c e g>4) and note 5 (g'1); neither should be dropped!
+        #expect(ly.contains("<c e g>4"))
+        #expect(ly.contains("g'1"))
+    }
 }

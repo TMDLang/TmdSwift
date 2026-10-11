@@ -12,25 +12,11 @@ public struct TmdMIDIGenerator {
         targetParagraph: String? = nil,
         targetInstrument: String? = nil
     ) -> Data {
-        let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
-        var effectiveSheet = sheet
-        if let targetParagraph {
-            let filteredParagraphs = sheet.entries.filter { $0.name == targetParagraph }
-            effectiveSheet = Sheet(
-                name: sheet.name,
-                speed: sheet.speed,
-                keySignature: sheet.keySignature,
-                beat: sheet.beat,
-                entries: filteredParagraphs,
-                playback: [.name(targetParagraph)],
-                metadata: sheet.metadata
-            )
-        }
-
-        var distinctInstruments = effectiveSheet.distinctInstruments(fallbackToDefault: false)
-        if let targetInstrument {
-            distinctInstruments = distinctInstruments.filter { $0 == targetInstrument }
-        }
+        let (effectiveSheet, distinctInstruments) = inputSheet.preparedForExport(
+            fallbackToDefault: false,
+            targetParagraph: targetParagraph,
+            targetInstrument: targetInstrument
+        )
 
         let timeline = TmdPlaybackRenderer.renderConductor(sheet: effectiveSheet)
         var trackData = [

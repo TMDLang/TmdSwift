@@ -275,4 +275,30 @@ struct ABCValidationTests {
         let abcC = TmdABCGenerator.generateABC(from: sheetC)
         #expect(abcC.contains("^c4 =c4 _c4 ^b4"))
     }
+
+    @Test("Issue #41: ABC preserves simultaneous chord + note events and recognizes min/maj key suffixes")
+    func testABCSimultaneousChordAndNoteAndMinKey() throws {
+        let tmd = """
+            ::SCORE::
+            != 120
+            ?= C
+            key= Amin
+            <4/4>
+
+            A:Piano@|0|{
+                <4*>
+                | [C] 2 3 4 |
+            }
+            A:Piano@|0|{
+                <4*>
+                | 5 - - - |
+            }
+            -> A ->#
+            """
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let abc = TmdABCGenerator.generateABC(from: sheet)
+        #expect(abc.contains("K:Am"))
+        #expect(abc.contains("\"C\"z4"))
+        #expect(abc.contains("g"))
+    }
 }

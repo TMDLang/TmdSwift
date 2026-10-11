@@ -123,7 +123,7 @@ public struct TmdLilyPondGenerator {
             if case .note(let n) = ev.content { return (n, ev) }
             return nil
         }
-        if noteEvents.count > 1 {
+        if noteEvents.count == group.count && noteEvents.count > 1 {
             let decomposed = NotationDuration.decompose(quarterNotes: first.duration)
             let pitches = noteEvents.map { note, ev in
                 noteToLilyPondPitch(note, keyOffset: ev.state.keyOffset)
@@ -138,6 +138,11 @@ public struct TmdLilyPondGenerator {
                 parts.append("\(chordBody)\(durStr)\(tie)")
             }
             return parts.joined(separator: " ")
+        }
+        if group.count > 1 {
+            return group.map { formatMeasureEvent($0, percussion: percussion) }
+                .filter { !$0.isEmpty }
+                .joined(separator: " ")
         }
         return formatMeasureEvent(first, percussion: percussion)
     }
@@ -210,12 +215,20 @@ public struct TmdLilyPondGenerator {
         guard let first = trimmed.first else { return "c \\major" }
         var isMinor = false
         var rest = String(trimmed.dropFirst())
-        if rest.hasSuffix("m") && !rest.hasSuffix("maj") {
-            isMinor = true
-            rest.removeLast()
-        } else if rest.lowercased().hasSuffix("minor") {
+        let lowerRest = rest.lowercased()
+        if lowerRest.hasSuffix("minor") {
             isMinor = true
             rest = String(rest.dropLast(5)).trimmingCharacters(in: .whitespaces)
+        } else if lowerRest.hasSuffix("min") {
+            isMinor = true
+            rest = String(rest.dropLast(3)).trimmingCharacters(in: .whitespaces)
+        } else if lowerRest.hasSuffix("major") {
+            rest = String(rest.dropLast(5)).trimmingCharacters(in: .whitespaces)
+        } else if lowerRest.hasSuffix("maj") {
+            rest = String(rest.dropLast(3)).trimmingCharacters(in: .whitespaces)
+        } else if rest.hasSuffix("m") {
+            isMinor = true
+            rest.removeLast()
         }
         var pitch = String(first).lowercased()
         if rest.contains("'") || rest.contains("#") {
