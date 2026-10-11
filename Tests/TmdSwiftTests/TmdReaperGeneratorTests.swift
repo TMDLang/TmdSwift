@@ -244,4 +244,32 @@ struct TmdReaperGeneratorTests {
         #expect(rpp.contains("E 0 c0 28\n"))
         #expect(!rpp.contains("E 0 c0 28 00"))
     }
+
+    @Test("Reaper rejects zero PPQ before generating project data")
+    func testReaperRejectsZeroPPQ() throws {
+        let sheet = Sheet(
+            name: "Invalid PPQ",
+            speed: 120,
+            keySignature: KeySignature(string: "C"),
+            beat: Beat(count: 4, noteValue: 4),
+            entries: [
+                Entry(
+                    name: "A",
+                    assignment: "Piano",
+                    start: 0,
+                    sections: [
+                        Section(
+                            noteLength: 4,
+                            unitGroups: [UnitGroup(units: [.note(Note(degree: .c))], length: 4)]
+                        )
+                    ]
+                )
+            ],
+            playback: [.name("A")]
+        )
+
+        #expect(throws: TmdReaperGenerator.Error.invalidTicksPerQuarter) {
+            _ = try TmdReaperGenerator.generateRPP(from: sheet, ppq: 0)
+        }
+    }
 }

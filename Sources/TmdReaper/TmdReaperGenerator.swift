@@ -6,8 +6,17 @@ import TmdSwift
 public struct TmdReaperGenerator {
     public static let defaultPPQ: UInt16 = 960
 
+    public enum Error: Swift.Error, LocalizedError, Equatable, Sendable {
+        case invalidTicksPerQuarter
+
+        public var errorDescription: String? {
+            "ppq must be greater than zero."
+        }
+    }
+
     /// Generates REAPER project file content (.rpp) from a Sheet.
     public static func generateRPP(from inputSheet: Sheet, ppq: UInt16 = defaultPPQ) throws -> String {
+        guard ppq > 0 else { throw Error.invalidTicksPerQuarter }
         let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
         let distinctInstruments = sheet.distinctInstruments(fallbackToDefault: false)
         let conductorTimeline = TmdPlaybackRenderer.renderConductor(sheet: sheet)
