@@ -494,11 +494,38 @@ struct ScoreValidatorTests {
         #expect(fluteM7DownbeatEvent != nil)
         #expect(clarinetM7DownbeatEvent != nil)
 
-        // 4. Measure renderer slices Flute's M7 pickup at 24.5..<28.0 with 7/8 time signature
+        // 4. Measure renderer keeps M5's 4th bar (23.0..<28.0) in 5/4 (containing Flute's pickup in its tail)
+        // and switches all tracks (Flute, Clarinet, Oboe, Violin) to 7/8 at 28.0 with identical measure grids.
         let fluteMeasures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Flute")
-        let pickupMeasure = fluteMeasures.first { abs($0.startTime - 24.5) < 1e-6 }
-        #expect(pickupMeasure != nil)
-        #expect(pickupMeasure?.timeSignature == Beat(count: 7, noteValue: 8))
-        #expect(abs((pickupMeasure?.nominalDuration ?? 0) - 3.5) < 1e-6)
+        let clarinetMeasures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Clarinet")
+        let oboeMeasures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Oboe")
+        let violinMeasures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Violin")
+
+        // 2 (Intro 4/4) + 4 (M5 5/4) + 4 (M7 7/8) + 4 (M11 11/8) + 4 (M13 13/8) + 5 (Poly 7/8) = 23 measures
+        #expect(fluteMeasures.count == 23)
+        #expect(clarinetMeasures.count == 23)
+        #expect(oboeMeasures.count == 23)
+        #expect(violinMeasures.count == 23)
+
+        for idx in 0..<fluteMeasures.count {
+            #expect(abs(fluteMeasures[idx].startTime - clarinetMeasures[idx].startTime) < 1e-6)
+            #expect(abs(fluteMeasures[idx].nominalDuration - clarinetMeasures[idx].nominalDuration) < 1e-6)
+            #expect(fluteMeasures[idx].timeSignature == clarinetMeasures[idx].timeSignature)
+            #expect(fluteMeasures[idx].timeSignature == oboeMeasures[idx].timeSignature)
+            #expect(fluteMeasures[idx].timeSignature == violinMeasures[idx].timeSignature)
+        }
+
+        // Measure 5 (23.0..<28.0, 4th bar of M5) must be 5/4 (5.0 beats) and conserve exact duration without overlapping rests
+        let m5LastBar = fluteMeasures[5]
+        #expect(abs(m5LastBar.startTime - 23.0) < 1e-6)
+        #expect(m5LastBar.timeSignature == Beat(count: 5, noteValue: 4))
+        let m5LastBarTotal = m5LastBar.simultaneousEventGroups.reduce(0.0) { $0 + ($1.first?.duration ?? 0) }
+        #expect(abs(m5LastBarTotal - 5.0) < 1e-6)
+
+        // Measure 6 (28.0..<31.5, 1st bar of M7) must be 7/8 (3.5 beats)
+        let m7FirstBar = fluteMeasures[6]
+        #expect(abs(m7FirstBar.startTime - 28.0) < 1e-6)
+        #expect(m7FirstBar.timeSignature == Beat(count: 7, noteValue: 8))
+        #expect(abs(m7FirstBar.nominalDuration - 3.5) < 1e-6)
     }
 }

@@ -369,6 +369,9 @@ public enum TmdPlaybackRenderer {
                     let start =
                         cursor.timelinePosition + Double(paragraph.start)
                         * measureDuration(for: entryBeat)
+                    let minTimeSigPos =
+                        (paragraph.start < 0 && cursor.timelinePosition > 0)
+                        ? cursor.timelinePosition : start
                     let paragraphState =
                         paragraph.pitchMode == .fixed
                         ? PlaybackState(
@@ -379,7 +382,8 @@ public enum TmdPlaybackRenderer {
                         paragraph: paragraph,
                         start: start,
                         state: paragraphState,
-                        fixedPitch: paragraph.pitchMode == .fixed
+                        fixedPitch: paragraph.pitchMode == .fixed,
+                        minTimeSignaturePosition: minTimeSigPos
                     )
                     events.append(contentsOf: rendered.events)
                     directives.append(contentsOf: rendered.directives)
@@ -427,28 +431,92 @@ public enum TmdPlaybackRenderer {
         )
     }
 
-    /// Renders the score-level conductor timeline by merging directives from every concrete instrument.
+    /// Renders the score-level conductor timeline by merging directives in chronological playback order.
     public static func renderConductor(sheet inputSheet: Sheet) -> PlaybackTimeline {
         let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
         let instruments = sheet.distinctInstruments(fallbackToDefault: false)
         let sourceTimelines = instruments.map { render(sheet: sheet, instrument: $0) }
-        var merged: [PlaybackDirectiveEvent] = []
+        let globalMin = globalEarliestPosition(in: sheet)
+        let offset = globalMin < 0.0 ? -globalMin : 0.0
 
-        for timeline in sourceTimelines {
-            for directive in timeline.directives.sorted(by: { $0.position < $1.position }) {
-                if merged.contains(where: {
-                    $0.position == directive.position && $0.kind == directive.kind
-                }) {
-                    continue
-                }
-                merged.append(directive)
+        let orders = orders(for: sheet)
+        var cursor = PlaybackOrderCursor(sheet: sheet)
+        var orderedDirectives: [PlaybackDirectiveEvent] = []
+
+        for order in orders {
+            guard let name = cursor.visit(order) else { continue }
+            let matchingParagraphs = sheet.entries.filter { $0.name == name && !$0.isPrototype }
+            let paragraphDuration = duration(of: name, in: sheet, beat: cursor.state.timeSignature)
+            guard !matchingParagraphs.isEmpty else {
+                cursor.advance(by: paragraphDuration)
+                continue
             }
+            var leadingAndInterior: [PlaybackDirectiveEvent] = []
+            var trailing: [PlaybackDirectiveEvent] = []
+            let sectionEnd = cursor.timelinePosition + paragraphDuration
+
+            for paragraph in matchingParagraphs {
+                let entryBeat = entryInitialBeat(
+                    for: paragraph, in: sheet, fallback: cursor.state.timeSignature)
+                let start =
+                    cursor.timelinePosition + Double(paragraph.start)
+                    * measureDuration(for: entryBeat)
+                let minTimeSigPos =
+                    (paragraph.start < 0 && cursor.timelinePosition > 0)
+                    ? cursor.timelinePosition : start
+                let paragraphState =
+                    paragraph.pitchMode == .fixed
+                    ? PlaybackState(
+                        tempo: cursor.state.tempo, keyOffset: 0,
+                        timeSignature: cursor.state.timeSignature,
+                        dynamicLevel: cursor.state.dynamicLevel)
+                    : cursor.state
+                let rendered = render(
+                    paragraph: paragraph,
+                    start: start,
+                    state: paragraphState,
+                    fixedPitch: paragraph.pitchMode == .fixed,
+                    minTimeSignaturePosition: minTimeSigPos
+                )
+                for dir in rendered.directives {
+                    let shifted = PlaybackDirectiveEvent(
+                        position: dir.position + offset,
+                        kind: dir.kind,
+                        state: dir.state
+                    )
+                    if dir.position >= sectionEnd - 1e-6 {
+                        trailing.append(shifted)
+                    } else {
+                        leadingAndInterior.append(shifted)
+                    }
+                }
+                cursor.state = PlaybackState(
+                    tempo: rendered.state.tempo,
+                    keyOffset: paragraph.pitchMode == .fixed
+                        ? cursor.state.keyOffset : rendered.state.keyOffset,
+                    timeSignature: cursor.state.timeSignature,
+                    dynamicLevel: rendered.state.dynamicLevel
+                )
+            }
+            orderedDirectives.append(contentsOf: leadingAndInterior)
+            orderedDirectives.append(contentsOf: trailing)
+            cursor.advance(by: paragraphDuration)
+        }
+
+        var merged: [PlaybackDirectiveEvent] = []
+        for directive in orderedDirectives {
+            if let existingIdx = merged.firstIndex(where: {
+                abs($0.position - directive.position) < 1e-6 && $0.kind == directive.kind
+            }) {
+                merged.remove(at: existingIdx)
+            }
+            merged.append(directive)
         }
 
         var state = initialState(for: sheet)
         let directives = merged.enumerated()
             .sorted {
-                $0.element.position == $1.element.position
+                abs($0.element.position - $1.element.position) < 1e-6
                     ? $0.offset < $1.offset
                     : $0.element.position < $1.element.position
             }
@@ -470,7 +538,8 @@ public enum TmdPlaybackRenderer {
         paragraph: Entry,
         start: Double,
         state initialState: PlaybackState,
-        fixedPitch: Bool
+        fixedPitch: Bool,
+        minTimeSignaturePosition: Double? = nil
     ) -> (
         events: [PlaybackEvent], directives: [PlaybackDirectiveEvent], state: PlaybackState,
         duration: Double
@@ -479,6 +548,8 @@ public enum TmdPlaybackRenderer {
         var events: [PlaybackEvent] = []
         var directives: [PlaybackDirectiveEvent] = []
         var position = start
+        let effectiveMinTimeSigPos = minTimeSignaturePosition ?? start
+        var deferredTimeSignatures: [(position: Double, kind: SectionDirectiveKind)] = []
 
         for section in paragraph.sections {
             let unitDuration = 4.0 / Double(max(1, section.noteLength))
@@ -487,17 +558,36 @@ public enum TmdPlaybackRenderer {
             var sectionPosition = 0
 
             for group in section.unitGroups {
+                while !deferredTimeSignatures.isEmpty,
+                    position >= effectiveMinTimeSigPos - 1e-6
+                {
+                    let deferred = deferredTimeSignatures.removeFirst()
+                    state = deferred.kind.applied(to: state, fixedPitch: fixedPitch)
+                    directives.append(
+                        PlaybackDirectiveEvent(
+                            position: deferred.position,
+                            kind: deferred.kind,
+                            state: state
+                        ))
+                }
                 while directiveIndex < sortedDirectives.count,
                     sortedDirectives[directiveIndex].position <= sectionPosition
                 {
                     let directive = sortedDirectives[directiveIndex]
-                    state = directive.kind.applied(to: state, fixedPitch: fixedPitch)
-                    directives.append(
-                        PlaybackDirectiveEvent(
-                            position: position,
-                            kind: directive.kind,
-                            state: state
-                        ))
+                    if case .timeSignature = directive.kind,
+                        position < effectiveMinTimeSigPos - 1e-6
+                    {
+                        deferredTimeSignatures.append(
+                            (position: effectiveMinTimeSigPos, kind: directive.kind))
+                    } else {
+                        state = directive.kind.applied(to: state, fixedPitch: fixedPitch)
+                        directives.append(
+                            PlaybackDirectiveEvent(
+                                position: position,
+                                kind: directive.kind,
+                                state: state
+                            ))
+                    }
                     directiveIndex += 1
                 }
 
@@ -603,6 +693,17 @@ public enum TmdPlaybackRenderer {
                 }
                 position += groupDuration
                 sectionPosition += group.length
+            }
+
+            while !deferredTimeSignatures.isEmpty {
+                let deferred = deferredTimeSignatures.removeFirst()
+                state = deferred.kind.applied(to: state, fixedPitch: fixedPitch)
+                directives.append(
+                    PlaybackDirectiveEvent(
+                        position: deferred.position,
+                        kind: deferred.kind,
+                        state: state
+                    ))
             }
 
             while directiveIndex < sortedDirectives.count {
