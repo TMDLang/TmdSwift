@@ -977,4 +977,92 @@ struct TmdRefactorTests {
         let pianoRange = try #require(report.instrumentRanges.first { $0.instrument == "Piano" })
         #expect(pianoRange.highestNote.measure == 7)
     }
+
+    @Test("Issue #44: CLI refactor accepts negative and quoted integer options (--interval -2, --octave -1, --semitones -2, --diatonic -1) and VS Code extension uses --key=value")
+    func testIssue44NegativeRefactorCLIOptionsAndVSCodeExtension() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("tmd_issue44_\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let sampleTmd = tempDir.appendingPathComponent("song.tmd")
+        let initialScore = """
+            ::SCORE::
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+                <4*>
+                | 3 4 5 6 |
+            }
+
+            -> verse ->#
+            """
+        try initialScore.write(to: sampleTmd, atomically: true, encoding: .utf8)
+
+        guard let tmdURL = TmdTestHelper.findTmdExecutable() else {
+            Issue.record("tmd binary must be built and available")
+            return
+        }
+
+        func runTmd(_ args: [String]) throws -> Int32 {
+            let proc = Process()
+            proc.executableURL = tmdURL
+            proc.arguments = args
+            try proc.run()
+            proc.waitUntilExit()
+            return proc.terminationStatus
+        }
+
+        // 1. Space-separated --interval -2
+        #expect(try runTmd([
+            "refactor", "generate-harmony", sampleTmd.path,
+            "--source", "Vocal", "--target", "HarmonyDown", "--interval", "-2", "-i",
+        ]) == 0)
+        var text = try String(contentsOf: sampleTmd, encoding: .utf8)
+        #expect(text.contains("verse:HarmonyDown@|0|{"))
+        #expect(text.contains("1 2 3 4 |"))
+
+        // 2. Quoted --interval "\"-2\""
+        #expect(try runTmd([
+            "refactor", "generate-harmony", sampleTmd.path,
+            "--source", "Vocal", "--target", "HarmonyQuoted", "--interval", "\"-2\"", "-i",
+        ]) == 0)
+        text = try String(contentsOf: sampleTmd, encoding: .utf8)
+        #expect(text.contains("verse:HarmonyQuoted@|0|{"))
+
+        // 3. Space-separated --octave -1
+        #expect(try runTmd([
+            "refactor", "duplicate-track", sampleTmd.path,
+            "--source", "Vocal", "--target", "VocalLow", "--octave", "-1", "-i",
+        ]) == 0)
+        text = try String(contentsOf: sampleTmd, encoding: .utf8)
+        #expect(text.contains("verse:VocalLow@|0|{"))
+        #expect(text.contains("3_ 4_ 5_ 6_ |"))
+
+        // 4. Space-separated --semitones -2 and --diatonic -1
+        #expect(try runTmd([
+            "refactor", "transpose", sampleTmd.path,
+            "--semitones", "-2", "--instrument", "Vocal", "-i",
+        ]) == 0)
+        #expect(try runTmd([
+            "refactor", "transpose", sampleTmd.path,
+            "--diatonic", "-1", "--instrument", "Vocal", "-i",
+        ]) == 0)
+
+        // 5. VS Code extension.js uses --octave=${oct} and --interval=${interval}
+        let packageRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let extensionJS = try String(
+            contentsOf: packageRoot.appendingPathComponent("editor/vscode/extension.js"),
+            encoding: .utf8
+        )
+        #expect(extensionJS.contains("`--octave=${oct}`"))
+        #expect(extensionJS.contains("`--interval=${interval}`"))
+        #expect(!extensionJS.contains("args.push('--octave',"))
+        #expect(!extensionJS.contains("args.push('--interval',"))
+    }
 }
