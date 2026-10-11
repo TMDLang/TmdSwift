@@ -167,15 +167,22 @@ public enum TmdMeasureRenderer {
 
         while curStart < totalDuration - 1e-6 || intervals.isEmpty {
             while nextDirectiveIndex < timeSigDirectives.count,
-                timeSigDirectives[nextDirectiveIndex].position <= curStart
+                timeSigDirectives[nextDirectiveIndex].position <= curStart + 1e-6
             {
                 if case .timeSignature(let b) = timeSigDirectives[nextDirectiveIndex].kind {
                     curBeat = b
                 }
                 nextDirectiveIndex += 1
             }
-            let dur = Double(max(1, curBeat.count)) * 4.0 / Double(max(1, curBeat.noteValue))
-            let curEnd = curStart + dur
+            var dur = Double(max(1, curBeat.count)) * 4.0 / Double(max(1, curBeat.noteValue))
+            var curEnd = curStart + dur
+            if nextDirectiveIndex < timeSigDirectives.count {
+                let nextPos = timeSigDirectives[nextDirectiveIndex].position
+                if nextPos > curStart + 1e-6 && nextPos < curEnd - 1e-6 {
+                    curEnd = nextPos
+                    dur = curEnd - curStart
+                }
+            }
             intervals.append(Interval(start: curStart, end: curEnd, duration: dur, beat: curBeat))
             curStart = curEnd
         }

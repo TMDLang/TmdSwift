@@ -387,4 +387,118 @@ struct ScoreValidatorTests {
         #expect(compound.isDotted == true)
         #expect(compound.perMinute == 80)
     }
+
+    @Test func testNonFourFourPickupAndPolymeterAlignment() throws {
+        let score = """
+            ::SCORE::
+            ** Odd Meter Pickups & Polymeter **
+            != 120
+            ?= C
+            <4/4>
+
+            Intro:Flute@|0|{
+                <4*>
+                | 1 2 3 4 | 1 2 3 4 |
+            }
+            Intro:Clarinet@|0|{
+                <4*>
+                | 1 2 3 4 | 1 2 3 4 |
+            }
+
+            M5:Clarinet@|-1|{
+                <4*>
+                | {<5/4>} 0 0 0 0 5, |
+                | 1 2 3 4 5 | 5 4 3 2 1 |
+                | 1 3 5 3 1 | 2 5, 1 - - |
+            }
+            M5:Flute@|0|{
+                <4*>
+                | {<5/4>} 3 4 5 6 7 | 1^ 7 6 5 4 |
+                | 3 5 1^ 5 3 | 4 2 3 - - |
+            }
+
+            M7:Flute@|-1|{
+                <8*>
+                | {<7/8>} 0 0 0 0 5 6 7 |
+                | 1 2 3 4 5 6 7 | 1^ 7 6 5 4 3 2 |
+                | 1 3 5 1^ 7 5 3 | 2 4 3 2 1 - - |
+            }
+            M7:Clarinet@|0|{
+                <8*>
+                | {<7/8>} 1, - 5, - 1 - 5, | 4, - 1 - 4 - 1 |
+                | 5, - 2 - 5 - 2 | 1, - 5, - 1 - - |
+            }
+
+            M11:Oboe@|-1|{
+                <8*>
+                | {<11/8>} 0 0 0 0 0 0 0 0 5 6 7 |
+                | 1 2 3 4 5 6 7 1^ 2^ 3^ 2^ | 1^ 7 6 5 4 3 2 1 2 3 4 |
+                | 5 6 7 1^ 2^ 1^ 7 6 5 4 3 | 2 3 4 5 3 1 5, 1 - - - |
+            }
+            M11:Flute@|0|{
+                <8*>
+                | {<11/8>} 3 4 5 6 7 1^ 2^ 3^ 4^ 5^ 4^ | 3^ 2^ 1^ 7 6 5 4 3 4 5 6 |
+                | 7 1^ 2^ 3^ 4^ 3^ 2^ 1^ 7 6 5 | 4 5 6 7 5 3 2 3 - - - |
+            }
+
+            M13:Violin@|-1|{
+                <8*>
+                | {<13/8>} 0 0 0 0 0 0 0 0 0 5 6 7 2^ |
+                | 1^ 7 6 5 4 3 2 1 2 3 4 5 6 | 5 6 7 1^ 2^ 3^ 4^ 5^ 4^ 3^ 2^ 1^ 7 |
+                | 1^ 5 3 1 6 4 2 7, 5 3 1 2 7, | 1 - - 5, - - 1 - - - - - - |
+            }
+            M13:Flute@|0|{
+                <8*>
+                | {<13/8>} 3^ 2^ 1^ 7 6 5 4 3 4 5 6 7 1^ | 7 1^ 2^ 3^ 4^ 5^ 6^ 7^ 6^ 5^ 4^ 3^ 2^ |
+                | 3^ 1^ 5 3 1^ 6 4 2 7 5 3 4 2 | 3 - - 1 - - 3 - - - - - - |
+            }
+
+            Poly:Flute@|0|{
+                <8*>
+                | {<5/8>} 1 2 3 4 5 | 6 5 4 3 2 | 1 3 5 3 1 | 2 4 6 4 2 |
+                | 3 5 1^ 5 3 | 4 6 2^ 6 4 | 5 4 3 2 1 |
+            }
+            Poly:Clarinet@|0|{
+                <8*>
+                | {<7/8>} 1, 5, 1 3 5 3 1 | 4, 1 4 6 1^ 6 4 |
+                | 5, 2 5 7 2^ 7 5 | 6, 3 6 1^ 3^ 1^ 6 |
+                | 5, 2 5 7 1^ - - |
+            }
+
+            -> Intro -> M5 -> M7 -> M11 -> M13 -> Poly ->#
+            """
+
+        // 1. Validator should emit 0 errors and 0 W-SECTION-LENGTH-MISMATCH warnings
+        let diags = TmdScoreValidator.validate(source: score)
+        let mismatchDiags = diags.filter { $0.rule == .sectionLengthMismatch }
+        #expect(mismatchDiags.isEmpty)
+        #expect(diags.filter { $0.severity == .error }.isEmpty)
+
+        // 2. Section durations (from downbeat bar 0 to end of section) must reflect entry-local time signatures
+        let sheet = try TmdParser.parseThrowing(string: score)
+        #expect(abs(TmdPlaybackRenderer.duration(of: "M5", in: sheet) - 20.0) < 1e-6)
+        #expect(abs(TmdPlaybackRenderer.duration(of: "M7", in: sheet) - 14.0) < 1e-6)
+        #expect(abs(TmdPlaybackRenderer.duration(of: "M11", in: sheet) - 22.0) < 1e-6)
+        #expect(abs(TmdPlaybackRenderer.duration(of: "M13", in: sheet) - 26.0) < 1e-6)
+
+        // 3. Playback timeline downbeat alignment:
+        // Intro is 8.0 beats, M5 is 20.0 beats -> M7 downbeat is at 28.0 beats.
+        // Flute's M7 pickup starts 3.5 beats before 28.0 (= 24.5), and its bar 0 downbeat note (degree 1) is at 28.0,
+        // matching Clarinet's M7 bar 0 downbeat note (degree 1,) at 28.0.
+        let fluteTimeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Flute")
+        let clarinetTimeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Clarinet")
+        let fluteM7PickupEvent = fluteTimeline.events.first { abs($0.position - 24.5) < 1e-6 }
+        let fluteM7DownbeatEvent = fluteTimeline.events.first { abs($0.position - 28.0) < 1e-6 }
+        let clarinetM7DownbeatEvent = clarinetTimeline.events.first { abs($0.position - 28.0) < 1e-6 }
+        #expect(fluteM7PickupEvent != nil)
+        #expect(fluteM7DownbeatEvent != nil)
+        #expect(clarinetM7DownbeatEvent != nil)
+
+        // 4. Measure renderer slices Flute's M7 pickup at 24.5..<28.0 with 7/8 time signature
+        let fluteMeasures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Flute")
+        let pickupMeasure = fluteMeasures.first { abs($0.startTime - 24.5) < 1e-6 }
+        #expect(pickupMeasure != nil)
+        #expect(pickupMeasure?.timeSignature == Beat(count: 7, noteValue: 8))
+        #expect(abs((pickupMeasure?.nominalDuration ?? 0) - 3.5) < 1e-6)
+    }
 }
