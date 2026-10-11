@@ -108,6 +108,17 @@ func readmeUsesCanonicalTmdSymbolsAndRefactorFlags() throws {
     }
 }
 
+@Test("README handles the throwing MIDI export API")
+func readmeHandlesThrowingMIDIGeneration() throws {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let readme = try String(contentsOf: packageRoot.appendingPathComponent("README.md"), encoding: .utf8)
+
+    #expect(readme.contains("let midiData = try TmdMIDIGenerator.generateMIDI(from: sheet)"))
+}
+
 @Test("ARCHITECTURE_PARITY.md lists existing canonical Swift paths including TmdParserIO and TmdParseDiagnostics")
 func architectureParityMatrixReferencesExistingCanonicalSwiftPaths() throws {
     let packageRoot = URL(fileURLWithPath: #filePath)

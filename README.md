@@ -243,7 +243,7 @@ guard let sheet = try TmdParserIO.parse(filePathOrURL: "sample/basic/三天三�
 print(sheet.summary())
 
 // Export to MIDI Data
-let midiData = TmdMIDIGenerator.generateMIDI(from: sheet)
+let midiData = try TmdMIDIGenerator.generateMIDI(from: sheet)
 
 // Export to MusicXML string
 let musicXML = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
