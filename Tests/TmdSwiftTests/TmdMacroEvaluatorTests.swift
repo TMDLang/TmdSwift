@@ -280,7 +280,7 @@ struct MacroEvaluatorTests {
 
         // 2. MIDI generation produces valid bytes without throwing
         let sheet = try #require(TmdParser.parse(string: input))
-        let midiBytes = TmdMIDIGenerator.generateMIDI(from: sheet)
+        let midiBytes = try TmdMIDIGenerator.generateMIDI(from: sheet)
         #expect(midiBytes.count > 50)
 
         // 3. WAV synthesis produces valid RIFF WAV data
@@ -571,7 +571,7 @@ struct MacroEvaluatorTests {
         #expect(issues.isEmpty)
 
         // MIDI export
-        let midi = TmdMIDIGenerator.generateMIDI(from: sheet)
+        let midi = try TmdMIDIGenerator.generateMIDI(from: sheet)
         #expect(midi.count > 1000)
 
         // MusicXML export

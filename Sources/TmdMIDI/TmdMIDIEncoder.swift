@@ -27,13 +27,14 @@ public struct MIDIEvent: Equatable, Sendable {
 /// Encodes typed MIDI content into Standard MIDI File binary data.
 public final class TmdMIDIEncoder {
     public static func encodeFile(tracks: [Data], ticksPerQuarter: UInt16) -> Data {
+        let effectiveTicksPerQuarter = ticksPerQuarter == 0 ? TmdMIDIGenerator.defaultTicksPerQuarterNote : ticksPerQuarter
         let encodedTracks = tracks.prefix(Int(UInt16.max))
         let header =
             Data("MThd".utf8)
             + Data(UInt32(6).bigEndianBytes)
             + Data(UInt16(1).bigEndianBytes)
             + Data(UInt16(encodedTracks.count).bigEndianBytes)
-            + Data(ticksPerQuarter.bigEndianBytes)
+            + Data(effectiveTicksPerQuarter.bigEndianBytes)
         return encodedTracks.reduce(into: header) { midi, track in
             midi.append(contentsOf: "MTrk".utf8)
             midi.append(contentsOf: UInt32(clamping: track.count).bigEndianBytes)
@@ -42,7 +43,14 @@ public final class TmdMIDIEncoder {
     }
 
     public static func encodeTrack(events: [MIDIEvent]) -> Data {
-        var sorted = events.sorted { $0.tick < $1.tick }
+        var sorted = events.enumerated().sorted { lhs, rhs in
+            if lhs.element.tick != rhs.element.tick {
+                return lhs.element.tick < rhs.element.tick
+            }
+            let lhsPriority = eventPriority(lhs.element.message)
+            let rhsPriority = eventPriority(rhs.element.message)
+            return lhsPriority == rhsPriority ? lhs.offset < rhs.offset : lhsPriority < rhsPriority
+        }.map(\.element)
         let lastTick = sorted.last?.tick ?? 0
         sorted.append(MIDIEvent(tick: lastTick, message: .endOfTrack))
 
@@ -52,6 +60,15 @@ public final class TmdMIDIEncoder {
             result.data.append(event.message.encodedBytes)
             result.lastTick = event.tick
         }.data
+    }
+
+    private static func eventPriority(_ message: MIDIMessage) -> Int {
+        switch message {
+        case .noteOff: return 0
+        case .endOfTrack: return 100
+        case .noteOn: return 20
+        default: return 10
+        }
     }
 
     fileprivate static func metaEvent(type: UInt8, data: Data) -> Data {

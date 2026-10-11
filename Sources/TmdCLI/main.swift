@@ -241,7 +241,7 @@ struct TmdCLICommand: ParsableCommand {
 
         // Export to MIDI if requested
         if let outputPath = midiOutput {
-            let midiData = TmdMIDIGenerator.generateMIDI(
+            let midiData = try TmdMIDIGenerator.generateMIDI(
                 from: sheet,
                 targetParagraph: section,
                 targetInstrument: instrument
@@ -258,7 +258,7 @@ struct TmdCLICommand: ParsableCommand {
 
         // Export to REAPER project (.rpp) if requested
         if let rppPath = reaperOutput {
-            let rppString = TmdReaperGenerator.generateRPP(from: sheet)
+            let rppString = try TmdReaperGenerator.generateRPP(from: sheet)
             let outURL = URL(fileURLWithPath: rppPath)
             do {
                 try rppString.write(to: outURL, atomically: true, encoding: .utf8)

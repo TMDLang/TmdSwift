@@ -7,7 +7,7 @@ public struct TmdReaperGenerator {
     public static let defaultPPQ: UInt16 = 960
 
     /// Generates REAPER project file content (.rpp) from a Sheet.
-    public static func generateRPP(from inputSheet: Sheet, ppq: UInt16 = defaultPPQ) -> String {
+    public static func generateRPP(from inputSheet: Sheet, ppq: UInt16 = defaultPPQ) throws -> String {
         let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
         let distinctInstruments = sheet.distinctInstruments(fallbackToDefault: false)
         let conductorTimeline = TmdPlaybackRenderer.renderConductor(sheet: sheet)
@@ -62,12 +62,14 @@ public struct TmdReaperGenerator {
         // Build Tracks
         var trackChunks: [String] = []
         var melodyChannel: UInt8 = 0
+        var assignedPrograms: [UInt8: UInt8] = [:]
 
         for instrument in distinctInstruments {
             let instTimeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: instrument)
             guard instTimeline.events.contains(where: \.content.isSounding) else { continue }
             let midiInst = MIDIInstrument.resolve(instrument)
-            let channel = midiInst.allocateChannel(nextMelodicChannel: &melodyChannel)
+            let channel = try midiInst.allocateChannel(
+                nextMelodicChannel: &melodyChannel, assignedPrograms: &assignedPrograms)
 
             // Pan
             let pan: Double = switch MIDIInstrument.stereoPanHeuristic(for: instrument) {

@@ -28,7 +28,7 @@ struct TmdReaperGeneratorTests {
             -> Intro -> Verse ->#
             """
         let sheet = try TmdParser.parseThrowing(string: tmd)
-        let rpp = TmdReaperGenerator.generateRPP(from: sheet)
+        let rpp = try TmdReaperGenerator.generateRPP(from: sheet)
 
         // Project structure
         #expect(rpp.contains("<REAPER_PROJECT"))
@@ -64,7 +64,7 @@ struct TmdReaperGeneratorTests {
             -> A ->#
             """
         let sheet = try TmdParser.parseThrowing(string: tmd)
-        let rpp = TmdReaperGenerator.generateRPP(from: sheet)
+        let rpp = try TmdReaperGenerator.generateRPP(from: sheet)
 
         // Initial tempo: 60 BPM at 0.0s
         #expect(
@@ -104,7 +104,7 @@ struct TmdReaperGeneratorTests {
             -> A -> B -> C ->#
             """
         let sheet = try TmdParser.parseThrowing(string: tmd)
-        let rpp = TmdReaperGenerator.generateRPP(from: sheet)
+        let rpp = try TmdReaperGenerator.generateRPP(from: sheet)
 
         // A = 4 quarters, B starts 1 bar later in the active 3/4 meter and lasts 4 quarters.
         // C therefore starts at 11 quarters = 5.5 seconds at 120 BPM.
@@ -136,7 +136,7 @@ struct TmdReaperGeneratorTests {
             -> A ->#
             """
         let sheet = try TmdParser.parseThrowing(string: tmd)
-        let rpp = TmdReaperGenerator.generateRPP(from: sheet)
+        let rpp = try TmdReaperGenerator.generateRPP(from: sheet)
 
         // Tracks exist
         #expect(rpp.contains("NAME \"Piano-L\""))
@@ -194,7 +194,7 @@ struct TmdReaperGeneratorTests {
             -> A ->#
             """
         let sheet = try TmdParser.parseThrowing(string: tmd)
-        let rpp = TmdReaperGenerator.generateRPP(from: sheet)
+        let rpp = try TmdReaperGenerator.generateRPP(from: sheet)
 
         #expect(!rpp.contains("NAME \"Piano\""))
     }
@@ -206,7 +206,7 @@ struct TmdReaperGeneratorTests {
             .deletingLastPathComponent()
             .appendingPathComponent("sample/basic/三天三夜.tmd")
         let sheet = try TmdParserIO.parseThrowing(filePathOrURL: sampleURL.path)
-        let rpp = TmdReaperGenerator.generateRPP(from: sheet)
+        let rpp = try TmdReaperGenerator.generateRPP(from: sheet)
 
         #expect(rpp.contains("<REAPER_PROJECT"))
         #expect(rpp.contains("<TEMPOENVEX"))
@@ -217,7 +217,7 @@ struct TmdReaperGeneratorTests {
     }
 
     @Test("Issue #41: Reaper emits 2-byte Program Change and defaults tempo to 120 when speed <= 0")
-    func testReaperTwoByteProgramChangeAndDefaultTempo() {
+    func testReaperTwoByteProgramChangeAndDefaultTempo() throws {
         let sheet = Sheet(
             name: "Zero Speed",
             speed: 0,
@@ -238,7 +238,7 @@ struct TmdReaperGeneratorTests {
             ],
             playback: [.name("A")]
         )
-        let rpp = TmdReaperGenerator.generateRPP(from: sheet)
+        let rpp = try TmdReaperGenerator.generateRPP(from: sheet)
         #expect(rpp.contains("PT 0.00000000 120.00000000"))
         // Program Change for Violin (program 40 = 0x28) on channel 0 (0xc0): 2 bytes "E 0 c0 28", no trailing "00"
         #expect(rpp.contains("E 0 c0 28\n"))

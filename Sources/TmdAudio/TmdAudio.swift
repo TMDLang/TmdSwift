@@ -8,6 +8,7 @@ import TmdSwift
 
     public enum TmdAudioError: Error, LocalizedError {
         case unsupportedPlatform
+        case invalidSampleRate
         case soundBankNotFound
         case failedToCreatePlayer
         case renderFailed(OSStatus)
@@ -16,6 +17,8 @@ import TmdSwift
             switch self {
             case .unsupportedPlatform:
                 return "Audio rendering is only supported on Apple platforms (macOS / iOS)."
+            case .invalidSampleRate:
+                return "Sample rate must be finite and between 8000 Hz and 384000 Hz."
             case .soundBankNotFound:
                 return "Could not locate a DLS or SoundFont (.sf2) soundbank."
             case .failedToCreatePlayer:
@@ -45,7 +48,10 @@ import TmdSwift
             targetParagraph: String? = nil,
             targetInstrument: String? = nil
         ) throws -> Data {
-            let midiData = TmdMIDIGenerator.generateMIDI(
+            guard sampleRate.isFinite, (8_000...384_000).contains(sampleRate) else {
+                throw TmdAudioError.invalidSampleRate
+            }
+            let midiData = try TmdMIDIGenerator.generateMIDI(
                 from: sheet,
                 targetParagraph: targetParagraph,
                 targetInstrument: targetInstrument
@@ -60,6 +66,9 @@ import TmdSwift
             soundBankURL: URL? = nil,
             sampleRate: Double = 44100.0
         ) throws -> Data {
+            guard sampleRate.isFinite, (8_000...384_000).contains(sampleRate) else {
+                throw TmdAudioError.invalidSampleRate
+            }
             // Resolve soundbank URL
             let bankURL: URL
             if let customURL = soundBankURL {
@@ -308,11 +317,14 @@ import TmdSwift
 #else
     public enum TmdAudioError: Error, LocalizedError {
         case unsupportedPlatform
+        case invalidSampleRate
 
         public var errorDescription: String? {
             switch self {
             case .unsupportedPlatform:
                 return "Audio rendering is only supported on Apple platforms (macOS / iOS)."
+            case .invalidSampleRate:
+                return "Sample rate must be finite and between 8000 Hz and 384000 Hz."
             }
         }
     }

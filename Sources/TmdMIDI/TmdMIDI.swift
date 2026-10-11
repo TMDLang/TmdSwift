@@ -5,13 +5,22 @@ import TmdSwift
 public struct TmdMIDIGenerator {
     public static let defaultTicksPerQuarterNote: UInt16 = 480
 
+    public enum Error: Swift.Error, LocalizedError, Equatable, Sendable {
+        case invalidTicksPerQuarter
+
+        public var errorDescription: String? {
+            "ticksPerQuarter must be greater than zero."
+        }
+    }
+
     /// Converts a Sheet into Standard MIDI File (SMF Type 1) binary data.
     public static func generateMIDI(
         from inputSheet: Sheet,
         ticksPerQuarter: UInt16 = defaultTicksPerQuarterNote,
         targetParagraph: String? = nil,
         targetInstrument: String? = nil
-    ) -> Data {
+    ) throws -> Data {
+        guard ticksPerQuarter > 0 else { throw Error.invalidTicksPerQuarter }
         let (effectiveSheet, distinctInstruments) = inputSheet.preparedForExport(
             fallbackToDefault: false,
             targetParagraph: targetParagraph,
@@ -26,11 +35,13 @@ public struct TmdMIDIGenerator {
                 ))
         ]
         var melodyChannel: UInt8 = 0
+        var assignedPrograms: [UInt8: UInt8] = [:]
         for (_, instrument) in distinctInstruments.enumerated() {
             let timeline = TmdPlaybackRenderer.render(sheet: effectiveSheet, instrument: instrument)
             guard timeline.events.contains(where: \.content.isSounding) else { continue }
             let midiInstrument = MIDIInstrument.resolve(instrument)
-            let channel = midiInstrument.allocateChannel(nextMelodicChannel: &melodyChannel)
+            let channel = try midiInstrument.allocateChannel(
+                nextMelodicChannel: &melodyChannel, assignedPrograms: &assignedPrograms)
             trackData.append(
                 TmdMIDIEncoder.encodeTrack(
                     events: instrumentEvents(

@@ -1,5 +1,17 @@
 import Foundation
 
+public struct MIDIChannelAllocationError: Error, LocalizedError, Equatable, Sendable {
+    public let program: UInt8
+
+    public init(program: UInt8) {
+        self.program = program
+    }
+
+    public var errorDescription: String? {
+        "No melodic MIDI channel is available for GM program \(program)."
+    }
+}
+
 /// A General MIDI instrument selected from a TMD paragraph name.
 public enum MIDIInstrument: Equatable, Sendable {
     // 0-7: Piano
@@ -609,5 +621,30 @@ public enum MIDIInstrument: Equatable, Sendable {
         let channel = nextMelodicChannel % 16
         nextMelodicChannel = (nextMelodicChannel + 1) % 16
         return channel
+    }
+
+    /// Allocates a melodic channel without silently colliding distinct GM programs.
+    public func allocateChannel(
+        nextMelodicChannel: inout UInt8,
+        assignedPrograms: inout [UInt8: UInt8]
+    ) throws -> UInt8 {
+        if isPercussion {
+            return 9
+        }
+
+        let currentProgram = program
+        if let existing = assignedPrograms[currentProgram] {
+            return existing
+        }
+
+        for offset in 0..<16 {
+            let candidate = (nextMelodicChannel + UInt8(offset)) % 16
+            guard candidate != 9, !assignedPrograms.values.contains(candidate) else { continue }
+            assignedPrograms[currentProgram] = candidate
+            nextMelodicChannel = (candidate + 1) % 16
+            return candidate
+        }
+
+        throw MIDIChannelAllocationError(program: currentProgram)
     }
 }

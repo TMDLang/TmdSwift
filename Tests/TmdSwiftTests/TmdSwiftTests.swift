@@ -464,7 +464,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
 
     // Verify MIDI generation
     if let validSheet = sheet {
-        let midi = TmdMIDIGenerator.generateMIDI(from: validSheet)
+        let midi = try TmdMIDIGenerator.generateMIDI(from: validSheet)
         #expect(!midi.isEmpty)
         #expect(midi.starts(with: [0x4D, 0x54, 0x68, 0x64]))  // "MThd"
 
@@ -784,7 +784,7 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     #expect(reparsed?.entries[0].start == -1)
     #expect(reparsed?.entries[0].sections[0].directives == sheet.entries[0].sections[0].directives)
 
-    let midi = TmdMIDIGenerator.generateMIDI(from: sheet)
+    let midi = try TmdMIDIGenerator.generateMIDI(from: sheet)
     #expect(midi.contains(0x99))
     #expect(midi.contains(0x51))  // tempo meta event
     #expect(midi.contains(0x58))  // time-signature meta event
@@ -875,15 +875,15 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
     let sheet = try #require(TmdParser.parse(string: tmd))
 
     // 1. Generate full MIDI: should contain both Piano and Bass tracks
-    let fullMidi = TmdMIDIGenerator.generateMIDI(from: sheet)
+    let fullMidi = try TmdMIDIGenerator.generateMIDI(from: sheet)
     #expect(!fullMidi.isEmpty)
 
     // 2. Generate section-only MIDI: intro
-    let introMidi = TmdMIDIGenerator.generateMIDI(from: sheet, targetParagraph: "intro")
+    let introMidi = try TmdMIDIGenerator.generateMIDI(from: sheet, targetParagraph: "intro")
     #expect(!introMidi.isEmpty)
 
     // 3. Generate solo track MIDI: intro (Piano only)
-    let pianoIntroMidi = TmdMIDIGenerator.generateMIDI(
+    let pianoIntroMidi = try TmdMIDIGenerator.generateMIDI(
         from: sheet, targetParagraph: "intro", targetInstrument: "Piano")
     #expect(!pianoIntroMidi.isEmpty)
     // Should be smaller than introMidi because Bass track is excluded
@@ -1608,7 +1608,7 @@ func testPlaybackOrderModifiersShareStateTransition() throws {
         -> Piano ->#
         """
     let sheet = try #require(TmdParser.parse(string: tmd))
-    let midi = TmdMIDIGenerator.generateMIDI(from: sheet)
+    let midi = try TmdMIDIGenerator.generateMIDI(from: sheet)
 
     #expect(midi.count >= 12)
     let trackCount = UInt16(midi[10]) << 8 | UInt16(midi[11])
@@ -1717,7 +1717,7 @@ func testPlaybackOrderModifiersShareStateTransition() throws {
         playback: [.name("A"), .name("Missing")]
     )
 
-    #expect(!TmdMIDIGenerator.generateMIDI(from: sheet).isEmpty)
+    #expect(!(try TmdMIDIGenerator.generateMIDI(from: sheet)).isEmpty)
     #expect(TmdMIDIGenerator.noteToMIDIPitch(Note(degree: .c), keyOffset: 0) == 60)
     #expect(!TmdMIDIGenerator.chordToMIDIPitches("???", keyOffset: 0).isEmpty)
     #expect(TmdMIDIGenerator.generalMidiProgram(for: "Unknown") == 0)
@@ -1796,7 +1796,7 @@ func testPlaybackOrderModifiersShareStateTransition() throws {
     #expect(v1Notes[0].position == 0.0)
 
     // Also verify MIDI generator doesn't crash or overflow
-    let midi = TmdMIDIGenerator.generateMIDI(from: sheet)
+    let midi = try TmdMIDIGenerator.generateMIDI(from: sheet)
     #expect(!midi.isEmpty)
 }
 
