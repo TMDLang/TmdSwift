@@ -195,6 +195,29 @@ struct TmdRefactorHalveGrid: ParsableCommand {
     }
 }
 
+struct SignedIntArgument: ExpressibleByArgument, CustomStringConvertible {
+    let value: Int
+
+    var description: String {
+        String(value)
+    }
+
+    init(value: Int) {
+        self.value = value
+    }
+
+    init?(argument: String) {
+        let cleaned = argument
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let parsed = Int(cleaned) else {
+            return nil
+        }
+        self.value = parsed
+    }
+}
+
 struct TmdRefactorDuplicateTrack: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "duplicate-track",
@@ -212,8 +235,12 @@ struct TmdRefactorDuplicateTrack: ParsableCommand {
     @Option(name: .long, help: "Optional section filter.")
     var section: String?
 
-    @Option(name: .long, help: "Octave shift (e.g. +1, -1).")
-    var octave: Int = 0
+    @Option(
+        name: .long,
+        parsing: .unconditional,
+        help: "Octave shift (e.g. +1, -1)."
+    )
+    var octave: SignedIntArgument = SignedIntArgument(value: 0)
 
     func run() throws {
         try io.execute(inPlaceMessage: { "Duplicated track in \($0) in-place." }) { content in
@@ -222,7 +249,7 @@ struct TmdRefactorDuplicateTrack: ParsableCommand {
                 sourceInstrument: source,
                 targetInstrument: target,
                 section: section,
-                octaveShift: octave
+                octaveShift: octave.value
             )
         }
     }
@@ -245,8 +272,12 @@ struct TmdRefactorGenerateHarmony: ParsableCommand {
     @Option(name: .long, help: "Optional section filter.")
     var section: String?
 
-    @Option(name: .long, help: "Interval steps (e.g. +2 for 3rd up, -2 for 3rd down).")
-    var interval: Int = 2
+    @Option(
+        name: .long,
+        parsing: .unconditional,
+        help: "Interval steps (e.g. +2 for 3rd up, -2 for 3rd down)."
+    )
+    var interval: SignedIntArgument = SignedIntArgument(value: 2)
 
     func run() throws {
         try io.execute(inPlaceMessage: { "Generated harmony in \($0) in-place." }) { content in
@@ -255,7 +286,7 @@ struct TmdRefactorGenerateHarmony: ParsableCommand {
                 sourceInstrument: source,
                 harmonyInstrument: target,
                 section: section,
-                intervalSteps: interval
+                intervalSteps: interval.value
             )
         }
     }
@@ -306,12 +337,18 @@ struct TmdRefactorTranspose: ParsableCommand {
     @OptionGroup var io: TmdRefactorIOOptions
 
     @Option(
-        name: [.short, .customLong("semitones")], help: "Pitch shift in semitones (e.g. +2, -3).")
-    var semitones: Int?
+        name: [.short, .customLong("semitones")],
+        parsing: .unconditional,
+        help: "Pitch shift in semitones (e.g. +2, -3)."
+    )
+    var semitones: SignedIntArgument?
 
     @Option(
-        name: [.short, .customLong("diatonic")], help: "Diatonic scale step shift (e.g. +2, -1).")
-    var diatonic: Int?
+        name: [.short, .customLong("diatonic")],
+        parsing: .unconditional,
+        help: "Diatonic scale step shift (e.g. +2, -1)."
+    )
+    var diatonic: SignedIntArgument?
 
     @Flag(
         name: [.customShort("k"), .customLong("update-key")],
@@ -329,8 +366,8 @@ struct TmdRefactorTranspose: ParsableCommand {
         try io.execute(inPlaceMessage: { "Transposed score in \($0) in-place." }) { content in
             TmdRefactor.transpose(
                 source: content,
-                semitones: semitones ?? 0,
-                diatonicSteps: diatonic ?? 0,
+                semitones: semitones?.value ?? 0,
+                diatonicSteps: diatonic?.value ?? 0,
                 updateKeySignature: updateKey,
                 target: filter.target
             )

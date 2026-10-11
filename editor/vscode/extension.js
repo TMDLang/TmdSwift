@@ -1942,7 +1942,7 @@ function activate(context) {
         const args = ['duplicate-track', '--source', sourceInst.trim(), '--target', targetInst.trim()];
         const oct = parseInt(octaveStr, 10);
         if (!isNaN(oct) && oct !== 0) {
-            args.push('--octave', String(oct));
+            args.push(`--octave=${oct}`);
         }
         if (targetSection) {
             args.push('--section', targetSection);
@@ -1990,7 +1990,7 @@ function activate(context) {
         const args = ['generate-harmony', '--source', sourceInst.trim(), '--target', targetInst.trim()];
         const interval = parseInt(intervalStr, 10);
         if (!isNaN(interval)) {
-            args.push('--interval', String(interval));
+            args.push(`--interval=${interval}`);
         }
         if (targetSection) {
             args.push('--section', targetSection);
