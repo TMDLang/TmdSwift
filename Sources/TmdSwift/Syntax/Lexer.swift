@@ -8,9 +8,12 @@ public final class Lexer {
         "曲：": "composer",
         "編：": "arranger",
     ]
+    private static let identifierStops = Set(" \t\r\n:!=?*<>/|{}()[]@,+".unicodeScalars)
 
     private let scalars: [UnicodeScalar]
     private var index: Int = 0
+    private var line: Int = 1
+    private var column: Int = 1
 
     public init(string: String) {
         self.scalars = Array(string.unicodeScalars)
@@ -31,6 +34,12 @@ public final class Lexer {
         guard !isAtEnd else { return nil }
         let c = scalars[index]
         index += 1
+        if c == "\n" {
+            line += 1
+            column = 1
+        } else {
+            column += 1
+        }
         return c
     }
 
@@ -75,15 +84,15 @@ public final class Lexer {
         while true {
             skipWhitespace()
             let start = index
+            let startLine = line
+            let startColumn = column
             let token = nextToken()
             let position = SourcePosition(
                 offset: start,
-                line: scalars[..<start].reduce(into: 1) { line, scalar in
-                    if scalar == "\n" { line += 1 }
-                },
-                column: scalars[..<start].reversed().prefix { $0 != "\n" }.count + 1
+                line: startLine,
+                column: startColumn
             )
-            let text = String(scalars[start..<index].map { Character(String($0)) })
+            let text = String(String.UnicodeScalarView(scalars[start..<index]))
             tokens.append(
                 LexedToken(
                     token: token, text: text,
@@ -135,6 +144,8 @@ public final class Lexer {
         // `=~:__KEY__= "..."`.
         if c == "~" || (c == "=" && peek(offset: 1) == "~") {
             let metaStartPos = index
+            let metaStartLine = line
+            let metaStartColumn = column
             let named = c == "="
             if named {
                 advance()
@@ -173,6 +184,8 @@ public final class Lexer {
                 return .metadata(key, value)
             }
             index = metaStartPos
+            line = metaStartLine
+            column = metaStartColumn
         }
 
         // -># or ->
@@ -398,10 +411,9 @@ public final class Lexer {
 
         // Identifier or text token (allows hyphens internal to names like Chorus-1 and sharps like F#m)
         var idStr = ""
-        let stops = Set(" \t\r\n:!=?*<>/|{}()[]@,+".unicodeScalars)
         while !isAtEnd {
             guard let cur = peek() else { break }
-            if stops.contains(cur) {
+            if Self.identifierStops.contains(cur) {
                 break
             }
             if cur == "#" && idStr.isEmpty {

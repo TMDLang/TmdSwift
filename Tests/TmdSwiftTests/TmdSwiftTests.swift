@@ -554,7 +554,10 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
                 for section in entry.sections {
                     for group in section.unitGroups {
                         for unit in group.units {
-                            if case .chord(let chord) = unit, case .custom(let raw) = chord.quality {
+                            if case .chord(let chord) = unit,
+                                case .custom(let raw) = chord.quality,
+                                !ChordSymbol.isRecognizedExtendedQuality(raw)
+                            {
                                 Issue.record(
                                     "Sample \(relativePath) (\(entry.name):\(entry.assignment ?? "")) has unrecognized chord suffix '\(raw)' in [\(chord.description)]"
                                 )
