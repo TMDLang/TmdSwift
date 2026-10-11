@@ -11,3 +11,5 @@ DerivedData/
 .netrc
 /dist/
 *.vsix
+*.mid
+*.musicxml
