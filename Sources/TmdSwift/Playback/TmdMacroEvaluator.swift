@@ -25,7 +25,7 @@ public struct TmdMacroError: Error, LocalizedError, Equatable, Sendable {
 public enum TmdMacroEvaluator {
 
     /// Maps pitch in semitones (0-11) to ScaleDegree and Accidental.
-    private static func expandCanonical(_ sheet: Sheet) throws -> Sheet {
+    private static func expandCanonical(_ sheet: Sheet, strict: Bool = true) throws -> Sheet {
         let hasMacro = sheet.playback.contains {
             if case .macro = $0 { return true } else { return false }
         }
@@ -417,9 +417,41 @@ public enum TmdMacroEvaluator {
                 guard items.count > 1 else {
                     throw TmdMacroError("'layer' requires at least one child expression")
                 }
+                let measureDur = TmdPlaybackRenderer.measureDuration(for: sheet.beat)
                 var childNames: [String] = []
                 for i in 1..<items.count {
                     let names = try evalExpr(items[i])
+                    if names.count > 1 {
+                        var cumulativeBars = 0
+                        for seqName in names {
+                            let matching = concreteParagraphs.filter { $0.name == seqName }
+                            let maxEndBeats = matching.map { p -> Double in
+                                let startBeats = Double(p.start) * measureDur
+                                let noteBeats = p.sections.reduce(0.0) { total, sec in
+                                    let unitDur = 4.0 / Double(max(1, sec.noteLength))
+                                    return total + sec.unitGroups.reduce(0.0) {
+                                        $0 + Double(max(0, $1.length)) * unitDur
+                                    }
+                                }
+                                return startBeats + noteBeats
+                            }.max() ?? 0.0
+                            let sectionBars = max(0, Int((maxEndBeats / measureDur).rounded()))
+                            if cumulativeBars != 0 {
+                                for idx in 0..<concreteParagraphs.count
+                                where concreteParagraphs[idx].name == seqName {
+                                    concreteParagraphs[idx] = Entry(
+                                        name: concreteParagraphs[idx].name,
+                                        assignment: concreteParagraphs[idx].assignment,
+                                        pitchMode: concreteParagraphs[idx].pitchMode,
+                                        start: concreteParagraphs[idx].start + cumulativeBars,
+                                        sections: concreteParagraphs[idx].sections,
+                                        executionTime: concreteParagraphs[idx].executionTime
+                                    )
+                                }
+                            }
+                            cumulativeBars += sectionBars
+                        }
+                    }
                     childNames.append(contentsOf: names)
                 }
 
@@ -430,8 +462,10 @@ public enum TmdMacroEvaluator {
                         concreteParagraphs[i] = Entry(
                             name: layerSectionName,
                             assignment: concreteParagraphs[i].assignment,
+                            pitchMode: concreteParagraphs[i].pitchMode,
                             start: concreteParagraphs[i].start,
-                            sections: concreteParagraphs[i].sections
+                            sections: concreteParagraphs[i].sections,
+                            executionTime: concreteParagraphs[i].executionTime
                         )
                     }
                 }
@@ -697,11 +731,17 @@ public enum TmdMacroEvaluator {
         for order in sheet.playback {
             switch order {
             case .macro(let expr):
-                let names = try evalExpr(expr)
-                var added: Set<String> = []
-                for name in names where !added.contains(name) {
-                    added.insert(name)
-                    newOrders.append(.name(name))
+                do {
+                    let names = try evalExpr(expr)
+                    var added: Set<String> = []
+                    for name in names where !added.contains(name) {
+                        added.insert(name)
+                        newOrders.append(.name(name))
+                    }
+                } catch {
+                    if strict {
+                        throw error
+                    }
                 }
             default:
                 newOrders.append(order)
@@ -720,25 +760,21 @@ public enum TmdMacroEvaluator {
         )
     }
 
-    /// Deprecated compatibility API. Macro failures are no longer silently suppressed.
+    /// Deprecated compatibility API.
     @available(*, deprecated, message: "Use expandThrowing(_:) and handle TmdMacroError explicitly.")
     public static func expand(_ sheet: Sheet) -> Sheet {
         return expandOrTrap(sheet)
     }
 
-    /// Bridge for legacy non-throwing rendering APIs. It preserves their signatures while
-    /// ensuring that macro diagnostics cannot be silently discarded.
+    /// Non-throwing expansion for rendering/inspection APIs. Valid macro orders are expanded while
+    /// invalid macro orders are skipped without terminating the process via SIGTRAP.
     public static func expandOrTrap(_ sheet: Sheet) -> Sheet {
-        do {
-            return try expandThrowing(sheet)
-        } catch {
-            preconditionFailure("TMD macro expansion failed: \(error)")
-        }
+        return (try? expandCanonical(sheet, strict: false)) ?? sheet
     }
 
     /// Throwing API that exposes macro expansion diagnostics.
     public static func expandThrowing(_ sheet: Sheet) throws -> Sheet {
-        return try expandCanonical(sheet)
+        return try expandCanonical(sheet, strict: true)
     }
 
 }
