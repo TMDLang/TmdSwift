@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5] - 2026-10-11
+
+### Added
+- **Music Braille Exporter (`TmdBraille`)**:
+  - Added `TmdBrailleGenerator` supporting 6-dot Unicode Braille (`.brl`) and North American Braille ASCII (`.brf`) in both `part-by-part` and `bar-over-bar` layouts, along with CLI flags (`-b`, `--braille-output`, `--brl-output`, `--brf-output`, `--braille-layout`) and VS Code export integration.
+- **Unified Score Validator (`TmdScoreValidator`) & Batch Check (`tmd check`)**:
+  - Added semantic validation rules (`E-SYNTAX`, `E-EMPTY-SCORE`, `E-MEASURE-MISMATCH`, `W-NO-PLAYBACK`, `W-ORPHAN-SECTION`, `W-MISSING-SECTION`, `W-EMPTY-TRACK`, `W-INSTRUMENT-INCONSISTENT`, `W-TRAILING-TIE`, `W-CHORD-QUALITY-UNKNOWN`), batch directory checking, and `--json` / `--markdown` output formats.
+
+### Changed
+- **Single Source of Truth (SSOT) & Cross-Platform Parity**:
+  - Consolidated exporter preparation (`Sheet.preparedForExport()`), timeline tempo integration (`TmdPlaybackRenderer.durationInSeconds`), monophonic vocal note extraction (`VocaloidNoteItem`), extended chord quality tables, MIDI channel/pan assignment, and CLI refactor OptionGroups.
+  - Aligned LSP completion (15-key major/minor diatonic chords, prefix filtering, auto-closed `}` handling), JSON-RPC string/integer IDs, Inspector cached locale re-rendering, and CLI flags (`--play` pre-validation, `--instrument` for vocal exports) with `tmd-ts`.
+
+### Fixed
+- **Core, Playback & Exporter Correctness**:
+  - Preserved `Sheet.declaredKey` across `TmdMacroEvaluator.expandMacros` and supported `[pitchMode=fixed]` across `TmdRefactor`, `TmdMeasureLexerFallback`, and `TmdSongTonalityAnalyzer`.
+  - Fixed `TmdMeasureRenderer` state retention across sections and per-instrument trailing empty measure trimming.
+  - Fixed VSQ Shift-JIS/UTF-8 double-encoding, non-4/4 `preMeasure` calculation, simultaneous chord/note duration advancing in LilyPond/ABC, `min` key suffixes, Reaper program change clamping, and `PercussiveOrgan` percussion classification.
+
 ## [0.2.3] - 2026-10-05
 
 ### Added
