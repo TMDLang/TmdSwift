@@ -28,7 +28,7 @@ public final class TmdLSPServer: @unchecked Sendable {
                 ],
                 "serverInfo": [
                     "name": "tmd-lsp",
-                    "version": "1.0.0",
+                    "version": TmdVersion.current,
                 ],
             ]
             let resp = TmdJSONRPCResponse(id: message.id, result: capabilities)

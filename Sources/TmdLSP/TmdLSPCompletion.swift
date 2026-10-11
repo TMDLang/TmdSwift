@@ -168,13 +168,23 @@ public struct TmdLSPCompletionEngine {
             }
         }
 
-        // 3. Check for assignment completion: after ":"
-        if prefix.trimmingCharacters(in: .whitespaces).hasSuffix(":") {
-            return standardInstruments.map {
-                TmdLSPCompletionItem(
-                    label: $0,
+        // 3. Check for assignment completion: after ":" (or ":<prefix>")
+        if let matchRange = prefix.range(
+            of: #"^[a-zA-Z0-9_-]+:\s*([a-zA-Z0-9_-]*)$"#,
+            options: .regularExpression
+        ) {
+            let colonIdx = prefix[matchRange].firstIndex(of: ":")!
+            let typedInst = prefix[prefix.index(after: colonIdx)...]
+                .trimmingCharacters(in: .whitespaces)
+                .lowercased()
+            return standardInstruments.compactMap { inst in
+                guard typedInst.isEmpty || inst.lowercased().hasPrefix(typedInst) else {
+                    return nil
+                }
+                return TmdLSPCompletionItem(
+                    label: inst,
                     kind: .keyword,
-                    detail: "General MIDI Assignment: \($0)",
+                    detail: "General MIDI Assignment: \(inst)",
                     documentation: "Standard assignment sound"
                 )
             }
@@ -205,7 +215,7 @@ public struct TmdLSPCompletionEngine {
 
                 // B. Diatonic Letter Chords for current key
                 let sheet = TmdParser.parse(string: source)
-                let keyStr = sheet?.keySignature.description ?? "C"
+                let keyStr = sheet?.declaredKey ?? sheet?.keySignature.description ?? "C"
                 let diatonicChords = getDiatonicChords(for: keyStr)
                 for chord in diatonicChords {
                     if typed.isEmpty || chord.hasPrefix(typed) {

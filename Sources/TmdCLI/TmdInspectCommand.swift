@@ -38,7 +38,7 @@ struct TmdInspectCommand: ParsableCommand {
     }
 
     private var inspectionLocale: TmdLocale {
-        guard let locale else { return .en }
+        guard let locale else { return .zhHant }
         return locale.lowercased().hasPrefix("zh") ? .zhHant : .en
     }
 }

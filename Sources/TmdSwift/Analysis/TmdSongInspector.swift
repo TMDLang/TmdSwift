@@ -167,18 +167,19 @@ public enum TmdSongInspector {
 
         if let vocal = profile.vocalRange {
             let octaves = String(format: "%0.1f", vocal.spanOctaves)
+            let localizer = strings.localizer
             lines.append(
-                "🎤 Vocal Range:    \(vocal.lowestNote.noteName) (MIDI \(vocal.lowestNote.midiPitch)) – \(vocal.highestNote.noteName) (MIDI \(vocal.highestNote.midiPitch)) [Span: \(vocal.spanSemitones) semitones / \(octaves) octaves, Difficulty: \(vocal.difficulty.rawValue)]"
+                "🎤 \(localizer.text(.vocalRange)):    \(vocal.lowestNote.noteName) (MIDI \(vocal.lowestNote.midiPitch)) – \(vocal.highestNote.noteName) (MIDI \(vocal.highestNote.midiPitch)) [\(localizer.text(.span)): \(vocal.spanSemitones) \(localizer.text(.semitones)) / \(octaves) \(localizer.text(.octaves)), \(localizer.text(.difficulty)): \(vocal.difficulty.rawValue)]"
             )
             lines.append(
-                "   - Lowest Note:  \(vocal.lowestNote.noteName) in \(formatNoteLocation(vocal.lowestNote))"
+                "   - \(localizer.text(.lowestNote)):  \(vocal.lowestNote.noteName) in \(formatNoteLocation(vocal.lowestNote))"
             )
             lines.append(
-                "   - Highest Note: \(vocal.highestNote.noteName) in \(formatNoteLocation(vocal.highestNote))"
+                "   - \(localizer.text(.highestNote)): \(vocal.highestNote.noteName) in \(formatNoteLocation(vocal.highestNote))"
             )
             if !vocal.suitableVoiceTypes.isEmpty {
                 let voiceNames = vocal.suitableVoiceTypes.map(\.rawValue).joined(separator: ", ")
-                lines.append("   - Suitable For: \(voiceNames)")
+                lines.append("   - \(localizer.text(.suitableFor)): \(voiceNames)")
             }
         }
 
@@ -249,20 +250,21 @@ public enum TmdSongInspector {
 
             // ASCII Visualizations
             lines.append("")
-            lines.append("  [ Circle of Fifths Trajectory ]")
+            lines.append("  [ \(strings.localizer.text(.circleOfFifthsTitle)) ]")
             lines.append(renderAsciiCircleOfFifths(tonality: tonality))
             lines.append("")
-            lines.append("  [ Pitch Class Weight Distribution ]")
+            lines.append("  [ \(strings.localizer.text(.pitchClassDistributionTitle)) ]")
             lines.append(renderPitchClassHistogram(tonality: tonality))
         }
 
         lines.append(
             "--------------------------------------------------------------------------------")
         lines.append(strings.instrumentRanges)
+        let localizer = strings.localizer
         for inst in profile.instrumentRanges {
             let octaves = String(format: "%0.1f", inst.spanOctaves)
             lines.append(
-                "  - \(inst.assignment.padding(toLength: 14, withPad: " ", startingAt: 0)): \(inst.lowestNote.noteName) – \(inst.highestNote.noteName) (\(inst.spanSemitones) semitones / \(octaves) octaves, \(inst.totalNotes) notes)"
+                "  - \(inst.assignment.padding(toLength: 14, withPad: " ", startingAt: 0)): \(inst.lowestNote.noteName) – \(inst.highestNote.noteName) (\(inst.spanSemitones) \(localizer.text(.semitones)) / \(octaves) \(localizer.text(.octaves)), \(inst.totalNotes) \(localizer.text(.notes)))"
             )
         }
         lines.append(

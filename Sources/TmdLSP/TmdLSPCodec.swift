@@ -2,12 +2,42 @@ import Foundation
 
 // MARK: - JSON-RPC Frame & Codec
 
+public enum TmdJSONRPCId: Equatable, Sendable, ExpressibleByIntegerLiteral, ExpressibleByStringLiteral {
+    case int(Int)
+    case string(String)
+
+    public init(integerLiteral value: Int) {
+        self = .int(value)
+    }
+
+    public init(stringLiteral value: String) {
+        self = .string(value)
+    }
+
+    public static func == (lhs: TmdJSONRPCId, rhs: Int) -> Bool {
+        if case .int(let v) = lhs { return v == rhs }
+        return false
+    }
+
+    public static func == (lhs: Int, rhs: TmdJSONRPCId) -> Bool {
+        if case .int(let v) = rhs { return lhs == v }
+        return false
+    }
+
+    fileprivate var jsonValue: Any {
+        switch self {
+        case .int(let v): return v
+        case .string(let s): return s
+        }
+    }
+}
+
 public struct TmdJSONRPCFrame: @unchecked Sendable {
-    public let id: Int?
+    public let id: TmdJSONRPCId?
     public let method: String?
     public let params: Any?
 
-    public init(id: Int?, method: String?, params: Any? = nil) {
+    public init(id: TmdJSONRPCId?, method: String?, params: Any? = nil) {
         self.id = id
         self.method = method
         self.params = params
@@ -15,11 +45,11 @@ public struct TmdJSONRPCFrame: @unchecked Sendable {
 }
 
 public struct TmdJSONRPCResponse: @unchecked Sendable {
-    public let id: Int?
+    public let id: TmdJSONRPCId?
     public let result: Any?
     public let error: Any?
 
-    public init(id: Int?, result: Any? = nil, error: Any? = nil) {
+    public init(id: TmdJSONRPCId?, result: Any? = nil, error: Any? = nil) {
         self.id = id
         self.result = result
         self.error = error
@@ -64,7 +94,14 @@ public struct TmdJSONRPCCodec {
             buffer = buffer.subdata(in: bodyEnd..<buffer.count)
 
             if let obj = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any] {
-                let id = obj["id"] as? Int
+                let id: TmdJSONRPCId?
+                if let intId = obj["id"] as? Int {
+                    id = .int(intId)
+                } else if let strId = obj["id"] as? String {
+                    id = .string(strId)
+                } else {
+                    id = nil
+                }
                 let method = obj["method"] as? String
                 let params = obj["params"]
                 frames.append(TmdJSONRPCFrame(id: id, method: method, params: params))
@@ -78,7 +115,7 @@ public struct TmdJSONRPCCodec {
             "jsonrpc": "2.0"
         ]
         if let id = response.id {
-            dict["id"] = id
+            dict["id"] = id.jsonValue
         } else {
             dict["id"] = NSNull()
         }

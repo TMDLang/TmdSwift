@@ -243,8 +243,12 @@ struct TmdSongInspectorTests {
         #expect(report.contains("12.0s") || report.contains("12s"))
         #expect(report.contains("C4"))
         #expect(report.contains("A5"))
-        #expect(report.contains("21 semitones"))
-        #expect(report.contains("1.8 octaves"))
+        #expect(report.contains("21 個半音"))
+        #expect(report.contains("1.8 個八度"))
+
+        let reportEn = TmdSongInspector.generateReport(profile, locale: .en)
+        #expect(reportEn.contains("21 semitones"))
+        #expect(reportEn.contains("1.8 octaves"))
     }
 
     @Test func testInspectSongRepeatedSectionsMeasureAndTime() throws {
@@ -566,5 +570,35 @@ struct TmdSongInspectorTests {
         #expect(english.text(.modulationStart, arguments: ["C", "Major"]) == "Starts in C Major")
         #expect(traditionalChinese.text(.reportTitle) == "TMD Song Profile")
         #expect(traditionalChinese.text(.modulationStart, arguments: ["C", "大調"]) == "C 大調起奏")
+    }
+
+    @Test("Issue #42: Inspector report localizes vocal range, ASCII chart titles, and instrument range units")
+    func testSongInspectorLocalizesVocalAndInstrumentRangeStrings() throws {
+        let tmd = """
+            ::SCORE::
+            ** Localized Vocal Report **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+                <4*>
+                1 3 5 1^
+            }
+
+            -> verse ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let profile = TmdSongInspector.inspect(sheet: sheet, locale: .zhHant)
+        let reportZh = TmdSongInspector.generateReport(profile)
+
+        #expect(reportZh.contains("🎤 人聲音域:"))
+        #expect(reportZh.contains("跨度: 12 個半音 / 1.0 個八度, 難度:"))
+        #expect(reportZh.contains("最低音:"))
+        #expect(reportZh.contains("最高音:"))
+        #expect(reportZh.contains("適合:"))
+        #expect(reportZh.contains("[ 五度圈游移軌跡 ]"))
+        #expect(reportZh.contains("[ 十二半音累積音高分佈 ]"))
+        #expect(reportZh.contains("(12 個半音 / 1.0 個八度, 4 個音符)"))
     }
 }

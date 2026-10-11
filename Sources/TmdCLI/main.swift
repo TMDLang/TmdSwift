@@ -191,7 +191,7 @@ struct TmdCLICommand: ParsableCommand {
         }
 
         let isExporting =
-            (midiOutput != nil || reaperOutput != nil || musicxmlOutput != nil
+            (play || midiOutput != nil || reaperOutput != nil || musicxmlOutput != nil
                 || lilypondOutput != nil || abcOutput != nil || chordproOutput != nil
                 || brailleOutput != nil || brfOutput != nil
                 || pdfOutput != nil || wavOutput != nil || vsqOutput != nil || vsqxOutput != nil
@@ -432,7 +432,11 @@ struct TmdCLICommand: ParsableCommand {
         // Export to VOCALOID2 (.vsq) if requested
         if let vsqPath = vsqOutput {
             let options = VocaloidExportOptions(singerName: singer)
-            let vsqData = TmdVSQGenerator.generateVSQ(from: sheet, options: options)
+            let vsqData = TmdVSQGenerator.generateVSQ(
+                from: sheet,
+                targetInstrument: instrument,
+                options: options
+            )
             let outURL = URL(fileURLWithPath: vsqPath)
             do {
                 try vsqData.write(to: outURL)
@@ -447,7 +451,11 @@ struct TmdCLICommand: ParsableCommand {
         // Export to VOCALOID3/4 (.vsqx) if requested
         if let vsqxPath = vsqxOutput {
             let options = VocaloidExportOptions(singerName: singer)
-            let vsqxString = TmdVSQXGenerator.generateVSQX(from: sheet, options: options)
+            let vsqxString = TmdVSQXGenerator.generateVSQX(
+                from: sheet,
+                targetInstrument: instrument,
+                options: options
+            )
             let outURL = URL(fileURLWithPath: vsqxPath)
             do {
                 try vsqxString.write(to: outURL, atomically: true, encoding: .utf8)
@@ -463,7 +471,11 @@ struct TmdCLICommand: ParsableCommand {
         // Export to UTAU / OpenUtau (.ust) if requested
         if let ustPath = ustOutput {
             let options = USTExportOptions(projectName: sheet.name)
-            let ustString = TmdUSTGenerator.generateUST(from: sheet, options: options)
+            let ustString = TmdUSTGenerator.generateUST(
+                from: sheet,
+                targetInstrument: instrument,
+                options: options
+            )
             let outURL = URL(fileURLWithPath: ustPath)
             do {
                 try ustString.write(to: outURL, atomically: true, encoding: .utf8)

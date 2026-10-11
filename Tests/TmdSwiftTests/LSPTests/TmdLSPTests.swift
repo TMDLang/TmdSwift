@@ -564,4 +564,66 @@ struct TmdLSPTests {
             "Failed lilypond invocation during --pdf-output must throw ExitCode.failure"
         )
     }
+
+    @Test("Issue #42: LSP supports partial instrument prefix completion, declaredKey minor chords, string JSON-RPC IDs, and CLI parity")
+    func testIssue42LSPAndCLIParity() throws {
+        // 1. Partial instrument prefix completion: "verse:P" -> Piano
+        let instItems = TmdLSPCompletionEngine.complete(
+            source: "verse:P",
+            position: TmdLSPPosition(line: 0, character: 7)
+        )
+        #expect(instItems.map(\.label).contains("Piano"))
+        #expect(!instItems.map(\.label).contains("Violin"))
+
+        // 2. declaredKey minor diatonic chords: key= Am
+        let amSource = """
+            ::SCORE::
+            != 120
+            ?= C
+            key= Am
+            <4/4>
+            verse:Piano@|0|{
+                <4*>
+                [
+            }
+            """
+        let chordItems = TmdLSPCompletionEngine.complete(
+            source: amSource,
+            position: TmdLSPPosition(line: 7, character: 5)
+        )
+        #expect(chordItems.map(\.label).contains("E7"))
+        #expect(chordItems.first(where: { $0.label == "Am" })?.detail == "Diatonic Chord in Am")
+
+        // 3. String JSON-RPC request IDs and serverInfo.version
+        let rawStringId =
+            "Content-Length: 50\r\n\r\n{\"jsonrpc\":\"2.0\",\"id\":\"req-1\",\"method\":\"shutdown\"}"
+        let frames = TmdJSONRPCCodec.decode(rawStringId)
+        #expect(frames.count == 1)
+        #expect(frames[0].id == .string("req-1"))
+
+        var sentMessages: [String] = []
+        let server = TmdLSPServer { sentMessages.append($0) }
+        server.handle(message: TmdJSONRPCFrame(id: .string("init-1"), method: "initialize", params: [:]))
+        #expect(sentMessages.last?.contains("\"id\":\"init-1\"") == true)
+        #expect(sentMessages.last?.contains("\"version\":\"\(TmdVersion.current)\"") == true)
+
+        // 4. CLI parity checks in main.swift and TmdInspectCommand.swift
+        let packageRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let mainSwift = try String(
+            contentsOf: packageRoot.appendingPathComponent("Sources/TmdCLI/main.swift"),
+            encoding: .utf8
+        )
+        #expect(mainSwift.contains("play || midiOutput != nil"))
+        #expect(mainSwift.contains("targetInstrument: instrument"))
+
+        let inspectSwift = try String(
+            contentsOf: packageRoot.appendingPathComponent("Sources/TmdCLI/TmdInspectCommand.swift"),
+            encoding: .utf8
+        )
+        #expect(inspectSwift.contains("guard let locale else { return .zhHant }"))
+    }
 }
