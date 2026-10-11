@@ -422,7 +422,8 @@ public enum TmdScoreValidator {
                     $0.name == secName && !$0.isPrototype && $0.showProgram == nil
                 }
                 // Group by canonical instrument assignment and compute max measure span (start + durationInMeasures)
-                var spanByInstrument: [(instrument: String, span: Int, entry: Entry)] = []
+                var spanByInstrument:
+                    [(instrument: String, span: Int, endBeats: Double, entry: Entry)] = []
                 var groupedInst: [String: [Entry]] = [:]
                 var instOrder: [String] = []
                 for e in secEntries {
@@ -437,6 +438,7 @@ public enum TmdScoreValidator {
                 for inst in instOrder {
                     guard let entriesForInst = groupedInst[inst] else { continue }
                     var maxEndMeasure = 0
+                    var maxEndBeats = 0.0
                     for e in entriesForInst {
                         let beatDur = e.sections.reduce(0.0) { total, section in
                             let unitDur = 4.0 / Double(max(1, section.noteLength))
@@ -445,14 +447,21 @@ public enum TmdScoreValidator {
                                     $0 + Double(max(0, $1.length)) * unitDur
                                 }
                         }
-                        let measuresCount = Int((beatDur / measureDur).rounded())
+                        let entryBeat = TmdPlaybackRenderer.entryInitialBeat(
+                            for: e, in: sheet, fallback: sheet.beat)
+                        let entryMeasureDur = TmdPlaybackRenderer.measureDuration(for: entryBeat)
+                        let measuresCount = Int((beatDur / entryMeasureDur).rounded())
                         let endMeasure = e.start + measuresCount
+                        let endBeats = Double(e.start) * entryMeasureDur + beatDur
                         if endMeasure > maxEndMeasure {
                             maxEndMeasure = endMeasure
                         }
+                        if endBeats > maxEndBeats {
+                            maxEndBeats = endBeats
+                        }
                     }
                     if maxEndMeasure > 0, let firstEntry = entriesForInst.first {
-                        spanByInstrument.append((inst, maxEndMeasure, firstEntry))
+                        spanByInstrument.append((inst, maxEndMeasure, maxEndBeats, firstEntry))
                     }
                 }
 
@@ -468,8 +477,13 @@ public enum TmdScoreValidator {
                             if a.value != b.value { return a.value < b.value }
                             return a.key < b.key
                         }?.key ?? (distinctSpans.max() ?? 0)
+                    let referenceEndBeats =
+                        spanByInstrument.first { $0.span == referenceSpan }?.endBeats ?? 0.0
 
-                    for item in spanByInstrument where item.span != referenceSpan {
+                    for item in spanByInstrument
+                    where item.span != referenceSpan
+                        && abs(item.endBeats - referenceEndBeats) > 1e-4
+                    {
                         let line =
                             findEntryLine(
                                 name: secName, assignment: item.instrument, in: lines)

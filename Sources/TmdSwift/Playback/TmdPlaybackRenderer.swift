@@ -286,8 +286,8 @@ public enum TmdPlaybackRenderer {
                 for otherIndex in entries.index(after: index)..<entries.endIndex {
                     let first = entries[index]
                     let second = entries[otherIndex]
-                    let firstRange = range(of: first, beat: sheet.beat)
-                    let secondRange = range(of: second, beat: sheet.beat)
+                    let firstRange = range(of: first, in: sheet, beat: sheet.beat)
+                    let secondRange = range(of: second, in: sheet, beat: sheet.beat)
                     if max(firstRange.lowerBound, secondRange.lowerBound)
                         < min(firstRange.upperBound, secondRange.upperBound)
                     {
@@ -305,13 +305,41 @@ public enum TmdPlaybackRenderer {
         return issues
     }
 
-    private static func range(of entry: Entry, beat: Beat) -> Range<Double> {
+    /// Resolves the initial time signature for an entry, checking the entry's own leading
+    /// `.timeSignature` directive at position 0 first, then any sibling entry in the same section,
+    /// and finally falling back to `fallback`.
+    public static func entryInitialBeat(
+        for entry: Entry, in sheet: Sheet? = nil, fallback: Beat
+    ) -> Beat {
+        if let firstSec = entry.sections.first {
+            for dir in firstSec.directives where dir.position == 0 {
+                if case .timeSignature(let b) = dir.kind {
+                    return b
+                }
+            }
+        }
+        if let sheet {
+            for sibling in sheet.entries where sibling.name == entry.name {
+                if let firstSec = sibling.sections.first {
+                    for dir in firstSec.directives where dir.position == 0 {
+                        if case .timeSignature(let b) = dir.kind {
+                            return b
+                        }
+                    }
+                }
+            }
+        }
+        return fallback
+    }
+
+    private static func range(of entry: Entry, in sheet: Sheet? = nil, beat: Beat) -> Range<Double> {
         let duration = entry.sections.reduce(0.0) { total, section in
             let unitDuration = 4.0 / Double(max(1, section.noteLength))
             return total
                 + section.unitGroups.reduce(0.0) { $0 + Double(max(0, $1.length)) * unitDuration }
         }
-        let start = Double(entry.start) * measureDuration(for: beat)
+        let effectiveBeat = entryInitialBeat(for: entry, in: sheet, fallback: beat)
+        let start = Double(entry.start) * measureDuration(for: effectiveBeat)
         return start..<start + duration
     }
 
@@ -336,9 +364,11 @@ public enum TmdPlaybackRenderer {
                 }
 
                 for paragraph in matchingParagraphs {
+                    let entryBeat = entryInitialBeat(
+                        for: paragraph, in: sheet, fallback: cursor.state.timeSignature)
                     let start =
                         cursor.timelinePosition + Double(paragraph.start)
-                        * measureDuration(for: cursor.state.timeSignature)
+                        * measureDuration(for: entryBeat)
                     let paragraphState =
                         paragraph.pitchMode == .fixed
                         ? PlaybackState(
@@ -595,7 +625,8 @@ public enum TmdPlaybackRenderer {
         guard !matching.isEmpty else { return 0.0 }
 
         let ends = matching.map { paragraph in
-            let startBeats = Double(paragraph.start) * measureDuration(for: effectiveBeat)
+            let paragraphBeat = entryInitialBeat(for: paragraph, in: sheet, fallback: effectiveBeat)
+            let startBeats = Double(paragraph.start) * measureDuration(for: paragraphBeat)
             let noteDuration = paragraph.sections.reduce(0.0) { total, section in
                 let unitDuration = 4.0 / Double(max(1, section.noteLength))
                 return total
@@ -626,9 +657,11 @@ public enum TmdPlaybackRenderer {
                 let matchingParagraphs = sheet.entries.filter { $0.name == name }
                 let paragraphDuration = duration(of: name, in: sheet, beat: cursor.state.timeSignature)
                 for paragraph in matchingParagraphs {
+                    let entryBeat = entryInitialBeat(
+                        for: paragraph, in: sheet, fallback: cursor.state.timeSignature)
                     let start =
                         cursor.timelinePosition + Double(paragraph.start)
-                        * measureDuration(for: cursor.state.timeSignature)
+                        * measureDuration(for: entryBeat)
                     if start < minPosition {
                         minPosition = start
                     }
