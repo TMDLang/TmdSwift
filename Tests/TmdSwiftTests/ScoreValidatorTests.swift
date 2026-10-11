@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 import TmdLSP
+import TmdMIDI
 
 @testable import TmdSwift
 
@@ -527,5 +528,50 @@ struct ScoreValidatorTests {
         #expect(abs(m7FirstBar.startTime - 28.0) < 1e-6)
         #expect(m7FirstBar.timeSignature == Beat(count: 7, noteValue: 8))
         #expect(abs(m7FirstBar.nominalDuration - 3.5) < 1e-6)
+    }
+
+    @Test func testTempoBoundsClampingAndValidatorWarning() throws {
+        let score = """
+            ::SCORE::
+            ** Extreme Tempo Test **
+            != 5
+            ?= C
+            <4/4>
+
+            A:Piano@|0|{
+                <4*>
+                | 1 {!= 1500} 2 {!- 2000} 3 4 |
+            }
+
+            -> A ->#
+            """
+
+        // 1. Validator emits W-TEMPO-OUT-OF-RANGE warnings for != 5, {!= 1500}, and {!- 2000}
+        let diags = TmdScoreValidator.validate(source: score)
+        let tempoWarnings = diags.filter { $0.rule == .tempoOutOfRange }
+        #expect(tempoWarnings.count == 3)
+        #expect(tempoWarnings.allSatisfy { $0.severity == .warning })
+
+        // 2. Playback and Measure renderers clamp effective tempos to [10.0, 1000.0] BPM
+        let sheet = try TmdParser.parseThrowing(string: score)
+        let timeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+        #expect(timeline.events.count == 4)
+        #expect(abs(timeline.events[0].state.tempo - 10.0) < 1e-6)
+        #expect(abs(timeline.events[1].state.tempo - 1000.0) < 1e-6)
+        #expect(abs(timeline.events[2].state.tempo - 10.0) < 1e-6)
+
+        let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Piano")
+        #expect(abs(measures[0].tempo - 10.0) < 1e-6)
+
+        // 3. MIDI 24-bit mpqn clamps to [1, 0xFFFFFF] without truncating high bytes
+        let slowTrack = TmdMIDIEncoder.encodeTrack(events: [
+            MIDIEvent(tick: 0, message: .tempo(1.0))
+        ])
+        #expect(Array(slowTrack.prefix(7)) == [0x00, 0xFF, 0x51, 0x03, 0xFF, 0xFF, 0xFF])
+
+        let fastTrack = TmdMIDIEncoder.encodeTrack(events: [
+            MIDIEvent(tick: 0, message: .tempo(100_000_000.0))
+        ])
+        #expect(Array(fastTrack.prefix(7)) == [0x00, 0xFF, 0x51, 0x03, 0x00, 0x00, 0x01])
     }
 }

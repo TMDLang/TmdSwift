@@ -20,6 +20,7 @@ public enum TmdDiagnosticRule: String, Codable, Equatable, Sendable {
     case instrumentInconsistent = "W-INSTRUMENT-INCONSISTENT"
     case instrumentUnknown = "W-INSTRUMENT-UNKNOWN"
     case sectionLengthMismatch = "W-SECTION-LENGTH-MISMATCH"
+    case tempoOutOfRange = "W-TEMPO-OUT-OF-RANGE"
 }
 
 /// A structured diagnostic produced by `TmdScoreValidator`.
@@ -244,6 +245,86 @@ public enum TmdScoreValidator {
                     message:
                         "Conflicting simultaneous tempo directives (\(temposStr) BPM) at beat position \(conflict.position)."
                 ))
+        }
+
+        // 2d. Tempo bounds check (W-TEMPO-OUT-OF-RANGE: [10, 1000] BPM)
+        if sheet.speed > 0
+            && (sheet.speed < TmdPlaybackRenderer.minTempoBPM
+                || sheet.speed > TmdPlaybackRenderer.maxTempoBPM)
+        {
+            let speedLine =
+                (lines.firstIndex {
+                    let t = $0.trimmingCharacters(in: .whitespaces)
+                    return !t.hasPrefix("//") && t.hasPrefix("!=")
+                }.map { $0 + 1 } ?? 1) + options.lineOffset
+            let clamped = TmdPlaybackRenderer.clampTempo(sheet.speed)
+            diagnostics.append(
+                TmdScoreDiagnostic(
+                    file: options.file,
+                    line: speedLine,
+                    column: 1,
+                    severity: .warning,
+                    rule: .tempoOutOfRange,
+                    message:
+                        "Tempo '!= \(sheet.speed)' is outside the supported range [10, 1000] BPM (will be clamped to \(clamped) BPM).",
+                    suggestion: "Specify a tempo between 10 and 1000 BPM."
+                ))
+        }
+
+        for entry in sheet.entries {
+            var currentTempo =
+                sheet.speed > 0
+                ? TmdPlaybackRenderer.clampTempo(sheet.speed)
+                : TmdPlaybackRenderer.defaultTempoBPM
+            let entryLine =
+                findEntryLine(name: entry.name, assignment: entry.assignment, in: lines)
+                + options.lineOffset
+            for section in entry.sections {
+                for directive in section.directives.sorted(by: { $0.position < $1.position }) {
+                    switch directive.kind {
+                    case .tempo(let bpm):
+                        if bpm < TmdPlaybackRenderer.minTempoBPM
+                            || bpm > TmdPlaybackRenderer.maxTempoBPM
+                        {
+                            let clamped = TmdPlaybackRenderer.clampTempo(bpm)
+                            diagnostics.append(
+                                TmdScoreDiagnostic(
+                                    file: options.file,
+                                    line: entryLine,
+                                    column: 1,
+                                    severity: .warning,
+                                    rule: .tempoOutOfRange,
+                                    message:
+                                        "Tempo directive '{!= \(bpm)}' in '\(entry.name)' is outside the supported range [10, 1000] BPM (will be clamped to \(clamped) BPM).",
+                                    suggestion: "Specify a tempo between 10 and 1000 BPM."
+                                ))
+                        }
+                        currentTempo = TmdPlaybackRenderer.clampTempo(bpm)
+                    case .relativeTempo(let delta):
+                        let targetTempo = currentTempo + delta
+                        if targetTempo < TmdPlaybackRenderer.minTempoBPM
+                            || targetTempo > TmdPlaybackRenderer.maxTempoBPM
+                        {
+                            let clamped = TmdPlaybackRenderer.clampTempo(targetTempo)
+                            let op = delta >= 0 ? "!+" : "!-"
+                            diagnostics.append(
+                                TmdScoreDiagnostic(
+                                    file: options.file,
+                                    line: entryLine,
+                                    column: 1,
+                                    severity: .warning,
+                                    rule: .tempoOutOfRange,
+                                    message:
+                                        "Relative tempo directive '{\(op) \(abs(delta))}' in '\(entry.name)' results in \(targetTempo) BPM, outside [10, 1000] BPM (will be clamped to \(clamped) BPM).",
+                                    suggestion: "Keep effective tempo within 10 to 1000 BPM."
+                                ))
+                        }
+                        currentTempo = TmdPlaybackRenderer.clampTempo(targetTempo)
+                    default:
+                        break
+                    }
+                }
+            }
         }
 
         // Stage 3: Chord Symbol Linter (E-CHORD-MULTINOTE, W-CHORD-CUSTOM)

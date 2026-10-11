@@ -153,6 +153,16 @@ public struct TempoSegment: Equatable, Sendable {
 
 /// Expands immutable TMD AST data into a shared playback timeline.
 public enum TmdPlaybackRenderer {
+    public static let defaultTempoBPM: Double = 120.0
+    public static let minTempoBPM: Double = 10.0
+    public static let maxTempoBPM: Double = 1000.0
+
+    /// Clamps a tempo in BPM to the supported range `[10.0, 1000.0]`.
+    public static func clampTempo(_ bpm: Double) -> Double {
+        guard bpm.isFinite else { return defaultTempoBPM }
+        return min(maxTempoBPM, max(minTempoBPM, bpm))
+    }
+
     private struct PlaybackOrderCursor {
         var state: PlaybackState
         var timelinePosition = 0.0
@@ -197,7 +207,7 @@ public enum TmdPlaybackRenderer {
         initialBeat: Beat = Beat(),
         directives: [PlaybackDirectiveEvent]
     ) -> [TempoSegment] {
-        let startBpm = initialTempo > 0 ? initialTempo : 120.0
+        let startBpm = initialTempo > 0 ? clampTempo(initialTempo) : defaultTempoBPM
         var segments: [TempoSegment] = [
             TempoSegment(
                 quarterStart: 0,
@@ -214,6 +224,7 @@ public enum TmdPlaybackRenderer {
             }
             guard affectsTempoOrMeter else { continue }
             let last = segments[segments.count - 1]
+            let clampedBpm = clampTempo(directive.state.tempo)
             if directive.position > last.quarterStart {
                 let deltaQuarters = directive.position - last.quarterStart
                 let deltaSeconds = deltaQuarters * (60.0 / last.bpm)
@@ -222,12 +233,12 @@ public enum TmdPlaybackRenderer {
                     TempoSegment(
                         quarterStart: directive.position,
                         secondStart: secondStart,
-                        bpm: directive.state.tempo,
+                        bpm: clampedBpm,
                         timeSignature: directive.state.timeSignature
                     )
                 )
             } else if directive.position == last.quarterStart {
-                segments[segments.count - 1].bpm = directive.state.tempo
+                segments[segments.count - 1].bpm = clampedBpm
                 segments[segments.count - 1].timeSignature = directive.state.timeSignature
             }
         }
@@ -248,7 +259,7 @@ public enum TmdPlaybackRenderer {
 
     private static func initialState(for sheet: Sheet) -> PlaybackState {
         PlaybackState(
-            tempo: sheet.speed > 0 ? sheet.speed : 120,
+            tempo: sheet.speed > 0 ? clampTempo(sheet.speed) : defaultTempoBPM,
             keyOffset: sheet.keySignature.semitoneOffset,
             timeSignature: sheet.beat
         )
@@ -798,11 +809,11 @@ private extension SectionDirectiveKind {
         return switch self {
         case .tempo(let value):
             PlaybackState(
-                tempo: max(1, value), keyOffset: state.keyOffset,
+                tempo: TmdPlaybackRenderer.clampTempo(value), keyOffset: state.keyOffset,
                 timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
         case .relativeTempo(let value):
             PlaybackState(
-                tempo: max(1, state.tempo + value), keyOffset: state.keyOffset,
+                tempo: TmdPlaybackRenderer.clampTempo(state.tempo + value), keyOffset: state.keyOffset,
                 timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
         case .absoluteKey(let value):
             PlaybackState(

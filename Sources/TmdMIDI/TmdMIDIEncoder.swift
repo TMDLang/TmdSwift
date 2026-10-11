@@ -80,7 +80,8 @@ private extension MIDIMessage {
         case .trackName(let name):
             return TmdMIDIEncoder.metaEvent(type: 0x03, data: Data(name.utf8))
         case .tempo(let bpm):
-            let mpqn = TmdMIDIEncoder.clampedUInt32(60_000_000.0 / max(1, bpm))
+            let rawMpqn = (60_000_000.0 / max(1e-6, bpm)).rounded()
+            let mpqn = min(0xFF_FFFF, max(1, TmdMIDIEncoder.clampedUInt32(rawMpqn)))
             let data = Data([
                 UInt8((mpqn >> 16) & 0xFF), UInt8((mpqn >> 8) & 0xFF), UInt8(mpqn & 0xFF),
             ])

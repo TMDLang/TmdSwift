@@ -183,7 +183,9 @@ public enum TmdMeasureRenderer {
 
         var measures: [Measure] = []
         var activeState = PlaybackState(
-            tempo: sheet.speed > 0 ? sheet.speed : 120,
+            tempo: sheet.speed > 0
+                ? TmdPlaybackRenderer.clampTempo(sheet.speed)
+                : TmdPlaybackRenderer.defaultTempoBPM,
             keyOffset: sheet.keySignature.semitoneOffset,
             timeSignature: defaultBeat
         )
