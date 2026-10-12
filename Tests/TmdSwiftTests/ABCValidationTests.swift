@@ -301,4 +301,124 @@ struct ABCValidationTests {
         #expect(abc.contains("\"C\"z4"))
         #expect(abc.contains("g"))
     }
+
+    @Test("Issue #57: ABC preserves sub-16th durations, tuplets, bracketed inline directives, and golden_case measure conservation")
+    func testABCSub16thTupletsInlineBracketsAndGoldenCaseConservation() throws {
+        // 1. Sub-16th durations (<32*>, <64*>, <1024*>), tuplets (3:1, 5:3, 7:5, 11:7), and inline directives
+        let tmd = """
+            ::SCORE::
+            ** Sub-16th & Tuplet ABC Test **
+            != 120
+            ?= C
+            <4/4>
+
+            A:Piano@|0|{
+                <32*>
+                1 2 3 4
+                <64*>
+                1 2 3 4 5 6 7 1^
+                <4*>
+                1 2 3
+                | (1 2 3)%(-) (1 2 3 4 5)%(---) |
+                | {<5/4>} {!= 150} {?= D} 1 2 3 4 5 |
+            }
+            -> A ->#
+            """
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let abc = TmdABCGenerator.generateABC(from: sheet)
+
+        // Sub-16th notes: <32*> = 1/2 of L:1/16 -> "/2", <64*> = 1/4 of L:1/16 -> "/4"
+        #expect(abc.contains("c/2 d/2 e/2 f/2"))
+        #expect(abc.contains("c/4 d/4 e/4 f/4 g/4 a/4 b/4"))
+
+        // Tuplets: (1 2 3)%(-) in <4*> -> each note is 1/3 quarter = 4/3 of L:1/16 -> "4/3"
+        // (1 2 3 4 5)%(---) in <4*> -> each note is 3/5 quarter = 12/5 of L:1/16 -> "12/5"
+        #expect(abc.contains("c4/3 d4/3 e4/3"))
+        #expect(abc.contains("c12/5 d12/5 e12/5 f12/5 g12/5"))
+
+        // Inline directives in tune body must be bracketed per ABC v2.1 Section 3.2
+        #expect(abc.contains("[M:5/4]"))
+        #expect(abc.contains("[Q:1/4=150]"))
+        #expect(abc.contains("[K:D]"))
+
+        // 2. Full golden_case.tmd measure duration conservation across all voices and measures
+        let goldenURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("sample/golden_case/golden_case.tmd")
+        let goldenSheet = try TmdParserIO.parseThrowing(url: goldenURL)
+        let goldenABC = TmdABCGenerator.generateABC(from: goldenSheet)
+
+        let voiceBlocks = goldenABC.components(separatedBy: "[V:").dropFirst()
+        #expect(!voiceBlocks.isEmpty)
+
+        // Regex matching an ABC event (chord group [...], quoted chord "..."z, or single note/rest) with optional p/q or /q or p suffix
+        let eventRegex = try NSRegularExpression(
+            pattern: #"(?:\[[A-Ga-gz\^=_',]+\]|"[^"]*"z|[A-Ga-gz\^=_',]+)(\d+)?(?:/(\d+))?-?"#
+        )
+        let meterRegex = try NSRegularExpression(pattern: #"\[M:(\d+)/(\d+)\]"#)
+        let inlineFieldRegex = try NSRegularExpression(pattern: #"\[[A-Za-z]:[^\]]*\]"#)
+        let decorationRegex = try NSRegularExpression(pattern: #"![^!]+!"#)
+
+        for block in voiceBlocks {
+            let lines = block.components(separatedBy: .newlines)
+            let voiceId = lines.first?.replacingOccurrences(of: "]", with: "") ?? ""
+            let musicBody = lines.dropFirst()
+                .filter { !$0.hasPrefix("%%") }
+                .joined(separator: " ")
+            let measures = musicBody
+                .components(separatedBy: "|")
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+
+            var expectedSixteenths = 16.0  // Initial M:4/4 -> 16 sixteenth notes
+            for (mIdx, measureStr) in measures.enumerated() {
+                let nsMeasure = measureStr as NSString
+                let meterMatches = meterRegex.matches(
+                    in: measureStr, range: NSRange(location: 0, length: nsMeasure.length))
+                for mMatch in meterMatches {
+                    if let num = Double(nsMeasure.substring(with: mMatch.range(at: 1))),
+                        let den = Double(nsMeasure.substring(with: mMatch.range(at: 2))),
+                        den > 0
+                    {
+                        expectedSixteenths = num * 16.0 / den
+                    }
+                }
+
+                // Strip bracketed inline fields and !decorations! before scanning note events
+                var stripped = inlineFieldRegex.stringByReplacingMatches(
+                    in: measureStr,
+                    range: NSRange(location: 0, length: nsMeasure.length),
+                    withTemplate: " "
+                )
+                stripped = decorationRegex.stringByReplacingMatches(
+                    in: stripped,
+                    range: NSRange(location: 0, length: (stripped as NSString).length),
+                    withTemplate: " "
+                )
+
+                let nsStripped = stripped as NSString
+                let eventMatches = eventRegex.matches(
+                    in: stripped, range: NSRange(location: 0, length: nsStripped.length))
+                var totalSixteenths = 0.0
+                for evMatch in eventMatches {
+                    let numRange = evMatch.range(at: 1)
+                    let denRange = evMatch.range(at: 2)
+                    let num =
+                        numRange.location != NSNotFound
+                        ? (Double(nsStripped.substring(with: numRange)) ?? 1.0) : 1.0
+                    let den =
+                        denRange.location != NSNotFound
+                        ? (Double(nsStripped.substring(with: denRange)) ?? 1.0) : 1.0
+                    totalSixteenths += num / den
+                }
+
+                #expect(
+                    abs(totalSixteenths - expectedSixteenths) < 0.05,
+                    "Voice \(voiceId) measure \(mIdx + 1) has \(totalSixteenths) sixteenths, expected \(expectedSixteenths): \(measureStr.prefix(80))"
+                )
+            }
+        }
+    }
 }

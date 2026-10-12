@@ -112,8 +112,7 @@ public struct TmdABCGenerator {
             return nil
         }
         if noteEvents.count == group.count && noteEvents.count > 1 {
-            let multiplier = max(1, Int((first.duration * 4).rounded()))
-            let suffix = multiplier > 1 ? "\(multiplier)" : ""
+            let suffix = formatDurationSuffix(quarterNotes: first.duration)
             let tie = noteEvents.contains { $0.1.tieStart } ? "-" : ""
             let pitches = noteEvents.map { note, ev in
                 noteToABCPitch(
@@ -148,8 +147,7 @@ public struct TmdABCGenerator {
         defaultKeyStepAlters: [Int],
         measureStepAlters: inout [Int: [Int]]
     ) -> String {
-        let multiplier = max(1, Int((event.duration * 4).rounded()))
-        let suffix = multiplier > 1 ? "\(multiplier)" : ""
+        let suffix = formatDurationSuffix(quarterNotes: event.duration)
         switch event.content {
         case .note(let note):
             let tie = event.tieStart ? "-" : ""
@@ -168,17 +166,60 @@ public struct TmdABCGenerator {
             let pitches = PercussionStroke.parse(pattern: pattern).compactMap(\.abcPitch)
             if pitches.isEmpty { return "z\(suffix)" }
             let count = pitches.count
-            let base = multiplier / count
-            let remainder = multiplier % count
-            return pitches.enumerated().map { i, pitch in
-                let dur = base + (i < remainder ? 1 : 0)
-                let s = dur > 1 ? "\(dur)" : ""
-                return "\(pitch)\(s)"
+            let strokeDuration = event.duration / Double(count)
+            let strokeSuffix = formatDurationSuffix(quarterNotes: strokeDuration)
+            return pitches.map { pitch in
+                "\(pitch)\(strokeSuffix)"
             }.joined(separator: " ")
         }
     }
 
-    // MARK: - Pitch Helpers
+    // MARK: - Duration & Pitch Helpers
+
+    private static func gcd(_ a: Int, _ b: Int) -> Int {
+        var x = abs(a)
+        var y = abs(b)
+        while y != 0 {
+            let t = x % y
+            x = y
+            y = t
+        }
+        return max(1, x)
+    }
+
+    /// Formats a duration in quarter-note beats as an ABC length suffix relative to `L:1/16`.
+    private static func formatDurationSuffix(quarterNotes: Double) -> String {
+        let units = max(0.0, quarterNotes * 4.0)
+        var bestNum = max(1, Int(units.rounded()))
+        var bestDen = 1
+        var bestErr = abs(units - Double(bestNum))
+
+        if bestErr > 1e-4 {
+            for den in 2...64 {
+                let num = Int((units * Double(den)).rounded())
+                guard num >= 1 else { continue }
+                let err = abs(units - Double(num) / Double(den))
+                if err + 1e-7 < bestErr {
+                    bestNum = num
+                    bestDen = den
+                    bestErr = err
+                    if err < 1e-5 { break }
+                }
+            }
+        }
+
+        let divisor = gcd(bestNum, bestDen)
+        let num = bestNum / divisor
+        let den = bestDen / divisor
+
+        if den == 1 {
+            return num == 1 ? "" : "\(num)"
+        } else if num == 1 {
+            return "/\(den)"
+        } else {
+            return "\(num)/\(den)"
+        }
+    }
 
     private static func noteToABCPitch(
         _ note: Note,
@@ -268,18 +309,18 @@ private extension PlaybackDirectiveEvent {
         case .tempo, .relativeTempo:
             let cmd = TmdABCGenerator.resolveTempo(
                 beat: state.timeSignature, quarterBPM: state.tempo)
-            return "\(cmd) "
+            return "[\(cmd)] "
         case .timeSignature(let beat):
-            return "M:\(beat.count)/\(beat.noteValue) "
+            return "[M:\(beat.count)/\(beat.noteValue)] "
         case .absoluteKey(let key), .explicitKey(let key):
-            return "K:\(TmdABCGenerator.abcKey(key)) "
+            return "[K:\(TmdABCGenerator.abcKey(key))] "
         case .dynamics(let mark):
             return "!\(mark.rawValue)! "
         case .relativeKey:
             let key = PitchMapping.tonicScaleInfo(forKeyOffset: state.keyOffset).name
-            return "K:\(key) "
+            return "[K:\(key)] "
         case .fixedPitch:
-            return "K:C "
+            return "[K:C] "
         }
     }
 }
