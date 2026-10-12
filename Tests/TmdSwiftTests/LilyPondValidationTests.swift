@@ -299,4 +299,129 @@ struct LilyPondValidationTests {
         #expect(ly.contains("<c e g>4"))
         #expect(ly.contains("g'1"))
     }
+
+    @Test("Issue #58: LilyPond attaches postfix dynamics, divides multi-stroke percussion durations, and conserves sub-64th/tuplet measure durations across golden_case")
+    func testLilyPondSub64thTupletsPercussionAndPostfixDynamics() throws {
+        let oneLine256 = Array(repeating: "1 2 3 5", count: 64).joined(separator: " ")
+        let tmd = """
+            ::SCORE::
+            ** LilyPond Precision Test **
+            != 120
+            ?= C
+            <4/4>
+
+            A:Piano@|0|{
+                <4*>
+                | {p} 1 2 {f} 3 {ff} 4 |
+                | (1 2 3)%(-) (1 2 3 4 5)%(---) |
+                <256*>
+                | \(oneLine256) |
+            }
+            A:Drums@|0|{
+                <4*>
+                | (BS) (XxTS) D S |
+                | 0 0 0 0 |
+                | 0 0 0 0 |
+            }
+            -> A ->#
+            """
+        let sheet = try TmdParser.parseThrowing(string: tmd)
+        let ly = TmdLilyPondGenerator.generateLilyPond(from: sheet)
+
+        // 1. Postfix dynamics attached directly to note tokens (not standalone prefix \p)
+        #expect(ly.contains("c'4\\p d'4 e'4\\f f'4\\ff"))
+        #expect(!ly.contains("\\p c'4"))
+
+        // 2. Multi-stroke percussion divides beat duration across strokes
+        #expect(ly.contains("bd8 sn8 hh16 hh16 toml16 sn16 bd4 sn4"))
+
+        // 3. Tuplets use exact rational multipliers and <256*> uses 256th notes
+        #expect(ly.contains("c'8*2/3 d'8*2/3 e'8*2/3"))
+        #expect(ly.contains("c'4*3/5 d'4*3/5 e'4*3/5 f'4*3/5 g'4*3/5"))
+        #expect(ly.contains("c'256 d'256 e'256 g'256"))
+
+        // 4. Full golden_case.tmd measure duration conservation across all tracks and measures
+        let goldenURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("sample/golden_case/golden_case.tmd")
+        let goldenSheet = try TmdParserIO.parseThrowing(url: goldenURL)
+        let goldenLy = TmdLilyPondGenerator.generateLilyPond(from: goldenSheet)
+
+        // Extract each track block: VarName = [\drummode] { \global ... }
+        let blockRegex = try NSRegularExpression(
+            pattern: #"([A-Za-z][A-Za-z0-9_]*)\s*=\s*(?:\\drummode\s*)?\{\s*\\global\s*([\s\S]*?)\n\}"#
+        )
+        let nsGolden = goldenLy as NSString
+        let blockMatches = blockRegex.matches(
+            in: goldenLy, range: NSRange(location: 0, length: nsGolden.length))
+        #expect(!blockMatches.isEmpty)
+
+        let timeRegex = try NSRegularExpression(pattern: #"\\time\s+(\d+)/(\d+)"#)
+        let tokenRegex = try NSRegularExpression(
+            pattern: #"(?:<[^>]+>|[a-z]+[,']*)\s*(\d+)(\.*)(?:\*(\d+)/(\d+))?"#
+        )
+        let stripDirectivesRegex = try NSRegularExpression(
+            pattern: #"\\(?:time\s+\d+/\d+|tempo\s+\S+\s*=\s*\d+|key\s+[a-z]+\s+\\[a-z]+|ppp|pp|mp|mf|fff|ff|p|f)\b"#
+        )
+
+        for match in blockMatches {
+            let trackName = nsGolden.substring(with: match.range(at: 1))
+            let body = nsGolden.substring(with: match.range(at: 2))
+            let rawMeasures = body.components(separatedBy: "|")
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+
+            var expectedQuarters = 4.0
+            for (mIdx, measureStr) in rawMeasures.enumerated() {
+                let nsMeasure = measureStr as NSString
+                for tMatch in timeRegex.matches(
+                    in: measureStr, range: NSRange(location: 0, length: nsMeasure.length))
+                {
+                    let num = Double(nsMeasure.substring(with: tMatch.range(at: 1))) ?? 4.0
+                    let den = Double(nsMeasure.substring(with: tMatch.range(at: 2))) ?? 4.0
+                    if den > 0 {
+                        expectedQuarters = num * 4.0 / den
+                    }
+                }
+
+                let stripped = stripDirectivesRegex.stringByReplacingMatches(
+                    in: measureStr,
+                    range: NSRange(location: 0, length: nsMeasure.length),
+                    withTemplate: " "
+                )
+                let nsStripped = stripped as NSString
+                let tokMatches = tokenRegex.matches(
+                    in: stripped, range: NSRange(location: 0, length: nsStripped.length))
+
+                var totalQuarters = 0.0
+                for tok in tokMatches {
+                    let baseDen = Double(nsStripped.substring(with: tok.range(at: 1))) ?? 4.0
+                    let dots = nsStripped.substring(with: tok.range(at: 2)).count
+                    var q = 4.0 / baseDen
+                    var dotAdd = q / 2.0
+                    for _ in 0..<dots {
+                        q += dotAdd
+                        dotAdd /= 2.0
+                    }
+                    if tok.range(at: 3).location != NSNotFound,
+                        tok.range(at: 4).location != NSNotFound
+                    {
+                        let mNum = Double(nsStripped.substring(with: tok.range(at: 3))) ?? 1.0
+                        let mDen = Double(nsStripped.substring(with: tok.range(at: 4))) ?? 1.0
+                        if mDen > 0 {
+                            q *= mNum / mDen
+                        }
+                    }
+                    totalQuarters += q
+                }
+
+                #expect(
+                    abs(totalQuarters - expectedQuarters) < 1e-4,
+                    "Track \(trackName) measure \(mIdx + 1) expected \(expectedQuarters) quarters, got \(totalQuarters) in: \(measureStr)"
+                )
+            }
+        }
+    }
 }

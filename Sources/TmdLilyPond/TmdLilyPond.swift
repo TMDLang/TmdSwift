@@ -95,12 +95,45 @@ public struct TmdLilyPondGenerator {
         var result = "  "
 
         for measure in measures {
+            var pendingDirectives: [(offset: Double, directive: PlaybackDirectiveEvent)] = []
             for directive in measure.directives {
-                result += formatDirective(directive)
+                if case .timeSignature = directive.kind {
+                    result += formatDirective(directive)
+                } else {
+                    let relOffset = max(0.0, directive.position - measure.startTime)
+                    pendingDirectives.append((relOffset, directive))
+                }
             }
-            for group in measure.simultaneousEventGroups {
-                result += formatMeasureEventGroup(group, percussion: percussion)
+            let groups = measure.simultaneousEventGroups
+            var dirIdx = 0
+            for (gIdx, group) in groups.enumerated() {
+                let nextGroupStart =
+                    (gIdx + 1 < groups.count)
+                    ? (groups[gIdx + 1].first?.startOffset ?? Double.infinity)
+                    : Double.infinity
+                var activeDynamic: String? = nil
+                while dirIdx < pendingDirectives.count
+                    && pendingDirectives[dirIdx].offset < nextGroupStart - 1e-4
+                {
+                    let d = pendingDirectives[dirIdx].directive
+                    if case .dynamics(let mark) = d.kind {
+                        activeDynamic = mark.rawValue
+                    } else {
+                        result += formatDirective(d)
+                    }
+                    dirIdx += 1
+                }
+                result += formatMeasureEventGroup(
+                    group, percussion: percussion, dynamic: activeDynamic)
                 result += " "
+            }
+            while dirIdx < pendingDirectives.count {
+                let d = pendingDirectives[dirIdx].directive
+                if case .dynamics = d.kind {
+                } else {
+                    result += formatDirective(d)
+                }
+                dirIdx += 1
             }
             result += "|\n  "
         }
@@ -116,85 +149,207 @@ public struct TmdLilyPondGenerator {
         directive.lilyPondString
     }
 
-    private static func formatMeasureEventGroup(_ group: [MeasureEvent], percussion: Bool) -> String
-    {
+    private static func formatMeasureEventGroup(
+        _ group: [MeasureEvent],
+        percussion: Bool,
+        dynamic: String? = nil
+    ) -> String {
         guard let first = group.first else { return "" }
         let noteEvents = group.compactMap { ev -> (Note, MeasureEvent)? in
             if case .note(let n) = ev.content { return (n, ev) }
             return nil
         }
         if noteEvents.count == group.count && noteEvents.count > 1 {
-            let decomposed = NotationDuration.decompose(quarterNotes: first.duration)
             let pitches = noteEvents.map { note, ev in
                 noteToLilyPondPitch(note, keyOffset: ev.state.keyOffset)
             }
             let chordBody = "<\(pitches.joined(separator: " "))>"
             let hasTieStart = noteEvents.contains { $0.1.tieStart }
-            var parts: [String] = []
-            for (idx, d) in decomposed.enumerated() {
-                let durStr = "\(d.baseDenominator)\(d.isDotted ? "." : "")"
-                let isLast = (idx == decomposed.count - 1)
-                let tie = (isLast ? (hasTieStart ? "~" : "") : "~")
-                parts.append("\(chordBody)\(durStr)\(tie)")
-            }
-            return parts.joined(separator: " ")
+            return formatLilyPondTokens(
+                quarterNotes: first.duration,
+                body: chordBody,
+                tieStart: hasTieStart,
+                dynamic: dynamic
+            )
         }
         if group.count > 1 {
-            return group.map { formatMeasureEvent($0, percussion: percussion) }
-                .filter { !$0.isEmpty }
-                .joined(separator: " ")
+            return group.enumerated().map { idx, ev in
+                formatMeasureEvent(ev, percussion: percussion, dynamic: idx == 0 ? dynamic : nil)
+            }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
         }
-        return formatMeasureEvent(first, percussion: percussion)
+        return formatMeasureEvent(first, percussion: percussion, dynamic: dynamic)
     }
 
-    private static func formatMeasureEvent(_ event: MeasureEvent, percussion: Bool) -> String {
-        let decomposed = NotationDuration.decompose(quarterNotes: event.duration)
+    private static func formatMeasureEvent(
+        _ event: MeasureEvent,
+        percussion: Bool,
+        dynamic: String? = nil
+    ) -> String {
         switch event.content {
         case .note(let note):
             let pitch = noteToLilyPondPitch(note, keyOffset: event.state.keyOffset)
-            var parts: [String] = []
-            for (idx, d) in decomposed.enumerated() {
-                let durStr = "\(d.baseDenominator)\(d.isDotted ? "." : "")"
-                let isLast = (idx == decomposed.count - 1)
-                let tie = (isLast ? (event.tieStart ? "~" : "") : "~")
-                parts.append("\(pitch)\(durStr)\(tie)")
-            }
-            return parts.joined(separator: " ")
+            return formatLilyPondTokens(
+                quarterNotes: event.duration,
+                body: pitch,
+                tieStart: event.tieStart,
+                dynamic: dynamic
+            )
         case .chord(let chord):
             let pitches = chordToLilyPondPitches(chord, keyOffset: event.state.keyOffset)
             let chordBody = "<\(pitches.joined(separator: " "))>"
-            var parts: [String] = []
-            for (idx, d) in decomposed.enumerated() {
-                let durStr = "\(d.baseDenominator)\(d.isDotted ? "." : "")"
-                let isLast = (idx == decomposed.count - 1)
-                let tie = (isLast ? (event.tieStart ? "~" : "") : "~")
-                parts.append("\(chordBody)\(durStr)\(tie)")
-            }
-            return parts.joined(separator: " ")
+            return formatLilyPondTokens(
+                quarterNotes: event.duration,
+                body: chordBody,
+                tieStart: event.tieStart,
+                dynamic: dynamic
+            )
         case .rest:
-            return decomposed.map { d in
-                "r\(d.baseDenominator)\(d.isDotted ? "." : "")"
-            }.joined(separator: " ")
+            return formatLilyPondTokens(
+                quarterNotes: event.duration,
+                body: "r",
+                tieStart: false,
+                dynamic: dynamic,
+                tieInternal: false
+            )
         case .percussion(let pattern):
             let names = PercussionStroke.parse(pattern: pattern).map(\.lilyPondDrumName)
             if names.isEmpty {
-                return decomposed.map { d in "r\(d.baseDenominator)\(d.isDotted ? "." : "")" }
-                    .joined(separator: " ")
+                return formatLilyPondTokens(
+                    quarterNotes: event.duration,
+                    body: "r",
+                    tieStart: false,
+                    dynamic: dynamic,
+                    tieInternal: false
+                )
             }
-            return decomposed.map { d in
-                let durStr = "\(d.baseDenominator)\(d.isDotted ? "." : "")"
-                return names.map { "\($0)\(durStr)" }.joined(separator: " ")
+            let strokeDuration = event.duration / Double(names.count)
+            return names.enumerated().map { idx, name in
+                formatLilyPondTokens(
+                    quarterNotes: strokeDuration,
+                    body: name,
+                    tieStart: false,
+                    dynamic: idx == 0 ? dynamic : nil,
+                    tieInternal: false
+                )
             }.joined(separator: " ")
         }
     }
 
     // MARK: - Pitch & Duration Helpers
 
-    private static func formatDuration(noteLength: Int, spanCount: Int) -> String {
-        guard spanCount > 0, noteLength > 0, noteLength.isMultiple(of: spanCount) else {
-            return "\(noteLength)"
+    private static func formatLilyPondTokens(
+        quarterNotes: Double,
+        body: String,
+        tieStart: Bool,
+        dynamic: String?,
+        tieInternal: Bool = true
+    ) -> String {
+        let durations = decomposeLilyPondDurations(quarterNotes: quarterNotes)
+        let dynSuffix = dynamic.map { "\\\($0)" } ?? ""
+        var parts: [String] = []
+        for (idx, durStr) in durations.enumerated() {
+            let isFirst = (idx == 0)
+            let isLast = (idx == durations.count - 1)
+            let tie = isLast ? (tieStart ? "~" : "") : (tieInternal ? "~" : "")
+            parts.append("\(body)\(durStr)\(isFirst ? dynSuffix : "")\(tie)")
         }
-        return "\(noteLength / spanCount)"
+        return parts.joined(separator: " ")
+    }
+
+    private static func decomposeLilyPondDurations(quarterNotes: Double) -> [String] {
+        guard quarterNotes > 0 else { return ["64"] }
+        let candidates: [(den: Int, dotted: Bool, q: Double)] = [
+            (1, false, 4.0),
+            (2, true, 3.0),
+            (2, false, 2.0),
+            (4, true, 1.5),
+            (4, false, 1.0),
+            (8, true, 0.75),
+            (8, false, 0.5),
+            (16, true, 0.375),
+            (16, false, 0.25),
+            (32, true, 0.1875),
+            (32, false, 0.125),
+            (64, false, 0.0625),
+            (128, false, 0.03125),
+            (256, false, 0.015625),
+            (512, false, 0.0078125),
+            (1024, false, 0.00390625),
+        ]
+        var atoms: [String] = []
+        var remaining = quarterNotes
+        let epsilon = 1e-6
+        while remaining >= 0.00390625 - epsilon {
+            var matched = false
+            for c in candidates {
+                if remaining >= c.q - epsilon {
+                    atoms.append("\(c.den)\(c.dotted ? "." : "")")
+                    remaining -= c.q
+                    matched = true
+                    break
+                }
+            }
+            if !matched { break }
+        }
+        if !atoms.isEmpty && abs(remaining) <= 1e-5 {
+            return atoms
+        }
+
+        // Non-dyadic rational duration (e.g. tuplets 3:2, 5:3, 7:5, 11:7 or n-stroke percussion)
+        var qNum = 1
+        var qDen = 1
+        var foundRational = false
+        for den in 1...2048 {
+            let approxNum = Int((quarterNotes * Double(den)).rounded())
+            if approxNum > 0 && abs(quarterNotes - Double(approxNum) / Double(den)) <= 1e-5 {
+                let g = gcd(approxNum, den)
+                qNum = approxNum / g
+                qDen = den / g
+                foundRational = true
+                break
+            }
+        }
+        if !foundRational {
+            let scaled = max(1, Int((quarterNotes * 1920.0).rounded()))
+            let g = gcd(scaled, 1920)
+            qNum = scaled / g
+            qDen = 1920 / g
+        }
+
+        let powerDenominators = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+        var baseDen = 4
+        for d in powerDenominators {
+            if 4.0 / Double(d) >= quarterNotes - 1e-6 {
+                baseDen = d
+            } else {
+                break
+            }
+        }
+        let rawNum = qNum * baseDen
+        let rawDen = qDen * 4
+        let g = gcd(rawNum, rawDen)
+        let mNum = rawNum / g
+        let mDen = rawDen / g
+        if mNum == mDen {
+            return ["\(baseDen)"]
+        } else if mDen == 1 {
+            return ["\(baseDen)*\(mNum)"]
+        } else {
+            return ["\(baseDen)*\(mNum)/\(mDen)"]
+        }
+    }
+
+    private static func gcd(_ a: Int, _ b: Int) -> Int {
+        var x = abs(a)
+        var y = abs(b)
+        while y != 0 {
+            let t = y
+            y = x % y
+            x = t
+        }
+        return max(1, x)
     }
 
     private static func noteToLilyPondPitch(_ note: Note, keyOffset: Int) -> String {
