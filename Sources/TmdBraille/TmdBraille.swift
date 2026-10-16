@@ -22,17 +22,20 @@ public enum TmdBrailleLayout: String, Sendable, CaseIterable {
 public struct TmdBrailleOptions: Sendable {
     public var encoding: TmdBrailleEncoding
     public var layout: TmdBrailleLayout
+    public var lineWidth: Int?
     public var targetSection: String?
     public var targetInstrument: String?
 
     public init(
         encoding: TmdBrailleEncoding = .unicode,
         layout: TmdBrailleLayout = .partByPart,
+        lineWidth: Int? = 40,
         targetSection: String? = nil,
         targetInstrument: String? = nil
     ) {
         self.encoding = encoding
         self.layout = layout
+        self.lineWidth = lineWidth
         self.targetSection = targetSection
         self.targetInstrument = targetInstrument
     }
@@ -58,13 +61,12 @@ public struct TmdBrailleGenerator {
             }
         }
 
+        let isSolo = instruments.count == 1 && options.layout == .partByPart
         var asciiLines: [String] = []
 
         // 1. Score Title Header (Grade 1 Uncontracted Literary Braille)
         let title = workingSheet.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !title.isEmpty {
-            asciiLines.append(title.brailleLiteraryString)
-        }
+        let titleAscii = title.isEmpty ? "" : title.brailleLiteraryString
 
         // 2. Metronome + Initial Key Signature + Initial Time Signature (Par. 14-18)
         let bpm = Int((workingSheet.speed > 0 ? workingSheet.speed : 120).rounded())
@@ -76,27 +78,44 @@ public struct TmdBrailleGenerator {
             ).name
         let keySigAscii = encodeKeySignature(forKey: initialKey)
         let timeSigAscii = workingSheet.beat.brailleTimeSignature
-        asciiLines.append("\(metronomeAscii) \(keySigAscii)\(timeSigAscii)")
+        let headerAscii = "\(metronomeAscii) \(keySigAscii)\(timeSigAscii)"
+
+        if isSolo, let width = options.lineWidth, width > 0 {
+            if !titleAscii.isEmpty {
+                asciiLines.append(centerBrailleLine(titleAscii, width: width))
+                asciiLines.append("")
+            }
+            asciiLines.append(centerBrailleLine(headerAscii, width: width))
+        } else {
+            if !titleAscii.isEmpty {
+                asciiLines.append(titleAscii)
+            }
+            asciiLines.append(headerAscii)
+        }
 
         if instruments.isEmpty {
             let rawAscii = asciiLines.joined(separator: "\n") + "\n"
             return options.encoding == .unicode ? asciiToUnicodeBraille(rawAscii) : rawAscii
         }
 
-        // Render per-instrument measure streams
-        let renderedTracks = instruments.map { inst in
-            renderTrackMeasures(instrument: inst, sheet: workingSheet)
-        }
-
         switch options.layout {
         case .partByPart:
-            for track in renderedTracks {
-                let prefix = track.instrument.braillePartPrefixAscii
-                let body = joinTrackMeasuresAscii(track.measures)
-                asciiLines.append("\(prefix) \(body)<K")
+            for inst in instruments {
+                let prefix = isSolo ? "#A" : inst.braillePartPrefixAscii
+                let trackLines = renderPartByPartTrackLines(
+                    instrument: inst,
+                    sheet: workingSheet,
+                    isSolo: isSolo,
+                    initialPrefix: prefix,
+                    lineWidth: options.lineWidth
+                )
+                asciiLines.append(contentsOf: trackLines)
             }
 
         case .barOverBar:
+            let renderedTracks = instruments.map { inst in
+                renderTrackMeasures(instrument: inst, sheet: workingSheet, isSolo: false)
+            }
             // Instrument list & upward interval direction indicator (Par. 20-1, 20-6)
             for track in renderedTracks {
                 let heading = track.instrument.brailleLiteraryString
@@ -119,6 +138,11 @@ public struct TmdBrailleGenerator {
 
         let rawAscii = asciiLines.joined(separator: "\n") + "\n"
         return options.encoding == .unicode ? asciiToUnicodeBraille(rawAscii) : rawAscii
+    }
+
+    private static func centerBrailleLine(_ text: String, width: Int) -> String {
+        let pad = max(3, (width - text.count) / 2)
+        return String(repeating: " ", count: pad) + text
     }
 
     private static func distinctMusicalInstruments(in sheet: Sheet) -> [String] {
@@ -154,7 +178,19 @@ public struct TmdBrailleGenerator {
         return result
     }
 
-    // MARK: - Track Measure Rendering
+    private static func isBassClefInstrument(_ instrument: String) -> Bool {
+        let clean = instrument.lowercased().filter { $0.isLetter || $0.isNumber }
+        if clean.contains("bass") || clean.contains("cello") || clean.contains("trombone")
+            || clean.contains("tuba") || clean.contains("euphonium") || clean.contains("timpani")
+            || clean.contains("lefthand") || clean.contains("pianolh")
+            || clean.contains("organpedal") || clean == "lh"
+        {
+            return true
+        }
+        return false
+    }
+
+    // MARK: - Track Measure Rendering & Line Wrapping
 
     private struct RenderedBrailleMeasure {
         let index: Int
@@ -162,6 +198,7 @@ public struct TmdBrailleGenerator {
         let hasLeadingKeyOrMeterChange: Bool
         let preMeasureDirectivesAscii: String
         let ascii: String
+        let groupTokens: [String]
         let endsWithCrossBarTie: Bool
         let startsWithCrossBarTie: Bool
     }
@@ -171,10 +208,26 @@ public struct TmdBrailleGenerator {
         let measures: [RenderedBrailleMeasure]
     }
 
-    private static func renderTrackMeasures(
+    private struct MeasurePreparation {
+        let measure: Measure
+        let isFullMeasureRest: Bool
+        let preDirectives: [String]
+        let inlineDirectivesByOffset: [(offset: Double, ascii: String)]
+        let defaultKeyStepAlters: [Int]
+        let activeBeat: Beat
+        let forceOctaveAtMeasureStart: Bool
+        let startsWithTie: Bool
+        let endsWithTie: Bool
+    }
+
+    private static func prepareTrackMeasures(
         instrument: String,
         sheet: Sheet
-    ) -> RenderedBrailleTrack {
+    ) -> (
+        preparations: [MeasurePreparation],
+        isChordTrack: Bool,
+        isPercussion: Bool
+    ) {
         let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: instrument)
         let isFixedPitchTrack = sheet.entries.contains {
             $0.assignment?.caseInsensitiveCompare(instrument) == .orderedSame
@@ -193,29 +246,24 @@ public struct TmdBrailleGenerator {
         var defaultKeyStepAlters = PitchMapping.keySignatureStepAlters(forKey: activeWrittenKey)
         var activeBeat = sheet.beat
 
-        var lastPitch: (octave: Int, stepIndex: Int)? = nil
-        var forceOctave = true
+        var preparations: [MeasurePreparation] = []
 
-        var outMeasures: [RenderedBrailleMeasure] = []
-
-        for measure in measures {
-            var measureStepAlters: [Int: [Int]] = [:]
+        for (mIdx, measure) in measures.enumerated() {
             var preDirectives: [String] = []
             var inlineDirectivesByOffset: [(offset: Double, ascii: String)] = []
+            var forceOctaveAtStart = (mIdx == 0)
 
-            // Check measure-level directives
             for directive in measure.directives {
                 switch directive.kind {
                 case .explicitKey(let key), .absoluteKey(let key):
                     if !isFixedPitchTrack && key != activeWrittenKey {
+                        let ks = encodeKeySignatureChange(from: activeWrittenKey, to: key)
                         activeWrittenKey = key
                         defaultKeyStepAlters = PitchMapping.keySignatureStepAlters(forKey: key)
-                        measureStepAlters.removeAll()
-                        let ks = encodeKeySignature(forKey: key)
                         if !ks.isEmpty {
                             preDirectives.append(ks)
                         }
-                        forceOctave = true
+                        forceOctaveAtStart = true
                     }
                 case .relativeKey:
                     if !isFixedPitchTrack && sheet.declaredKey == nil {
@@ -223,39 +271,36 @@ public struct TmdBrailleGenerator {
                             forKeyOffset: directive.state.keyOffset
                         ).name
                         if newKey != activeWrittenKey {
+                            let ks = encodeKeySignatureChange(from: activeWrittenKey, to: newKey)
                             activeWrittenKey = newKey
                             activeKeyOffset = directive.state.keyOffset
                             defaultKeyStepAlters = PitchMapping.keySignatureStepAlters(
                                 forKey: newKey)
-                            measureStepAlters.removeAll()
-                            let ks = encodeKeySignature(forKey: newKey)
                             if !ks.isEmpty {
                                 preDirectives.append(ks)
                             }
-                            forceOctave = true
+                            forceOctaveAtStart = true
                         }
                     }
                 case .fixedPitch:
                     activeWrittenKey = "C"
                     defaultKeyStepAlters = [0, 0, 0, 0, 0, 0, 0]
-                    measureStepAlters.removeAll()
                 case .timeSignature(let beat):
                     if beat != activeBeat {
                         activeBeat = beat
                         preDirectives.append(beat.brailleTimeSignature)
-                        forceOctave = true
+                        forceOctaveAtStart = true
                     }
                 case .tempo, .relativeTempo:
                     let bpm = Int(directive.state.tempo.rounded())
                     preDirectives.append("?7#\(encodeUpperDigits(bpm))")
-                    forceOctave = true
+                    forceOctaveAtStart = true
                 case .dynamics(let mark):
                     let relOffset = max(0.0, directive.position - measure.startTime)
                     inlineDirectivesByOffset.append((relOffset, ">\(mark.rawValue.uppercased())"))
                 }
             }
 
-            // Also detect playback-level keyOffset changes (e.g. `-> {?+2}`) on non-rest pitched events
             let nonRestEvents = measure.events.filter {
                 if case .rest = $0.content { return false }
                 return true
@@ -270,88 +315,392 @@ public struct TmdBrailleGenerator {
                 activeKeyOffset = firstActive.state.keyOffset
                 let newKey = PitchMapping.tonicScaleInfo(forKeyOffset: activeKeyOffset).name
                 if newKey != activeWrittenKey {
+                    let ks = encodeKeySignatureChange(from: activeWrittenKey, to: newKey)
                     activeWrittenKey = newKey
                     defaultKeyStepAlters = PitchMapping.keySignatureStepAlters(forKey: newKey)
-                    measureStepAlters.removeAll()
-                    let ks = encodeKeySignature(forKey: newKey)
                     if !ks.isEmpty {
                         preDirectives.append(ks)
                     }
-                    forceOctave = true
+                    forceOctaveAtStart = true
                 }
             }
 
-            // Check if entire measure is rest
-            if nonRestEvents.isEmpty && inlineDirectivesByOffset.isEmpty {
-                outMeasures.append(
-                    RenderedBrailleMeasure(
-                        index: measure.index,
-                        isFullMeasureRest: true,
-                        hasLeadingKeyOrMeterChange: !preDirectives.isEmpty,
-                        preMeasureDirectivesAscii: preDirectives.joined(separator: " "),
-                        ascii: "M",
-                        endsWithCrossBarTie: false,
-                        startsWithCrossBarTie: false
-                    ))
-                continue
-            }
-
+            let isFullRest = nonRestEvents.isEmpty && inlineDirectivesByOffset.isEmpty
             let groups = measure.simultaneousEventGroups
-
-            var measureCells = ""
-            var consumedDirectiveIndices: Set<Int> = []
             let startsWithTie = groups.first?.contains(where: { $0.tieStop }) ?? false
             let endsWithTie = groups.last?.contains(where: { $0.tieStart }) ?? false
 
-            for group in groups {
-                guard let primary = group.first else { continue }
-
-                // Emit any inline dynamics at or before primary.startOffset
-                var pendingDynamicAscii = ""
-                for (dIdx, item) in inlineDirectivesByOffset.enumerated()
-                where !consumedDirectiveIndices.contains(dIdx)
-                    && item.offset <= primary.startOffset + 1e-4
-                {
-                    consumedDirectiveIndices.insert(dIdx)
-                    pendingDynamicAscii += item.ascii
-                    forceOctave = true
-                }
-
-                let groupAscii = renderEventGroup(
-                    group: group,
-                    isChordTrack: isChordTrack,
-                    isPercussion: isPercussion,
+            preparations.append(
+                MeasurePreparation(
+                    measure: measure,
+                    isFullMeasureRest: isFullRest,
+                    preDirectives: preDirectives,
+                    inlineDirectivesByOffset: inlineDirectivesByOffset,
                     defaultKeyStepAlters: defaultKeyStepAlters,
-                    measureStepAlters: &measureStepAlters,
-                    lastPitch: &lastPitch,
-                    forceOctave: &forceOctave
+                    activeBeat: activeBeat,
+                    forceOctaveAtMeasureStart: forceOctaveAtStart,
+                    startsWithTie: startsWithTie,
+                    endsWithTie: endsWithTie
                 )
-
-                if !pendingDynamicAscii.isEmpty {
-                    // Par. 10-4: If the first character of groupAscii uses dots 1, 2, or 3, insert Dot 3 `'`
-                    if let firstChar = groupAscii.first, cellUsesDots123(firstChar) {
-                        measureCells += "\(pendingDynamicAscii)'\(groupAscii)"
-                    } else {
-                        measureCells += "\(pendingDynamicAscii)\(groupAscii)"
-                    }
-                } else {
-                    measureCells += groupAscii
-                }
-            }
-
-            outMeasures.append(
-                RenderedBrailleMeasure(
-                    index: measure.index,
-                    isFullMeasureRest: false,
-                    hasLeadingKeyOrMeterChange: !preDirectives.isEmpty,
-                    preMeasureDirectivesAscii: preDirectives.joined(separator: " "),
-                    ascii: measureCells,
-                    endsWithCrossBarTie: endsWithTie,
-                    startsWithCrossBarTie: startsWithTie
-                ))
+            )
         }
 
+        return (preparations, isChordTrack, isPercussion)
+    }
+
+    private static func renderSinglePreparedMeasure(
+        prep: MeasurePreparation,
+        isChordTrack: Bool,
+        isPercussion: Bool,
+        useTopDownIntervals: Bool,
+        lastPitch: inout (octave: Int, stepIndex: Int)?,
+        forceOctave: inout Bool
+    ) -> RenderedBrailleMeasure {
+        if prep.forceOctaveAtMeasureStart {
+            forceOctave = true
+        }
+        if prep.isFullMeasureRest {
+            return RenderedBrailleMeasure(
+                index: prep.measure.index,
+                isFullMeasureRest: true,
+                hasLeadingKeyOrMeterChange: !prep.preDirectives.isEmpty,
+                preMeasureDirectivesAscii: prep.preDirectives.joined(separator: " "),
+                ascii: "M",
+                groupTokens: ["M"],
+                endsWithCrossBarTie: false,
+                startsWithCrossBarTie: false
+            )
+        }
+
+        let groups = prep.measure.simultaneousEventGroups
+        let specs = groups.map { grp -> BrailleDurationSpec in
+            guard let first = grp.first else {
+                return BrailleDurationSpec(
+                    atoms: [NotationDuration(baseDenominator: 4, isDotted: false, quarterValue: 1.0)],
+                    tuplet: nil
+                )
+            }
+            return resolveBrailleDuration(quarterNotes: first.duration)
+        }
+
+        // Build flat rhythmic items for BANA Par. 8.1 grouping and Par. 2.4 value distinction
+        var flatItems: [MeasureRhythmicItem] = []
+        for (gIdx, grp) in groups.enumerated() {
+            guard let primary = grp.first else { continue }
+            let isRest: Bool
+            if case .rest = primary.content { isRest = true } else { isRest = false }
+            let spec = specs[gIdx]
+            var curOffset = primary.startOffset
+            for (aIdx, atom) in spec.atoms.enumerated() {
+                flatItems.append(
+                    MeasureRhythmicItem(
+                        groupIndex: gIdx,
+                        atomIndex: aIdx,
+                        baseDenominator: atom.baseDenominator,
+                        isDotted: atom.isDotted,
+                        quarterValue: atom.quarterValue,
+                        startOffset: curOffset,
+                        isRest: isRest,
+                        tuplet: spec.tuplet
+                    )
+                )
+                curOffset += atom.quarterValue
+            }
+        }
+
+        let (groupedFlatIndices, distinctionHints) =
+            (isChordTrack || isPercussion)
+            ? (Set<Int>(), [Int: ValueDistinctionHint]())
+            : planMeasureGroupingAndHints(
+                items: flatItems,
+                meter: prep.activeBeat,
+                nominalDuration: prep.measure.nominalDuration
+            )
+
+        var flatIndexByGroupAtom: [String: Int] = [:]
+        for (fIdx, item) in flatItems.enumerated() {
+            flatIndexByGroupAtom["\(item.groupIndex):\(item.atomIndex)"] = fIdx
+        }
+
+        var measureStepAlters: [Int: [Int]] = [:]
+        var consumedDirectiveIndices: Set<Int> = []
+        var groupTokens: [String] = []
+        var tupletRemaining = 0
+        var activeTupletActual = 0
+
+        for (gIdx, group) in groups.enumerated() {
+            guard let primary = group.first else { continue }
+            let spec = specs[gIdx]
+
+            // Check tuplet prefix on the first atom of this group
+            var tupletPrefixAscii = ""
+            if let tup = spec.tuplet {
+                if tupletRemaining == 0 || activeTupletActual != tup.actual {
+                    tupletPrefixAscii =
+                        tup.actual == 3 ? "2" : "_\(encodeLowerDigits(tup.actual))'"
+                    activeTupletActual = tup.actual
+                    tupletRemaining = tup.actual - 1
+                } else {
+                    tupletRemaining -= 1
+                }
+            } else {
+                tupletRemaining = 0
+                activeTupletActual = 0
+            }
+
+            // Emit any inline dynamics at or before primary.startOffset
+            var pendingDynamicAscii = ""
+            for (dIdx, item) in prep.inlineDirectivesByOffset.enumerated()
+            where !consumedDirectiveIndices.contains(dIdx)
+                && item.offset <= primary.startOffset + 1e-4
+            {
+                consumedDirectiveIndices.insert(dIdx)
+                pendingDynamicAscii += item.ascii
+                forceOctave = true
+            }
+
+            let groupAscii = renderEventGroup(
+                group: group,
+                groupIndex: gIdx,
+                spec: spec,
+                flatIndexByGroupAtom: flatIndexByGroupAtom,
+                groupedFlatIndices: groupedFlatIndices,
+                distinctionHints: distinctionHints,
+                tupletPrefixAscii: tupletPrefixAscii,
+                pendingDynamicAscii: pendingDynamicAscii,
+                isChordTrack: isChordTrack,
+                isPercussion: isPercussion,
+                useTopDownIntervals: useTopDownIntervals,
+                defaultKeyStepAlters: prep.defaultKeyStepAlters,
+                measureStepAlters: &measureStepAlters,
+                lastPitch: &lastPitch,
+                forceOctave: &forceOctave
+            )
+            groupTokens.append(groupAscii)
+        }
+
+        return RenderedBrailleMeasure(
+            index: prep.measure.index,
+            isFullMeasureRest: false,
+            hasLeadingKeyOrMeterChange: !prep.preDirectives.isEmpty,
+            preMeasureDirectivesAscii: prep.preDirectives.joined(separator: " "),
+            ascii: groupTokens.joined(),
+            groupTokens: groupTokens,
+            endsWithCrossBarTie: prep.endsWithTie,
+            startsWithCrossBarTie: prep.startsWithTie
+        )
+    }
+
+    private static func renderTrackMeasures(
+        instrument: String,
+        sheet: Sheet,
+        isSolo: Bool
+    ) -> RenderedBrailleTrack {
+        let (preparations, isChordTrack, isPercussion) = prepareTrackMeasures(
+            instrument: instrument, sheet: sheet)
+        let useTopDownIntervals = isSolo && !isPercussion && !isBassClefInstrument(instrument)
+        var lastPitch: (octave: Int, stepIndex: Int)? = nil
+        var forceOctave = true
+        let outMeasures = preparations.map { prep in
+            renderSinglePreparedMeasure(
+                prep: prep,
+                isChordTrack: isChordTrack,
+                isPercussion: isPercussion,
+                useTopDownIntervals: useTopDownIntervals,
+                lastPitch: &lastPitch,
+                forceOctave: &forceOctave
+            )
+        }
         return RenderedBrailleTrack(instrument: instrument, measures: outMeasures)
+    }
+
+    private static func renderPartByPartTrackLines(
+        instrument: String,
+        sheet: Sheet,
+        isSolo: Bool,
+        initialPrefix: String,
+        lineWidth: Int?
+    ) -> [String] {
+        let (preparations, isChordTrack, isPercussion) = prepareTrackMeasures(
+            instrument: instrument, sheet: sheet)
+        let useTopDownIntervals = isSolo && !isPercussion && !isBassClefInstrument(instrument)
+
+        // Group consecutive full-measure rests and cross-barline tied measures into atomic blocks
+        enum TrackBlock {
+            case restRun(preDirectives: String, count: Int)
+            case measureChain(indices: [Int])
+        }
+
+        var blocks: [TrackBlock] = []
+        var i = 0
+        while i < preparations.count {
+            let p = preparations[i]
+            if p.isFullMeasureRest {
+                var restCount = 1
+                var j = i + 1
+                while j < preparations.count && preparations[j].isFullMeasureRest
+                    && preparations[j].preDirectives.isEmpty
+                {
+                    restCount += 1
+                    j += 1
+                }
+                blocks.append(
+                    .restRun(
+                        preDirectives: p.preDirectives.joined(separator: " "),
+                        count: restCount
+                    ))
+                i = j
+            } else {
+                var chain = [i]
+                var cur = p
+                var j = i + 1
+                while j < preparations.count && cur.endsWithTie
+                    && preparations[j].startsWithTie
+                    && preparations[j].preDirectives.isEmpty
+                    && !preparations[j].isFullMeasureRest
+                {
+                    chain.append(j)
+                    cur = preparations[j]
+                    j += 1
+                }
+                blocks.append(.measureChain(indices: chain))
+                i = j
+            }
+        }
+
+        guard let maxW = lineWidth, maxW > 0 else {
+            let rendered = renderTrackMeasures(instrument: instrument, sheet: sheet, isSolo: isSolo)
+            let body = joinTrackMeasuresAscii(rendered.measures)
+            return ["\(initialPrefix) \(body)<K"]
+        }
+
+        var lines: [String] = []
+        var currentLine = initialPrefix
+        var lastPitch: (octave: Int, stepIndex: Int)? = nil
+        var forceOctave = true
+
+        func appendSimpleToken(_ token: String) {
+            guard !token.isEmpty else { return }
+            let sep = currentLine.hasSuffix(" ") ? "" : " "
+            if currentLine.trimmingCharacters(in: .whitespaces).isEmpty {
+                currentLine += token
+            } else if currentLine.count + sep.count + token.count <= maxW {
+                currentLine += sep + token
+            } else {
+                lines.append(currentLine)
+                currentLine = "  " + token
+                forceOctave = true
+            }
+        }
+
+        for (bIdx, block) in blocks.enumerated() {
+            let isLastBlock = (bIdx == blocks.count - 1)
+            let suffix = isLastBlock ? "<K" : ""
+
+            switch block {
+            case .restRun(let preDirectives, let count):
+                if !preDirectives.isEmpty {
+                    appendSimpleToken(preDirectives)
+                }
+                let restToken = encodeFullMeasureRests(count: count) + suffix
+                appendSimpleToken(restToken)
+
+            case .measureChain(let indices):
+                let firstPrep = preparations[indices[0]]
+                let preDir = firstPrep.preDirectives.joined(separator: " ")
+                if !preDir.isEmpty {
+                    appendSimpleToken(preDir)
+                }
+
+                let savedPitch = lastPitch
+                let savedForce = forceOctave
+                var trialPitch = savedPitch
+                var trialForce = savedForce
+                var trialMeasures: [RenderedBrailleMeasure] = []
+                for idx in indices {
+                    trialMeasures.append(
+                        renderSinglePreparedMeasure(
+                            prep: preparations[idx],
+                            isChordTrack: isChordTrack,
+                            isPercussion: isPercussion,
+                            useTopDownIntervals: useTopDownIntervals,
+                            lastPitch: &trialPitch,
+                            forceOctave: &trialForce
+                        )
+                    )
+                }
+                let combinedAscii = trialMeasures.map(\.ascii).joined() + suffix
+                let sep = currentLine.hasSuffix(" ") ? "" : " "
+                let lineHasMusicContent = !currentLine.trimmingCharacters(in: .whitespaces).isEmpty
+
+                if !lineHasMusicContent && currentLine.count + combinedAscii.count <= maxW {
+                    currentLine += combinedAscii
+                    lastPitch = trialPitch
+                    forceOctave = trialForce
+                } else if lineHasMusicContent
+                    && currentLine.count + sep.count + combinedAscii.count <= maxW
+                {
+                    currentLine += sep + combinedAscii
+                    lastPitch = trialPitch
+                    forceOctave = trialForce
+                } else {
+                    // Wrap to a new continuation line (`  `) and force octave mark on first pitched note (Par. CN-4)
+                    if lineHasMusicContent {
+                        lines.append(currentLine)
+                        currentLine = "  "
+                    }
+                    var newLinePitch = savedPitch
+                    var newLineForce = true
+                    var newLineMeasures: [RenderedBrailleMeasure] = []
+                    for idx in indices {
+                        newLineMeasures.append(
+                            renderSinglePreparedMeasure(
+                                prep: preparations[idx],
+                                isChordTrack: isChordTrack,
+                                isPercussion: isPercussion,
+                                useTopDownIntervals: useTopDownIntervals,
+                                lastPitch: &newLinePitch,
+                                forceOctave: &newLineForce
+                            )
+                        )
+                    }
+                    let newCombined = newLineMeasures.map(\.ascii).joined() + suffix
+                    let newSep =
+                        (currentLine == "  " || currentLine.hasSuffix(" ")) ? "" : " "
+                    if currentLine.count + newSep.count + newCombined.count <= maxW {
+                        currentLine += newSep + newCombined
+                        lastPitch = newLinePitch
+                        forceOctave = newLineForce
+                    } else {
+                        // Single measure / chain exceeds maxW: split between event groups with unfinished-measure hyphen `"`
+                        if !newSep.isEmpty {
+                            currentLine += newSep
+                        }
+                        let allGroups = newLineMeasures.flatMap(\.groupTokens)
+                        for (gIdx, gToken) in allGroups.enumerated() {
+                            let isLastGroup = (gIdx == allGroups.count - 1)
+                            let tokWithSuffix = isLastGroup ? (gToken + suffix) : gToken
+                            let reserve = isLastGroup ? 0 : 1  // reserve 1 cell for `"` hyphen
+                            if currentLine.count + tokWithSuffix.count + reserve > maxW
+                                && !currentLine.trimmingCharacters(in: .whitespaces).isEmpty
+                            {
+                                lines.append(currentLine + "\"")
+                                currentLine = "  " + tokWithSuffix
+                            } else {
+                                currentLine += tokWithSuffix
+                            }
+                        }
+                        lastPitch = newLinePitch
+                        forceOctave = newLineForce
+                    }
+                }
+            }
+        }
+
+        if !currentLine.trimmingCharacters(in: .whitespaces).isEmpty {
+            lines.append(currentLine)
+        }
+        return lines
     }
 
     private static func joinTrackMeasuresAscii(_ measures: [RenderedBrailleMeasure]) -> String {
@@ -392,19 +741,268 @@ public struct TmdBrailleGenerator {
         return tokens.joined(separator: " ")
     }
 
+    // MARK: - Duration, Tuplet, Grouping (Par. 8.1), and Value Distinction (Par. 2.4)
+
+    private struct BrailleDurationSpec {
+        let atoms: [NotationDuration]
+        let tuplet: (actual: Int, normal: Int)?
+    }
+
+    private static let brailleStandardValues: [NotationDuration] = [
+        NotationDuration(baseDenominator: 1, isDotted: false, quarterValue: 4.0),
+        NotationDuration(baseDenominator: 2, isDotted: true, quarterValue: 3.0),
+        NotationDuration(baseDenominator: 2, isDotted: false, quarterValue: 2.0),
+        NotationDuration(baseDenominator: 4, isDotted: true, quarterValue: 1.5),
+        NotationDuration(baseDenominator: 4, isDotted: false, quarterValue: 1.0),
+        NotationDuration(baseDenominator: 8, isDotted: true, quarterValue: 0.75),
+        NotationDuration(baseDenominator: 8, isDotted: false, quarterValue: 0.5),
+        NotationDuration(baseDenominator: 16, isDotted: true, quarterValue: 0.375),
+        NotationDuration(baseDenominator: 16, isDotted: false, quarterValue: 0.25),
+        NotationDuration(baseDenominator: 32, isDotted: true, quarterValue: 0.1875),
+        NotationDuration(baseDenominator: 32, isDotted: false, quarterValue: 0.125),
+        NotationDuration(baseDenominator: 64, isDotted: true, quarterValue: 0.09375),
+        NotationDuration(baseDenominator: 64, isDotted: false, quarterValue: 0.0625),
+        NotationDuration(baseDenominator: 128, isDotted: false, quarterValue: 0.03125),
+    ]
+
+    private static func resolveBrailleDuration(quarterNotes: Double) -> BrailleDurationSpec {
+        let epsilon = 1e-4
+        for std in brailleStandardValues {
+            if abs(quarterNotes - std.quarterValue) < epsilon {
+                return BrailleDurationSpec(atoms: [std], tuplet: nil)
+            }
+        }
+
+        let tupletRatios: [(actual: Int, normal: Int)] = [
+            (3, 2),
+            (5, 4), (5, 3),
+            (7, 4), (7, 5), (7, 6),
+            (9, 8),
+            (11, 8), (11, 7),
+            (13, 8),
+            (2, 3),
+            (4, 3),
+            (6, 4),
+        ]
+        let baseDenominators = [1, 2, 4, 8, 16, 32, 64, 128]
+        for ratio in tupletRatios {
+            for baseDen in baseDenominators {
+                let faceQ = 4.0 / Double(baseDen)
+                let tupQ = faceQ * Double(ratio.normal) / Double(ratio.actual)
+                if abs(quarterNotes - tupQ) < epsilon {
+                    return BrailleDurationSpec(
+                        atoms: [
+                            NotationDuration(
+                                baseDenominator: baseDen,
+                                isDotted: false,
+                                quarterValue: quarterNotes
+                            )
+                        ],
+                        tuplet: ratio
+                    )
+                }
+            }
+        }
+
+        var remaining = quarterNotes
+        var result: [NotationDuration] = []
+        while remaining > epsilon {
+            var matched = false
+            for std in brailleStandardValues {
+                if remaining >= std.quarterValue - epsilon {
+                    result.append(std)
+                    remaining -= std.quarterValue
+                    matched = true
+                    break
+                }
+            }
+            if !matched {
+                if remaining > 1e-6 {
+                    result.append(
+                        NotationDuration(
+                            baseDenominator: 128, isDotted: false, quarterValue: remaining)
+                    )
+                }
+                break
+            }
+        }
+        if result.isEmpty {
+            result.append(NotationDuration(baseDenominator: 4, isDotted: false, quarterValue: 1.0))
+        }
+        return BrailleDurationSpec(atoms: result, tuplet: nil)
+    }
+
+    private struct MeasureRhythmicItem {
+        let groupIndex: Int
+        let atomIndex: Int
+        let baseDenominator: Int
+        let isDotted: Bool
+        let quarterValue: Double
+        let startOffset: Double
+        let isRest: Bool
+        let tuplet: (actual: Int, normal: Int)?
+    }
+
+    private enum ValueDistinctionHint: String {
+        case large = "^<1"
+        case small = ",<1"
+    }
+
+    private static func valueClass(for baseDenominator: Int) -> Int {
+        switch baseDenominator {
+        case 1, 16: return 0
+        case 2, 32: return 1
+        case 4, 64: return 2
+        default: return 3
+        }
+    }
+
+    private static func planMeasureGroupingAndHints(
+        items: [MeasureRhythmicItem],
+        meter: Beat,
+        nominalDuration: Double
+    ) -> (groupedIndices: Set<Int>, hints: [Int: ValueDistinctionHint]) {
+        guard !items.isEmpty else { return ([], [:]) }
+
+        // Special single 16th-rest rule (BANA Par. 2.4)
+        if items.count == 1 && items[0].isRest && items[0].baseDenominator == 16
+            && !items[0].isDotted && items[0].tuplet == nil
+        {
+            return ([], [0: .small])
+        }
+
+        let actualTotal = items.reduce(0.0) { $0 + $1.quarterValue }
+        let mismatch = abs(actualTotal - nominalDuration) > 1e-3
+
+        // 1. Compute 16th/32nd/64th beat grouping (BANA Par. 8.1)
+        var groupedIndices: Set<Int> = []
+        if !mismatch {
+            let num = max(1, meter.count)
+            let den = max(1, meter.noteValue)
+            let compound = (num % 3 == 0 && num > 3)
+            let beatQ = compound ? (12.0 / Double(den)) : (4.0 / Double(den))
+            let candidateUnits = compound ? [beatQ, 4.0 / Double(den)] : [beatQ, beatQ / 2.0]
+
+            var idx = 0
+            while idx < items.count {
+                let ev = items[idx]
+                var grouped = false
+                if ev.baseDenominator >= 16 && ev.baseDenominator <= 64 && !ev.isDotted
+                    && ev.tuplet == nil
+                {
+                    let nv = 4.0 / Double(ev.baseDenominator)
+                    var cands: [(u: Double, count: Int)] = []
+                    for u in candidateUnits {
+                        let c = Int((u / nv).rounded())
+                        if c >= 3 && abs(Double(c) * nv - u) < 1e-4 {
+                            cands.append((u, c))
+                        }
+                    }
+                    cands.sort { $0.u < $1.u }
+                    let pick =
+                        cands.contains(where: { $0.count >= 4 })
+                        ? cands.filter { $0.count >= 4 } : cands
+
+                    for cand in pick {
+                        let gridRatio = ev.startOffset / cand.u
+                        let gridAligned = abs(gridRatio - gridRatio.rounded()) < 1e-3
+                        guard gridAligned, idx + cand.count <= items.count else { continue }
+                        var allPlainNotes = true
+                        for k in 1..<cand.count {
+                            let nextItem = items[idx + k]
+                            if nextItem.isRest || nextItem.baseDenominator != ev.baseDenominator
+                                || nextItem.isDotted || nextItem.tuplet != nil
+                            {
+                                allPlainNotes = false
+                                break
+                            }
+                        }
+                        guard allPlainNotes else { continue }
+                        let hasFollowingEighth = items[(idx + cand.count)...].contains {
+                            $0.baseDenominator == 8
+                        }
+                        guard !hasFollowingEighth else { continue }
+                        for k in 1..<cand.count {
+                            groupedIndices.insert(idx + k)
+                        }
+                        idx += cand.count
+                        grouped = true
+                        break
+                    }
+                }
+                if !grouped {
+                    idx += 1
+                }
+            }
+        }
+
+        // 2. Check if value distinction signs (`^<1` / `,<1`) are needed (Par. 1-4 / BANA Par. 2.4)
+        var hints: [Int: ValueDistinctionHint] = [:]
+        let hasSmall = items.contains { $0.baseDenominator >= 16 }
+        guard hasSmall || mismatch else {
+            return (groupedIndices, hints)
+        }
+
+        // Check same-class coexistence between large (1..8) and small (16..128) values (1996 Manual Par. 1-4)
+        var largeClasses: Set<Int> = []
+        var smallClasses: Set<Int> = []
+        for (idx, it) in items.enumerated() {
+            let effectiveDen = groupedIndices.contains(idx) ? 8 : it.baseDenominator
+            let cls = valueClass(for: effectiveDen)
+            if it.baseDenominator >= 16 {
+                smallClasses.insert(cls)
+            } else {
+                largeClasses.insert(cls)
+            }
+        }
+        let sharedClasses = largeClasses.intersection(smallClasses)
+        if !sharedClasses.isEmpty {
+            var currentModeIsSmall: Bool? = nil
+            for (idx, it) in items.enumerated() {
+                let isSmall = it.baseDenominator >= 16
+                let cls = valueClass(for: it.baseDenominator)
+                if let prevSmall = currentModeIsSmall {
+                    if isSmall != prevSmall && sharedClasses.contains(cls) {
+                        hints[idx] = isSmall ? .small : .large
+                    }
+                }
+                currentModeIsSmall = isSmall
+            }
+        }
+
+        if mismatch && hints.isEmpty {
+            for (idx, it) in items.enumerated() {
+                if it.baseDenominator >= 16 {
+                    hints[idx] = .small
+                    break
+                }
+            }
+        }
+
+        return (groupedIndices, hints)
+    }
+
     // MARK: - Event Group Encoding
 
     private static func renderEventGroup(
         group: [MeasureEvent],
+        groupIndex: Int,
+        spec: BrailleDurationSpec,
+        flatIndexByGroupAtom: [String: Int],
+        groupedFlatIndices: Set<Int>,
+        distinctionHints: [Int: ValueDistinctionHint],
+        tupletPrefixAscii: String,
+        pendingDynamicAscii: String,
         isChordTrack: Bool,
         isPercussion: Bool,
+        useTopDownIntervals: Bool,
         defaultKeyStepAlters: [Int],
         measureStepAlters: inout [Int: [Int]],
         lastPitch: inout (octave: Int, stepIndex: Int)?,
         forceOctave: inout Bool
     ) -> String {
         guard let first = group.first else { return "" }
-        let atoms = NotationDuration.decompose(quarterNotes: first.duration)
+        let atoms = spec.atoms
 
         // 1. Check if group contains simultaneous pitched notes
         var notes: [(note: Note, event: MeasureEvent, spelled: SpelledPitch)] = []
@@ -416,16 +1014,37 @@ public struct TmdBrailleGenerator {
         }
 
         if !notes.isEmpty {
-            // Sort bottom-up by diatonic pitch (octave * 7 + stepIndex, then midiPitch)
-            notes.sort {
-                let d0 = $0.spelled.octave * 7 + $0.spelled.stepIndex
-                let d1 = $1.spelled.octave * 7 + $1.spelled.stepIndex
-                if d0 != d1 { return d0 < d1 }
-                return $0.spelled.midiPitch < $1.spelled.midiPitch
+            if useTopDownIntervals {
+                // Sort top-down (highest pitch first) for treble-clef solo parts (Par. 5-2 / BANA Par. 9.2)
+                notes.sort {
+                    let d0 = $0.spelled.octave * 7 + $0.spelled.stepIndex
+                    let d1 = $1.spelled.octave * 7 + $1.spelled.stepIndex
+                    if d0 != d1 { return d0 > d1 }
+                    return $0.spelled.midiPitch > $1.spelled.midiPitch
+                }
+            } else {
+                // Sort bottom-up (lowest pitch first) for bass-clef solo and all multi-track parts (Par. 20-6)
+                notes.sort {
+                    let d0 = $0.spelled.octave * 7 + $0.spelled.stepIndex
+                    let d1 = $1.spelled.octave * 7 + $1.spelled.stepIndex
+                    if d0 != d1 { return d0 < d1 }
+                    return $0.spelled.midiPitch < $1.spelled.midiPitch
+                }
             }
 
             var out = ""
             for (atomIdx, atom) in atoms.enumerated() {
+                let flatIdx = flatIndexByGroupAtom["\(groupIndex):\(atomIdx)"] ?? -1
+                let hintStr = distinctionHints[flatIdx]?.rawValue ?? ""
+                if !hintStr.isEmpty {
+                    forceOctave = true
+                }
+                let effectiveAtom =
+                    groupedFlatIndices.contains(flatIdx)
+                    ? NotationDuration(
+                        baseDenominator: 8, isDotted: false, quarterValue: atom.quarterValue)
+                    : atom
+
                 let base = notes[0]
                 let isContinuationAtom = atomIdx > 0 || base.event.tieStop
                 let needsInternalTie = (atomIdx < atoms.count - 1) || base.event.tieStart
@@ -455,7 +1074,7 @@ public struct TmdBrailleGenerator {
                 lastPitch = (base.spelled.octave, base.spelled.stepIndex)
                 forceOctave = false
 
-                let noteCell = atom.brailleNoteCell(stepIndex: base.spelled.stepIndex)
+                let noteCell = effectiveAtom.brailleNoteCell(stepIndex: base.spelled.stepIndex)
 
                 // Intervals for remaining notes (Table 5A)
                 var intervalsStr = ""
@@ -473,8 +1092,14 @@ public struct TmdBrailleGenerator {
                     }
 
                     let memDiatonic = member.spelled.octave * 7 + member.spelled.stepIndex
-                    let deltaFromBase = max(0, memDiatonic - baseDiatonic)
-                    let deltaFromPrev = max(0, memDiatonic - prevDiatonic)
+                    let deltaFromBase =
+                        useTopDownIntervals
+                        ? max(0, baseDiatonic - memDiatonic)
+                        : max(0, memDiatonic - baseDiatonic)
+                    let deltaFromPrev =
+                        useTopDownIntervals
+                        ? max(0, prevDiatonic - memDiatonic)
+                        : max(0, memDiatonic - prevDiatonic)
                     prevDiatonic = memDiatonic
 
                     if deltaFromBase == 0 {
@@ -489,12 +1114,25 @@ public struct TmdBrailleGenerator {
 
                 let tieStr: String
                 if needsInternalTie {
-                    tieStr = notes.count > 1 ? ".C.C" : "@C"
+                    tieStr = notes.count > 1 ? ".C" : "@C"
                 } else {
                     tieStr = ""
                 }
 
-                out += "\(accStr)\(octStr)\(noteCell)\(intervalsStr)\(tieStr)"
+                let tupStr = atomIdx == 0 ? tupletPrefixAscii : ""
+                let coreBody = "\(tupStr)\(accStr)\(octStr)\(noteCell)\(intervalsStr)\(tieStr)"
+                let dynStr: String
+                if atomIdx == 0 && !pendingDynamicAscii.isEmpty {
+                    if let firstChar = coreBody.first, cellUsesDots123(firstChar) {
+                        dynStr = "\(pendingDynamicAscii)'"
+                    } else {
+                        dynStr = pendingDynamicAscii
+                    }
+                } else {
+                    dynStr = ""
+                }
+
+                out += "\(hintStr)\(dynStr)\(coreBody)"
             }
             return out
         }
@@ -507,8 +1145,9 @@ public struct TmdBrailleGenerator {
                 return "\(sym)\(stem)"
             } else {
                 // Mode B: Voiced Interval Realization (Table 5A)
-                let voiced = PitchMapping.spellChordVoicing(
+                let rawVoiced = PitchMapping.spellChordVoicing(
                     chord, keyOffset: first.state.keyOffset)
+                let voiced = useTopDownIntervals ? Array(rawVoiced.reversed()) : rawVoiced
                 guard let base = voiced.first else { return "" }
                 var out = ""
                 for (atomIdx, atom) in atoms.enumerated() {
@@ -541,12 +1180,16 @@ public struct TmdBrailleGenerator {
                             measureStepAlters[member.octave] = memOctAlters
                             memAcc = encodeAccidental(alter: member.alter)
                         }
-                        let delta = max(1, (member.octave * 7 + member.stepIndex) - baseDiatonic)
+                        let memDiatonic = member.octave * 7 + member.stepIndex
+                        let delta =
+                            useTopDownIntervals
+                            ? max(1, baseDiatonic - memDiatonic)
+                            : max(1, memDiatonic - baseDiatonic)
                         let intIdx = ((delta - 1) % 7) + 1
                         let intOct = delta > 7 ? encodeOctaveMark(member.octave) : ""
                         intervalsStr += "\(memAcc)\(intOct)\(encodeIntervalSign(intIdx))"
                     }
-                    let tieStr = atomIdx < atoms.count - 1 ? ".C.C" : ""
+                    let tieStr = atomIdx < atoms.count - 1 ? ".C" : ""
                     out += "\(accStr)\(octStr)\(noteCell)\(intervalsStr)\(tieStr)"
                 }
                 return out
@@ -561,7 +1204,7 @@ public struct TmdBrailleGenerator {
             }
             let subDur = first.duration / Double(clean.count)
             let subAtom =
-                NotationDuration.decompose(quarterNotes: subDur).first
+                resolveBrailleDuration(quarterNotes: subDur).atoms.first
                 ?? NotationDuration(baseDenominator: 4, isDotted: false, quarterValue: 1.0)
             var out = ""
             for ch in clean {
@@ -589,7 +1232,17 @@ public struct TmdBrailleGenerator {
 
         // 4. Rest event
         let prefix = isChordTrack ? "\"" : ""
-        return atoms.map { "\(prefix)\($0.brailleRestCell)" }.joined()
+        var restOut = ""
+        for (atomIdx, atom) in atoms.enumerated() {
+            let flatIdx = flatIndexByGroupAtom["\(groupIndex):\(atomIdx)"] ?? -1
+            let hintStr = distinctionHints[flatIdx]?.rawValue ?? ""
+            if !hintStr.isEmpty {
+                forceOctave = true
+            }
+            let tupStr = atomIdx == 0 ? tupletPrefixAscii : ""
+            restOut += "\(hintStr)\(tupStr)\(prefix)\(atom.brailleRestCell)"
+        }
+        return restOut
     }
 
     // MARK: - Braille Primitives & Tables
@@ -661,6 +1314,29 @@ public struct TmdBrailleGenerator {
             return String(repeating: sign, count: count)
         }
         return "#\(encodeUpperDigits(count))\(sign)"
+    }
+
+    private static func encodeNaturalCancellation(count: Int) -> String {
+        guard count > 0 else { return "" }
+        if count <= 3 {
+            return String(repeating: "*", count: count)
+        }
+        return "#\(encodeUpperDigits(count))*"
+    }
+
+    private static func encodeKeySignatureChange(from previousKey: String, to newKey: String) -> String {
+        let p = PitchMapping.parseKeyModeAndFifths(previousKey).fifths
+        let k = PitchMapping.parseKeyModeAndFifths(newKey).fifths
+        if p == k { return "" }
+        let cancelCount: Int
+        if p != 0 && (k == 0 || (p > 0) != (k > 0)) {
+            cancelCount = abs(p)
+        } else if p != 0 && abs(k) < abs(p) {
+            cancelCount = abs(p) - abs(k)
+        } else {
+            cancelCount = 0
+        }
+        return encodeNaturalCancellation(count: cancelCount) + encodeKeySignature(forKey: newKey)
     }
 
     fileprivate static func encodeUpperDigits(_ number: Int) -> String {
