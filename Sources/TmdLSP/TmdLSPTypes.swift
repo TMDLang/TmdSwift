@@ -126,4 +126,3 @@ public struct TmdLSPDiagnostic: Codable, Equatable, Sendable {
         self.message = message
     }
 }
-

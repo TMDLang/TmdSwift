@@ -97,7 +97,9 @@ struct TmdCheckCommand: ParsableCommand {
                 let errors = diags.filter { $0.severity == .error }
                 let warnings = diags.filter { $0.severity == .warning }
                 if errors.isEmpty && warnings.isEmpty {
-                    print("✅ All checks and measures in \(target.path) conform to expected rules and time signatures.")
+                    print(
+                        "✅ All checks and measures in \(target.path) conform to expected rules and time signatures."
+                    )
                 } else {
                     if !errors.isEmpty {
                         print(

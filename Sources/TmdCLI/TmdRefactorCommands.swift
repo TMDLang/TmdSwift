@@ -207,7 +207,8 @@ struct SignedIntArgument: ExpressibleByArgument, CustomStringConvertible {
     }
 
     init?(argument: String) {
-        let cleaned = argument
+        let cleaned =
+            argument
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
             .trimmingCharacters(in: .whitespacesAndNewlines)

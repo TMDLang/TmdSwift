@@ -32,7 +32,9 @@ extension TmdRefactor {
 
         let isFullScore =
             source.contains("::SCORE::")
-            || rawLines.contains { parseParagraphHeaderLine($0.trimmingCharacters(in: .whitespaces)) != nil }
+            || rawLines.contains {
+                parseParagraphHeaderLine($0.trimmingCharacters(in: .whitespaces)) != nil
+            }
 
         for rawLine in rawLines {
             let trimmed = rawLine.trimmingCharacters(in: .whitespaces)
@@ -177,7 +179,8 @@ extension TmdRefactor {
             newOctStr = String(repeating: "_", count: -finalOctave)
         }
 
-        return "\(mapped.degree.rawValue)\(PitchMapping.accidentalSymbol(mapped.accidental))\(newOctStr)"
+        return
+            "\(mapped.degree.rawValue)\(PitchMapping.accidentalSymbol(mapped.accidental))\(newOctStr)"
     }
 
     static func transposeTmdNoteUnit(

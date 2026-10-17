@@ -777,7 +777,9 @@ struct MacroEvaluatorTests {
         #expect(expanded.declaredKey == "Am")
     }
 
-    @Test("Issue #39: TmdMeasureRenderer preserves tempo and keyOffset on rest-only measures and avoids extra measures on time-sig expansion")
+    @Test(
+        "Issue #39: TmdMeasureRenderer preserves tempo and keyOffset on rest-only measures and avoids extra measures on time-sig expansion"
+    )
     func testMeasureRendererStateRetentionAndTimeSignatureChange() throws {
         let input = """
             ::SCORE::
@@ -831,7 +833,7 @@ struct MacroEvaluatorTests {
     func testLexerUnquotedTildeRollback() throws {
         let lexer = Lexer(string: "~ 1 2")
         let tokens = lexer.tokenize()
-        #expect(tokens.count == 4) // .identifier("~"), .note(1), .note(2), .eof
+        #expect(tokens.count == 4)  // .identifier("~"), .note(1), .note(2), .eof
         #expect(tokens[0] == Token.identifier("~"))
         if case .note(let n1) = tokens[1] {
             #expect(n1.degree.rawValue == 1)
@@ -840,7 +842,9 @@ struct MacroEvaluatorTests {
         }
     }
 
-    @Test("Issue #39: Parser reports accurate source line on {?=fixed} and PitchMapping.parseKeyModeAndFifths supports min suffix")
+    @Test(
+        "Issue #39: Parser reports accurate source line on {?=fixed} and PitchMapping.parseKeyModeAndFifths supports min suffix"
+    )
     func testParserFixedDirectiveFailurePositionAndMinSuffix() throws {
         let invalidInput = """
             ::SCORE::
@@ -871,7 +875,9 @@ struct MacroEvaluatorTests {
         #expect(fSharpMin.mode == "minor")
     }
 
-    @Test("Issue #45: Validator, Inspector, and CLI do not SIGTRAP when macro expansion fails on a score with concrete entries")
+    @Test(
+        "Issue #45: Validator, Inspector, and CLI do not SIGTRAP when macro expansion fails on a score with concrete entries"
+    )
     func testIssue45ValidatorAndInspectorDoNotTrapOnMacroErrorWithConcreteEntries() throws {
         let scoreWithMacroError = """
             ::SCORE::
@@ -940,7 +946,9 @@ struct MacroEvaluatorTests {
         let layerEntries = expanded.entries.filter { $0.name.hasPrefix("__layer_") }
         #expect(layerEntries.count == 4)
 
-        let harpsichordEntries = layerEntries.filter { $0.assignment == "Harpsichord" }.sorted { $0.start < $1.start }
+        let harpsichordEntries = layerEntries.filter { $0.assignment == "Harpsichord" }.sorted {
+            $0.start < $1.start
+        }
         let fluteEntry = try #require(layerEntries.first { $0.assignment == "Flute" })
         let pizzEntry = try #require(layerEntries.first { $0.assignment == "PizzicatoStrings" })
 

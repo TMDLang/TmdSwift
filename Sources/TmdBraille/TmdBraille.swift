@@ -151,7 +151,8 @@ public struct TmdBrailleGenerator {
 
         func appendIfMusical(_ entry: Entry) {
             guard entry.showProgram == nil, entry.executionTime == nil else { return }
-            guard let assignment = entry.assignment?.trimmingCharacters(in: .whitespacesAndNewlines),
+            guard
+                let assignment = entry.assignment?.trimmingCharacters(in: .whitespacesAndNewlines),
                 !assignment.isEmpty
             else { return }
             let key = assignment.lowercased()
@@ -376,7 +377,9 @@ public struct TmdBrailleGenerator {
         let specs = groups.map { grp -> BrailleDurationSpec in
             guard let first = grp.first else {
                 return BrailleDurationSpec(
-                    atoms: [NotationDuration(baseDenominator: 4, isDotted: false, quarterValue: 1.0)],
+                    atoms: [
+                        NotationDuration(baseDenominator: 4, isDotted: false, quarterValue: 1.0)
+                    ],
                     tuplet: nil
                 )
             }
@@ -1324,7 +1327,9 @@ public struct TmdBrailleGenerator {
         return "#\(encodeUpperDigits(count))*"
     }
 
-    private static func encodeKeySignatureChange(from previousKey: String, to newKey: String) -> String {
+    private static func encodeKeySignatureChange(from previousKey: String, to newKey: String)
+        -> String
+    {
         let p = PitchMapping.parseKeyModeAndFifths(previousKey).fifths
         let k = PitchMapping.parseKeyModeAndFifths(newKey).fifths
         if p == k { return "" }
@@ -1395,9 +1400,9 @@ public struct TmdBrailleGenerator {
 
 // MARK: - Domain Type Braille Extensions
 
-private extension ChordQuality {
+extension ChordQuality {
     /// North American Braille ASCII literary suffix for the chord quality (Section 5.2, Table 12A).
-    var brailleLiterarySuffix: String {
+    fileprivate var brailleLiterarySuffix: String {
         switch self {
         case .major:
             return ""
@@ -1425,9 +1430,9 @@ private extension ChordQuality {
     }
 }
 
-private extension ChordSymbol {
+extension ChordSymbol {
     /// Encodes a `ChordSymbol` into Grade 1 Literary + Music Braille ASCII (`Section 5.2 Mode A`).
-    func brailleLiteraryString(keyOffset: Int) -> String {
+    fileprivate func brailleLiteraryString(keyOffset: Int) -> String {
         let rootPitch = PitchMapping.spell(chordRoot: root, keyOffset: keyOffset)
         var out = ",\(rootPitch.step.uppercased())"
         if rootPitch.alter != 0 {
@@ -1445,14 +1450,14 @@ private extension ChordSymbol {
     }
 }
 
-private extension NotationDuration {
+extension NotationDuration {
     private static let wholeOr16thCells = ["Y", "Z", "&", "=", "(", "!", ")"]
     private static let halfOr32ndCells = ["N", "O", "P", "Q", "R", "S", "T"]
     private static let quarterOr64thCells = ["?", ":", "$", "]", "\\", "[", "W"]
     private static let eighthOr128thCells = ["D", "E", "F", "G", "H", "I", "J"]
 
     /// Encodes a pitched note cell (`Section 3.1, Table 1`) for the given diatonic step (`0 = C` ... `6 = B`).
-    func brailleNoteCell(stepIndex: Int) -> String {
+    fileprivate func brailleNoteCell(stepIndex: Int) -> String {
         let idx = max(0, min(6, stepIndex))
         let cell: String
         switch baseDenominator {
@@ -1469,7 +1474,7 @@ private extension NotationDuration {
     }
 
     /// Encodes a rest cell (`Section 3.2, Table 2`).
-    var brailleRestCell: String {
+    fileprivate var brailleRestCell: String {
         let cell: String
         switch baseDenominator {
         case 1, 16: cell = "M"
@@ -1481,7 +1486,7 @@ private extension NotationDuration {
     }
 
     /// Encodes a rhythmic stem sign for lead-sheet chord symbols (`Section 5.2, Table 13`).
-    var brailleChordStemSign: String {
+    fileprivate var brailleChordStemSign: String {
         let base: String
         switch baseDenominator {
         case 1: base = "_'"
@@ -1495,18 +1500,19 @@ private extension NotationDuration {
     }
 }
 
-private extension Beat {
+extension Beat {
     /// Encodes a time signature into Music Braille ASCII (`Section 4.2, Table 7B`).
-    var brailleTimeSignature: String {
+    fileprivate var brailleTimeSignature: String {
         let c = max(1, count)
         let n = max(1, noteValue)
-        return "#\(TmdBrailleGenerator.encodeUpperDigits(c))\(TmdBrailleGenerator.encodeLowerDigits(n))"
+        return
+            "#\(TmdBrailleGenerator.encodeUpperDigits(c))\(TmdBrailleGenerator.encodeLowerDigits(n))"
     }
 }
 
-private extension String {
+extension String {
     /// Transliterates text into uncontracted Grade 1 Literary Braille ASCII.
-    var brailleLiteraryString: String {
+    fileprivate var brailleLiteraryString: String {
         var out = ""
         var inNumber = false
         for ch in self {
@@ -1535,7 +1541,7 @@ private extension String {
     }
 
     /// Resolves the canonical Music Braille part prefix (`Section 6.2`) for a TMD assignment name.
-    var braillePartPrefixAscii: String {
+    fileprivate var braillePartPrefixAscii: String {
         let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
         let lower = trimmed.lowercased()
         switch lower {

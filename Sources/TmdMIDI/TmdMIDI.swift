@@ -213,8 +213,8 @@ public struct TmdMIDIGenerator {
 
 }
 
-private extension PlaybackDirectiveEvent {
-    func conductorMIDIEvent(ticksPerQuarter: UInt16) -> MIDIEvent? {
+extension PlaybackDirectiveEvent {
+    fileprivate func conductorMIDIEvent(ticksPerQuarter: UInt16) -> MIDIEvent? {
         let tick = TmdMIDIGenerator.midiTick(position, ticksPerQuarter: ticksPerQuarter)
         switch kind {
         case .tempo, .relativeTempo:
@@ -226,4 +226,3 @@ private extension PlaybackDirectiveEvent {
         }
     }
 }
-

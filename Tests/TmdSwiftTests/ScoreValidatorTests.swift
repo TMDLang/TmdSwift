@@ -490,7 +490,9 @@ struct ScoreValidatorTests {
         let clarinetTimeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Clarinet")
         let fluteM7PickupEvent = fluteTimeline.events.first { abs($0.position - 24.5) < 1e-6 }
         let fluteM7DownbeatEvent = fluteTimeline.events.first { abs($0.position - 28.0) < 1e-6 }
-        let clarinetM7DownbeatEvent = clarinetTimeline.events.first { abs($0.position - 28.0) < 1e-6 }
+        let clarinetM7DownbeatEvent = clarinetTimeline.events.first {
+            abs($0.position - 28.0) < 1e-6
+        }
         #expect(fluteM7PickupEvent != nil)
         #expect(fluteM7DownbeatEvent != nil)
         #expect(clarinetM7DownbeatEvent != nil)
@@ -498,7 +500,8 @@ struct ScoreValidatorTests {
         // 4. Measure renderer keeps M5's 4th bar (23.0..<28.0) in 5/4 (containing Flute's pickup in its tail)
         // and switches all tracks (Flute, Clarinet, Oboe, Violin) to 7/8 at 28.0 with identical measure grids.
         let fluteMeasures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Flute")
-        let clarinetMeasures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Clarinet")
+        let clarinetMeasures = TmdMeasureRenderer.renderMeasures(
+            sheet: sheet, instrument: "Clarinet")
         let oboeMeasures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Oboe")
         let violinMeasures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Violin")
 
@@ -510,7 +513,9 @@ struct ScoreValidatorTests {
 
         for idx in 0..<fluteMeasures.count {
             #expect(abs(fluteMeasures[idx].startTime - clarinetMeasures[idx].startTime) < 1e-6)
-            #expect(abs(fluteMeasures[idx].nominalDuration - clarinetMeasures[idx].nominalDuration) < 1e-6)
+            #expect(
+                abs(fluteMeasures[idx].nominalDuration - clarinetMeasures[idx].nominalDuration)
+                    < 1e-6)
             #expect(fluteMeasures[idx].timeSignature == clarinetMeasures[idx].timeSignature)
             #expect(fluteMeasures[idx].timeSignature == oboeMeasures[idx].timeSignature)
             #expect(fluteMeasures[idx].timeSignature == violinMeasures[idx].timeSignature)
@@ -520,7 +525,9 @@ struct ScoreValidatorTests {
         let m5LastBar = fluteMeasures[5]
         #expect(abs(m5LastBar.startTime - 23.0) < 1e-6)
         #expect(m5LastBar.timeSignature == Beat(count: 5, noteValue: 4))
-        let m5LastBarTotal = m5LastBar.simultaneousEventGroups.reduce(0.0) { $0 + ($1.first?.duration ?? 0) }
+        let m5LastBarTotal = m5LastBar.simultaneousEventGroups.reduce(0.0) {
+            $0 + ($1.first?.duration ?? 0)
+        }
         #expect(abs(m5LastBarTotal - 5.0) < 1e-6)
 
         // Measure 6 (28.0..<31.5, 1st bar of M7) must be 7/8 (3.5 beats)

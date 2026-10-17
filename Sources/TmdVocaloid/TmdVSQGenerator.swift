@@ -104,7 +104,8 @@ public struct TmdVSQGenerator: Sendable {
     ) -> Data {
         let beatCount = beat.count > 0 ? beat.count : 4
         let beatNoteVal = beat.noteValue > 0 ? beat.noteValue : 4
-        let preMeasureTicks = options.preMeasure * (beatCount * 4 * Int(ticksPerQuarter)) / beatNoteVal
+        let preMeasureTicks =
+            options.preMeasure * (beatCount * 4 * Int(ticksPerQuarter)) / beatNoteVal
         let noteItems = VocaloidNoteItem.extractNotes(
             from: timeline,
             preMeasureTicks: preMeasureTicks,

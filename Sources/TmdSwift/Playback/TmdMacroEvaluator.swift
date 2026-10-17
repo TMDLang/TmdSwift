@@ -425,16 +425,18 @@ public enum TmdMacroEvaluator {
                         var cumulativeBars = 0
                         for seqName in names {
                             let matching = concreteParagraphs.filter { $0.name == seqName }
-                            let maxEndBeats = matching.map { p -> Double in
-                                let startBeats = Double(p.start) * measureDur
-                                let noteBeats = p.sections.reduce(0.0) { total, sec in
-                                    let unitDur = 4.0 / Double(max(1, sec.noteLength))
-                                    return total + sec.unitGroups.reduce(0.0) {
-                                        $0 + Double(max(0, $1.length)) * unitDur
+                            let maxEndBeats =
+                                matching.map { p -> Double in
+                                    let startBeats = Double(p.start) * measureDur
+                                    let noteBeats = p.sections.reduce(0.0) { total, sec in
+                                        let unitDur = 4.0 / Double(max(1, sec.noteLength))
+                                        return total
+                                            + sec.unitGroups.reduce(0.0) {
+                                                $0 + Double(max(0, $1.length)) * unitDur
+                                            }
                                     }
-                                }
-                                return startBeats + noteBeats
-                            }.max() ?? 0.0
+                                    return startBeats + noteBeats
+                                }.max() ?? 0.0
                             let sectionBars = max(0, Int((maxEndBeats / measureDur).rounded()))
                             if cumulativeBars != 0 {
                                 for idx in 0..<concreteParagraphs.count
@@ -761,7 +763,9 @@ public enum TmdMacroEvaluator {
     }
 
     /// Deprecated compatibility API.
-    @available(*, deprecated, message: "Use expandThrowing(_:) and handle TmdMacroError explicitly.")
+    @available(
+        *, deprecated, message: "Use expandThrowing(_:) and handle TmdMacroError explicitly."
+    )
     public static func expand(_ sheet: Sheet) -> Sheet {
         return expandOrTrap(sheet)
     }

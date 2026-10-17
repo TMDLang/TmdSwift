@@ -44,7 +44,8 @@ public enum TmdSongTimingAnalyzer {
 
                 for directive in timelineDirectives {
                     guard directive.position >= startPosition,
-                          directive.position < endPosition else { continue }
+                        directive.position < endPosition
+                    else { continue }
                     if directive.position > cursor {
                         let segment = directive.position - cursor
                         durationSeconds += segment * 60.0 / tempo
@@ -63,19 +64,20 @@ public enum TmdSongTimingAnalyzer {
                 let occurrence = sectionOccurrences[secName, default: 0] + 1
                 sectionOccurrences[secName] = occurrence
                 let sectionMeasures = max(1, Int(round(measureCount)))
-                sections.append(TmdSectionTimingProfile(
-                    name: secName,
-                    orderIndex: idx,
-                    occurrenceIndex: occurrence,
-                    startMeasure: currentMeasure,
-                    startPositionQuarterNotes: currentQuarterPosition,
-                    durationQuarterNotes: duration,
-                    startSeconds: currentSeconds,
-                    durationSeconds: durationSeconds,
-                    measures: sectionMeasures,
-                    keyOffset: state.keyOffset,
-                    tempo: state.tempo
-                ))
+                sections.append(
+                    TmdSectionTimingProfile(
+                        name: secName,
+                        orderIndex: idx,
+                        occurrenceIndex: occurrence,
+                        startMeasure: currentMeasure,
+                        startPositionQuarterNotes: currentQuarterPosition,
+                        durationQuarterNotes: duration,
+                        startSeconds: currentSeconds,
+                        durationSeconds: durationSeconds,
+                        measures: sectionMeasures,
+                        keyOffset: state.keyOffset,
+                        tempo: state.tempo
+                    ))
 
                 currentQuarterPosition += duration
                 currentSeconds += durationSeconds

@@ -29,7 +29,8 @@ func syntaxResponsibilitiesHaveExplicitSourceBoundaries() throws {
         .deletingLastPathComponent()
     let syntaxRoot = packageRoot.appendingPathComponent("Sources/TmdSwift/Syntax")
     for file in ["Lexer.swift", "TmdParser.swift", "TmdParseDiagnostics.swift"] {
-        #expect(FileManager.default.fileExists(atPath: syntaxRoot.appendingPathComponent(file).path))
+        #expect(
+            FileManager.default.fileExists(atPath: syntaxRoot.appendingPathComponent(file).path))
     }
     let parser = try String(contentsOf: syntaxRoot.appendingPathComponent("TmdParser.swift"))
     #expect(!parser.contains("public final class Lexer"))
@@ -44,7 +45,9 @@ func sourceLoadingHasExplicitIOBoundary() throws {
         .deletingLastPathComponent()
     let sourceRoot = packageRoot.appendingPathComponent("Sources/TmdSwift")
     let parserPath = sourceRoot.appendingPathComponent("Syntax/TmdParser.swift")
-    #expect(FileManager.default.fileExists(atPath: sourceRoot.appendingPathComponent("IO/TmdParserIO.swift").path))
+    #expect(
+        FileManager.default.fileExists(
+            atPath: sourceRoot.appendingPathComponent("IO/TmdParserIO.swift").path))
     let parser = try String(contentsOf: parserPath)
     #expect(!parser.contains("TextEncodingDetector"))
     #expect(!parser.contains("FilePathNormalizer"))
@@ -72,7 +75,8 @@ func inspectorAnalyzersHaveExplicitSourceBoundaries() {
     ]
 
     for file in files {
-        #expect(FileManager.default.fileExists(atPath: analysisRoot.appendingPathComponent(file).path))
+        #expect(
+            FileManager.default.fileExists(atPath: analysisRoot.appendingPathComponent(file).path))
     }
 }
 
@@ -83,8 +87,11 @@ func inspectorProfilesHaveExplicitBoundary() throws {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
     let analysisRoot = packageRoot.appendingPathComponent("Sources/TmdSwift/Analysis")
-    #expect(FileManager.default.fileExists(atPath: analysisRoot.appendingPathComponent("TmdSongProfiles.swift").path))
-    let inspector = try String(contentsOf: analysisRoot.appendingPathComponent("TmdSongInspector.swift"))
+    #expect(
+        FileManager.default.fileExists(
+            atPath: analysisRoot.appendingPathComponent("TmdSongProfiles.swift").path))
+    let inspector = try String(
+        contentsOf: analysisRoot.appendingPathComponent("TmdSongInspector.swift"))
     #expect(!inspector.contains("public struct TmdSongProfile"))
 }
 
@@ -101,7 +108,8 @@ func toolResponsibilitiesHaveExplicitSourceBoundaries() {
     ]
 
     for file in files {
-        #expect(FileManager.default.fileExists(atPath: sourceRoot.appendingPathComponent(file).path))
+        #expect(
+            FileManager.default.fileExists(atPath: sourceRoot.appendingPathComponent(file).path))
     }
 }
 
@@ -111,7 +119,9 @@ func refactoringFormattingHasExplicitBoundary() {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
         .deletingLastPathComponent()
-    let path = packageRoot.appendingPathComponent("Sources/TmdSwift/Refactoring/TmdRefactorFormatting.swift").path
+    let path = packageRoot.appendingPathComponent(
+        "Sources/TmdSwift/Refactoring/TmdRefactorFormatting.swift"
+    ).path
     #expect(FileManager.default.fileExists(atPath: path))
 }
 
@@ -122,7 +132,9 @@ func refactoringTransposeHasExplicitBoundary() throws {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
     let refactoringRoot = packageRoot.appendingPathComponent("Sources/TmdSwift/Refactoring")
-    #expect(FileManager.default.fileExists(atPath: refactoringRoot.appendingPathComponent("TmdRefactorTranspose.swift").path))
+    #expect(
+        FileManager.default.fileExists(
+            atPath: refactoringRoot.appendingPathComponent("TmdRefactorTranspose.swift").path))
     let facade = try String(contentsOf: refactoringRoot.appendingPathComponent("TmdRefactor.swift"))
     #expect(!facade.contains("public static func transpose("))
 }
@@ -134,7 +146,9 @@ func refactoringGridHasExplicitBoundary() throws {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
     let refactoringRoot = packageRoot.appendingPathComponent("Sources/TmdSwift/Refactoring")
-    #expect(FileManager.default.fileExists(atPath: refactoringRoot.appendingPathComponent("TmdRefactorGrid.swift").path))
+    #expect(
+        FileManager.default.fileExists(
+            atPath: refactoringRoot.appendingPathComponent("TmdRefactorGrid.swift").path))
     let facade = try String(contentsOf: refactoringRoot.appendingPathComponent("TmdRefactor.swift"))
     #expect(!facade.contains("public static func doubleGrid("))
 }
@@ -146,7 +160,9 @@ func refactoringTracksHaveExplicitBoundary() throws {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
     let refactoringRoot = packageRoot.appendingPathComponent("Sources/TmdSwift/Refactoring")
-    #expect(FileManager.default.fileExists(atPath: refactoringRoot.appendingPathComponent("TmdRefactorTracks.swift").path))
+    #expect(
+        FileManager.default.fileExists(
+            atPath: refactoringRoot.appendingPathComponent("TmdRefactorTracks.swift").path))
     let facade = try String(contentsOf: refactoringRoot.appendingPathComponent("TmdRefactor.swift"))
     #expect(!facade.contains("public static func duplicateTrack("))
 }
@@ -158,8 +174,11 @@ func macroTransformationsHaveExplicitBoundary() throws {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
     let playbackRoot = packageRoot.appendingPathComponent("Sources/TmdSwift/Playback")
-    #expect(FileManager.default.fileExists(atPath: playbackRoot.appendingPathComponent("TmdMacroTransformations.swift").path))
-    let evaluator = try String(contentsOf: playbackRoot.appendingPathComponent("TmdMacroEvaluator.swift"))
+    #expect(
+        FileManager.default.fileExists(
+            atPath: playbackRoot.appendingPathComponent("TmdMacroTransformations.swift").path))
+    let evaluator = try String(
+        contentsOf: playbackRoot.appendingPathComponent("TmdMacroEvaluator.swift"))
     #expect(!evaluator.contains("public static func transposeSections"))
 }
 
@@ -176,7 +195,8 @@ func presentationResponsibilitiesHaveExplicitSourceBoundaries() {
     ]
 
     for file in files {
-        #expect(FileManager.default.fileExists(atPath: sourceRoot.appendingPathComponent(file).path))
+        #expect(
+            FileManager.default.fileExists(atPath: sourceRoot.appendingPathComponent(file).path))
     }
 }
 
@@ -187,7 +207,9 @@ func lspDataModelsHaveExplicitBoundary() throws {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
     let lspRoot = packageRoot.appendingPathComponent("Sources/TmdLSP")
-    #expect(FileManager.default.fileExists(atPath: lspRoot.appendingPathComponent("TmdLSPTypes.swift").path))
+    #expect(
+        FileManager.default.fileExists(
+            atPath: lspRoot.appendingPathComponent("TmdLSPTypes.swift").path))
     let implementation = try String(contentsOf: lspRoot.appendingPathComponent("TmdLSP.swift"))
     #expect(!implementation.contains("public struct TmdLSPPosition"))
 }
@@ -199,7 +221,9 @@ func lspCodecHasExplicitBoundary() throws {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
     let lspRoot = packageRoot.appendingPathComponent("Sources/TmdLSP")
-    #expect(FileManager.default.fileExists(atPath: lspRoot.appendingPathComponent("TmdLSPCodec.swift").path))
+    #expect(
+        FileManager.default.fileExists(
+            atPath: lspRoot.appendingPathComponent("TmdLSPCodec.swift").path))
     let implementation = try String(contentsOf: lspRoot.appendingPathComponent("TmdLSP.swift"))
     #expect(!implementation.contains("public struct TmdJSONRPCCodec"))
 }
@@ -211,7 +235,9 @@ func lspCompletionHasExplicitBoundary() throws {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
     let lspRoot = packageRoot.appendingPathComponent("Sources/TmdLSP")
-    #expect(FileManager.default.fileExists(atPath: lspRoot.appendingPathComponent("TmdLSPCompletion.swift").path))
+    #expect(
+        FileManager.default.fileExists(
+            atPath: lspRoot.appendingPathComponent("TmdLSPCompletion.swift").path))
     let implementation = try String(contentsOf: lspRoot.appendingPathComponent("TmdLSP.swift"))
     #expect(!implementation.contains("public struct TmdLSPCompletionEngine"))
 }
@@ -223,7 +249,9 @@ func lspDiagnosticHasExplicitBoundary() throws {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
     let lspRoot = packageRoot.appendingPathComponent("Sources/TmdLSP")
-    #expect(FileManager.default.fileExists(atPath: lspRoot.appendingPathComponent("TmdLSPDiagnostics.swift").path))
+    #expect(
+        FileManager.default.fileExists(
+            atPath: lspRoot.appendingPathComponent("TmdLSPDiagnostics.swift").path))
     let implementation = try String(contentsOf: lspRoot.appendingPathComponent("TmdLSP.swift"))
     #expect(!implementation.contains("public struct TmdLSPDiagnosticEngine"))
 }
@@ -249,7 +277,9 @@ func macroResponsibilitiesHaveExplicitSourceBoundaries() {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
         .deletingLastPathComponent()
-    let path = packageRoot.appendingPathComponent("Sources/TmdSwift/Playback/TmdMacroEvaluator.swift").path
+    let path = packageRoot.appendingPathComponent(
+        "Sources/TmdSwift/Playback/TmdMacroEvaluator.swift"
+    ).path
     #expect(FileManager.default.fileExists(atPath: path))
 }
 
@@ -288,7 +318,8 @@ func inspectorLocalizationHasExplicitAnalysisBoundary() {
     for file in ["TmdLocalization.swift", "TmdLocalizationCatalog.swift"] {
         #expect(
             FileManager.default.fileExists(
-                atPath: sourceRoot.appendingPathComponent("Analysis").appendingPathComponent(file).path))
+                atPath: sourceRoot.appendingPathComponent("Analysis").appendingPathComponent(file)
+                    .path))
         #expect(
             !FileManager.default.fileExists(
                 atPath: sourceRoot.appendingPathComponent(file).path))

@@ -343,7 +343,6 @@ extension TmdRefactor {
 
     // MARK: - Private Formatting Helpers
 
-
     /// Optimizes and compresses grid resolution repeatedly until minimal noteLength is reached.
     public static func optimizeGrid(source: String, target: TmdRefactorTarget? = nil) -> String {
         if target?.section != nil || target?.instrument != nil {

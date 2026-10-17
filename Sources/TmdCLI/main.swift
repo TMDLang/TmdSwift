@@ -17,7 +17,6 @@ import TmdVocaloid
 
 // MARK: - Main command
 
-
 // MARK: - Main TMD Command
 
 struct TmdCLICommand: ParsableCommand {

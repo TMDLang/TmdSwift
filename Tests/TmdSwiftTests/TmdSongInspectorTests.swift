@@ -48,7 +48,8 @@ struct TmdSongInspectorTests {
             """
         let sheet = try #require(TmdParser.parse(string: tmd))
         let timeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
-        let timing = TmdSongTimingAnalyzer.analyze(sheet: sheet, timelineDirectives: timeline.directives)
+        let timing = TmdSongTimingAnalyzer.analyze(
+            sheet: sheet, timelineDirectives: timeline.directives)
         let profile = try #require(
             TmdSongPitchRangeAnalyzer.analyze(
                 instrument: "Piano", sheet: sheet, timingProfile: timing,
@@ -102,7 +103,8 @@ struct TmdSongInspectorTests {
             """
         let sheet = try #require(TmdParser.parse(string: tmd))
         let timeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
-        let timing = TmdSongTimingAnalyzer.analyze(sheet: sheet, timelineDirectives: timeline.directives)
+        let timing = TmdSongTimingAnalyzer.analyze(
+            sheet: sheet, timelineDirectives: timeline.directives)
         let profile = TmdSongTonalityAnalyzer.analyze(
             sheet: sheet, timingProfile: timing, locale: .zhHant)
 
@@ -572,7 +574,9 @@ struct TmdSongInspectorTests {
         #expect(traditionalChinese.text(.modulationStart, arguments: ["C", "大調"]) == "C 大調起奏")
     }
 
-    @Test("Issue #42: Inspector report localizes vocal range, ASCII chart titles, and instrument range units")
+    @Test(
+        "Issue #42: Inspector report localizes vocal range, ASCII chart titles, and instrument range units"
+    )
     func testSongInspectorLocalizesVocalAndInstrumentRangeStrings() throws {
         let tmd = """
             ::SCORE::

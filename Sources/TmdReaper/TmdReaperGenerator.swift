@@ -15,7 +15,9 @@ public struct TmdReaperGenerator {
     }
 
     /// Generates REAPER project file content (.rpp) from a Sheet.
-    public static func generateRPP(from inputSheet: Sheet, ppq: UInt16 = defaultPPQ) throws -> String {
+    public static func generateRPP(from inputSheet: Sheet, ppq: UInt16 = defaultPPQ) throws
+        -> String
+    {
         guard ppq > 0 else { throw Error.invalidTicksPerQuarter }
         let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
         let distinctInstruments = sheet.distinctInstruments(fallbackToDefault: false)
@@ -81,11 +83,12 @@ public struct TmdReaperGenerator {
                 nextMelodicChannel: &melodyChannel, assignedPrograms: &assignedPrograms)
 
             // Pan
-            let pan: Double = switch MIDIInstrument.stereoPanHeuristic(for: instrument) {
-            case .left: -0.8
-            case .right: 0.8
-            case .center: 0.0
-            }
+            let pan: Double =
+                switch MIDIInstrument.stereoPanHeuristic(for: instrument) {
+                case .left: -0.8
+                case .right: 0.8
+                case .center: 0.0
+                }
 
             // Color
             let color = getTrackColor(midiInst)
@@ -239,8 +242,8 @@ public struct TmdReaperGenerator {
     }
 }
 
-private extension MIDIMessage {
-    func reaperEventLine(delta: UInt32) -> String? {
+extension MIDIMessage {
+    fileprivate func reaperEventLine(delta: UInt32) -> String? {
         switch self {
         case .programChange(let ch, let prog):
             let status = String(format: "%02x", 0xC0 | (ch & 0x0F))
@@ -265,5 +268,3 @@ private extension MIDIMessage {
         }
     }
 }
-
-

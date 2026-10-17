@@ -4,7 +4,8 @@ import TmdSwift
 struct TmdFormatCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "format",
-        abstract: "Format a TMD file with standardized indentation, spacing, and comments preserved."
+        abstract:
+            "Format a TMD file with standardized indentation, spacing, and comments preserved."
     )
     @OptionGroup var io: TmdRefactorIOOptions
 

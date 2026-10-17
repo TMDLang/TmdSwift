@@ -375,7 +375,9 @@ public struct TmdLSPCompletionEngine {
             ]
         default:
             if normalized.contains("m") {
-                return ["Am", "Bdim", "C", "Dm", "Em", "F", "G", "E7", "Am7", "Dm7", "Cmaj7", "Fmaj7"]
+                return [
+                    "Am", "Bdim", "C", "Dm", "Em", "F", "G", "E7", "Am7", "Dm7", "Cmaj7", "Fmaj7",
+                ]
             }
             return [
                 "C", "Dm", "Em", "F", "G", "Am", "Bdim",
@@ -387,4 +389,3 @@ public struct TmdLSPCompletionEngine {
 }
 
 // MARK: - Diagnostic Engine
-

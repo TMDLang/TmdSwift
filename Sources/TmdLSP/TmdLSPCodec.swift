@@ -2,7 +2,9 @@ import Foundation
 
 // MARK: - JSON-RPC Frame & Codec
 
-public enum TmdJSONRPCId: Equatable, Sendable, ExpressibleByIntegerLiteral, ExpressibleByStringLiteral {
+public enum TmdJSONRPCId: Equatable, Sendable, ExpressibleByIntegerLiteral,
+    ExpressibleByStringLiteral
+{
     case int(Int)
     case string(String)
 

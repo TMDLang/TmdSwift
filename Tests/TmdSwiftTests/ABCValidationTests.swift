@@ -276,7 +276,9 @@ struct ABCValidationTests {
         #expect(abcC.contains("^c4 =c4 _c4 ^b4"))
     }
 
-    @Test("Issue #41: ABC preserves simultaneous chord + note events and recognizes min/maj key suffixes")
+    @Test(
+        "Issue #41: ABC preserves simultaneous chord + note events and recognizes min/maj key suffixes"
+    )
     func testABCSimultaneousChordAndNoteAndMinKey() throws {
         let tmd = """
             ::SCORE::
@@ -302,7 +304,9 @@ struct ABCValidationTests {
         #expect(abc.contains("g"))
     }
 
-    @Test("Issue #57: ABC preserves sub-16th durations, tuplets, bracketed inline directives, and golden_case measure conservation")
+    @Test(
+        "Issue #57: ABC preserves sub-16th durations, tuplets, bracketed inline directives, and golden_case measure conservation"
+    )
     func testABCSub16thTupletsInlineBracketsAndGoldenCaseConservation() throws {
         // 1. Sub-16th durations (<32*>, <64*>, <1024*>), tuplets (3:1, 5:3, 7:5, 11:7), and inline directives
         let tmd = """
@@ -367,7 +371,8 @@ struct ABCValidationTests {
             let musicBody = lines.dropFirst()
                 .filter { !$0.hasPrefix("%%") }
                 .joined(separator: " ")
-            let measures = musicBody
+            let measures =
+                musicBody
                 .components(separatedBy: "|")
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }

@@ -755,11 +755,12 @@ struct TmdRefactorTests {
         let source = "| 1-- 2^-- |"
         let lexed = Lexer(string: source).tokenize()
 
-        #expect(lexed == [
-            .pipe, .note(Note(accidental: .natural, degree: .c, octave: 0)), .tie, .tie,
-            .note(Note(accidental: .natural, degree: .d, octave: 1)), .tie, .tie,
-            .pipe, .eof,
-        ])
+        #expect(
+            lexed == [
+                .pipe, .note(Note(accidental: .natural, degree: .c, octave: 0)), .tie, .tie,
+                .note(Note(accidental: .natural, degree: .d, octave: 1)), .tie, .tie,
+                .pipe, .eof,
+            ])
 
         let transposed = TmdRefactor.transpose(source: source, semitones: 2, keySignature: "C")
         #expect(transposed == "| 2-- 3^-- |\n")
@@ -867,7 +868,9 @@ struct TmdRefactorTests {
         #expect(doubled.contains("key= Am"))
     }
 
-    @Test("Issue #40: inlineOrders preserves per-section noteLength, directives, declaredKey, and pitchMode")
+    @Test(
+        "Issue #40: inlineOrders preserves per-section noteLength, directives, declaredKey, and pitchMode"
+    )
     func testInlineOrdersPreservesSectionsDirectivesAndDeclaredKey() throws {
         let input = """
             ::SCORE::
@@ -917,7 +920,9 @@ struct TmdRefactorTests {
         #expect(TmdMeasureChecker.check(source: doubled).isEmpty)
     }
 
-    @Test("Issue #40: TmdMeasureLexerFallback handles [pitchMode=fixed], compound percussion/dot-ties, and currentBeat")
+    @Test(
+        "Issue #40: TmdMeasureLexerFallback handles [pitchMode=fixed], compound percussion/dot-ties, and currentBeat"
+    )
     func testMeasureLexerFallbackFixedPitchPercussionAndBeat() {
         // Broken syntax at end (unclosed -> () forces TmdMeasureChecker to use TmdMeasureLexerFallback
         let source = """
@@ -940,7 +945,9 @@ struct TmdRefactorTests {
         #expect(issues[0].beat == Beat(count: 3, noteValue: 4))
     }
 
-    @Test("Issue #40: TonalityAnalyzer detects [pitchMode=fixed], preserves modulation across insufficient section, and PitchRangeAnalyzer tracks mid-section meter change")
+    @Test(
+        "Issue #40: TonalityAnalyzer detects [pitchMode=fixed], preserves modulation across insufficient section, and PitchRangeAnalyzer tracks mid-section meter change"
+    )
     func testTonalityAndPitchRangeAnalyzersFixedPitchAndModulation() throws {
         let input = """
             ::SCORE::
@@ -978,7 +985,9 @@ struct TmdRefactorTests {
         #expect(pianoRange.highestNote.measure == 7)
     }
 
-    @Test("Issue #44: CLI refactor accepts negative and quoted integer options (--interval -2, --octave -1, --semitones -2, --diatonic -1) and VS Code extension uses --key=value")
+    @Test(
+        "Issue #44: CLI refactor accepts negative and quoted integer options (--interval -2, --octave -1, --semitones -2, --diatonic -1) and VS Code extension uses --key=value"
+    )
     func testIssue44NegativeRefactorCLIOptionsAndVSCodeExtension() throws {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("tmd_issue44_\(UUID().uuidString)")
@@ -1016,40 +1025,45 @@ struct TmdRefactorTests {
         }
 
         // 1. Space-separated --interval -2
-        #expect(try runTmd([
-            "refactor", "generate-harmony", sampleTmd.path,
-            "--source", "Vocal", "--target", "HarmonyDown", "--interval", "-2", "-i",
-        ]) == 0)
+        #expect(
+            try runTmd([
+                "refactor", "generate-harmony", sampleTmd.path,
+                "--source", "Vocal", "--target", "HarmonyDown", "--interval", "-2", "-i",
+            ]) == 0)
         var text = try String(contentsOf: sampleTmd, encoding: .utf8)
         #expect(text.contains("verse:HarmonyDown@|0|{"))
         #expect(text.contains("1 2 3 4 |"))
 
         // 2. Quoted --interval "\"-2\""
-        #expect(try runTmd([
-            "refactor", "generate-harmony", sampleTmd.path,
-            "--source", "Vocal", "--target", "HarmonyQuoted", "--interval", "\"-2\"", "-i",
-        ]) == 0)
+        #expect(
+            try runTmd([
+                "refactor", "generate-harmony", sampleTmd.path,
+                "--source", "Vocal", "--target", "HarmonyQuoted", "--interval", "\"-2\"", "-i",
+            ]) == 0)
         text = try String(contentsOf: sampleTmd, encoding: .utf8)
         #expect(text.contains("verse:HarmonyQuoted@|0|{"))
 
         // 3. Space-separated --octave -1
-        #expect(try runTmd([
-            "refactor", "duplicate-track", sampleTmd.path,
-            "--source", "Vocal", "--target", "VocalLow", "--octave", "-1", "-i",
-        ]) == 0)
+        #expect(
+            try runTmd([
+                "refactor", "duplicate-track", sampleTmd.path,
+                "--source", "Vocal", "--target", "VocalLow", "--octave", "-1", "-i",
+            ]) == 0)
         text = try String(contentsOf: sampleTmd, encoding: .utf8)
         #expect(text.contains("verse:VocalLow@|0|{"))
         #expect(text.contains("3_ 4_ 5_ 6_ |"))
 
         // 4. Space-separated --semitones -2 and --diatonic -1
-        #expect(try runTmd([
-            "refactor", "transpose", sampleTmd.path,
-            "--semitones", "-2", "--instrument", "Vocal", "-i",
-        ]) == 0)
-        #expect(try runTmd([
-            "refactor", "transpose", sampleTmd.path,
-            "--diatonic", "-1", "--instrument", "Vocal", "-i",
-        ]) == 0)
+        #expect(
+            try runTmd([
+                "refactor", "transpose", sampleTmd.path,
+                "--semitones", "-2", "--instrument", "Vocal", "-i",
+            ]) == 0)
+        #expect(
+            try runTmd([
+                "refactor", "transpose", sampleTmd.path,
+                "--diatonic", "-1", "--instrument", "Vocal", "-i",
+            ]) == 0)
 
         // 5. VS Code extension.js uses --octave=${oct} and --interval=${interval}
         let packageRoot = URL(fileURLWithPath: #filePath)

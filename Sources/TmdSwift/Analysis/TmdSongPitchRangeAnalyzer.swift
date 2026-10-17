@@ -25,7 +25,8 @@ public enum TmdSongPitchRangeAnalyzer {
             let pitch = note.midiPitch(keyOffset: event.state.keyOffset)
             let matchedSection = timingProfile.sections.first {
                 event.position >= $0.startPositionQuarterNotes
-                    && event.position < $0.startPositionQuarterNotes + $0.durationQuarterNotes + 0.001
+                    && event.position < $0.startPositionQuarterNotes + $0.durationQuarterNotes
+                        + 0.001
             }
             let sectionName = matchedSection?.name ?? ""
             let occurrence = matchedSection?.occurrenceIndex ?? 1
@@ -64,10 +65,11 @@ public enum TmdSongPitchRangeAnalyzer {
                 measure = 1 + Int(floor(event.position / nominalMeasureDuration))
                 timeSeconds = event.position / (event.state.tempo / 60.0)
             }
-            hits.append(NoteHit(
-                midi: pitch, name: TmdNotePitchInfo.name(for: pitch), pos: event.position,
-                sectionName: sectionName, sectionOccurrence: occurrence,
-                measure: measure, timeSeconds: timeSeconds))
+            hits.append(
+                NoteHit(
+                    midi: pitch, name: TmdNotePitchInfo.name(for: pitch), pos: event.position,
+                    sectionName: sectionName, sectionOccurrence: occurrence,
+                    measure: measure, timeSeconds: timeSeconds))
         }
 
         guard !hits.isEmpty else { return nil }
@@ -104,7 +106,7 @@ public enum TmdSongPitchRangeAnalyzer {
     ) -> [TmdVocalClassification] {
         let ranges: [(TmdVocalClassification, Int, Int)] = [
             (.soprano, 57, 86), (.mezzoSoprano, 53, 81), (.contralto, 50, 77),
-            (.tenor, 45, 74), (.baritone, 41, 69), (.bass, 38, 65)
+            (.tenor, 45, 74), (.baritone, 41, 69), (.bass, 38, 65),
         ]
         var suitable: [TmdVocalClassification] = []
         for (type, min, max) in ranges where lowestMidi >= min && highestMidi <= max {

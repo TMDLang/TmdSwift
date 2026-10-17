@@ -114,7 +114,9 @@ struct VocaloidTests {
         #expect(!vsqAscii.contains("[ID#0003]"))
     }
 
-    @Test("Issue #41: VSQ preserves UTF-8 non-ASCII lyrics/track names without isoLatin1 double-encoding and computes non-4/4 preMeasureTicks")
+    @Test(
+        "Issue #41: VSQ preserves UTF-8 non-ASCII lyrics/track names without isoLatin1 double-encoding and computes non-4/4 preMeasureTicks"
+    )
     func testVSQUTF8AndNonFourFourPreMeasure() throws {
         let tmdContent = """
             ::SCORE::
@@ -155,25 +157,26 @@ struct VocaloidTests {
         #expect(iniText.contains("1440=ID#0001"))
 
         // Also check Sheet.isPercussionTrack("PercussiveOrgan") and resolveVocalInstrument
-        let organSheet = try TmdParser.parseThrowing(string: """
-            ::SCORE::
-            != 120
-            ?= C
-            <4/4>
-            A:Guitar_Lead@|0|{
-                <4*>
-                | 1 2 3 4 |
-            }
-            A:PercussiveOrgan@|0|{
-                <4*>
-                | 1 3 5 1^ |
-            }
-            A:主唱@|0|{
-                <4*>
-                | 5 6 5 3 |
-            }
-            -> A ->#
-            """)
+        let organSheet = try TmdParser.parseThrowing(
+            string: """
+                ::SCORE::
+                != 120
+                ?= C
+                <4/4>
+                A:Guitar_Lead@|0|{
+                    <4*>
+                    | 1 2 3 4 |
+                }
+                A:PercussiveOrgan@|0|{
+                    <4*>
+                    | 1 3 5 1^ |
+                }
+                A:主唱@|0|{
+                    <4*>
+                    | 5 6 5 3 |
+                }
+                -> A ->#
+                """)
         #expect(!organSheet.isPercussionTrack(instrument: "PercussiveOrgan"))
         #expect(organSheet.resolveVocalInstrument() == "主唱")
     }

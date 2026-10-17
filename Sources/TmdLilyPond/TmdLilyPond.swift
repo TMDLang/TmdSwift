@@ -414,8 +414,8 @@ public struct TmdLilyPondGenerator {
     }
 }
 
-private extension PlaybackDirectiveEvent {
-    var lilyPondString: String {
+extension PlaybackDirectiveEvent {
+    fileprivate var lilyPondString: String {
         switch kind {
         case .tempo, .relativeTempo:
             let cmd = TmdLilyPondGenerator.resolveTempo(

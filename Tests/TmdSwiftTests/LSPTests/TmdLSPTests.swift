@@ -290,7 +290,9 @@ struct TmdLSPTests {
         #expect(!labels.contains("4maj7"))
     }
 
-    @Test("Provides correct diatonic chords for other major and minor keys (e.g. E major, Eb major, Am)")
+    @Test(
+        "Provides correct diatonic chords for other major and minor keys (e.g. E major, Eb major, Am)"
+    )
     func testChordCompletionAcrossVariousKeys() throws {
         // E Major
         let sourceE = """
@@ -494,7 +496,8 @@ struct TmdLSPTests {
             position: TmdLSPPosition(line: 0, character: utf16CursorAfterOpenParen)
         )
         let canonItem = macroItems.first(where: { $0.label == "canon" })
-        #expect(canonItem != nil, "Completion should recognize cursor after '(' using UTF-16 offset")
+        #expect(
+            canonItem != nil, "Completion should recognize cursor after '(' using UTF-16 offset")
         #expect(canonItem?.insertText?.hasSuffix(")") == false)
 
         let attrLine = "/* 🎉 */ A:Timpani[]"
@@ -565,7 +568,9 @@ struct TmdLSPTests {
         )
     }
 
-    @Test("Issue #42: LSP supports partial instrument prefix completion, declaredKey minor chords, string JSON-RPC IDs, and CLI parity")
+    @Test(
+        "Issue #42: LSP supports partial instrument prefix completion, declaredKey minor chords, string JSON-RPC IDs, and CLI parity"
+    )
     func testIssue42LSPAndCLIParity() throws {
         // 1. Partial instrument prefix completion: "verse:P" -> Piano
         let instItems = TmdLSPCompletionEngine.complete(
@@ -603,7 +608,8 @@ struct TmdLSPTests {
 
         var sentMessages: [String] = []
         let server = TmdLSPServer { sentMessages.append($0) }
-        server.handle(message: TmdJSONRPCFrame(id: .string("init-1"), method: "initialize", params: [:]))
+        server.handle(
+            message: TmdJSONRPCFrame(id: .string("init-1"), method: "initialize", params: [:]))
         #expect(sentMessages.last?.contains("\"id\":\"init-1\"") == true)
         #expect(sentMessages.last?.contains("\"version\":\"\(TmdVersion.current)\"") == true)
 
@@ -621,7 +627,8 @@ struct TmdLSPTests {
         #expect(mainSwift.contains("targetInstrument: instrument"))
 
         let inspectSwift = try String(
-            contentsOf: packageRoot.appendingPathComponent("Sources/TmdCLI/TmdInspectCommand.swift"),
+            contentsOf: packageRoot.appendingPathComponent(
+                "Sources/TmdCLI/TmdInspectCommand.swift"),
             encoding: .utf8
         )
         #expect(inspectSwift.contains("guard let locale else { return .zhHant }"))

@@ -27,7 +27,8 @@ struct TmdOutlineCommand: ParsableCommand {
         if json {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted]
-            if let data = try? encoder.encode(nodes), let str = String(data: data, encoding: .utf8) {
+            if let data = try? encoder.encode(nodes), let str = String(data: data, encoding: .utf8)
+            {
                 print(str)
             } else {
                 print("[]")
@@ -37,7 +38,8 @@ struct TmdOutlineCommand: ParsableCommand {
                 let pad = String(repeating: "  ", count: indent)
                 var line = "\(pad)- [\(node.kind)] \(node.name)"
                 if let detail = node.detail, !detail.isEmpty { line += " (\(detail))" }
-                line += " [L\(node.range.startLine):C\(node.range.startColumn) - L\(node.range.endLine):C\(node.range.endColumn)]"
+                line +=
+                    " [L\(node.range.startLine):C\(node.range.startColumn) - L\(node.range.endLine):C\(node.range.endColumn)]"
                 print(line)
                 node.children?.forEach { printNode($0, indent: indent + 1) }
             }

@@ -35,8 +35,8 @@ public struct TmdLSPDiagnosticEngine {
     }
 }
 
-private extension TmdDiagnosticSeverity {
-    var lspSeverityCode: Int {
+extension TmdDiagnosticSeverity {
+    fileprivate var lspSeverityCode: Int {
         switch self {
         case .error: 1
         case .warning: 2
@@ -44,8 +44,8 @@ private extension TmdDiagnosticSeverity {
     }
 }
 
-private extension TmdDiagnosticRule {
-    var lspSourceName: String {
+extension TmdDiagnosticRule {
+    fileprivate var lspSourceName: String {
         switch self {
         case .measureBeat:
             "tmd-measure-checker"
@@ -56,4 +56,3 @@ private extension TmdDiagnosticRule {
         }
     }
 }
-

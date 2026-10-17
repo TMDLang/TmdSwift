@@ -47,7 +47,10 @@ public struct TmdMusicXMLGenerator {
         xml += "  </part-list>\n"
 
         let partMeasures: [(instrument: String, measures: [Measure])] = instruments.map { inst in
-            (instrument: inst, measures: TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: inst))
+            (
+                instrument: inst,
+                measures: TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: inst)
+            )
         }
         let divisions = resolveDivisions(for: partMeasures.map(\.measures))
 
@@ -780,8 +783,8 @@ public struct TmdMusicXMLGenerator {
     }
 }
 
-private extension ChordQuality {
-    var musicXMLKindValue: String {
+extension ChordQuality {
+    fileprivate var musicXMLKindValue: String {
         switch self {
         case .major: "major"
         case .minor: "minor"
@@ -798,8 +801,8 @@ private extension ChordQuality {
     }
 }
 
-private extension PlaybackDirectiveEvent {
-    var musicXMLString: String {
+extension PlaybackDirectiveEvent {
+    fileprivate var musicXMLString: String {
         switch kind {
         case .tempo, .relativeTempo:
             let metronome = TmdMusicXMLGenerator.resolveMetronome(
@@ -844,4 +847,3 @@ private extension PlaybackDirectiveEvent {
         }
     }
 }
-

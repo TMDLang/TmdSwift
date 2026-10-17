@@ -160,7 +160,9 @@ public enum TmdScoreValidator {
         for (idx, rawLine) in lines.enumerated() {
             let trimmed = rawLine.trimmingCharacters(in: .whitespaces)
             if trimmed.hasPrefix("//") { continue }
-            if let range = trimmed.range(of: #"^\?=\s*([A-Ga-g][',#b]?m\b|\S+)"#, options: .regularExpression) {
+            if let range = trimmed.range(
+                of: #"^\?=\s*([A-Ga-g][',#b]?m\b|\S+)"#, options: .regularExpression)
+            {
                 let token = String(trimmed[range])
                     .replacingOccurrences(of: #"^\?=\s*"#, with: "", options: .regularExpression)
                     .trimmingCharacters(in: .whitespaces)
@@ -176,7 +178,8 @@ public enum TmdScoreValidator {
                             endColumn: max(1, rawLine.count),
                             severity: .error,
                             rule: .syntax,
-                            message: "Invalid movable-do key signature '?= \(token)'. '?=' only defines where '1' (do) is in semitones.",
+                            message:
+                                "Invalid movable-do key signature '?= \(token)'. '?=' only defines where '1' (do) is in semitones.",
                             suggestion: token.lowercased().hasSuffix("m")
                                 ? "Use '?= \(baseLetter.isEmpty ? "A" : baseLetter)' for the movable-do base and 'key= \(token)' for the written minor key signature."
                                 : "Use a pitch class such as C, D, E, F, G, A, B with optional ' or , (e.g. '?= C', '?= F', '?= B,')."
@@ -217,8 +220,9 @@ public enum TmdScoreValidator {
 
         // 2b. Timeline overlap (E-TIMELINE-OVERLAP)
         for overlap in TmdPlaybackRenderer.validate(sheet: expandedSheet) {
-            let line = findEntryLine(
-                name: overlap.sectionName, assignment: overlap.assignment, in: lines)
+            let line =
+                findEntryLine(
+                    name: overlap.sectionName, assignment: overlap.assignment, in: lines)
                 + options.lineOffset
             diagnostics.append(
                 TmdScoreDiagnostic(
@@ -332,7 +336,8 @@ public enum TmdScoreValidator {
             for section in entry.sections {
                 for group in section.unitGroups {
                     for unit in group.units {
-                        if case .chord(let chord) = unit, case .custom(let rawSuffix) = chord.quality
+                        if case .chord(let chord) = unit,
+                            case .custom(let rawSuffix) = chord.quality
                         {
                             let fullBracket = "[\(chord.description)]"
                             let loc = findTokenLocation(
@@ -655,7 +660,8 @@ public enum TmdScoreValidator {
                 syntheticHeaderLines = 4
             } else if trimmed.hasPrefix("<") {
                 syntheticSource =
-                    "::SCORE::\n!= 120\n?= C\n<4/4>\nSnippet:Piano@|0|{\n" + blockContent + "\n}\n-> Snippet ->#"
+                    "::SCORE::\n!= 120\n?= C\n<4/4>\nSnippet:Piano@|0|{\n" + blockContent
+                    + "\n}\n-> Snippet ->#"
                 syntheticHeaderLines = 5
             } else {
                 // Single-line or bare expression snippet (e.g. just playback arrows or comments)
@@ -762,7 +768,8 @@ public enum TmdScoreValidator {
         assignment: String?,
         in lines: [String]
     ) -> (line: Int, column: Int) {
-        let startLineIdx = max(0, findEntryLine(name: entryName, assignment: assignment, in: lines) - 1)
+        let startLineIdx = max(
+            0, findEntryLine(name: entryName, assignment: assignment, in: lines) - 1)
         for idx in startLineIdx..<lines.count {
             if let range = lines[idx].range(of: token) {
                 let col = lines[idx].distance(from: lines[idx].startIndex, to: range.lowerBound) + 1

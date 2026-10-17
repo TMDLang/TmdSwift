@@ -703,7 +703,8 @@ struct MusicXMLValidationTests {
                     let timeNodes = try measure.nodes(forXPath: "attributes/time")
                     // At most 1 <time> element per measure
                     #expect(timeNodes.count <= 1)
-                    if let divStr = (try measure.nodes(forXPath: "attributes/divisions").first)?.stringValue,
+                    if let divStr = (try measure.nodes(forXPath: "attributes/divisions").first)?
+                        .stringValue,
                         let div = Int(divStr)
                     {
                         currentDivisions = div
@@ -719,7 +720,9 @@ struct MusicXMLValidationTests {
                     let expectedDur = currentBeats * 4 * currentDivisions / currentBeatType
                     var actualDur = 0
                     for child in measure.children ?? [] {
-                        guard let noteEl = child as? XMLElement, noteEl.name == "note" else { continue }
+                        guard let noteEl = child as? XMLElement, noteEl.name == "note" else {
+                            continue
+                        }
                         // Every <note> must have a <type> element
                         #expect(!noteEl.elements(forName: "type").isEmpty)
                         if noteEl.elements(forName: "chord").first != nil { continue }
@@ -735,7 +738,9 @@ struct MusicXMLValidationTests {
         #endif
     }
 
-    @Test("Issue #52: Mid-section polymeters, coprime tuplets (5:3, 7:5, 11:7), sub-64th grids (<256*>, <1024*>), and extreme octaves")
+    @Test(
+        "Issue #52: Mid-section polymeters, coprime tuplets (5:3, 7:5, 11:7), sub-64th grids (<256*>, <1024*>), and extreme octaves"
+    )
     func testIssue52MidSectionPolymetersCoprimeTupletsSub64thAndExtremeOctaves() throws {
         let oneLine256 = Array(repeating: "1 2 3 5", count: 64).joined(separator: " ")
         let oneLine1024 = Array(repeating: "1 2 3 5", count: 256).joined(separator: " ")
@@ -794,9 +799,15 @@ struct MusicXMLValidationTests {
         let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
 
         // Coprime tuplets: 5:3, 7:5, 11:7
-        #expect(xml.contains("<actual-notes>5</actual-notes>\n            <normal-notes>3</normal-notes>"))
-        #expect(xml.contains("<actual-notes>7</actual-notes>\n            <normal-notes>5</normal-notes>"))
-        #expect(xml.contains("<actual-notes>11</actual-notes>\n            <normal-notes>7</normal-notes>"))
+        #expect(
+            xml.contains(
+                "<actual-notes>5</actual-notes>\n            <normal-notes>3</normal-notes>"))
+        #expect(
+            xml.contains(
+                "<actual-notes>7</actual-notes>\n            <normal-notes>5</normal-notes>"))
+        #expect(
+            xml.contains(
+                "<actual-notes>11</actual-notes>\n            <normal-notes>7</normal-notes>"))
         // Sub-64th note types
         #expect(xml.contains("<type>256th</type>"))
         #expect(xml.contains("<type>1024th</type>"))
@@ -828,12 +839,14 @@ struct MusicXMLValidationTests {
                 // 3 (TupletLab) + 3 (MicroMacro in 4/4) + 1 (ExtremeRange) = 7 measures
                 #expect(measures.count == 7)
                 for measure in measures {
-                    if let divStr = (try measure.nodes(forXPath: "attributes/divisions").first)?.stringValue,
+                    if let divStr = (try measure.nodes(forXPath: "attributes/divisions").first)?
+                        .stringValue,
                         let div = Int(divStr)
                     {
                         currentDivisions = div
                     }
-                    if let timeEl = (try measure.nodes(forXPath: "attributes/time").first) as? XMLElement,
+                    if let timeEl = (try measure.nodes(forXPath: "attributes/time").first)
+                        as? XMLElement,
                         let bStr = timeEl.elements(forName: "beats").first?.stringValue,
                         let btStr = timeEl.elements(forName: "beat-type").first?.stringValue,
                         let b = Int(bStr), let bt = Int(btStr)
@@ -844,17 +857,22 @@ struct MusicXMLValidationTests {
                     let expectedDur = currentBeats * 4 * currentDivisions / currentBeatType
                     var actualDur = 0
                     for child in measure.children ?? [] {
-                        guard let noteEl = child as? XMLElement, noteEl.name == "note" else { continue }
-                        let dur = try #require(Int(noteEl.elements(forName: "duration").first?.stringValue ?? ""))
+                        guard let noteEl = child as? XMLElement, noteEl.name == "note" else {
+                            continue
+                        }
+                        let dur = try #require(
+                            Int(noteEl.elements(forName: "duration").first?.stringValue ?? ""))
                         if noteEl.elements(forName: "chord").first == nil {
                             actualDur += dur
                         }
-                        if let octStr = (try noteEl.nodes(forXPath: "pitch/octave").first)?.stringValue,
+                        if let octStr = (try noteEl.nodes(forXPath: "pitch/octave").first)?
+                            .stringValue,
                             let oct = Int(octStr)
                         {
                             #expect((0...9).contains(oct))
                         }
-                        let typeStr = try #require(noteEl.elements(forName: "type").first?.stringValue)
+                        let typeStr = try #require(
+                            noteEl.elements(forName: "type").first?.stringValue)
                         let baseQ = try #require(typeMap[typeStr])
                         let dots = noteEl.elements(forName: "dot").count
                         var mult = 1.0
@@ -865,8 +883,10 @@ struct MusicXMLValidationTests {
                         }
                         var q = baseQ * mult
                         if let tm = noteEl.elements(forName: "time-modification").first,
-                            let act = Int(tm.elements(forName: "actual-notes").first?.stringValue ?? ""),
-                            let norm = Int(tm.elements(forName: "normal-notes").first?.stringValue ?? "")
+                            let act = Int(
+                                tm.elements(forName: "actual-notes").first?.stringValue ?? ""),
+                            let norm = Int(
+                                tm.elements(forName: "normal-notes").first?.stringValue ?? "")
                         {
                             q = q * Double(norm) / Double(act)
                         }
@@ -879,4 +899,3 @@ struct MusicXMLValidationTests {
         #endif
     }
 }
-

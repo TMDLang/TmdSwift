@@ -2,6 +2,7 @@ import Foundation
 import Testing
 import TmdAudio
 import TmdSkill
+
 @testable import TmdSwift
 
 @Test("Tmd prefix public symbols use canonical capitalization")
@@ -28,8 +29,10 @@ func releaseVersionIsConsistentAcrossPublishedMetadata() throws {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
     let version = TmdVersion.current
-    let extensionManifest = try Data(contentsOf: packageRoot.appendingPathComponent("editor/vscode/package.json"))
-    let manifest = try #require(JSONSerialization.jsonObject(with: extensionManifest) as? [String: Any])
+    let extensionManifest = try Data(
+        contentsOf: packageRoot.appendingPathComponent("editor/vscode/package.json"))
+    let manifest = try #require(
+        JSONSerialization.jsonObject(with: extensionManifest) as? [String: Any])
     let extensionVersion = try #require(manifest["version"] as? String)
     let readme = try String(contentsOf: packageRoot.appendingPathComponent("README.md"))
 
@@ -64,7 +67,9 @@ func canonicalTmdSourceFilenamesMatchSymbols() throws {
     ]
 
     for relativePath in sourceFiles {
-        #expect(FileManager.default.fileExists(atPath: packageRoot.appendingPathComponent(relativePath).path))
+        #expect(
+            FileManager.default.fileExists(
+                atPath: packageRoot.appendingPathComponent(relativePath).path))
     }
 }
 
@@ -74,7 +79,8 @@ func readmeUsesCanonicalTmdSymbolsAndRefactorFlags() throws {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
         .deletingLastPathComponent()
-    let readme = try String(contentsOf: packageRoot.appendingPathComponent("README.md"), encoding: .utf8)
+    let readme = try String(
+        contentsOf: packageRoot.appendingPathComponent("README.md"), encoding: .utf8)
 
     for staleSymbol in [
         "TMDSongInspector",
@@ -88,7 +94,9 @@ func readmeUsesCanonicalTmdSymbolsAndRefactorFlags() throws {
         "rename-instrument sample/basic/三天三夜.tmd --source",
         "rename-section sample/basic/三天三夜.tmd --source",
     ] {
-        #expect(!readme.contains(staleSymbol), "README.md should not contain stale reference: \(staleSymbol)")
+        #expect(
+            !readme.contains(staleSymbol),
+            "README.md should not contain stale reference: \(staleSymbol)")
     }
 
     for canonicalReference in [
@@ -104,7 +112,9 @@ func readmeUsesCanonicalTmdSymbolsAndRefactorFlags() throws {
         #"rename-instrument sample/basic/三天三夜.tmd --from "Piano" --to "Keys""#,
         #"rename-section sample/basic/三天三夜.tmd --from "verse" --to "A""#,
     ] {
-        #expect(readme.contains(canonicalReference), "README.md should contain canonical reference: \(canonicalReference)")
+        #expect(
+            readme.contains(canonicalReference),
+            "README.md should contain canonical reference: \(canonicalReference)")
     }
 }
 
@@ -114,12 +124,15 @@ func readmeHandlesThrowingMIDIGeneration() throws {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
         .deletingLastPathComponent()
-    let readme = try String(contentsOf: packageRoot.appendingPathComponent("README.md"), encoding: .utf8)
+    let readme = try String(
+        contentsOf: packageRoot.appendingPathComponent("README.md"), encoding: .utf8)
 
     #expect(readme.contains("let midiData = try TmdMIDIGenerator.generateMIDI(from: sheet)"))
 }
 
-@Test("ARCHITECTURE_PARITY.md lists existing canonical Swift paths including TmdParserIO and TmdParseDiagnostics")
+@Test(
+    "ARCHITECTURE_PARITY.md lists existing canonical Swift paths including TmdParserIO and TmdParseDiagnostics"
+)
 func architectureParityMatrixReferencesExistingCanonicalSwiftPaths() throws {
     let packageRoot = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
@@ -142,7 +155,8 @@ func architectureParityMatrixReferencesExistingCanonicalSwiftPaths() throws {
         guard let range = Range(match.range, in: parityDoc) else { continue }
         let relPath = String(parityDoc[range])
         #expect(
-            FileManager.default.fileExists(atPath: packageRoot.appendingPathComponent(relPath).path),
+            FileManager.default.fileExists(
+                atPath: packageRoot.appendingPathComponent(relPath).path),
             "Path in ARCHITECTURE_PARITY.md must exist: \(relPath)"
         )
     }

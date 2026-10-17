@@ -9,18 +9,19 @@ import TmdMIDI
 struct ExportEdgeCaseTests {
 
     private func makeSheet() throws -> Sheet {
-        try TmdParser.parseThrowing(string: """
-            ::SCORE::
-            ** Edge Case **
-            != 120
-            ?= C
-            <4/4>
-            A:Piano@|0|{
-                <4*>
-                | 1 2 3 4 |
-            }
-            -> A ->#
-            """)
+        try TmdParser.parseThrowing(
+            string: """
+                ::SCORE::
+                ** Edge Case **
+                != 120
+                ?= C
+                <4/4>
+                A:Piano@|0|{
+                    <4*>
+                    | 1 2 3 4 |
+                }
+                -> A ->#
+                """)
     }
 
     @Test("WAV rendering rejects non-finite and invalid sample rates")

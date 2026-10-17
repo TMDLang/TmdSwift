@@ -62,10 +62,14 @@ public struct TmdRefactor {
     )
 
     /// Parses a paragraph header line (`<section>:<instrument>@... {`) and returns `(section, instrument)` if matched.
-    static func parseParagraphHeaderLine(_ trimmedLine: String) -> (section: String, instrument: String)? {
+    static func parseParagraphHeaderLine(_ trimmedLine: String) -> (
+        section: String, instrument: String
+    )? {
         let nsTrimmed = trimmedLine as NSString
         let range = NSRange(location: 0, length: nsTrimmed.length)
-        guard let match = paragraphHeaderRegex.firstMatch(in: trimmedLine, options: [], range: range) else {
+        guard
+            let match = paragraphHeaderRegex.firstMatch(in: trimmedLine, options: [], range: range)
+        else {
             return nil
         }
         return (
@@ -78,7 +82,9 @@ public struct TmdRefactor {
     static func parseGridSubdivisionLine(_ trimmedLine: String) -> Int? {
         let nsTrimmed = trimmedLine as NSString
         let range = NSRange(location: 0, length: nsTrimmed.length)
-        guard let match = gridSubdivisionRegex.firstMatch(in: trimmedLine, options: [], range: range) else {
+        guard
+            let match = gridSubdivisionRegex.firstMatch(in: trimmedLine, options: [], range: range)
+        else {
             return nil
         }
         return Int(nsTrimmed.substring(with: match.range(at: 1))) ?? 4

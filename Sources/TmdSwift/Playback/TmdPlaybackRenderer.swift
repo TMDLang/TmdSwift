@@ -218,10 +218,11 @@ public enum TmdPlaybackRenderer {
         ]
         let sortedDirectives = directives.sorted { $0.position < $1.position }
         for directive in sortedDirectives {
-            let affectsTempoOrMeter: Bool = switch directive.kind {
-            case .tempo, .relativeTempo, .timeSignature: true
-            case .dynamics, .absoluteKey, .explicitKey, .relativeKey, .fixedPitch: false
-            }
+            let affectsTempoOrMeter: Bool =
+                switch directive.kind {
+                case .tempo, .relativeTempo, .timeSignature: true
+                case .dynamics, .absoluteKey, .explicitKey, .relativeKey, .fixedPitch: false
+                }
             guard affectsTempoOrMeter else { continue }
             let last = segments[segments.count - 1]
             let clampedBpm = clampTempo(directive.state.tempo)
@@ -343,7 +344,8 @@ public enum TmdPlaybackRenderer {
         return fallback
     }
 
-    private static func range(of entry: Entry, in sheet: Sheet? = nil, beat: Beat) -> Range<Double> {
+    private static func range(of entry: Entry, in sheet: Sheet? = nil, beat: Beat) -> Range<Double>
+    {
         let duration = entry.sections.reduce(0.0) { total, section in
             let unitDuration = 4.0 / Double(max(1, section.noteLength))
             return total
@@ -367,46 +369,47 @@ public enum TmdPlaybackRenderer {
 
         for order in orders {
             guard let name = cursor.visit(order) else { continue }
-                let matchingParagraphs = paragraphs.filter { $0.name == name }
-                let paragraphDuration = duration(of: name, in: sheet, beat: cursor.state.timeSignature)
-                guard !matchingParagraphs.isEmpty else {
-                    cursor.advance(by: paragraphDuration)
-                    continue
-                }
-
-                for paragraph in matchingParagraphs {
-                    let entryBeat = entryInitialBeat(
-                        for: paragraph, in: sheet, fallback: cursor.state.timeSignature)
-                    let start =
-                        cursor.timelinePosition + Double(paragraph.start)
-                        * measureDuration(for: entryBeat)
-                    let minTimeSigPos =
-                        (paragraph.start < 0 && cursor.timelinePosition > 0)
-                        ? cursor.timelinePosition : start
-                    let paragraphState =
-                        paragraph.pitchMode == .fixed
-                        ? PlaybackState(
-                            tempo: cursor.state.tempo, keyOffset: 0, timeSignature: cursor.state.timeSignature,
-                            dynamicLevel: cursor.state.dynamicLevel)
-                        : cursor.state
-                    let rendered = render(
-                        paragraph: paragraph,
-                        start: start,
-                        state: paragraphState,
-                        fixedPitch: paragraph.pitchMode == .fixed,
-                        minTimeSignaturePosition: minTimeSigPos
-                    )
-                    events.append(contentsOf: rendered.events)
-                    directives.append(contentsOf: rendered.directives)
-                    cursor.state = PlaybackState(
-                        tempo: rendered.state.tempo,
-                        keyOffset: paragraph.pitchMode == .fixed
-                            ? cursor.state.keyOffset : rendered.state.keyOffset,
-                        timeSignature: cursor.state.timeSignature,
-                        dynamicLevel: rendered.state.dynamicLevel
-                    )
-                }
+            let matchingParagraphs = paragraphs.filter { $0.name == name }
+            let paragraphDuration = duration(of: name, in: sheet, beat: cursor.state.timeSignature)
+            guard !matchingParagraphs.isEmpty else {
                 cursor.advance(by: paragraphDuration)
+                continue
+            }
+
+            for paragraph in matchingParagraphs {
+                let entryBeat = entryInitialBeat(
+                    for: paragraph, in: sheet, fallback: cursor.state.timeSignature)
+                let start =
+                    cursor.timelinePosition + Double(paragraph.start)
+                    * measureDuration(for: entryBeat)
+                let minTimeSigPos =
+                    (paragraph.start < 0 && cursor.timelinePosition > 0)
+                    ? cursor.timelinePosition : start
+                let paragraphState =
+                    paragraph.pitchMode == .fixed
+                    ? PlaybackState(
+                        tempo: cursor.state.tempo, keyOffset: 0,
+                        timeSignature: cursor.state.timeSignature,
+                        dynamicLevel: cursor.state.dynamicLevel)
+                    : cursor.state
+                let rendered = render(
+                    paragraph: paragraph,
+                    start: start,
+                    state: paragraphState,
+                    fixedPitch: paragraph.pitchMode == .fixed,
+                    minTimeSignaturePosition: minTimeSigPos
+                )
+                events.append(contentsOf: rendered.events)
+                directives.append(contentsOf: rendered.directives)
+                cursor.state = PlaybackState(
+                    tempo: rendered.state.tempo,
+                    keyOffset: paragraph.pitchMode == .fixed
+                        ? cursor.state.keyOffset : rendered.state.keyOffset,
+                    timeSignature: cursor.state.timeSignature,
+                    dynamicLevel: rendered.state.dynamicLevel
+                )
+            }
+            cursor.advance(by: paragraphDuration)
         }
 
         // Shift the entire timeline forward so that the earliest event across all instruments in the score
@@ -766,26 +769,26 @@ public enum TmdPlaybackRenderer {
 
         for order in orders {
             guard let name = cursor.visit(order) else { continue }
-                let matchingParagraphs = sheet.entries.filter { $0.name == name }
-                let paragraphDuration = duration(of: name, in: sheet, beat: cursor.state.timeSignature)
-                for paragraph in matchingParagraphs {
-                    let entryBeat = entryInitialBeat(
-                        for: paragraph, in: sheet, fallback: cursor.state.timeSignature)
-                    let start =
-                        cursor.timelinePosition + Double(paragraph.start)
-                        * measureDuration(for: entryBeat)
-                    if start < minPosition {
-                        minPosition = start
-                    }
+            let matchingParagraphs = sheet.entries.filter { $0.name == name }
+            let paragraphDuration = duration(of: name, in: sheet, beat: cursor.state.timeSignature)
+            for paragraph in matchingParagraphs {
+                let entryBeat = entryInitialBeat(
+                    for: paragraph, in: sheet, fallback: cursor.state.timeSignature)
+                let start =
+                    cursor.timelinePosition + Double(paragraph.start)
+                    * measureDuration(for: entryBeat)
+                if start < minPosition {
+                    minPosition = start
                 }
-                cursor.advance(by: paragraphDuration)
+            }
+            cursor.advance(by: paragraphDuration)
         }
         return minPosition
     }
 }
 
-private extension Unit {
-    var playbackContent: PlaybackContent? {
+extension Unit {
+    fileprivate var playbackContent: PlaybackContent? {
         switch self {
         case .note(let note): .note(note)
         case .chord(let chord): .chord(chord)
@@ -796,8 +799,8 @@ private extension Unit {
     }
 }
 
-private extension SectionDirectiveKind {
-    func applied(to state: PlaybackState, fixedPitch: Bool = false) -> PlaybackState {
+extension SectionDirectiveKind {
+    fileprivate func applied(to state: PlaybackState, fixedPitch: Bool = false) -> PlaybackState {
         if fixedPitch {
             switch self {
             case .absoluteKey, .relativeKey, .fixedPitch:
@@ -813,7 +816,8 @@ private extension SectionDirectiveKind {
                 timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
         case .relativeTempo(let value):
             PlaybackState(
-                tempo: TmdPlaybackRenderer.clampTempo(state.tempo + value), keyOffset: state.keyOffset,
+                tempo: TmdPlaybackRenderer.clampTempo(state.tempo + value),
+                keyOffset: state.keyOffset,
                 timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
         case .absoluteKey(let value):
             PlaybackState(

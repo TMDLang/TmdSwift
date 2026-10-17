@@ -5,7 +5,8 @@ import TmdLSP
 struct TmdLSPCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "lsp",
-        abstract: "Run the TMD Language Server Protocol (LSP) daemon communicating over standard I/O (JSON-RPC)."
+        abstract:
+            "Run the TMD Language Server Protocol (LSP) daemon communicating over standard I/O (JSON-RPC)."
     )
 
     func run() throws {

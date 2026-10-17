@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 import TmdBraille
+
 @testable import TmdSwift
 
 @Suite("TmdBraille Generator Validation Tests")
@@ -8,35 +9,35 @@ struct BrailleValidationTests {
     @Test("Worked Example 1: Single-section Canon Excerpt matches Section 9.2 Unicode and BRF")
     func workedExample1CanonExcerpt() throws {
         let source = """
-        ::SCORE::
-        ** Canon Excerpt **
-        != 56
-        ?= D
-        key= D
-        <4/4>
+            ::SCORE::
+            ** Canon Excerpt **
+            != 56
+            ?= D
+            key= D
+            <4/4>
 
-        intro:Violin1@|0|{
-            <4*>
-            {mf} 3^ 2^ 1^ 7 | 1+3+5 - - - |
-        }
+            intro:Violin1@|0|{
+                <4*>
+                {mf} 3^ 2^ 1^ 7 | 1+3+5 - - - |
+            }
 
-        intro:Cello@|0|{
-            <4*>
-            {p} 1_ 5__ 6__ 3__ | 4__ - 5__ - |
-        }
+            intro:Cello@|0|{
+                <4*>
+                {p} 1_ 5__ 6__ 3__ | 4__ - 5__ - |
+            }
 
-        -> intro ->#
-        """
+            -> intro ->#
+            """
         let sheet = try TmdParser.parseThrowing(string: source)
 
         let unicodeOutput = TmdBrailleGenerator.generateBraille(from: sheet)
         let expectedUnicode = """
-        ⠠⠉⠁⠝⠕⠝ ⠠⠑⠭⠉⠑⠗⠏⠞
-        ⠹⠶⠼⠑⠋ ⠩⠩⠼⠙⠲
-        ⠜⠧⠇⠂⠄ ⠜⠍⠋⠨⠻⠫⠱⠹ ⠐⠵⠬⠔⠣⠅
-        ⠜⠧⠉⠄ ⠜⠏⠸⠱⠘⠪⠺⠻ ⠗⠎⠣⠅
+            ⠠⠉⠁⠝⠕⠝ ⠠⠑⠭⠉⠑⠗⠏⠞
+            ⠹⠶⠼⠑⠋ ⠩⠩⠼⠙⠲
+            ⠜⠧⠇⠂⠄ ⠜⠍⠋⠨⠻⠫⠱⠹ ⠐⠵⠬⠔⠣⠅
+            ⠜⠧⠉⠄ ⠜⠏⠸⠱⠘⠪⠺⠻ ⠗⠎⠣⠅
 
-        """
+            """
         #expect(unicodeOutput == expectedUnicode)
 
         let brfOutput = TmdBrailleGenerator.generateBraille(
@@ -44,67 +45,69 @@ struct BrailleValidationTests {
             options: TmdBrailleOptions(encoding: .ascii, layout: .partByPart)
         )
         let expectedBrf = """
-        ,CANON ,EXCERPT
-        ?7#EF %%#D4
-        >VL1' >MF.]$:? "Z+9<K
-        >VC' >P_:^[W] RS<K
+            ,CANON ,EXCERPT
+            ?7#EF %%#D4
+            >VL1' >MF.]$:? "Z+9<K
+            >VC' >P_:^[W] RS<K
 
-        """
+            """
         #expect(brfOutput == expectedBrf)
     }
 
-    @Test("Worked Example 2: Playback Demo with Canon, Modulation, Fixed Pitch, and Show Filtering matches Section 9.3")
+    @Test(
+        "Worked Example 2: Playback Demo with Canon, Modulation, Fixed Pitch, and Show Filtering matches Section 9.3"
+    )
     func workedExample2PlaybackDemo() throws {
         let source = """
-        ::SCORE::
-        ** Playback Demo **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Playback Demo **
+            != 120
+            ?= C
+            <4/4>
 
-        /* Unbound prototype (excluded unless bound by playback) */
-        Theme {
-            <2*>
-            1 3 |
-        }
+            /* Unbound prototype (excluded unless bound by playback) */
+            Theme {
+                <2*>
+                1 3 |
+            }
 
-        outro:Violin1@|0|{
-            <1*>
-            1 |
-        }
+            outro:Violin1@|0|{
+                <1*>
+                1 |
+            }
 
-        outro:Chord@|+1|{
-            <1*>
-            [1] |
-        }
+            outro:Chord@|+1|{
+                <1*>
+                [1] |
+            }
 
-        outro:Timpani[pitchMode=fixed]@|0|{
-            <1*>
-            1_ - |
-        }
+            outro:Timpani[pitchMode=fixed]@|0|{
+                <1*>
+                1_ - |
+            }
 
-        show:Lighting@outro{
-        \"\"\"
-        cue blackout
-        \"\"\"
-        }
+            show:Lighting@outro{
+            \"\"\"
+            cue blackout
+            \"\"\"
+            }
 
-        -> (canon Theme (Violin1 Violin2) 1)
-        -> {?+2}
-        -> outro
-        ->#
-        """
+            -> (canon Theme (Violin1 Violin2) 1)
+            -> {?+2}
+            -> outro
+            ->#
+            """
         let sheet = try TmdParser.parseThrowing(string: source)
         let unicodeOutput = TmdBrailleGenerator.generateBraille(from: sheet)
         let expectedUnicode = """
-        ⠠⠏⠇⠁⠽⠃⠁⠉⠅ ⠠⠙⠑⠍⠕
-        ⠹⠶⠼⠁⠃⠚ ⠼⠙⠲
-        ⠜⠧⠇⠂⠄ ⠐⠝⠏ ⠍ ⠩⠩ ⠐⠵ ⠍⠣⠅
-        ⠜⠧⠇⠆⠄ ⠍ ⠐⠝⠏ ⠍⠍⠣⠅
-        ⠒⠜ ⠍⠍⠍ ⠠⠙⠸⠄⠣⠅
-        ⠜⠞⠊⠍⠄ ⠍⠍ ⠸⠽⠈⠉⠽⠣⠅
+            ⠠⠏⠇⠁⠽⠃⠁⠉⠅ ⠠⠙⠑⠍⠕
+            ⠹⠶⠼⠁⠃⠚ ⠼⠙⠲
+            ⠜⠧⠇⠂⠄ ⠐⠝⠏ ⠍ ⠩⠩ ⠐⠵ ⠍⠣⠅
+            ⠜⠧⠇⠆⠄ ⠍ ⠐⠝⠏ ⠍⠍⠣⠅
+            ⠒⠜ ⠍⠍⠍ ⠠⠙⠸⠄⠣⠅
+            ⠜⠞⠊⠍⠄ ⠍⠍ ⠸⠽⠈⠉⠽⠣⠅
 
-        """
+            """
         #expect(unicodeOutput == expectedUnicode)
 
         let brfOutput = TmdBrailleGenerator.generateBraille(
@@ -112,39 +115,41 @@ struct BrailleValidationTests {
             options: TmdBrailleOptions(encoding: .ascii, layout: .partByPart)
         )
         let expectedBrf = """
-        ,PLAYBACK ,DEMO
-        ?7#ABJ #D4
-        >VL1' "NP M %% "Z M<K
-        >VL2' M "NP MM<K
-        3> MMM ,D_'<K
-        >TIM' MM _Y@CY<K
+            ,PLAYBACK ,DEMO
+            ?7#ABJ #D4
+            >VL1' "NP M %% "Z M<K
+            >VL2' M "NP MM<K
+            3> MMM ,D_'<K
+            >TIM' MM _Y@CY<K
 
-        """
+            """
         #expect(brfOutput == expectedBrf)
         #expect(!unicodeOutput.contains("Lighting"))
     }
 
-    @Test("Supports Bar-over-Bar layout, intra-measure accidentals, flat keys, and multi-pitch chords")
+    @Test(
+        "Supports Bar-over-Bar layout, intra-measure accidentals, flat keys, and multi-pitch chords"
+    )
     func barOverBarAndAccidentalsAndChords() throws {
         let source = """
-        ::SCORE::
-        ** Flat Key Demo **
-        != 100
-        ?= F
-        <4/4>
+            ::SCORE::
+            ** Flat Key Demo **
+            != 100
+            ?= F
+            <4/4>
 
-        verse:Piano@|0|{
-            <4*>
-            1+3+5 4' 7, 0 |
-        }
+            verse:Piano@|0|{
+                <4*>
+                1+3+5 4' 7, 0 |
+            }
 
-        verse:Bass@|0|{
-            <4*>
-            1_ - 5_ - |
-        }
+            verse:Bass@|0|{
+                <4*>
+                1_ - 5_ - |
+            }
 
-        -> verse ->#
-        """
+            -> verse ->#
+            """
         let sheet = try TmdParser.parseThrowing(string: source)
         let barOverBar = TmdBrailleGenerator.generateBraille(
             from: sheet,
@@ -159,28 +164,31 @@ struct BrailleValidationTests {
         #expect(barOverBar.contains("⠡"))
     }
 
-    @Test("Issue #59: Solo treble vs bass chord interval direction, #A prefix, centered headers, and single .C chord tie")
+    @Test(
+        "Issue #59: Solo treble vs bass chord interval direction, #A prefix, centered headers, and single .C chord tie"
+    )
     func soloVsEnsembleLayoutChordDirectionAndChordTie() throws {
         let soloTrebleSource = """
-        ::SCORE::
-        ** Test Score **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Test Score **
+            != 120
+            ?= C
+            <4/4>
 
-        A:Piano@|0|{
-            <4*>
-            | 1 2 3 4 |
-            | 1+3+5 - - - | - 0 0 - |
-        }
-        -> A ->#
-        """
+            A:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
+                | 1+3+5 - - - | - 0 0 - |
+            }
+            -> A ->#
+            """
         let soloTrebleSheet = try TmdParser.parseThrowing(string: soloTrebleSource)
         let soloBrf = TmdBrailleGenerator.generateBraille(
             from: soloTrebleSheet,
             options: TmdBrailleOptions(encoding: .ascii, layout: .partByPart)
         )
-        let soloLines = soloBrf.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        let soloLines = soloBrf.split(separator: "\n", omittingEmptySubsequences: false).map(
+            String.init)
         // Centered title (at least 3 leading spaces), blank line, centered header, and #A paragraph start
         #expect(soloLines.count >= 4)
         #expect(soloLines[0].hasPrefix("   "))
@@ -194,18 +202,18 @@ struct BrailleValidationTests {
 
         // Solo bass-clef instrument (Cello) uses bottom-up intervals (`Y+9.C?+9`)
         let soloBassSource = """
-        ::SCORE::
-        ** Bass Solo **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Bass Solo **
+            != 120
+            ?= C
+            <4/4>
 
-        A:Cello@|0|{
-            <4*>
-            | 1_+3_+5_ - - - | - 0 0 - |
-        }
-        -> A ->#
-        """
+            A:Cello@|0|{
+                <4*>
+                | 1_+3_+5_ - - - | - 0 0 - |
+            }
+            -> A ->#
+            """
         let soloBassSheet = try TmdParser.parseThrowing(string: soloBassSource)
         let soloBassBrf = TmdBrailleGenerator.generateBraille(
             from: soloBassSheet,
@@ -214,22 +222,24 @@ struct BrailleValidationTests {
         #expect(soloBassBrf.contains("#A _Y+9.C?+9VU<K"))
     }
 
-    @Test("Issue #59: Tuplets (2 and _n'), 16th-note beat grouping (Par. 8.1), value distinction signs (,<1 / ^<1), and inline key naturals (*)")
+    @Test(
+        "Issue #59: Tuplets (2 and _n'), 16th-note beat grouping (Par. 8.1), value distinction signs (,<1 / ^<1), and inline key naturals (*)"
+    )
     func tupletsGroupingValueDistinctionAndKeyNaturals() throws {
         // 1. Triplets (`2`) and Quintuplets (`_5'`) preserve written face values
         let tupletSource = """
-        ::SCORE::
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            != 120
+            ?= C
+            <4/4>
 
-        A:Flute@|0|{
-            <4*>
-            | (1 2 3)%(--) 1 2 |
-            | (1 2 3 4 5)%(--) 1 2 |
-        }
-        -> A ->#
-        """
+            A:Flute@|0|{
+                <4*>
+                | (1 2 3)%(--) 1 2 |
+                | (1 2 3 4 5)%(--) 1 2 |
+            }
+            -> A ->#
+            """
         let tupletSheet = try TmdParser.parseThrowing(string: tupletSource)
         let tupletBrf = TmdBrailleGenerator.generateBraille(
             from: tupletSheet,
@@ -241,17 +251,17 @@ struct BrailleValidationTests {
 
         // 2. 16th-note grouping (BANA Par. 8.1): four 16th notes in beat 1 -> first is 16th (`Y`), next 3 are 8th (`EFG`)
         let groupingSource = """
-        ::SCORE::
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            != 120
+            ?= C
+            <4/4>
 
-        A:Violin@|0|{
-            <16*>
-            | 1 2 3 4 <4*> 5 4 3 |
-        }
-        -> A ->#
-        """
+            A:Violin@|0|{
+                <16*>
+                | 1 2 3 4 <4*> 5 4 3 |
+            }
+            -> A ->#
+            """
         let groupingSheet = try TmdParser.parseThrowing(string: groupingSource)
         let groupingBrf = TmdBrailleGenerator.generateBraille(
             from: groupingSheet,
@@ -261,17 +271,17 @@ struct BrailleValidationTests {
 
         // 3. Value distinction sign `,<1` (⠠⠣⠂) when large and small values of the same class could be confused, plus forceOctave
         let distinctionSource = """
-        ::SCORE::
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            != 120
+            ?= C
+            <4/4>
 
-        A:Violin@|0|{
-            <2*>
-            | 1 <32*> 1 2 3 4 5 6 7 1^ 2^ 3^ 4^ 5^ 6^ 7^ 1^^ 2^^ |
-        }
-        -> A ->#
-        """
+            A:Violin@|0|{
+                <2*>
+                | 1 <32*> 1 2 3 4 5 6 7 1^ 2^ 3^ 4^ 5^ 6^ 7^ 1^^ 2^^ |
+            }
+            -> A ->#
+            """
         let distinctionSheet = try TmdParser.parseThrowing(string: distinctionSource)
         let distinctionBrf = TmdBrailleGenerator.generateBraille(
             from: distinctionSheet,
@@ -281,20 +291,20 @@ struct BrailleValidationTests {
 
         // 4. Inline key signature changes emit natural cancellation `*` (including back to C major)
         let keyModSource = """
-        ::SCORE::
-        != 120
-        ?= D
-        key= D
-        <4/4>
+            ::SCORE::
+            != 120
+            ?= D
+            key= D
+            <4/4>
 
-        A:Violin@|0|{
-            <1*>
-            | 1 |
-            | {key= G} 1 |
-            | {key= C} 1 |
-        }
-        -> A ->#
-        """
+            A:Violin@|0|{
+                <1*>
+                | 1 |
+                | {key= G} 1 |
+                | {key= C} 1 |
+            }
+            -> A ->#
+            """
         let keyModSheet = try TmdParser.parseThrowing(string: keyModSource)
         let keyModBrf = TmdBrailleGenerator.generateBraille(
             from: keyModSheet,
@@ -304,32 +314,37 @@ struct BrailleValidationTests {
         #expect(keyModBrf.contains("#A \"Z *% \"Z * \"Z<K"))
     }
 
-    @Test("Issue #59: 40-cell line wrapping with 2-space continuation indent and mandatory octave mark on new line (Par. CN-4)")
+    @Test(
+        "Issue #59: 40-cell line wrapping with 2-space continuation indent and mandatory octave mark on new line (Par. CN-4)"
+    )
     func fortyCellLineWrappingAndOctaveReset() throws {
         let longSource = """
-        ::SCORE::
-        ** Long Solo **
-        != 120
-        ?= C
-        <4/4>
+            ::SCORE::
+            ** Long Solo **
+            != 120
+            ?= C
+            <4/4>
 
-        A:Piano@|0|{
-            <4*>
-            | 1 2 3 4 | 5 4 3 2 | 1 2 3 4 | 5 4 3 2 |
-            | 1 2 3 4 | 5 4 3 2 | 1 2 3 4 | 1 - - - |
-        }
-        -> A ->#
-        """
+            A:Piano@|0|{
+                <4*>
+                | 1 2 3 4 | 5 4 3 2 | 1 2 3 4 | 5 4 3 2 |
+                | 1 2 3 4 | 5 4 3 2 | 1 2 3 4 | 1 - - - |
+            }
+            -> A ->#
+            """
         let sheet = try TmdParser.parseThrowing(string: longSource)
         let wrappedBrf = TmdBrailleGenerator.generateBraille(
             from: sheet,
             options: TmdBrailleOptions(encoding: .ascii, layout: .partByPart, lineWidth: 40)
         )
-        let lines = wrappedBrf.split(separator: "\n", omittingEmptySubsequences: true).map(String.init)
+        let lines = wrappedBrf.split(separator: "\n", omittingEmptySubsequences: true).map(
+            String.init)
         for line in lines {
             #expect(line.count <= 40)
         }
-        let musicLines = lines.filter { $0.hasPrefix("#A ") || ($0.hasPrefix("  ") && !$0.hasPrefix("   ")) }
+        let musicLines = lines.filter {
+            $0.hasPrefix("#A ") || ($0.hasPrefix("  ") && !$0.hasPrefix("   "))
+        }
         #expect(musicLines.count >= 2)
         // Continuation line must start with 2 spaces followed immediately by an octave mark `"` on C4 (`"Y<K`)
         #expect(musicLines[1] == "  \"Y<K")

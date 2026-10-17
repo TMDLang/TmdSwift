@@ -303,8 +303,8 @@ public struct TmdABCGenerator {
     }
 }
 
-private extension PlaybackDirectiveEvent {
-    var abcString: String {
+extension PlaybackDirectiveEvent {
+    fileprivate var abcString: String {
         switch kind {
         case .tempo, .relativeTempo:
             let cmd = TmdABCGenerator.resolveTempo(

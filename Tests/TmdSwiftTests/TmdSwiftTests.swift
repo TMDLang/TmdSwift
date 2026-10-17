@@ -536,7 +536,8 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         if ext == "md" {
             let parts = source.components(separatedBy: "```tmd")
             snippets = parts.dropFirst().compactMap { part in
-                part.components(separatedBy: "```").first?.trimmingCharacters(in: .whitespacesAndNewlines)
+                part.components(separatedBy: "```").first?.trimmingCharacters(
+                    in: .whitespacesAndNewlines)
             }.filter { $0.hasPrefix("::SCORE::") }
         } else {
             snippets = [source]
@@ -570,7 +571,9 @@ func testPlaybackReportsConflictingTempoDirectives() throws {
         checkedCount += 1
     }
 
-    #expect(checkedCount >= 28, "Expected at least 28 sample files to be checked, found \(checkedCount)")
+    #expect(
+        checkedCount >= 28, "Expected at least 28 sample files to be checked, found \(checkedCount)"
+    )
 }
 
 @Test func testFileURLAndEncoding() throws {
@@ -1476,7 +1479,7 @@ func testGlobalEarliestPositionUsesExpandedPlayback() throws {
         ]
     )
     let expression = SExpr.list([
-        .symbol("play"), .symbol("Theme"), .symbol("Piano"), .symbol(":at"), .number(-1)
+        .symbol("play"), .symbol("Theme"), .symbol("Piano"), .symbol(":at"), .number(-1),
     ])
     let sheet = Sheet(entries: [theme], playback: [.macro(expression)])
 
@@ -1485,20 +1488,22 @@ func testGlobalEarliestPositionUsesExpandedPlayback() throws {
 
 @Test("Playback order modifiers use one state transition path")
 func testPlaybackOrderModifiersShareStateTransition() throws {
-    let sheet = try #require(TmdParser.parse(string: """
-        ::SCORE::
-        ** Playback Order State **
-        != 120
-        ?= C
-        <4/4>
+    let sheet = try #require(
+        TmdParser.parse(
+            string: """
+                ::SCORE::
+                ** Playback Order State **
+                != 120
+                ?= C
+                <4/4>
 
-        A:Piano@|0|{
-            <4*>
-            1
-        }
+                A:Piano@|0|{
+                    <4*>
+                    1
+                }
 
-        -> {?+2} -> A -> {?=E} -> A ->#
-        """))
+                -> {?+2} -> A -> {?=E} -> A ->#
+                """))
 
     let timeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
     #expect(timeline.events.map(\.state.keyOffset) == [2, 4])

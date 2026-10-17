@@ -273,7 +273,9 @@ struct LilyPondValidationTests {
         #expect(lyC.contains("bis'4"))
     }
 
-    @Test("Issue #41: LilyPond preserves simultaneous chord + note events and recognizes min/maj key suffixes")
+    @Test(
+        "Issue #41: LilyPond preserves simultaneous chord + note events and recognizes min/maj key suffixes"
+    )
     func testLilyPondSimultaneousChordAndNoteAndMinKey() throws {
         let tmd = """
             ::SCORE::
@@ -300,7 +302,9 @@ struct LilyPondValidationTests {
         #expect(ly.contains("g'1"))
     }
 
-    @Test("Issue #58: LilyPond attaches postfix dynamics, divides multi-stroke percussion durations, and conserves sub-64th/tuplet measure durations across golden_case")
+    @Test(
+        "Issue #58: LilyPond attaches postfix dynamics, divides multi-stroke percussion durations, and conserves sub-64th/tuplet measure durations across golden_case"
+    )
     func testLilyPondSub64thTupletsPercussionAndPostfixDynamics() throws {
         let oneLine256 = Array(repeating: "1 2 3 5", count: 64).joined(separator: " ")
         let tmd = """
@@ -351,7 +355,8 @@ struct LilyPondValidationTests {
 
         // Extract each track block: VarName = [\drummode] { \global ... }
         let blockRegex = try NSRegularExpression(
-            pattern: #"([A-Za-z][A-Za-z0-9_]*)\s*=\s*(?:\\drummode\s*)?\{\s*\\global\s*([\s\S]*?)\n\}"#
+            pattern:
+                #"([A-Za-z][A-Za-z0-9_]*)\s*=\s*(?:\\drummode\s*)?\{\s*\\global\s*([\s\S]*?)\n\}"#
         )
         let nsGolden = goldenLy as NSString
         let blockMatches = blockRegex.matches(
@@ -363,7 +368,8 @@ struct LilyPondValidationTests {
             pattern: #"(?:<[^>]+>|[a-z]+[,']*)\s*(\d+)(\.*)(?:\*(\d+)/(\d+))?"#
         )
         let stripDirectivesRegex = try NSRegularExpression(
-            pattern: #"\\(?:time\s+\d+/\d+|tempo\s+\S+\s*=\s*\d+|key\s+[a-z]+\s+\\[a-z]+|ppp|pp|mp|mf|fff|ff|p|f)\b"#
+            pattern:
+                #"\\(?:time\s+\d+/\d+|tempo\s+\S+\s*=\s*\d+|key\s+[a-z]+\s+\\[a-z]+|ppp|pp|mp|mf|fff|ff|p|f)\b"#
         )
 
         for match in blockMatches {

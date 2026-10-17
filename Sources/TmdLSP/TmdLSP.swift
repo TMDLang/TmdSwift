@@ -1,7 +1,6 @@
 import Foundation
 import TmdSwift
 
-
 public final class TmdLSPServer: @unchecked Sendable {
     public private(set) var documents: [String: String] = [:]
     public var sendOutput: ((String) -> Void)?

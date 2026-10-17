@@ -126,7 +126,9 @@ struct UTAUTests {
         #expect(ust.contains("Tempo=150.00"))
     }
 
-    @Test("Test UTAU monophonic reduction of simultaneous multi-notes (1+3+5 picks highest pitch 5=67)")
+    @Test(
+        "Test UTAU monophonic reduction of simultaneous multi-notes (1+3+5 picks highest pitch 5=67)"
+    )
     func testUSTMonophonicMultiNoteReduction() throws {
         let tmdContent = """
             ::SCORE::
