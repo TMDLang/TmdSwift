@@ -185,6 +185,11 @@ tmd inspect sample/basic/三天三夜.tmd --json
 # Generate document symbol outline (sections and tracks with line/col offsets)
 tmd outline sample/basic/三天三夜.tmd
 
+# Generate shareable TMD Studio URL (#tmd=...) and optionally copy or open in browser
+tmd studio-url sample/basic/三天三夜.tmd
+tmd studio-url sample/basic/三天三夜.tmd --copy --open
+tmd studio-url sample/basic/三天三夜.tmd --base-url https://tmdlang.github.io/Tmd-TS/
+
 # Install TMD skill definition into local AI agent environments (Codex, Antigravity, Claude, etc.)
 tmd --install-skills
 ```
