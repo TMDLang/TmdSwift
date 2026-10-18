@@ -2575,9 +2575,9 @@ func testMultiNoteMeasureBasedExporters() throws {
     let ly = TmdLilyPondGenerator.generateLilyPond(from: sheet)
     #expect(ly.contains("<c' e' g'>4 <d' f'>4 <e' g'>4 c'4"))
 
-    // 3. ABC: renders simultaneous notes as [ceg]4 [df]4 [eg]4 c4
+    // 3. ABC: renders simultaneous notes as [CEG]4 [DF]4 [EG]4 C4
     let abc = TmdABCGenerator.generateABC(from: sheet)
-    #expect(abc.contains("[ceg]4 [df]4 [eg]4 c4"))
+    #expect(abc.contains("[CEG]4 [DF]4 [EG]4 C4"))
 
     // 4. Braille: solo treble-clef Piano renders 1+3+5 top-down as G4 quarter ("\) followed by downward 3rd (+) and 5th (9) -> "\+9
     let brf = TmdBrailleGenerator.generateBraille(

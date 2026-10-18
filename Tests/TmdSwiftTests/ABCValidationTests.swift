@@ -232,12 +232,12 @@ struct ABCValidationTests {
 
         // Section inline directive {key= F#m} -> K:F#m
         #expect(abc.contains("K:F#m"))
-        // In measure 2 under K:F#m (3 sharps: F#, C#, G#), degree 4 in ?= D is G4 natural -> must emit =g4
-        #expect(abc.contains("=g4"))
+        // In measure 2 under K:F#m (3 sharps: F#, C#, G#), degree 4 in ?= D is G4 natural -> must emit =G4
+        #expect(abc.contains("=G4"))
     }
 
     @Test func testABCOctaveAndIntraMeasureAccidentalMemory() throws {
-        // 1. In ?= D, degree 7_ is C#4 (c4) and 7,_ is C4 natural (=c4, NOT =C4 in octave 3 from double-counted delta).
+        // 1. In ?= D, degree 7_ is C#4 (C4) and 7,_ is C4 natural (=C4, NOT =C,4 in octave 3 from double-counted delta).
         let tmdD = """
             ::SCORE::
             ** ABC Octave in D **
@@ -253,11 +253,11 @@ struct ABCValidationTests {
             """
         let sheetD = try TmdParser.parseThrowing(string: tmdD)
         let abcD = TmdABCGenerator.generateABC(from: sheetD)
-        // First 7_ is c4, second 7,_ is =c4 (octave 4, not =C4), third 7_ in same measure must re-sharp as ^c4!
-        #expect(abcD.contains("c4 =c4 ^c4 d4"))
+        // First 7_ is C4, second 7,_ is =C4 (octave 4, not =C,4), third 7_ in same measure must re-sharp as ^C4!
+        #expect(abcD.contains("C4 =C4 ^C4 D4"))
 
         // 2. Intra-measure accidental cancellation and octave boundary in C major:
-        // | 1' 1 1, 7' | -> ^c4 =c4 _c4 ^b4
+        // | 1' 1 1, 7' | -> ^C4 =C4 _C4 ^B4
         let tmdC = """
             ::SCORE::
             ** ABC Intra-Measure Memory **
@@ -268,12 +268,14 @@ struct ABCValidationTests {
             A:Piano@|0|{
                 <4*>
                 | 1' 1 1, 7' |
+                | 1_ 1 1^ 1^^ |
             }
             -> A ->#
             """
         let sheetC = try TmdParser.parseThrowing(string: tmdC)
         let abcC = TmdABCGenerator.generateABC(from: sheetC)
-        #expect(abcC.contains("^c4 =c4 _c4 ^b4"))
+        #expect(abcC.contains("^C4 =C4 _C4 ^B4"))
+        #expect(abcC.contains("C,4 C4 c4 c'4"))
     }
 
     @Test(
@@ -301,7 +303,7 @@ struct ABCValidationTests {
         let abc = TmdABCGenerator.generateABC(from: sheet)
         #expect(abc.contains("K:Am"))
         #expect(abc.contains("\"C\"z4"))
-        #expect(abc.contains("g"))
+        #expect(abc.contains("G"))
     }
 
     @Test(
@@ -332,13 +334,13 @@ struct ABCValidationTests {
         let abc = TmdABCGenerator.generateABC(from: sheet)
 
         // Sub-16th notes: <32*> = 1/2 of L:1/16 -> "/2", <64*> = 1/4 of L:1/16 -> "/4"
-        #expect(abc.contains("c/2 d/2 e/2 f/2"))
-        #expect(abc.contains("c/4 d/4 e/4 f/4 g/4 a/4 b/4"))
+        #expect(abc.contains("C/2 D/2 E/2 F/2"))
+        #expect(abc.contains("C/4 D/4 E/4 F/4 G/4 A/4 B/4 c/4"))
 
         // Tuplets: (1 2 3)%(-) in <4*> -> each note is 1/3 quarter = 4/3 of L:1/16 -> "4/3"
         // (1 2 3 4 5)%(---) in <4*> -> each note is 3/5 quarter = 12/5 of L:1/16 -> "12/5"
-        #expect(abc.contains("c4/3 d4/3 e4/3"))
-        #expect(abc.contains("c12/5 d12/5 e12/5 f12/5 g12/5"))
+        #expect(abc.contains("C4/3 D4/3 E4/3"))
+        #expect(abc.contains("C12/5 D12/5 E12/5 F12/5 G12/5"))
 
         // Inline directives in tune body must be bracketed per ABC v2.1 Section 3.2
         #expect(abc.contains("[M:5/4]"))

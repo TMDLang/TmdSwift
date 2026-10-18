@@ -22,14 +22,13 @@ public struct TmdABCGenerator {
         let tempoField = resolveTempo(beat: sheet.beat, quarterBPM: speed)
         abc += "\(tempoField)\n"
         let effectiveKey = sheet.declaredKey ?? sheet.keySignature.description
-        abc += "K:\(abcKey(effectiveKey))\n\n"
+        abc += "K:\(abcKey(effectiveKey))\n"
 
         // Output Voice headers
         for (idx, inst) in instruments.enumerated() {
             let vId = "V\(idx + 1)"
             abc += "V:\(vId) name=\"\(inst)\" snm=\"\(inst.prefix(3))\"\n"
         }
-        abc += "\n"
 
         // Generate lines per instrument track
         for (idx, inst) in instruments.enumerated() {
@@ -39,7 +38,6 @@ public struct TmdABCGenerator {
                 abc += "%%MIDI channel 10\n"
             }
             abc += generateTrackMusic(instrument: inst, sheet: sheet)
-            abc += "\n\n"
         }
 
         return abc
@@ -260,12 +258,8 @@ public struct TmdABCGenerator {
         if octave >= 5 {
             let apostrophes = String(repeating: "'", count: octave - 5)
             letter = "\(stepLower)\(apostrophes)"
-        } else if octave == 4 {
-            letter = stepLower
-        } else if octave == 3 {
-            letter = stepUpper
         } else {
-            let commas = String(repeating: ",", count: 3 - octave)
+            let commas = String(repeating: ",", count: max(0, 4 - octave))
             letter = "\(stepUpper)\(commas)"
         }
 
