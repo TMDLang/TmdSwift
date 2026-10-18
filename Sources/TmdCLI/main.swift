@@ -32,6 +32,7 @@ struct TmdCLICommand: ParsableCommand {
             TmdFormatCommand.self,
             TmdOutlineCommand.self,
             TmdRefactorCommand.self,
+            TmdStudioURLCommand.self,
             TmdLSPCommand.self,
         ]
     )
@@ -537,7 +538,7 @@ struct TmdCLICommand: ParsableCommand {
 // Route subcommand dispatch manually if first argument matches a subcommand
 let rawArgs = Array(CommandLine.arguments.dropFirst())
 if let first = rawArgs.first,
-    ["lsp", "check", "inspect", "outline", "format", "refactor"].contains(first)
+    ["lsp", "check", "inspect", "outline", "format", "refactor", "studio-url"].contains(first)
 {
     if first == "lsp" {
         TmdLSPCommand.main(Array(rawArgs.dropFirst()))
@@ -549,6 +550,8 @@ if let first = rawArgs.first,
         TmdOutlineCommand.main(Array(rawArgs.dropFirst()))
     } else if first == "format" {
         TmdFormatCommand.main(Array(rawArgs.dropFirst()))
+    } else if first == "studio-url" {
+        TmdStudioURLCommand.main(Array(rawArgs.dropFirst()))
     } else {
         TmdRefactorCommand.main(Array(rawArgs.dropFirst()))
     }
