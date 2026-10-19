@@ -14,9 +14,20 @@ public struct TmdABCGenerator {
 
         // Header fields
         abc += "X:1\n"
-        abc += "T:\(sheet.name.isEmpty ? "Untitled" : sheet.name)\n"
-        if let composer = sheet.metadata["composer"], !composer.isEmpty {
-            abc += "C:\(composer)\n"
+        let title = sheet.name
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        abc += "T:\(title.isEmpty ? "Untitled" : title)\n"
+        if let rawComposer = sheet.metadata["composer"] {
+            let composerLines = rawComposer
+                .components(separatedBy: .newlines)
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+            for line in composerLines {
+                abc += "C:\(line)\n"
+            }
         }
         abc += "M:\(sheet.beat.count)/\(sheet.beat.noteValue)\n"
         abc += "L:1/16\n"  // Base unit length = 16th note for high rhythm precision
@@ -89,7 +100,8 @@ public struct TmdABCGenerator {
                 result += " "
             }
         }
-        return result.trimmingCharacters(in: .whitespaces) + "\n"
+        let trimmed = result.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "" : trimmed + "\n"
     }
 
     public static func resolveTempo(beat: Beat, quarterBPM: Double) -> String {
