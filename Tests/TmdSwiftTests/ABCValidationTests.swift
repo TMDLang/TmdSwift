@@ -467,4 +467,46 @@ struct ABCValidationTests {
         let abcWithComposer = TmdABCGenerator.generateABC(from: sheetWithComposer)
         #expect(abcWithComposer.contains("\nC:曲：王小明\n"))
     }
+
+    @Test("Issue #63: ABC output never contains blank lines inside the tune")
+    func testABCNeverContainsBlankLinesInsideTune() throws {
+        // 1. Multi-track score (without composer metadata)
+        let sampleURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("sample/basic/三天三夜.tmd")
+        let sampleSheet = try TmdParserIO.parseThrowing(url: sampleURL)
+        let sampleABC = TmdABCGenerator.generateABC(from: sampleSheet)
+        #expect(
+            !sampleABC.contains("\n\n"),
+            "ABC tune must not contain blank lines that prematurely terminate the tune"
+        )
+
+        // 2. Score where composer metadata contains trailing/blank lines or tracks have empty sections
+        let tmdWithNewlineMetadata = """
+            ::SCORE::
+            ** Blank Line ABC Test **
+            ~ "曲：王小明
+            "
+            != 120
+            ?= C
+            <4/4>
+
+            A:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
+            }
+            -> A ->#
+            """
+        let newlineMetaSheet = try TmdParser.parseThrowing(string: tmdWithNewlineMetadata)
+        let newlineMetaABC = TmdABCGenerator.generateABC(from: newlineMetaSheet)
+        #expect(
+            !newlineMetaABC.contains("\n\n"),
+            "ABC tune must not emit blank lines even when metadata contains trailing newlines"
+        )
+    }
 }
+
+
+
