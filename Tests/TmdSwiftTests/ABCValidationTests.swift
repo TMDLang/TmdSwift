@@ -428,4 +428,43 @@ struct ABCValidationTests {
             }
         }
     }
+
+    @Test("ABC leaves composer blank when score has no composer metadata")
+    func testABCComposerHeaderOmittedWhenNotSpecified() throws {
+        let tmdWithoutComposer = """
+            ::SCORE::
+            ** No Composer Song **
+            != 120
+            ?= C
+            <4/4>
+
+            A:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
+            }
+            -> A ->#
+            """
+        let sheetWithoutComposer = try TmdParser.parseThrowing(string: tmdWithoutComposer)
+        let abcWithoutComposer = TmdABCGenerator.generateABC(from: sheetWithoutComposer)
+        #expect(!abcWithoutComposer.contains("aguai"))
+        #expect(!abcWithoutComposer.contains("\nC:"))
+
+        let tmdWithComposer = """
+            ::SCORE::
+            ** Custom Composer Song **
+            ~ "曲：王小明"
+            != 120
+            ?= C
+            <4/4>
+
+            A:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
+            }
+            -> A ->#
+            """
+        let sheetWithComposer = try TmdParser.parseThrowing(string: tmdWithComposer)
+        let abcWithComposer = TmdABCGenerator.generateABC(from: sheetWithComposer)
+        #expect(abcWithComposer.contains("\nC:曲：王小明\n"))
+    }
 }
