@@ -15,7 +15,9 @@ public struct TmdABCGenerator {
         // Header fields
         abc += "X:1\n"
         abc += "T:\(sheet.name.isEmpty ? "Untitled" : sheet.name)\n"
-        abc += "C:\(sheet.metadata["composer"] ?? "TMD (Chen, Chih-Han / aguai)")\n"
+        if let composer = sheet.metadata["composer"], !composer.isEmpty {
+            abc += "C:\(composer)\n"
+        }
         abc += "M:\(sheet.beat.count)/\(sheet.beat.noteValue)\n"
         abc += "L:1/16\n"  // Base unit length = 16th note for high rhythm precision
         let speed = sheet.speed > 0 ? sheet.speed : 120
