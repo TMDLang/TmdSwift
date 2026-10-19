@@ -76,7 +76,7 @@ struct TmdStudioURLCommand: ParsableCommand {
             do {
                 try process.run()
                 pipe.fileHandleForWriting.write(Data(url.utf8))
-                try pipe.fileHandleForWriting.close()
+                pipe.fileHandleForWriting.closeFile()
                 process.waitUntilExit()
                 guard process.terminationStatus == 0 else {
                     FileHandle.standardError.write(

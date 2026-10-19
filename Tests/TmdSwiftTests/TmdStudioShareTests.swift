@@ -193,3 +193,15 @@ func cliStudioURLCommandOutputsValidShareLink() throws {
     missingProcess.waitUntilExit()
     #expect(missingProcess.terminationStatus != 0)
 }
+
+@Test("TmdStudioURLCommand avoids macOS 10.15-gated FileHandle.close() for default deployment target compatibility")
+func studioURLCommandAvoidsAvailabilityGatedFileHandleClose() throws {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let commandPath = packageRoot.appendingPathComponent("Sources/TmdCLI/TmdStudioURLCommand.swift")
+    let source = try String(contentsOf: commandPath, encoding: .utf8)
+    #expect(!source.contains("fileHandleForWriting.close()"))
+    #expect(source.contains("fileHandleForWriting.closeFile()"))
+}
