@@ -162,7 +162,18 @@ Example in `<4*>` (quarter-note grid):
 1 - - -    /* Whole note (4 beats) */
 ```
 
-### 5.6 Chords
+### 5.6 Simultaneous Multi-Notes
+TMD supports both named chord symbols and explicit simultaneous multi-notes. Use `+` between numbered notes when the notes must sound simultaneously on the same beat; use square brackets for a harmonic chord symbol or chord label. These are complementary syntaxes and may both be used in the same score:
+
+```tmd
+<4*>
+1+3+5 - - -    /* Do, Mi, and Sol together for one whole note */
+1+3 4+6         /* Two simultaneous dyads; each group uses one base unit */
+```
+
+`1+3+5` is one rhythmic unit for measure counting, not three sequential beats. Accidentals and octave marks belong to each note (`1'+3^+5_`). A chord symbol such as `[Cmaj7]` expresses harmonic identity, while `1+3+5` expresses the actual simultaneous numbered pitches/voicing; do not treat one as a replacement for the other.
+
+### 5.7 Chords
 Chords are wrapped in square brackets `[...]`.
 Can be written as:
 - Letter roots: `[C]`, `[Cmaj7]`, `[Am]`, `[Am7]`, `[F]`, `[G7]`, `[Bb]`, `[D7#9]`, `[Dm7-5]`, `[Csus4]`
@@ -170,7 +181,7 @@ Can be written as:
 - Chords can also take octaves: `[6_m]` (lower octave minor sixth), `[1^]`
 - Chords can be sustained with ties: `[Cmaj7] - - -`
 
-### 5.7 Percussion & Drums (Channel 10)
+### 5.8 Percussion & Drums (Channel 10)
 Percussion tracks (`Drums`, `Percussion`, `Groove`) send MIDI events to standard General MIDI Channel 10:
 - Standard Drum Hits:
   - `B` / `D`: Bass Drum (Kick Drum 1, MIDI pitch 36).
@@ -195,7 +206,7 @@ intro:Drums@|0|{
 > - In standard TMD soundfonts (e.g., Apple DLS `gs_instruments.dls`), Timpani produces its deepest, resonant orchestral thunder ("咚！咚！咚！") when written in the lower octave: `2__` (D2, MIDI 38) to `1_` (C3, MIDI 48).
 > - Since Timpani is tuned to specific harmonic fundamental pitches, use the canonical entry attribute `[pitchMode=fixed]` on the paragraph header (e.g. `intro:Timpani[pitchMode=fixed]@|0|{ ... }`, or legacy `{?= fixed}` inside the section) so global order transpositions (e.g. `-> {?+3} -> C`) do not shift kettle pitches unexpectedly.
 
-### 5.8 Tuplets and Rhythmic Groupings
+### 5.9 Tuplets and Rhythmic Groupings
 Syntax:
 ```tmd
 (units...)%(dashes)
@@ -331,12 +342,28 @@ tmd score.tmd -u vocal.ust
 # 10. Check measure consistency and beat accuracy (Essential for AI self-verification)
 tmd check score.tmd
 
-# 11. Format document layout and indentation
+# 11. Check strictly, emit JSON diagnostics, or scan Markdown TMD blocks
+tmd check --strict --json score.tmd
+tmd check --markdown docs/
+
+# 12. Inspect musical profile (tessitura, duration, chords, density)
+tmd inspect score.tmd
+tmd inspect score.tmd --json
+
+# 13. Generate section/track outline with source locations
+tmd outline score.tmd --json
+
+# 14. Format document layout and indentation
 tmd format score.tmd -i
 
-# 12. Install this skill into AI agent directories
+# 15. Refactor safely (also supports rename-section, rename-instrument, extract-instrument)
+tmd refactor double-grid score.tmd -i
+
+# 16. Install this skill into AI agent directories
 tmd --install-skills
 ```
+
+For AI self-verification, write a small section first—even if its final note count is not yet calculated—then run `tmd check <file.tmd>`. The checker reports syntax, S-expression, timeline, measure-beat, and semantic-lint diagnostics; use its expected/found beat counts to add ties (`-`) or rests (`0`) and iterate. Follow with `tmd format`, `tmd outline`, and `tmd inspect --json` when structural or musical-profile feedback is useful. Use `tmd -p` to inspect the parsed summary, and `tmd --play` or `tmd -w preview.wav` for an ear check. MCP/LSP integrations expose equivalent parse/check/format tools for agents that cannot invoke the CLI directly.
 
 ---
 
