@@ -41,7 +41,7 @@ intro:Piano@|0|{
 2. **Title**: `** Title **` (enclosed in double asterisks).
 3. **Tempo**: `!= 120` (in BPM, supports integer or decimals like `!= 120.5`).
 4. **Pitch Center / Key Signature**: `?= C` (movable-do base tonic letter `C`..`B`, optional sharp `'` or flat `,`, e.g., `?= A'`, `?= E,`).
-5. **Declared Key Signature (Optional)**: `key= Bm` or `Key= Bm` (explicit musical tonality for sheet music key signature engraving, e.g. `key= Bm` paired with `?= D`).
+5. **Printed key signature (Optional)**: `key= Bm` or `Key= Bm` is notation metadata for engraved/printed output. Use it only when a printed score or notation export needs an explicit key signature; it does not change sounding pitches. `?=` controls the movable-do pitch center and playback pitch context.
 6. **Time Signature**: `<4/4>` (numerator/denominator, e.g. `<3/4>`, `<6/8>`).
 7. **Entries / Assignment Tracks**: `name:assignment@|offset|{ ... }`.
 8. **Playback Flow**: `-> section1 -> section2 ->#` (must start with `->` and terminate with `->#`).
