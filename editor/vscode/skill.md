@@ -101,6 +101,17 @@ intro:Piano@|0|{
 }
 ```
 
+An entry without an instrument assignment is a **prototype**, not a standalone track:
+
+```tmd
+Theme{
+    <4*>
+    1 2 3 4
+}
+```
+
+Prototypes are instantiated only by playback macros such as `play`, `loop`, or `canon`. They must not contain tempo, key, meter, dynamics, or fixed-pitch modifiers, and they are not exported as an implicit Piano track.
+
 ---
 
 ## 4. Sections and Rhythm Grid
@@ -204,7 +215,7 @@ intro:Drums@|0|{
 > Timpani (Program 47) is a **pitched melodic instrument**, NOT General MIDI Channel 10 percussion.
 > - Acoustic Timpani kettle drums operate in the pitch range `D2` to `A3` (MIDI 38–57).
 > - In standard TMD soundfonts (e.g., Apple DLS `gs_instruments.dls`), Timpani produces its deepest, resonant orchestral thunder ("咚！咚！咚！") when written in the lower octave: `2__` (D2, MIDI 38) to `1_` (C3, MIDI 48).
-> - Since Timpani is tuned to specific harmonic fundamental pitches, use the canonical entry attribute `[pitchMode=fixed]` on the paragraph header (e.g. `intro:Timpani[pitchMode=fixed]@|0|{ ... }`, or legacy `{?= fixed}` inside the section) so global order transpositions (e.g. `-> {?+3} -> C`) do not shift kettle pitches unexpectedly.
+> - Since Timpani is tuned to specific harmonic fundamental pitches, use the entry attribute `[pitchMode=fixed]` (e.g. `intro:Timpani[pitchMode=fixed]@|0|{ ... }`) so global order transpositions (e.g. `-> {?+3} -> C`) do not shift kettle pitches unexpectedly.
 
 ### 5.9 Tuplets and Rhythmic Groupings
 Syntax:
@@ -226,10 +237,12 @@ You can place inline directives anywhere inside a section between notes:
 - `{?= D}`: Absolute pitch center / movable-do base change to D.
 - `{?+ 2}`: Relative key transposition up 2 semitones.
 - `{?- 2}`: Relative key transposition down 2 semitones.
-- `{key= F#m}`: Mid-score explicit key signature change for sheet engraving (e.g. F# minor).
+- `{key= F#m}`: Mid-score notation key-signature marker for sheet engraving (e.g. F# minor); it does not change sounding pitches.
 - `{p}`, `{f}`, `{pp}`, `{mp}`, `{mf}`, `{ff}`: Dynamics markings (controls MIDI playback velocity and renders dynamic hairpins/symbols in MusicXML, LilyPond, ABC).
-- `[pitchMode=fixed]` on the entry header (e.g. `section:Timpani[pitchMode=fixed]@|0|{ ... }`) or inline `{?= fixed}`: Forces **Fixed Pitch** for this track entry (locks `keyOffset = 0`, immune to song-level playback transpositions like `-> {?+3} -> ...`). Ideal for Timpani, Sound FX, or non-transposing tracks.
+- `[pitchMode=fixed]` on the entry header (e.g. `section:Timpani[pitchMode=fixed]@|0|{ ... }`) forces **Fixed Pitch** (locks `keyOffset = 0`, immune to song-level playback transpositions like `-> {?+3} -> ...`). The inline forms `{?=fixed}` and `{? fixed}` are unsupported. Ideal for Timpani, Sound FX, or non-transposing tracks.
 - `{<3/4>}`: Time signature change to 3/4.
+
+Directives at the same position are applied in source order before note events. A time-signature change in the middle of a measure is invalid.
 
 Example:
 ```tmd
@@ -259,7 +272,11 @@ Rules:
   - `(canon <Theme> (<Inst1> <Inst2> ...) <bar_offset>)`: Auto-stagger voices in strict canon.
   - `(layer <expr1> <expr2> ...)`: Concurrently play multiple voices/sections.
   - `(seq <expr1> <expr2> ...)`: Sequentially chain multiple expressions.
-  - `(vary <Theme> <modifiers...>)`: Transform motives with pitch transposition (`+7`), inversion (`flip`), retrograde (`reverse`), or modal shift (`minor`/`major`).
+  - `(transpose <Theme> <semitones>)`: Transpose a prototype or nested expression.
+  - `(reverse <Theme>)`, `(flip <Theme>)`: Apply retrograde or inversion transformations.
+  - `(major <Theme>)`, `(minor <Theme>)`: Apply modal transformations.
+  - `(vary <Theme> <modifiers...>)`: Combine transformations such as pitch transposition (`+7`), inversion (`flip`), retrograde (`reverse`), or modal shift (`minor`/`major`).
+- Macro arguments refer to prototypes, not concrete assigned sections; run `tmd check` to catch unknown prototypes, invalid arguments, and macro expansion failures.
 - Ends with `->#` (terminator).
 
 ---
@@ -358,12 +375,28 @@ tmd format score.tmd -i
 
 # 15. Refactor safely (also supports rename-section, rename-instrument, extract-instrument)
 tmd refactor double-grid score.tmd -i
+# Other refactors: halve-grid, optimize-grid, duplicate-track, generate-harmony,
+# inline-orders, and transpose (use `tmd refactor --help` for options).
 
 # 16. Install this skill into AI agent directories
 tmd --install-skills
+
+# 17. Export Music Braille, optionally filtering section/instrument
+tmd score.tmd -b score.brl --braille-layout bar-over-bar
+
+# 18. Inspect as SVG/HTML or generate a shareable Studio URL
+tmd inspect score.tmd --svg
+tmd inspect score.tmd --html
+tmd studio-url score.tmd
+
+# 19. Register the MCP server for supported AI clients
+tmd --install-mcp
+
+# 20. Force an export only after reviewing validation errors
+tmd score.tmd --force -m score.mid
 ```
 
-For AI self-verification, write a small section first—even if its final note count is not yet calculated—then run `tmd check <file.tmd>`. The checker reports syntax, S-expression, timeline, measure-beat, and semantic-lint diagnostics; use its expected/found beat counts to add ties (`-`) or rests (`0`) and iterate. Follow with `tmd format`, `tmd outline`, and `tmd inspect --json` when structural or musical-profile feedback is useful. Use `tmd -p` to inspect the parsed summary, and `tmd --play` or `tmd -w preview.wav` for an ear check. MCP/LSP integrations expose equivalent parse/check/format tools for agents that cannot invoke the CLI directly.
+For AI self-verification, write a small section first—even if its final note count is not yet calculated—then run `tmd check <file.tmd>`. The checker reports syntax, S-expression/macro expansion, timeline overlap, conflicting tempo directives, measure-beat, chord, unused-entry, instrument, section-length, and tempo-range diagnostics; it reports expected/found beat counts but does not invent missing notes. Use its suggestions to add ties (`-`) or rests (`0`) and iterate. In particular, write `1+3+5`, not `[1 3 5]`, for simultaneous numbered notes. Follow with `tmd format`, `tmd outline`, and `tmd inspect --json` when structural or musical-profile feedback is useful. Use `tmd -p` to inspect the parsed summary, and `tmd --play` or `tmd -w preview.wav` for an ear check. MCP exposes `get_tmd_skill`, `parse_tmd`, `check_tmd`, `convert_tmd`, and `tmd_export_braille`; LSP provides editor-integrated diagnostics and completion.
 
 ---
 
