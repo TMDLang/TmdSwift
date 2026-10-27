@@ -305,7 +305,7 @@ To install locally:
 ./scripts/install-vscode-extension.sh
 
 # Option 2: Symlink directly into VS Code's extension directory using <publisher>.<name>-<version>
-ln -s "$(pwd)/editor/vscode" ~/.vscode/extensions/zonble.tmd-vscode-0.2.5
+ln -s "$(pwd)/editor/vscode" ~/.vscode/extensions/zonble.tmd-vscode-0.2.6
 ```
 
 ### 2. zago (Terminal Editor with Native TMD Integration)

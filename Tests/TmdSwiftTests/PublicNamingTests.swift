@@ -15,7 +15,7 @@ func canonicalTmdPublicNamesExist() {
     let textIO: TmdTextIO.Type = TmdTextIO.self
 
     #expect(parser == TmdParser.self)
-    #expect(version.current == "0.2.5")
+    #expect(version.current == "0.2.6")
     #expect(checker == TmdMeasureChecker.self)
     #expect(inspector == TmdSongInspector.self)
     #expect(renderer == TmdPlaybackRenderer.self)
@@ -36,7 +36,7 @@ func releaseVersionIsConsistentAcrossPublishedMetadata() throws {
     let extensionVersion = try #require(manifest["version"] as? String)
     let readme = try String(contentsOf: packageRoot.appendingPathComponent("README.md"))
 
-    #expect(version == "0.2.5")
+    #expect(version == "0.2.6")
     #expect(extensionVersion == version)
     #expect(readme.contains("zonble.tmd-vscode-\(version)"))
 }

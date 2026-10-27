@@ -2,7 +2,7 @@
   "name": "tmd-vscode",
   "displayName": "%tmd.displayName%",
   "description": "%tmd.description%",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "publisher": "zonble",
   "author": "zonble",
   "license": "MIT",
