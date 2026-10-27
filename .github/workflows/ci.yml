@@ -13,7 +13,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        # Pin Ubuntu until swift-actions/setup-swift supports Ubuntu 26.04.
+        os: [macos-latest, ubuntu-24.04, windows-latest]
 
     steps:
       - name: Checkout Repository
