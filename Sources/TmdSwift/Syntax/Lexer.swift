@@ -270,6 +270,41 @@ public final class Lexer {
             }
         }
 
+        // Lyric line: L|, L |, L1|, L1 |, etc.
+        if c == "L" {
+            var offset = 1
+            var stanzaStr = ""
+            while let sc = peek(offset: offset), sc >= "0" && sc <= "9" {
+                stanzaStr.append(Character(sc))
+                offset += 1
+            }
+            while let sc = peek(offset: offset), sc == " " || sc == "\t" {
+                offset += 1
+            }
+            if peek(offset: offset) == "|" {
+                for _ in 0...offset { advance() }
+                let stanza = stanzaStr.isEmpty ? nil : Int(stanzaStr)
+                var rawContent = ""
+                var braceDepth = 0
+                while !isAtEnd, let ch = peek(), ch != "\n" && ch != "\r" {
+                    if ch == "/" && peek(offset: 1) == "*" {
+                        break
+                    }
+                    if ch == "{" {
+                        braceDepth += 1
+                    } else if ch == "}" {
+                        if braceDepth > 0 {
+                            braceDepth -= 1
+                        } else {
+                            break
+                        }
+                    }
+                    rawContent.append(Character(advance()!))
+                }
+                return .lyricLine(stanza, rawContent)
+            }
+        }
+
         // **
         if c == "*" && peek(offset: 1) == "*" {
             advance()

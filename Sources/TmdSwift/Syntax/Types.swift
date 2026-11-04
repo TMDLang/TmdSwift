@@ -990,6 +990,353 @@ public struct SectionDirective: Equatable, Sendable {
     }
 }
 
+/// A vocal syllable token carrying both raw engraved text (with attached punctuation)
+/// and clean phonetic text (with punctuation and trailing hyphen stripped).
+public struct LyricSyllable: Equatable, Hashable, Sendable {
+    /// Raw text preserving attached punctuation and any trailing syllable-continuation hyphen (e.g. `「我`, `嗎？`, `yes-`).
+    public let rawText: String
+
+    /// Clean phonetic word with transparent punctuation and trailing hyphen stripped (e.g. `我`, `嗎`, `yes`).
+    public let cleanWord: String
+
+    /// Whether this syllable ends with a syllable-continuation hyphen (`-`) connecting to the next syllable of the same word.
+    public let hasTrailingHyphen: Bool
+
+    public init(rawText: String, cleanWord: String, hasTrailingHyphen: Bool) {
+        self.rawText = rawText
+        self.cleanWord = cleanWord
+        self.hasTrailingHyphen = hasTrailingHyphen
+    }
+
+    public init(
+        tokenText: String, leadingPunctuation: String = "", trailingPunctuation: String = ""
+    ) {
+        let hasHyphen = tokenText.count > 1 && tokenText.hasSuffix("-")
+        let coreText = hasHyphen ? String(tokenText.dropLast()) : tokenText
+        let raw = leadingPunctuation + coreText + trailingPunctuation + (hasHyphen ? "-" : "")
+        let clean = Self.stripPunctuation(coreText)
+        self.init(rawText: raw, cleanWord: clean, hasTrailingHyphen: hasHyphen)
+    }
+
+    /// Engraved syllable text with any trailing syllable-continuation hyphen removed (`rawText` minus trailing `-`).
+    public var displaySyllable: String {
+        if hasTrailingHyphen && rawText.hasSuffix("-") {
+            return String(rawText.dropLast())
+        }
+        return rawText
+    }
+
+    public static let openingPunctuationCharacters: Set<Character> = [
+        "「", "『", "“", "‘", "（", "《", "〈", "【", "〔", "〖",
+    ]
+
+    public static let transparentPunctuationCharacters: Set<Character> = [
+        "「", "」", "『", "』", "“", "”", "\"", "‘", "’", "（", "）",
+        "《", "》", "〈", "〉", "【", "】", "〔", "〕", "〖", "〗",
+        "—", "…", "，", "。", "！", "？", "、", "；", "：", "～", "~",
+        ",", ".", "!", "?", ";", ":",
+    ]
+
+    public static func isTransparentToken(_ token: String) -> Bool {
+        !token.isEmpty && token.allSatisfy { transparentPunctuationCharacters.contains($0) }
+    }
+
+    public static func isOpeningTransparentToken(_ token: String) -> Bool {
+        !token.isEmpty && token.allSatisfy { openingPunctuationCharacters.contains($0) }
+    }
+
+    public static func stripPunctuation(_ text: String) -> String {
+        String(text.filter { !transparentPunctuationCharacters.contains($0) })
+    }
+}
+
+/// A sounding lyric unit occupying 1 melodic note/tie/rest slot on the timebase grid.
+public enum LyricSoundingUnit: Equatable, Hashable, Sendable {
+    case syllable(LyricSyllable)
+    case tie
+    case rest
+
+    public var syllable: LyricSyllable? {
+        if case .syllable(let s) = self { return s }
+        return nil
+    }
+}
+
+/// A top-level lyric slot within a measure, corresponding 1:1 with a melodic `UnitGroup`.
+public enum LyricSlot: Equatable, Hashable, Sendable {
+    case unit(LyricSoundingUnit)
+    case group([LyricSoundingUnit])
+}
+
+/// A lexical element parsed from a lyric measure before transparent-token attachment.
+public enum LyricElement: Equatable, Hashable, Sendable {
+    case syllable(String)
+    case tie
+    case rest
+    case transparent(String)
+    case group([LyricElement])
+    case directive(String)
+
+    public func format() -> String {
+        switch self {
+        case .syllable(let text):
+            return text
+        case .tie:
+            return "-"
+        case .rest:
+            return "0"
+        case .transparent(let punct):
+            return punct
+        case .group(let children):
+            return "(" + children.map { $0.format() }.joined(separator: " ") + ")"
+        case .directive(let raw):
+            return raw
+        }
+    }
+}
+
+/// A single measure of vocal lyrics within a `LyricLine`.
+public struct LyricMeasure: Equatable, Sendable {
+    /// Lexical elements in appearance order (including standalone transparent punctuation and groups).
+    public let elements: [LyricElement]
+
+    /// Sounding slots aligned with melodic `UnitGroup`s (with transparent punctuation merged into adjacent syllables).
+    public let slots: [LyricSlot]
+
+    /// Flattened sounding units across all slots in this measure.
+    public let flatSoundingUnits: [LyricSoundingUnit]
+
+    public init(elements: [LyricElement]) {
+        self.elements = elements
+        var pendingPrefix = ""
+        let resolvedSlots = Self.resolveSlots(from: elements, pendingPrefix: &pendingPrefix)
+        self.slots = resolvedSlots
+        var flat: [LyricSoundingUnit] = []
+        for slot in resolvedSlots {
+            switch slot {
+            case .unit(let u):
+                flat.append(u)
+            case .group(let units):
+                flat.append(contentsOf: units)
+            }
+        }
+        self.flatSoundingUnits = flat
+    }
+
+    public func format() -> String {
+        elements.map { $0.format() }.joined(separator: " ")
+    }
+
+    private static func resolveSlots(
+        from elements: [LyricElement], pendingPrefix: inout String
+    ) -> [LyricSlot] {
+        var built: [LyricSlot] = []
+
+        func attachTrailingPunctuation(_ punct: String) -> Bool {
+            guard !built.isEmpty else { return false }
+            let lastIdx = built.count - 1
+            switch built[lastIdx] {
+            case .unit(.syllable(let syl)):
+                let updated = Self.appendTrailingPunctuation(punct, to: syl)
+                built[lastIdx] = .unit(.syllable(updated))
+                return true
+            case .group(var units) where !units.isEmpty:
+                if case .syllable(let syl) = units[units.count - 1] {
+                    units[units.count - 1] = .syllable(
+                        Self.appendTrailingPunctuation(punct, to: syl))
+                    built[lastIdx] = .group(units)
+                    return true
+                }
+                return false
+            default:
+                return false
+            }
+        }
+
+        for element in elements {
+            switch element {
+            case .transparent(let punct):
+                if LyricSyllable.isOpeningTransparentToken(punct) {
+                    pendingPrefix += punct
+                } else if !attachTrailingPunctuation(punct) {
+                    pendingPrefix += punct
+                }
+            case .syllable(let text):
+                let syl = LyricSyllable(tokenText: text, leadingPunctuation: pendingPrefix)
+                pendingPrefix = ""
+                built.append(.unit(.syllable(syl)))
+            case .tie:
+                built.append(.unit(.tie))
+            case .rest:
+                built.append(.unit(.rest))
+            case .group(let children):
+                let childSlots = resolveSlots(from: children, pendingPrefix: &pendingPrefix)
+                var childUnits: [LyricSoundingUnit] = []
+                for slot in childSlots {
+                    switch slot {
+                    case .unit(let u): childUnits.append(u)
+                    case .group(let nested): childUnits.append(contentsOf: nested)
+                    }
+                }
+                built.append(.group(childUnits))
+            case .directive:
+                break
+            }
+        }
+        return built
+    }
+
+    private static func appendTrailingPunctuation(
+        _ punct: String, to syllable: LyricSyllable
+    ) -> LyricSyllable {
+        if syllable.hasTrailingHyphen && syllable.rawText.hasSuffix("-") {
+            let base = String(syllable.rawText.dropLast())
+            return LyricSyllable(
+                rawText: base + punct + "-",
+                cleanWord: syllable.cleanWord,
+                hasTrailingHyphen: true
+            )
+        } else {
+            return LyricSyllable(
+                rawText: syllable.rawText + punct,
+                cleanWord: syllable.cleanWord,
+                hasTrailingHyphen: syllable.hasTrailingHyphen
+            )
+        }
+    }
+}
+
+/// An interleaved lyric line (`L|` or `L1|`..`L64|`) bound to a range of melodic `UnitGroup`s in a `Section`.
+public struct LyricLine: Equatable, Sendable {
+    /// Stanza index (`nil` for `L|`, or `1..64` for `L1|`..`L64|`).
+    public let stanza: Int?
+
+    /// Lyric measures separated by `|` on this line.
+    public let measures: [LyricMeasure]
+
+    /// Range of indices in `Section.unitGroups` covered by the melodic line directly above this lyric line.
+    public let unitGroupRange: Range<Int>
+
+    /// Per-measure ranges of `Section.unitGroups` partitioned by barlines on the corresponding melodic line.
+    public let measureUnitGroupRanges: [Range<Int>]
+
+    /// 1-based source line number where this lyric line appeared.
+    public let sourceLine: Int
+
+    public init(
+        stanza: Int? = nil,
+        measures: [LyricMeasure],
+        unitGroupRange: Range<Int> = 0..<0,
+        measureUnitGroupRanges: [Range<Int>] = [],
+        sourceLine: Int = 1
+    ) {
+        self.stanza = stanza
+        self.measures = measures
+        self.unitGroupRange = unitGroupRange
+        self.measureUnitGroupRanges =
+            measureUnitGroupRanges.isEmpty ? [unitGroupRange] : measureUnitGroupRanges
+        self.sourceLine = sourceLine
+    }
+
+    /// Parses a raw lyric line string (the content following `L<k>|`) into a `LyricLine`.
+    public static func parse(
+        stanza: Int?,
+        rawContent: String,
+        unitGroupRange: Range<Int> = 0..<0,
+        measureUnitGroupRanges: [Range<Int>] = [],
+        sourceLine: Int = 1
+    ) -> LyricLine {
+        var trimmed = rawContent.trimmingCharacters(in: CharacterSet(charactersIn: " \t\r\n"))
+        if trimmed.hasSuffix("|") {
+            trimmed.removeLast()
+        }
+        let rawMeasures = trimmed.components(separatedBy: "|")
+        let measures = rawMeasures.map { Self.parseMeasure($0) }
+        return LyricLine(
+            stanza: stanza,
+            measures: measures,
+            unitGroupRange: unitGroupRange,
+            measureUnitGroupRanges: measureUnitGroupRanges,
+            sourceLine: sourceLine
+        )
+    }
+
+    public static func parseMeasure(_ rawMeasure: String) -> LyricMeasure {
+        let chars = Array(rawMeasure)
+        var index = 0
+        let elements = parseElements(from: chars, index: &index, stopAtCloseParen: false)
+        return LyricMeasure(elements: elements)
+    }
+
+    private static func parseElements(
+        from chars: [Character], index: inout Int, stopAtCloseParen: Bool
+    ) -> [LyricElement] {
+        var elements: [LyricElement] = []
+        while index < chars.count {
+            let c = chars[index]
+            if c == " " || c == "\t" || c == "\r" || c == "\n" {
+                index += 1
+                continue
+            }
+            if c == ")" && stopAtCloseParen {
+                index += 1
+                break
+            }
+            if c == "(" {
+                index += 1
+                let children = parseElements(from: chars, index: &index, stopAtCloseParen: true)
+                elements.append(.group(children))
+                continue
+            }
+            if c == "{" {
+                var directiveText = "{"
+                index += 1
+                while index < chars.count && chars[index] != "}" {
+                    directiveText.append(chars[index])
+                    index += 1
+                }
+                if index < chars.count && chars[index] == "}" {
+                    directiveText.append("}")
+                    index += 1
+                }
+                elements.append(.directive(directiveText))
+                continue
+            }
+            var tokenText = ""
+            while index < chars.count {
+                let cur = chars[index]
+                if cur == " " || cur == "\t" || cur == "\r" || cur == "\n"
+                    || cur == "(" || cur == ")" || cur == "{" || cur == "}"
+                {
+                    break
+                }
+                tokenText.append(cur)
+                index += 1
+            }
+            if tokenText == "-" {
+                elements.append(.tie)
+            } else if tokenText == "0" {
+                elements.append(.rest)
+            } else if LyricSyllable.isTransparentToken(tokenText) {
+                elements.append(.transparent(tokenText))
+            } else if !tokenText.isEmpty {
+                elements.append(.syllable(tokenText))
+            }
+        }
+        return elements
+    }
+
+    /// Formats this lyric line into canonical TMD syntax (`L| ... |` or `L1| ... |`).
+    public func format() -> String {
+        let prefix = stanza.map { "L\($0)|" } ?? "L|"
+        let body = measures.map { $0.format() }.joined(separator: " | ")
+        if body.isEmpty {
+            return "\(prefix) |"
+        }
+        return "\(prefix) \(body) |"
+    }
+}
+
 /// A section or measure segment defining base note subdivision (e.g. `<16*>`)
 /// and unit groups.
 ///
@@ -1012,14 +1359,30 @@ public struct Section: Equatable {
 
     public let directives: [SectionDirective]
 
+    /// Interleaved vocal lyric lines attached to melodic phrases in this section.
+    public let lyrics: [LyricLine]
+
+    /// 64-bit bitmask of active stanzas (`L1`..`L64`, where `L|` maps to bit 0 / stanza 1).
+    public var activeStanzaBitmask: UInt64 {
+        var mask: UInt64 = 0
+        for line in lyrics {
+            let idx = line.stanza ?? 1
+            if (1...64).contains(idx) {
+                mask |= (UInt64(1) << UInt64(idx - 1))
+            }
+        }
+        return mask
+    }
+
     public init(
         noteLength: Int = 4, unitGroups: [UnitGroup] = [], directives: [SectionDirective] = [],
-        barlinePositions: [Int] = []
+        barlinePositions: [Int] = [], lyrics: [LyricLine] = []
     ) {
         self.noteLength = noteLength
         self.unitGroups = unitGroups
         self.directives = directives
         self.barlinePositions = barlinePositions
+        self.lyrics = lyrics
     }
 
     /// Returns a copy of this section with all pitched `Note` / `[Note]` units transformed by `transform`.
@@ -1034,7 +1397,8 @@ public struct Section: Equatable {
             noteLength: noteLength,
             unitGroups: newGroups,
             directives: directives,
-            barlinePositions: barlinePositions
+            barlinePositions: barlinePositions,
+            lyrics: lyrics
         )
     }
 }
@@ -1171,6 +1535,39 @@ public enum Playback: Equatable {
 
     /// An S-Expression macro evaluation directive (e.g. `(canon Theme (V1 V2) 2)`).
     case macro(SExpr)
+
+    /// Parses a playback section identifier with optional stanza selector (e.g. `"verse[L1]"` -> `("verse", 1)`).
+    public static func parseSectionSelector(_ raw: String) -> (name: String, stanza: Int?) {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let openIdx = trimmed.firstIndex(of: "["),
+            let closeIdx = trimmed.lastIndex(of: "]"),
+            openIdx < closeIdx
+        else {
+            return (trimmed, nil)
+        }
+        let baseName = String(trimmed[..<openIdx]).trimmingCharacters(in: .whitespacesAndNewlines)
+        let inside = String(trimmed[trimmed.index(after: openIdx)..<closeIdx])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if inside.uppercased().hasPrefix("L") {
+            let numStr = String(inside.dropFirst()).trimmingCharacters(in: .whitespacesAndNewlines)
+            if let stanza = Int(numStr) {
+                return (baseName, stanza)
+            }
+        }
+        return (baseName, nil)
+    }
+
+    /// Base section name if this is a `.name` playback step (stripping any `[L<k>]` selector).
+    public var sectionName: String? {
+        guard case .name(let raw) = self else { return nil }
+        return Self.parseSectionSelector(raw).name
+    }
+
+    /// Selected stanza index (`1..64`) if this is a `.name` playback step with `[L<k>]`.
+    public var stanzaSelector: Int? {
+        guard case .name(let raw) = self else { return nil }
+        return Self.parseSectionSelector(raw).stanza
+    }
 }
 
 /// The complete TMD score sheet.
