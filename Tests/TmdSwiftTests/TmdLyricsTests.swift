@@ -3,6 +3,7 @@ import Testing
 import TmdABC
 import TmdBraille
 import TmdChordPro
+import TmdLSP
 import TmdLilyPond
 import TmdMIDI
 import TmdMusicXML
@@ -426,5 +427,43 @@ struct TmdLyricsTests {
             options: TmdBrailleOptions(encoding: .ascii)
         )
         #expect(brf.contains("YES-TER-DAY") || brf.contains("YES"))
+    }
+
+    @Test("Offers stanza selectors L1, L2 when auto-completing inside -> verse[")
+    func testLSPAutoCompletionOffersStanzaSelectors() throws {
+        let source = """
+            ::SCORE::
+            ** LSP Stanza Completion **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+                <4*>
+                | 1 2 3 4 |
+                L1| 春 風 吹 過 |
+                L2| 秋 雨 落 下 |
+            }
+
+            -> verse[
+            """
+
+        // Line 13 is "-> verse[" (character 9 is right after "[")
+        let items = TmdLSPCompletionEngine.complete(
+            source: source,
+            position: TmdLSPPosition(line: 13, character: 9)
+        )
+        let labels = items.map(\.label)
+        #expect(labels == ["L1", "L2"])
+        #expect(items.first?.insertText == "L1]")
+
+        // Reuse existing closing bracket if present: "-> verse[]" with cursor at character 9
+        let sourceWithClosingBracket = source + "]"
+        let itemsReusingBracket = TmdLSPCompletionEngine.complete(
+            source: sourceWithClosingBracket,
+            position: TmdLSPPosition(line: 13, character: 9)
+        )
+        #expect(itemsReusingBracket.map(\.label) == ["L1", "L2"])
+        #expect(itemsReusingBracket.first?.insertText == "L1")
     }
 }

@@ -157,6 +157,26 @@ public struct TmdLSPCompletionEngine {
         if prefix.trimmingCharacters(in: .whitespaces).hasSuffix("->")
             || prefix.trimmingCharacters(in: .whitespaces).contains("->")
         {
+            if let bracketMatch = extractPlaybackStanzaContext(from: prefix) {
+                let stanzas = extractStanzaIndices(
+                    forSection: bracketMatch.sectionName, in: source)
+                let appendClosingBracket = nextChar != "]"
+                return stanzas.compactMap { stanza in
+                    let label = "L\(stanza)"
+                    guard
+                        bracketMatch.typedPrefix.isEmpty
+                            || label.lowercased().hasPrefix(bracketMatch.typedPrefix.lowercased())
+                    else { return nil }
+                    return TmdLSPCompletionItem(
+                        label: label,
+                        kind: .value,
+                        detail: "Stanza \(label) of \(bracketMatch.sectionName)",
+                        documentation:
+                            "Selects lyric stanza \(label) for section \(bracketMatch.sectionName).",
+                        insertText: appendClosingBracket ? "\(label)]" : label
+                    )
+                }
+            }
             let sectionNames = TmdOutlineGenerator.extractSectionNames(source: source)
             return sectionNames.map {
                 TmdLSPCompletionItem(
@@ -263,6 +283,87 @@ public struct TmdLSPCompletionEngine {
         }
 
         return []
+    }
+
+    private static func extractPlaybackStanzaContext(from prefix: String) -> (
+        sectionName: String, typedPrefix: String
+    )? {
+        guard let regex = try? NSRegularExpression(
+            pattern: #"->\s*([A-Za-z_][A-Za-z0-9_-]*)\[\s*([A-Za-z0-9]*)$"#
+        ),
+            let match = regex.firstMatch(
+                in: prefix,
+                range: NSRange(prefix.startIndex..., in: prefix)
+            ),
+            let secRange = Range(match.range(at: 1), in: prefix),
+            let typedRange = Range(match.range(at: 2), in: prefix)
+        else {
+            return nil
+        }
+        return (String(prefix[secRange]), String(prefix[typedRange]))
+    }
+
+    private static func extractStanzaIndices(forSection sectionName: String, in source: String)
+        -> [Int]
+    {
+        var stanzas: Set<Int> = []
+        if let sheet = TmdParser.parse(string: source) {
+            for entry in sheet.entries where entry.name == sectionName {
+                for section in entry.sections {
+                    for line in section.lyrics {
+                        let idx = line.stanza ?? 1
+                        if (1...64).contains(idx) {
+                            stanzas.insert(idx)
+                        }
+                    }
+                }
+            }
+        }
+        if !stanzas.isEmpty {
+            return stanzas.sorted()
+        }
+
+        // Resilient line-by-line scan when the score is mid-edit on the playback line
+        let lines = source.components(separatedBy: .newlines)
+        var inTargetEntry = false
+        var braceDepth = 0
+        let headerPattern =
+            #"^\s*"# + NSRegularExpression.escapedPattern(for: sectionName)
+            + #"\s*(?::[^{]*)?\{\s*$"#
+        let headerRegex = try? NSRegularExpression(pattern: headerPattern)
+        let lyricRegex = try? NSRegularExpression(pattern: #"^\s*L(\d+)?\s*\|"#)
+
+        for line in lines {
+            if !inTargetEntry {
+                if headerRegex?.firstMatch(in: line, range: NSRange(line.startIndex..., in: line))
+                    != nil
+                {
+                    inTargetEntry = true
+                    braceDepth = 1
+                }
+            } else {
+                if let match = lyricRegex?.firstMatch(
+                    in: line, range: NSRange(line.startIndex..., in: line))
+                {
+                    if let numRange = Range(match.range(at: 1), in: line),
+                        let idx = Int(line[numRange]),
+                        (1...64).contains(idx)
+                    {
+                        stanzas.insert(idx)
+                    } else {
+                        stanzas.insert(1)
+                    }
+                }
+                for ch in line {
+                    if ch == "{" { braceDepth += 1 }
+                    if ch == "}" { braceDepth -= 1 }
+                }
+                if braceDepth <= 0 {
+                    inTargetEntry = false
+                }
+            }
+        }
+        return stanzas.sorted()
     }
 
     private static let scaleDegreeChords: [String] = [
