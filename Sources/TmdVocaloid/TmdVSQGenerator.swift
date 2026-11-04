@@ -37,7 +37,7 @@ struct VocaloidNoteItem: Sendable, Equatable {
         defaultLyric: String
     ) -> [VocaloidNoteItem] {
         var noteItems: [VocaloidNoteItem] = []
-        for event in timeline.monophonicEvents() {
+        for event in timeline.monophonicEvents(mergeMelisma: true) {
             guard case .note(let note) = event.content else { continue }
             let pitch = TmdMIDIGenerator.noteToMIDIPitch(note, keyOffset: event.state.keyOffset)
             guard (0...127).contains(pitch) else { continue }
@@ -45,10 +45,12 @@ struct VocaloidNoteItem: Sendable, Equatable {
             let durTicks = (event.duration * Double(ticksPerQuarter)).rounded()
             let tick = preMeasureTicks + (posTicks.isFinite ? max(0, Int(posTicks)) : 0)
             let dur = max(1, durTicks.isFinite ? Int(durTicks) : 1)
-            let phoneme = VocaloidPhoneme.resolvePhoneme(for: defaultLyric)
+            let resolvedLyric =
+                (event.lyric?.cleanWord).flatMap { $0.isEmpty ? nil : $0 } ?? defaultLyric
+            let phoneme = VocaloidPhoneme.resolvePhoneme(for: resolvedLyric)
             noteItems.append(
                 VocaloidNoteItem(
-                    tick: tick, dur: dur, pitch: pitch, lyric: defaultLyric, phoneme: phoneme))
+                    tick: tick, dur: dur, pitch: pitch, lyric: resolvedLyric, phoneme: phoneme))
         }
         return noteItems
     }

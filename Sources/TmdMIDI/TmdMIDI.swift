@@ -97,9 +97,14 @@ public struct TmdMIDIGenerator {
         case .center:
             break
         }
+        var lastLyricTick: UInt32?
         for event in timeline.events {
             let start = midiTick(event.position, ticksPerQuarter: ticksPerQuarter)
             let duration = max(1, midiTick(event.duration, ticksPerQuarter: ticksPerQuarter))
+            if let syl = event.lyric, !syl.cleanWord.isEmpty, lastLyricTick != start {
+                events.append(MIDIEvent(tick: start, message: .lyric(syl.cleanWord)))
+                lastLyricTick = start
+            }
             switch event.content {
             case .note(let note):
                 let baseVelocity = event.state.dynamicLevel.defaultVelocity

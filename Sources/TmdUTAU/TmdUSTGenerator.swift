@@ -73,7 +73,7 @@ public struct TmdUSTGenerator: Sendable {
         var noteIndex = 0
         var lyricIndex = 0
 
-        for event in timeline.monophonicEvents() {
+        for event in timeline.monophonicEvents(mergeMelisma: true) {
             // Fill any timeline gap prior to this event with a Rest (Lyric=R)
             if event.position > currentPosition {
                 let gapDuration = event.position - currentPosition
@@ -91,7 +91,9 @@ public struct TmdUSTGenerator: Sendable {
                     1, Int((event.duration * Double(options.ticksPerQuarter)).rounded()))
                 let pitch = TmdMIDIGenerator.noteToMIDIPitch(note, keyOffset: event.state.keyOffset)
                 let lyric: String
-                if lyricIndex < options.lyrics.count {
+                if let clean = event.lyric?.cleanWord, !clean.isEmpty {
+                    lyric = clean
+                } else if lyricIndex < options.lyrics.count {
                     lyric = options.lyrics[lyricIndex]
                     lyricIndex += 1
                 } else {

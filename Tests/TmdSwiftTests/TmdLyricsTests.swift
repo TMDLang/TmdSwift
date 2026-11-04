@@ -1,5 +1,8 @@
 import Foundation
 import Testing
+import TmdMIDI
+import TmdUTAU
+import TmdVocaloid
 
 @testable import TmdSwift
 
@@ -289,5 +292,67 @@ struct TmdLyricsTests {
         let altoNotes = altoTimeline.events.filter { $0.content.isNote }
         #expect(altoNotes.map { $0.lyric?.cleanWord } == ["兩", "隻", "老", "虎"])
         #expect(altoNotes.first?.position == 12.0)
+    }
+
+    @Test("Exports cleanWord lyrics and merges melisma durations in MIDI (0xFF 0x05), VOCALOID (.vsq/.vsqx), and UTAU (.ust)")
+    func testVoiceSynthesisExportersMIDIAndVocaloidAndUTAU() throws {
+        let source = """
+            ::SCORE::
+            ** Voice Synthesis Lyrics **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+                <4*>
+                | 1 2 - 3 |
+                L| 「拉」 咪 - 索！ |
+            }
+
+            -> verse ->#
+            """
+
+        let sheet = try #require(TmdParser.parse(string: source))
+
+        // 1. MIDI 0xFF 0x05 Lyric Meta Event at note-on ticks using cleanWord
+        let timeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Vocal")
+        let midiEvents = TmdMIDIGenerator.instrumentEvents(
+            timeline: timeline,
+            instrument: "Vocal",
+            midiInstrument: MIDIInstrument.resolve("Vocal"),
+            channel: 0,
+            ticksPerQuarter: 480
+        )
+        let lyricMetaEvents = midiEvents.filter {
+            if case .lyric = $0.message { return true }
+            return false
+        }
+        #expect(lyricMetaEvents.count == 3)
+        #expect(lyricMetaEvents[0] == MIDIEvent(tick: 0, message: .lyric("拉")))
+        #expect(lyricMetaEvents[1] == MIDIEvent(tick: 480, message: .lyric("咪")))
+        #expect(lyricMetaEvents[2] == MIDIEvent(tick: 1440, message: .lyric("索")))
+
+        let midiData = try TmdMIDIGenerator.generateMIDI(from: sheet)
+        // Verify 0xFF 0x05 meta event header is encoded in SMF binary
+        #expect(midiData.range(of: Data([0xFF, 0x05])) != nil)
+
+        // 2. VOCALOID .vsqx (cleanWord without punctuation, melisma duration = 960 ticks)
+        let vsqx = TmdVSQXGenerator.generateVSQX(from: sheet)
+        #expect(vsqx.contains("<y><![CDATA[拉]]></y>"))
+        #expect(vsqx.contains("<y><![CDATA[咪]]></y>"))
+        #expect(vsqx.contains("<y><![CDATA[索]]></y>"))
+        #expect(!vsqx.contains("「"))
+        #expect(!vsqx.contains("！"))
+        #expect(vsqx.contains("<dur>960</dur>"))
+
+        // 3. VOCALOID .vsq
+        let vsqData = TmdVSQGenerator.generateVSQ(from: sheet)
+        #expect(!vsqData.isEmpty)
+
+        // 4. UTAU .ust (cleanWord without punctuation, melisma Length=960)
+        let ust = TmdUSTGenerator.generateUST(from: sheet)
+        #expect(ust.contains("Lyric=拉\r\n"))
+        #expect(ust.contains("Length=960\r\nLyric=咪\r\n"))
+        #expect(ust.contains("Lyric=索\r\n"))
     }
 }

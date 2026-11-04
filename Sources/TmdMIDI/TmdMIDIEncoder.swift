@@ -7,6 +7,7 @@ public enum MIDIMessage: Equatable, Sendable {
     case timeSignature(Beat)
     case endOfTrack
     case text(String)
+    case lyric(String)
     case customMeta(type: UInt8, data: Data)
     case noteOn(channel: UInt8, note: UInt8, velocity: UInt8)
     case noteOff(channel: UInt8, note: UInt8)
@@ -67,6 +68,7 @@ public final class TmdMIDIEncoder {
         switch message {
         case .noteOff: return 0
         case .endOfTrack: return 100
+        case .lyric: return 15
         case .noteOn: return 20
         default: return 10
         }
@@ -112,6 +114,8 @@ extension MIDIMessage {
             return TmdMIDIEncoder.metaEvent(type: 0x2F, data: Data())
         case .text(let text):
             return TmdMIDIEncoder.metaEvent(type: 0x01, data: Data(text.utf8))
+        case .lyric(let text):
+            return TmdMIDIEncoder.metaEvent(type: 0x05, data: Data(text.utf8))
         case .customMeta(let type, let data):
             return TmdMIDIEncoder.metaEvent(type: type, data: data)
         case .noteOn(let channel, let note, let velocity):
