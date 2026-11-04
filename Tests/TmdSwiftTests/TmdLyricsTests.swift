@@ -92,4 +92,151 @@ struct TmdLyricsTests {
         #expect(formatted.contains("-> verse[L1] -> verse[L2] ->#\n"))
         #expect(TmdRefactor.format(formatted) == formatted)
     }
+
+    @Test("Validates 1:1 grid slot counting, dyads, transparent punctuation, groups, and stanza diagnostics")
+    func testLyricsSemanticValidationAndDiagnostics() {
+        // 1. Valid multi-stanza score with dyads, transparent tokens, and groups
+        let validSource = """
+            ::SCORE::
+            ** Valid Lyrics **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+                <4*>
+                | 1+3 2 3 0 | (1 2)%(--) 3 - |
+                L1| 「 哈 愛 你 」 0 | (你 好) 嗎 - |
+                L2| yes- ter- day 0 | (in the) end - |
+            }
+
+            -> verse[L1] -> verse[L2] ->#
+            """
+        let validDiags = TmdScoreValidator.validate(source: validSource)
+        #expect(validDiags.isEmpty)
+
+        // 2. E-LYRIC-COUNT / E-LYRIC-SLOT-MISMATCH
+        let countMismatchSource = """
+            ::SCORE::
+            ** Slot Mismatch **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+                <4*>
+                | 1 2 3 4 |
+                L| a b c |
+            }
+
+            -> verse ->#
+            """
+        let countDiags = TmdScoreValidator.validate(source: countMismatchSource)
+        #expect(countDiags.contains { $0.rule == .lyricCount && $0.rule == .lyricSlotMismatch })
+
+        // 3. E-LYRIC-DIRECTIVE
+        let directiveSource = """
+            ::SCORE::
+            ** Directive in Lyrics **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+                <4*>
+                | 1 2 3 4 |
+                L| {mp} a b c d |
+            }
+
+            -> verse ->#
+            """
+        let directiveDiags = TmdScoreValidator.validate(source: directiveSource)
+        #expect(directiveDiags.contains { $0.rule == .lyricDirective })
+
+        // 4. E-LYRIC-GROUP
+        let groupMismatchSource = """
+            ::SCORE::
+            ** Group Mismatch **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+                <4*>
+                | (1 2)%(--) 3 4 |
+                L| (a b c) d e |
+            }
+
+            -> verse ->#
+            """
+        let groupDiags = TmdScoreValidator.validate(source: groupMismatchSource)
+        #expect(groupDiags.contains { $0.rule == .lyricGroup })
+
+        // 5. E-LYRIC-TOKEN-UNSEPARATED
+        let unseparatedSource = """
+            ::SCORE::
+            ** Unseparated CJK **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+                <4*>
+                | 1 2 3 4 |
+                L| 你好喔喔 |
+            }
+
+            -> verse ->#
+            """
+        let unseparatedDiags = TmdScoreValidator.validate(source: unseparatedSource)
+        #expect(unseparatedDiags.contains { $0.rule == .lyricTokenUnseparated })
+
+        // 6. E-STANZA-ZERO & E-STANZA-RANGE & E-STANZA-DUPLICATE
+        let stanzaErrorsSource = """
+            ::SCORE::
+            ** Stanza Errors **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+                <4*>
+                | 1 2 3 4 |
+                L0| a b c d |
+                L1| a b c d |
+                L1| e f g h |
+                L65| i j k l |
+            }
+
+            -> verse[L1] ->#
+            """
+        let stanzaErrDiags = TmdScoreValidator.validate(source: stanzaErrorsSource)
+        #expect(stanzaErrDiags.contains { $0.rule == .stanzaZero })
+        #expect(stanzaErrDiags.contains { $0.rule == .stanzaRange })
+        #expect(stanzaErrDiags.contains { $0.rule == .stanzaDuplicate })
+
+        // 7. E-STANZA-INCONSISTENT, W-STANZA-GAP, W-STANZA-FALLBACK
+        let stanzaWarnAndInconsistentSource = """
+            ::SCORE::
+            ** Stanza Gap, Inconsistent, Fallback **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+                <4*>
+                | 1 2 3 4 |
+                L1| a b c d |
+                L3| e f g h |
+                | 5 6 7 1^ |
+                L1| i j k l |
+            }
+
+            -> verse ->#
+            """
+        let stanzaWarnDiags = TmdScoreValidator.validate(source: stanzaWarnAndInconsistentSource)
+        #expect(stanzaWarnDiags.contains { $0.rule == .stanzaGap && $0.severity == .warning })
+        #expect(stanzaWarnDiags.contains { $0.rule == .stanzaInconsistent && $0.severity == .error })
+        #expect(stanzaWarnDiags.contains { $0.rule == .stanzaFallback && $0.severity == .warning })
+    }
 }
