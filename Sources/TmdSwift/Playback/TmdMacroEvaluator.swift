@@ -308,11 +308,49 @@ public enum TmdMacroEvaluator {
                     )
                 }
                 let themeTarget = items[1]
-                guard case .list(let instList) = items[2], !instList.isEmpty else {
+                guard case .list(let rawInstList) = items[2], !rawInstList.isEmpty else {
                     throw TmdMacroError("'canon' requires a non-empty instrument list")
                 }
+                let instList: [SExpr]
+                if rawInstList.count > 1,
+                    case .symbol(let firstSym) = rawInstList[0],
+                    firstSym.lowercased() == "instruments"
+                {
+                    instList = Array(rawInstList.dropFirst())
+                } else {
+                    instList = rawInstList
+                }
                 let instruments = instList.map(\.description)
-                guard case .number(let offsetBars) = items[3], offsetBars >= 0 else {
+
+                var explicitOffsets: [Int]?
+                var offsetBars = 0
+                if case .number(let n) = items[3], n >= 0 {
+                    offsetBars = n
+                } else if case .list(let rawOffsetList) = items[3], !rawOffsetList.isEmpty {
+                    let offsetList: [SExpr]
+                    if rawOffsetList.count > 1,
+                        case .symbol(let firstSym) = rawOffsetList[0],
+                        firstSym.lowercased() == "offsets"
+                    {
+                        offsetList = Array(rawOffsetList.dropFirst())
+                    } else {
+                        offsetList = rawOffsetList
+                    }
+                    var parsedOffsets: [Int] = []
+                    for elem in offsetList {
+                        if case .number(let n) = elem, n >= 0 {
+                            parsedOffsets.append(n)
+                        } else if case .symbol(let s) = elem, let n = Int(s), n >= 0 {
+                            parsedOffsets.append(n)
+                        } else {
+                            throw TmdMacroError("'canon' offset must be a non-negative integer")
+                        }
+                    }
+                    explicitOffsets = parsedOffsets
+                    if parsedOffsets.count >= 2 {
+                        offsetBars = parsedOffsets[1] - parsedOffsets[0]
+                    }
+                } else {
                     throw TmdMacroError("'canon' offset must be a non-negative integer")
                 }
 
@@ -391,17 +429,28 @@ public enum TmdMacroEvaluator {
                 }
                 let prototypeBars =
                     prototypeQuarterDuration / TmdPlaybackRenderer.measureDuration(for: sheet.beat)
-                if let lastIndex = instruments.indices.last,
-                    Double(lastIndex * offsetBars) > prototypeBars
-                {
-                    throw TmdMacroError(
-                        "Canon voice \(lastIndex + 1) enters after the combined prototype ends")
+                if let lastIndex = instruments.indices.last {
+                    let lastOffset =
+                        if let explicitOffsets, lastIndex < explicitOffsets.count {
+                            explicitOffsets[lastIndex]
+                        } else {
+                            lastIndex * offsetBars
+                        }
+                    if Double(lastOffset) > prototypeBars {
+                        throw TmdMacroError(
+                            "Canon voice \(lastIndex + 1) enters after the combined prototype ends")
+                    }
                 }
                 genCounter += 1
                 let canonSectionName = "__canon_\(themeName)_\(genCounter)"
 
                 for (idx, inst) in instruments.enumerated() {
-                    let startOffset = idx * offsetBars
+                    let startOffset =
+                        if let explicitOffsets, idx < explicitOffsets.count {
+                            explicitOffsets[idx]
+                        } else {
+                            idx * offsetBars
+                        }
                     let p = Entry(
                         name: canonSectionName,
                         assignment: inst,

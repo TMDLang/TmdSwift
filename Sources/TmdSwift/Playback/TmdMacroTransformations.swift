@@ -42,7 +42,7 @@ extension TmdMacroEvaluator {
             idx += count
             return Section(
                 noteLength: s.noteLength, unitGroups: sub, directives: s.directives,
-                barlinePositions: s.barlinePositions)
+                barlinePositions: s.barlinePositions, lyrics: s.lyrics)
         }
     }
 

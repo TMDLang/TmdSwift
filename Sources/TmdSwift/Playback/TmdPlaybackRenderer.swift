@@ -46,6 +46,27 @@ public struct PlaybackEvent: Equatable, Sendable {
     public let duration: Double
     public let content: PlaybackContent
     public let state: PlaybackState
+    public let lyric: LyricSyllable?
+    public let isLyricMelisma: Bool
+    public let stanzaLyrics: [Int: LyricSoundingUnit]
+
+    public init(
+        position: Double,
+        duration: Double,
+        content: PlaybackContent,
+        state: PlaybackState,
+        lyric: LyricSyllable? = nil,
+        isLyricMelisma: Bool = false,
+        stanzaLyrics: [Int: LyricSoundingUnit] = [:]
+    ) {
+        self.position = position
+        self.duration = duration
+        self.content = content
+        self.state = state
+        self.lyric = lyric
+        self.isLyricMelisma = isLyricMelisma
+        self.stanzaLyrics = stanzaLyrics
+    }
 }
 
 /// A directive applied at an absolute position on the playback timeline.
@@ -88,7 +109,8 @@ public struct PlaybackTimeline: Equatable, Sendable {
 
     /// Returns timeline events with simultaneous `.note` events collapsed to the highest-pitched note,
     /// suitable for monophonic singing-synthesizer exporters (VSQ, VSQX, UST).
-    public func monophonicEvents() -> [PlaybackEvent] {
+    /// When `mergeMelisma` is true, notes marked with `isLyricMelisma` (`-` lyric token) extend the previous note's duration.
+    public func monophonicEvents(mergeMelisma: Bool = false) -> [PlaybackEvent] {
         var result: [PlaybackEvent] = []
         var i = 0
         while i < events.count {
@@ -108,7 +130,26 @@ public struct PlaybackTimeline: Equatable, Sendable {
                     }
                     j += 1
                 }
-                result.append(bestEvent)
+                if mergeMelisma && bestEvent.isLyricMelisma,
+                    let prev = result.last,
+                    prev.content.isNote
+                {
+                    let extendedDur = max(
+                        prev.duration,
+                        (bestEvent.position + bestEvent.duration) - prev.position
+                    )
+                    result[result.count - 1] = PlaybackEvent(
+                        position: prev.position,
+                        duration: extendedDur,
+                        content: prev.content,
+                        state: prev.state,
+                        lyric: prev.lyric,
+                        isLyricMelisma: prev.isLyricMelisma,
+                        stanzaLyrics: prev.stanzaLyrics
+                    )
+                } else {
+                    result.append(bestEvent)
+                }
                 i = j
             } else {
                 result.append(ev)
@@ -171,7 +212,7 @@ public enum TmdPlaybackRenderer {
             state = initialState(for: sheet)
         }
 
-        mutating func visit(_ order: Playback) -> String? {
+        mutating func visit(_ order: Playback) -> (name: String, stanza: Int?)? {
             switch order {
             case .relative(let value):
                 if let delta = Int(value.replacingOccurrences(of: "+", with: "")) {
@@ -185,8 +226,8 @@ public enum TmdPlaybackRenderer {
                     tempo: state.tempo, keyOffset: KeySignature(string: value).semitoneOffset,
                     timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
                 return nil
-            case .name(let name):
-                return name
+            case .name(let rawName):
+                return Playback.parseSectionSelector(rawName)
             case .macro:
                 return nil
             }
@@ -368,7 +409,9 @@ public enum TmdPlaybackRenderer {
         var directives: [PlaybackDirectiveEvent] = []
 
         for order in orders {
-            guard let name = cursor.visit(order) else { continue }
+            guard let target = cursor.visit(order) else { continue }
+            let name = target.name
+            let requestedStanza = target.stanza
             let matchingParagraphs = paragraphs.filter { $0.name == name }
             let paragraphDuration = duration(of: name, in: sheet, beat: cursor.state.timeSignature)
             guard !matchingParagraphs.isEmpty else {
@@ -397,7 +440,8 @@ public enum TmdPlaybackRenderer {
                     start: start,
                     state: paragraphState,
                     fixedPitch: paragraph.pitchMode == .fixed,
-                    minTimeSignaturePosition: minTimeSigPos
+                    minTimeSignaturePosition: minTimeSigPos,
+                    requestedStanza: requestedStanza
                 )
                 events.append(contentsOf: rendered.events)
                 directives.append(contentsOf: rendered.directives)
@@ -426,7 +470,10 @@ public enum TmdPlaybackRenderer {
                 position: event.position + offset,
                 duration: event.duration,
                 content: event.content,
-                state: event.state
+                state: event.state,
+                lyric: event.lyric,
+                isLyricMelisma: event.isLyricMelisma,
+                stanzaLyrics: event.stanzaLyrics
             )
         }
         let adjustedDirectives = directives.map { directive in
@@ -458,7 +505,8 @@ public enum TmdPlaybackRenderer {
         var orderedDirectives: [PlaybackDirectiveEvent] = []
 
         for order in orders {
-            guard let name = cursor.visit(order) else { continue }
+            guard let target = cursor.visit(order) else { continue }
+            let name = target.name
             let matchingParagraphs = sheet.entries.filter { $0.name == name && !$0.isPrototype }
             let paragraphDuration = duration(of: name, in: sheet, beat: cursor.state.timeSignature)
             guard !matchingParagraphs.isEmpty else {
@@ -548,12 +596,83 @@ public enum TmdPlaybackRenderer {
         )
     }
 
+    private struct LyricSlotKey: Hashable {
+        let groupIndex: Int
+        let unitIndex: Int
+    }
+
+    private static func buildLyricSlotMaps(
+        for section: Section,
+        requestedStanza: Int?
+    ) -> (
+        activeBySlot: [LyricSlotKey: LyricSoundingUnit],
+        stanzasBySlot: [LyricSlotKey: [Int: LyricSoundingUnit]]
+    ) {
+        guard !section.lyrics.isEmpty else { return ([:], [:]) }
+        var byPhrase: [Range<Int>: [LyricLine]] = [:]
+        var phraseOrder: [Range<Int>] = []
+        for line in section.lyrics {
+            if byPhrase[line.unitGroupRange] == nil {
+                phraseOrder.append(line.unitGroupRange)
+            }
+            byPhrase[line.unitGroupRange, default: []].append(line)
+        }
+
+        var activeBySlot: [LyricSlotKey: LyricSoundingUnit] = [:]
+        var stanzasBySlot: [LyricSlotKey: [Int: LyricSoundingUnit]] = [:]
+
+        for phraseRange in phraseOrder {
+            guard let phraseLyrics = byPhrase[phraseRange], !phraseLyrics.isEmpty else { continue }
+            let activeLine: LyricLine?
+            if let req = requestedStanza {
+                activeLine =
+                    phraseLyrics.first { $0.stanza == req || (req == 1 && $0.stanza == nil) }
+                    ?? (phraseLyrics.count == 1 ? phraseLyrics[0] : nil)
+            } else {
+                activeLine =
+                    phraseLyrics.first { $0.stanza == nil || $0.stanza == 1 }
+                    ?? phraseLyrics.first
+            }
+
+            let activeFlat = activeLine?.measures.flatMap(\.flatSoundingUnits) ?? []
+            let flattenedByStanza: [(stanza: Int, units: [LyricSoundingUnit])] = phraseLyrics.compactMap
+            { line in
+                let idx = line.stanza ?? 1
+                guard (1...64).contains(idx) else { return nil }
+                return (idx, line.measures.flatMap(\.flatSoundingUnits))
+            }
+
+            let lower = max(0, min(section.unitGroups.count, phraseRange.lowerBound))
+            let upper = max(lower, min(section.unitGroups.count, phraseRange.upperBound))
+            var flatCursor = 0
+            for gIdx in lower..<upper {
+                let group = section.unitGroups[gIdx]
+                for uIdx in 0..<group.units.count {
+                    let key = LyricSlotKey(groupIndex: gIdx, unitIndex: uIdx)
+                    if flatCursor < activeFlat.count {
+                        activeBySlot[key] = activeFlat[flatCursor]
+                    }
+                    var stanzaDict: [Int: LyricSoundingUnit] = [:]
+                    for item in flattenedByStanza where flatCursor < item.units.count {
+                        stanzaDict[item.stanza] = item.units[flatCursor]
+                    }
+                    if !stanzaDict.isEmpty {
+                        stanzasBySlot[key] = stanzaDict
+                    }
+                    flatCursor += 1
+                }
+            }
+        }
+        return (activeBySlot, stanzasBySlot)
+    }
+
     private static func render(
         paragraph: Entry,
         start: Double,
         state initialState: PlaybackState,
         fixedPitch: Bool,
-        minTimeSignaturePosition: Double? = nil
+        minTimeSignaturePosition: Double? = nil,
+        requestedStanza: Int? = nil
     ) -> (
         events: [PlaybackEvent], directives: [PlaybackDirectiveEvent], state: PlaybackState,
         duration: Double
@@ -570,8 +689,9 @@ public enum TmdPlaybackRenderer {
             let sortedDirectives = section.directives.sorted { $0.position < $1.position }
             var directiveIndex = 0
             var sectionPosition = 0
+            let lyricMaps = buildLyricSlotMaps(for: section, requestedStanza: requestedStanza)
 
-            for group in section.unitGroups {
+            for (groupIndex, group) in section.unitGroups.enumerated() {
                 while !deferredTimeSignatures.isEmpty,
                     position >= effectiveMinTimeSigPos - 1e-6
                 {
@@ -621,7 +741,10 @@ public enum TmdPlaybackRenderer {
                                 position: ev.position,
                                 duration: ev.duration + groupDuration,
                                 content: ev.content,
-                                state: ev.state
+                                state: ev.state,
+                                lyric: ev.lyric,
+                                isLyricMelisma: ev.isLyricMelisma,
+                                stanzaLyrics: ev.stanzaLyrics
                             )
                             i -= 1
                         }
@@ -645,7 +768,10 @@ public enum TmdPlaybackRenderer {
                                         position: ev.position,
                                         duration: ev.duration + baseSlotDuration,
                                         content: ev.content,
-                                        state: ev.state
+                                        state: ev.state,
+                                        lyric: ev.lyric,
+                                        isLyricMelisma: ev.isLyricMelisma,
+                                        stanzaLyrics: ev.stanzaLyrics
                                     )
                                 }
                             } else if !events.isEmpty {
@@ -658,7 +784,10 @@ public enum TmdPlaybackRenderer {
                                         position: ev.position,
                                         duration: ev.duration + baseSlotDuration,
                                         content: ev.content,
-                                        state: ev.state
+                                        state: ev.state,
+                                        lyric: ev.lyric,
+                                        isLyricMelisma: ev.isLyricMelisma,
+                                        stanzaLyrics: ev.stanzaLyrics
                                     )
                                     extendedIndices.append(i)
                                     i -= 1
@@ -676,6 +805,28 @@ public enum TmdPlaybackRenderer {
                             }
                         } else {
                             let slotPosition = position + Double(idx) * baseSlotDuration
+                            let slotKey = LyricSlotKey(groupIndex: groupIndex, unitIndex: idx)
+                            let activeLyricUnit = lyricMaps.activeBySlot[slotKey]
+                            let stanzaMap = lyricMaps.stanzasBySlot[slotKey] ?? [:]
+                            let eventLyric: LyricSyllable?
+                            let eventMelisma: Bool
+                            if unit == .rest {
+                                eventLyric = nil
+                                eventMelisma = false
+                            } else {
+                                switch activeLyricUnit {
+                                case .syllable(let syl):
+                                    eventLyric = syl
+                                    eventMelisma = false
+                                case .tie:
+                                    eventLyric = nil
+                                    eventMelisma = true
+                                case .rest, .none:
+                                    eventLyric = nil
+                                    eventMelisma = false
+                                }
+                            }
+
                             var newIndices: [Int] = []
                             switch unit {
                             case .multiNote(let notes):
@@ -685,7 +836,10 @@ public enum TmdPlaybackRenderer {
                                             position: slotPosition,
                                             duration: baseSlotDuration,
                                             content: .note(note),
-                                            state: state
+                                            state: state,
+                                            lyric: eventLyric,
+                                            isLyricMelisma: eventMelisma,
+                                            stanzaLyrics: stanzaMap
                                         ))
                                     newIndices.append(events.count - 1)
                                 }
@@ -696,7 +850,10 @@ public enum TmdPlaybackRenderer {
                                             position: slotPosition,
                                             duration: baseSlotDuration,
                                             content: content,
-                                            state: state
+                                            state: state,
+                                            lyric: eventLyric,
+                                            isLyricMelisma: eventMelisma,
+                                            stanzaLyrics: stanzaMap
                                         ))
                                     newIndices.append(events.count - 1)
                                 }
@@ -735,8 +892,9 @@ public enum TmdPlaybackRenderer {
     /// Calculates total quarter-note duration of a section/paragraph name in a sheet,
     /// measured from the section's downbeat anchor (measure 0) to the latest ending note.
     public static func duration(of name: String, in sheet: Sheet, beat: Beat? = nil) -> Double {
+        let baseName = Playback.parseSectionSelector(name).name
         let effectiveBeat = beat ?? sheet.beat
-        let matching = sheet.entries.filter { $0.name == name }
+        let matching = sheet.entries.filter { $0.name == baseName }
         guard !matching.isEmpty else { return 0.0 }
 
         let ends = matching.map { paragraph in
@@ -768,7 +926,8 @@ public enum TmdPlaybackRenderer {
         var minPosition = 0.0
 
         for order in orders {
-            guard let name = cursor.visit(order) else { continue }
+            guard let target = cursor.visit(order) else { continue }
+            let name = target.name
             let matchingParagraphs = sheet.entries.filter { $0.name == name }
             let paragraphDuration = duration(of: name, in: sheet, beat: cursor.state.timeSignature)
             for paragraph in matchingParagraphs {

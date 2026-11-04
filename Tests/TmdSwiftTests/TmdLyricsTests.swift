@@ -239,4 +239,55 @@ struct TmdLyricsTests {
         #expect(stanzaWarnDiags.contains { $0.rule == .stanzaInconsistent && $0.severity == .error })
         #expect(stanzaWarnDiags.contains { $0.rule == .stanzaFallback && $0.severity == .warning })
     }
+
+    @Test("Routes multi-stanza selectors across lead/backing tracks on playback timeline and clones prototype lyrics in canon macros")
+    func testPlaybackTimelineMultiStanzaBroadcastAndCanonMacros() throws {
+        let source = """
+            ::SCORE::
+            ** Stanza Broadcast & Canon Lyrics **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:LeadVocal@|0|{
+                <4*>
+                | 1 2 3 0 |
+                L1| 春 風 吹 0 |
+                L2| 秋 雨 落 0 |
+            }
+
+            verse:BackingVocal@|0|{
+                <4*>
+                | 3 4 5 0 |
+                L| 啦 啦 啦 0 |
+            }
+
+            TigerTheme {
+                <4*>
+                | 1 2 3 1 |
+                L| 兩 隻 老 虎 |
+            }
+
+            -> verse[L1] -> verse[L2] -> (canon TigerTheme (instruments Soprano Alto) (offsets 0 1)) ->#
+            """
+
+        let sheet = try #require(TmdParser.parse(string: source))
+        let leadTimeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: "LeadVocal")
+        let leadWords = leadTimeline.events.compactMap { $0.lyric?.cleanWord }
+        #expect(leadWords == ["春", "風", "吹", "秋", "雨", "落"])
+
+        let backingTimeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: "BackingVocal")
+        let backingWords = backingTimeline.events.compactMap { $0.lyric?.cleanWord }
+        #expect(backingWords == ["啦", "啦", "啦", "啦", "啦", "啦"])
+
+        let sopranoTimeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Soprano")
+        let sopranoNotes = sopranoTimeline.events.filter { $0.content.isNote }
+        #expect(sopranoNotes.map { $0.lyric?.cleanWord } == ["兩", "隻", "老", "虎"])
+        #expect(sopranoNotes.first?.position == 8.0)
+
+        let altoTimeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Alto")
+        let altoNotes = altoTimeline.events.filter { $0.content.isNote }
+        #expect(altoNotes.map { $0.lyric?.cleanWord } == ["兩", "隻", "老", "虎"])
+        #expect(altoNotes.first?.position == 12.0)
+    }
 }

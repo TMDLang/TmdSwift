@@ -67,6 +67,9 @@ public struct MeasureEvent: Equatable, Sendable {
     public let tieStart: Bool
     public let tieStop: Bool
     public let state: PlaybackState
+    public let lyric: LyricSyllable?
+    public let isLyricMelisma: Bool
+    public let stanzaLyrics: [Int: LyricSoundingUnit]
 
     public init(
         startOffset: Double,
@@ -74,7 +77,10 @@ public struct MeasureEvent: Equatable, Sendable {
         content: PlaybackContent,
         tieStart: Bool = false,
         tieStop: Bool = false,
-        state: PlaybackState
+        state: PlaybackState,
+        lyric: LyricSyllable? = nil,
+        isLyricMelisma: Bool = false,
+        stanzaLyrics: [Int: LyricSoundingUnit] = [:]
     ) {
         self.startOffset = startOffset
         self.duration = duration
@@ -82,6 +88,9 @@ public struct MeasureEvent: Equatable, Sendable {
         self.tieStart = tieStart
         self.tieStop = tieStop
         self.state = state
+        self.lyric = lyric
+        self.isLyricMelisma = isLyricMelisma
+        self.stanzaLyrics = stanzaLyrics
     }
 }
 
@@ -250,6 +259,18 @@ public enum TmdMeasureRenderer {
                 let isNote = event.content.isNote
                 let tieStop = isNote && (evStart < mStart - 1e-6)
                 let tieStart = isNote && (evEnd > mEnd + 1e-6)
+                let sliceLyric: LyricSyllable? = tieStop ? nil : event.lyric
+                let sliceMelisma: Bool =
+                    tieStop ? (event.lyric != nil || event.isLyricMelisma) : event.isLyricMelisma
+                let sliceStanzas: [Int: LyricSoundingUnit] =
+                    tieStop
+                    ? event.stanzaLyrics.mapValues { unit in
+                        switch unit {
+                        case .syllable, .tie: return .tie
+                        case .rest: return .rest
+                        }
+                    }
+                    : event.stanzaLyrics
 
                 rawMeasureEvents.append(
                     MeasureEvent(
@@ -258,7 +279,10 @@ public enum TmdMeasureRenderer {
                         content: event.content,
                         tieStart: tieStart,
                         tieStop: tieStop,
-                        state: event.state
+                        state: event.state,
+                        lyric: sliceLyric,
+                        isLyricMelisma: sliceMelisma,
+                        stanzaLyrics: sliceStanzas
                     ))
             }
 
@@ -313,7 +337,10 @@ public enum TmdMeasureRenderer {
                                 content: ev.content,
                                 tieStart: false,
                                 tieStop: ev.tieStop,
-                                state: ev.state
+                                state: ev.state,
+                                lyric: ev.lyric,
+                                isLyricMelisma: ev.isLyricMelisma,
+                                stanzaLyrics: ev.stanzaLyrics
                             )
                         }
                     }
@@ -410,7 +437,8 @@ public enum TmdMeasureRenderer {
         // If the first section has a negative-start pickup before timelinePosition 0, adopt its initial beat at 0.0
         if offset > 0 {
             for order in orders {
-                if case .name(let firstSecName) = order {
+                if case .name(let rawFirstSecName) = order {
+                    let firstSecName = Playback.parseSectionSelector(rawFirstSecName).name
                     let matching = sheet.entries.filter {
                         $0.name == firstSecName && !$0.isPrototype && $0.start < 0
                     }
@@ -426,7 +454,8 @@ public enum TmdMeasureRenderer {
         }
 
         for order in orders {
-            guard case .name(let secName) = order else { continue }
+            guard case .name(let rawSecName) = order else { continue }
+            let secName = Playback.parseSectionSelector(rawSecName).name
             let secDur = TmdPlaybackRenderer.duration(of: secName, in: sheet, beat: currentBeat)
             let sectionEnd = sectionStart + secDur
             let matching = sheet.entries.filter { $0.name == secName && !$0.isPrototype }
