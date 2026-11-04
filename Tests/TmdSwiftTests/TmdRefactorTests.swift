@@ -1080,9 +1080,9 @@ struct TmdRefactorTests {
         #expect(!extensionJS.contains("args.push('--interval',"))
     }
 
-    // MARK: - Formatter Specification Alignment Tests (Issue #64)
+    // MARK: - Formatter Semantics Tests
 
-    @Test("Issue #64: AST serializer uses 4-space indentation, spaced headers, and space-separated unit groups")
+    @Test("AST serializer uses 4-space indentation, spaced headers, and space-separated unit groups")
     func testASTSerializerCanonicalFormatting() throws {
         let input = """
             ::SCORE::
@@ -1108,7 +1108,7 @@ struct TmdRefactorTests {
         #expect(formatted.contains("    | (1 2)%(-) 3 4 5 |\n"))
     }
 
-    @Test("Issue #64: Formatter expands compact note sequences, completes outer barlines, and normalizes tuplets, chords, modifiers, multi-notes, inline directives, metadata, and entry headers")
+    @Test("Formatter expands compact note sequences, completes outer barlines, and normalizes tuplets, chords, modifiers, multi-notes, inline directives, metadata, and entry headers")
     func testFormatterMusicalUnitsNormalization() {
         let input = """
             ::SCORE::
@@ -1150,7 +1150,7 @@ struct TmdRefactorTests {
         #expect(formatted.contains("    | {!=120} {?=D} {?+2} {key= C} {<3/4>} {mf} XsTt |\n"))
     }
 
-    @Test("Issue #64: Formatter normalizes lyric lines, completes lyric barlines, compacts lyric groups, and sorts stanzas numerically")
+    @Test("Formatter normalizes lyric lines, completes lyric barlines, compacts lyric groups, and sorts stanzas numerically")
     func testFormatterLyricLinesAndStanzaSorting() {
         let input = """
             ::SCORE::
@@ -1197,7 +1197,7 @@ struct TmdRefactorTests {
         #expect(TmdRefactor.format(formatted) == formatted)
     }
 
-    @Test("Issue #64: Formatter normalizes top-level blank lines, inner entry blank lines, multi-line playback indentation, and EOF newline")
+    @Test("Formatter normalizes top-level blank lines, inner entry blank lines, multi-line playback indentation, and EOF newline")
     func testFormatterBlankLinesMultiLinePlaybackAndIdempotency() throws {
         let input = """
             ::SCORE::
