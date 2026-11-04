@@ -30,8 +30,8 @@ struct TmdRefactorTests {
         #expect(formatted.contains("intro:Piano@|0|{"))
         #expect(formatted.contains("    <4*>"))
         #expect(formatted.contains("    | [1] - | - [7,] |"))
-        #expect(formatted.contains("    1 2 3 4"))
-        #expect(formatted.contains("    (1' 2, 3^ 4_)%(--)"))
+        #expect(formatted.contains("    | 1 2 3 4 |"))
+        #expect(formatted.contains("    | (1' 2, 3^ 4_)%(--) |"))
         #expect(formatted.contains("}"))
         #expect(formatted.contains("-> intro ->#"))
         // Check that reparsing the formatted string yields the exact same Sheet
@@ -763,7 +763,7 @@ struct TmdRefactorTests {
             ])
 
         let transposed = TmdRefactor.transpose(source: source, semitones: 2, keySignature: "C")
-        #expect(transposed == "| 2-- 3^-- |\n")
+        #expect(transposed == "| 2 - - 3^ - - |\n")
     }
 
     @Test func testTransposeCompleteScoreAndUpdateKeySignature() throws {
@@ -1106,5 +1106,47 @@ struct TmdRefactorTests {
         #expect(formatted.contains("    <4*>\n"))
         #expect(formatted.contains("(1 2)%(-)"))
         #expect(formatted.contains("    | (1 2)%(-) 3 4 5 |\n"))
+    }
+
+    @Test("Issue #64: Formatter expands compact note sequences, completes outer barlines, and normalizes tuplets, chords, modifiers, multi-notes, inline directives, metadata, and entry headers")
+    func testFormatterMusicalUnitsNormalization() {
+        let input = """
+            ::SCORE::
+            ** Musical Units Test **
+            != 120
+            ?= C
+            <4/4>
+            ~   "Composer: Alice | Bob"
+            =~: __ARR__ =   "Charlie   |   Dave"
+
+            intro : Piano @ | 0 | {
+                <16*>
+                | 1 234 | 1'2_3 | 10-2 | [C]1 [ Cmaj7 ] [ C / G ] |
+                1 2 3 4 | 5 - 3 1
+                | ( 1 2 ) % ( - ) (12)%(- -) ( 3 4 ) |
+                | 1^' 5_, 2^^' 1 + 3 1^' + 3_, |
+                | { != 120 } { ?= D } { ? + 2 } { key = C } { < 3 / 4 > } { mf } XsTt |
+            }
+
+            show : Lighting @ intro {
+            \"\"\"
+            cue black
+            wait 4
+            \"\"\"
+            }
+
+            -> intro ->#
+            """
+        let formatted = TmdRefactor.format(input)
+        #expect(formatted.contains("~ \"Composer: Alice | Bob\"\n"))
+        #expect(formatted.contains("=~:__ARR__= \"Charlie   |   Dave\"\n"))
+        #expect(formatted.contains("intro:Piano@|0|{\n"))
+        #expect(formatted.contains("show:Lighting@intro{\n"))
+        #expect(formatted.contains("    <16*>\n"))
+        #expect(formatted.contains("    | 1 2 3 4 | 1' 2_ 3 | 1 0 - 2 | [C] 1 [Cmaj7] [C/G] |\n"))
+        #expect(formatted.contains("    | 1 2 3 4 | 5 - 3 1 |\n"))
+        #expect(formatted.contains("    | (1 2)%(-) (1 2)%(--) (3 4) |\n"))
+        #expect(formatted.contains("    | 1'^ 5,_ 2'^^ 1+3 1'^+3,_ |\n"))
+        #expect(formatted.contains("    | {!=120} {?=D} {?+2} {key= C} {<3/4>} {mf} XsTt |\n"))
     }
 }
