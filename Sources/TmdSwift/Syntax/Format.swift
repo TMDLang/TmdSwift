@@ -36,8 +36,8 @@ extension Sheet {
         result += "::SCORE::\n"
         result += "** \(name) **\n"
         result +=
-            "!=\(speed.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(speed)) : String(speed))\n"
-        result += "?=\(keySignature)\n"
+            "!= \(speed.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(speed)) : String(speed))\n"
+        result += "?= \(keySignature)\n"
         if let declaredKey {
             result += "key= \(declaredKey)\n"
         }
@@ -56,15 +56,8 @@ extension Sheet {
             result += paragraph.format()
         }
 
-        var counter = 0
-        for order in playback {
-            result += "-> \(order.format()) "
-            counter += 1
-            if counter % 4 == 0 {
-                result += "\n"
-            }
-        }
-        result += "->#\n"
+        let orderTokens = playback.map { "-> \($0.format())" } + ["->#"]
+        result += orderTokens.joined(separator: " ") + "\n"
         return result
     }
 }
@@ -114,13 +107,7 @@ extension UnitGroup {
         if units.count == 1 && length == 1 {
             return units[0].format()
         } else {
-            let hasMultiNoteOrChord = units.contains {
-                if case .multiNote = $0 { return true }
-                if case .chord = $0 { return true }
-                return false
-            }
-            let separator = hasMultiNoteOrChord ? " " : ""
-            let unitsStr = units.map { $0.format() }.joined(separator: separator)
+            let unitsStr = units.map { $0.format() }.joined(separator: " ")
             let lengthStr = String(repeating: "-", count: length)
             return "(\(unitsStr))%(\(lengthStr))"
         }
@@ -130,39 +117,63 @@ extension UnitGroup {
 extension Section {
     /// Formats section into TMD representation.
     public func format() -> String {
-        var result = "\t<\(noteLength)*>"
+        var lines: [String] = ["    <\(noteLength)*>"]
+        var currentLineTokens: [String] = []
         var counter = 0
         var directiveIndex = 0
         let sortedDirectives = directives.sorted { $0.position < $1.position }
-        func appendDirectives(at position: Int, to result: inout String) {
+
+        func ensureLineStarted() {
+            if currentLineTokens.isEmpty {
+                currentLineTokens.append("|")
+            }
+        }
+
+        func flushCurrentLine() {
+            guard !currentLineTokens.isEmpty else { return }
+            if currentLineTokens.last != "|" {
+                currentLineTokens.append("|")
+            }
+            lines.append("    " + currentLineTokens.joined(separator: " "))
+            currentLineTokens.removeAll()
+        }
+
+        func appendDirectives(at position: Int) {
             while directiveIndex < sortedDirectives.count
                 && sortedDirectives[directiveIndex].position == position
             {
-                result += "\(sortedDirectives[directiveIndex].format()) "
+                ensureLineStarted()
+                currentLineTokens.append(sortedDirectives[directiveIndex].format())
                 directiveIndex += 1
             }
         }
+
         var position = 0
         let barlines = Set(barlinePositions)
-        appendDirectives(at: position, to: &result)
+        appendDirectives(at: position)
         for unitGroup in unitGroups {
-            if barlines.contains(position) { result += "| " }
-            if counter % 8 == 0 || counter >= 8 {
-                result += "\n\t"
+            if counter >= 8 {
+                flushCurrentLine()
                 counter = 0
+            } else if position > 0 && barlines.contains(position) {
+                ensureLineStarted()
+                if currentLineTokens.last != "|" {
+                    currentLineTokens.append("|")
+                }
             }
-            result += "\(unitGroup.format()) "
+            ensureLineStarted()
+            currentLineTokens.append(unitGroup.format())
             counter += unitGroup.length
             position += unitGroup.length
-            appendDirectives(at: position, to: &result)
+            appendDirectives(at: position)
         }
-        if barlines.contains(position) { result += "| " }
         while directiveIndex < sortedDirectives.count {
-            result += "\(sortedDirectives[directiveIndex].format()) "
+            ensureLineStarted()
+            currentLineTokens.append(sortedDirectives[directiveIndex].format())
             directiveIndex += 1
         }
-        result += "\n\n"
-        return result
+        flushCurrentLine()
+        return lines.joined(separator: "\n") + "\n"
     }
 }
 

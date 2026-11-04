@@ -1079,4 +1079,32 @@ struct TmdRefactorTests {
         #expect(!extensionJS.contains("args.push('--octave',"))
         #expect(!extensionJS.contains("args.push('--interval',"))
     }
+
+    // MARK: - Formatter Specification Alignment Tests (Issue #64)
+
+    @Test("Issue #64: AST serializer uses 4-space indentation, spaced headers, and space-separated unit groups")
+    func testASTSerializerCanonicalFormatting() throws {
+        let input = """
+            ::SCORE::
+            ** AST Format Test **
+            !=120
+            ?=C
+            <4/4>
+
+            intro:Piano@|0|{
+                <4*>
+                | (12)%(-) 3 4 5 |
+            }
+
+            -> intro ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: input))
+        let formatted = sheet.format()
+        #expect(!formatted.contains("\t"))
+        #expect(formatted.contains("!= 120\n"))
+        #expect(formatted.contains("?= C\n"))
+        #expect(formatted.contains("    <4*>\n"))
+        #expect(formatted.contains("(1 2)%(-)"))
+        #expect(formatted.contains("    | (1 2)%(-) 3 4 5 |\n"))
+    }
 }
