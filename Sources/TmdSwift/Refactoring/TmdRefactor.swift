@@ -95,6 +95,8 @@ public struct TmdRefactor {
         var resultLines: [String] = []
         let rawLines = source.components(separatedBy: .newlines)
         var inProgramBlock = false
+        var inPlaybackFlow = false
+        var justClosedEntry = false
         var indentLevel = 0
         var i = 0
 
@@ -119,16 +121,38 @@ public struct TmdRefactor {
             }
 
             if trimmed.isEmpty {
+                if indentLevel > 0,
+                    let last = resultLines.last,
+                    last.trimmingCharacters(in: .whitespaces).hasSuffix("{")
+                {
+                    i += 1
+                    continue
+                }
                 resultLines.append("")
+                justClosedEntry = false
                 i += 1
                 continue
             }
 
             if trimmed == "}" {
+                while resultLines.last?.trimmingCharacters(in: .whitespaces).isEmpty == true {
+                    resultLines.removeLast()
+                }
                 indentLevel = max(0, indentLevel - 1)
-                resultLines.append(formatLine(line, indent: 0))
+                resultLines.append(formatLine(line, indent: indentLevel))
+                if indentLevel == 0 {
+                    justClosedEntry = true
+                }
+                inPlaybackFlow = false
                 i += 1
                 continue
+            }
+
+            if indentLevel == 0 && justClosedEntry {
+                if resultLines.last?.trimmingCharacters(in: .whitespaces).isEmpty == false {
+                    resultLines.append("")
+                }
+                justClosedEntry = false
             }
 
             // If line starts a block comment
@@ -153,16 +177,71 @@ public struct TmdRefactor {
                 continue
             }
 
+            // Sort consecutive lyric lines by ascending stanza index
+            if parseLyricLine(line) != nil {
+                var lyricGroup: [(offset: Int, stanzaSortKey: Int, formatted: String)] = []
+                var j = i
+                var offset = 0
+                while j < rawLines.count,
+                    let formattedLyric = formatLyricLine(rawLines[j], indent: indentLevel)
+                {
+                    lyricGroup.append(
+                        (
+                            offset: offset,
+                            stanzaSortKey: formattedLyric.stanzaSortKey,
+                            formatted: formattedLyric.formatted
+                        ))
+                    offset += 1
+                    j += 1
+                }
+                let sortedGroup = lyricGroup.sorted {
+                    if $0.stanzaSortKey == $1.stanzaSortKey {
+                        return $0.offset < $1.offset
+                    }
+                    return $0.stanzaSortKey < $1.stanzaSortKey
+                }
+                resultLines.append(contentsOf: sortedGroup.map(\.formatted))
+                i = j
+                continue
+            }
+
+            let trimmedNoComment = stripInlineComment(from: trimmed)
+
+            if indentLevel == 0 {
+                let isEntryStart = trimmedNoComment.hasSuffix("{") && !trimmedNoComment.hasPrefix("->")
+                let isPlaybackLine = trimmedNoComment.hasPrefix("->")
+
+                if isEntryStart || (isPlaybackLine && !inPlaybackFlow) {
+                    if let last = resultLines.last,
+                        !last.trimmingCharacters(in: .whitespaces).isEmpty,
+                        !last.trimmingCharacters(in: .whitespaces).hasSuffix("*/")
+                    {
+                        resultLines.append("")
+                    }
+                }
+
+                if isPlaybackLine {
+                    let playbackIndent = inPlaybackFlow ? 1 : 0
+                    let formattedLine = formatLine(line, indent: playbackIndent)
+                    resultLines.append(formattedLine)
+                    inPlaybackFlow = !trimmedNoComment.hasSuffix("->#")
+                    i += 1
+                    continue
+                } else {
+                    inPlaybackFlow = false
+                }
+            }
+
             let formattedLine = formatLine(line, indent: indentLevel)
             resultLines.append(formattedLine)
 
-            if trimmed.hasSuffix("{") {
+            if trimmedNoComment.hasSuffix("{") {
                 indentLevel += 1
             }
             i += 1
         }
 
-        // Clean up excessive empty lines (> 2 consecutive empty lines to 1)
+        // Clean up excessive empty lines (> 1 consecutive empty line to 1)
         var finalLines: [String] = []
         var emptyCount = 0
         for l in resultLines {
@@ -175,6 +254,17 @@ public struct TmdRefactor {
                 emptyCount = 0
                 finalLines.append(l)
             }
+        }
+
+        while finalLines.first == "" {
+            finalLines.removeFirst()
+        }
+        while finalLines.last == "" {
+            finalLines.removeLast()
+        }
+
+        guard !finalLines.isEmpty else {
+            return source.isEmpty ? "" : "\n"
         }
 
         return finalLines.joined(separator: "\n") + "\n"

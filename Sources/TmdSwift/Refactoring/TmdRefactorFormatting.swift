@@ -124,35 +124,193 @@ extension TmdRefactor {
 
         // Closing brace
         if trimmed == "}" {
-            return "}" + commentSuffix
+            return indentPrefix + "}" + commentSuffix
         }
 
         // Orders line: -> ...
         if trimmed.hasPrefix("->") {
-            let tokens = trimmed.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
-            var orderTokens: [String] = []
-            var i = 0
-            while i < tokens.count {
-                let t = tokens[i]
-                if t == "->" || t == "->#" {
-                    orderTokens.append(t)
-                } else if t.hasPrefix("->") {
-                    orderTokens.append("->")
-                    let sub = String(t.dropFirst(2))
-                    if !sub.isEmpty {
-                        orderTokens.append(sub)
-                    }
-                } else {
-                    orderTokens.append(t)
-                }
-                i += 1
-            }
-            return orderTokens.joined(separator: " ") + commentSuffix
+            return indentPrefix + formatPlaybackLine(trimmed) + commentSuffix
+        }
+
+        // Lyric line: L| ... or L1| ...
+        if let lyric = formatLyricLine(line, indent: indent) {
+            return lyric.formatted
         }
 
         // Content / measure line
         let formattedContent = formatMusicalUnits(trimmed)
         return indentPrefix + formattedContent + commentSuffix
+    }
+
+    static func stripInlineComment(from text: String) -> String {
+        if let commentStart = text.range(of: "/*") {
+            return String(text[..<commentStart.lowerBound]).trimmingCharacters(in: .whitespaces)
+        }
+        return text.trimmingCharacters(in: .whitespaces)
+    }
+
+    static func parseLyricLine(_ line: String) -> (
+        stanzaIndex: Int?, stanzaDigits: String, content: String, commentSuffix: String
+    )? {
+        var working = line
+        var commentSuffix = ""
+        if let commentStart = working.range(of: "/*") {
+            let commentText = String(working[commentStart.lowerBound...])
+            working = String(working[..<commentStart.lowerBound])
+            commentSuffix = "  " + commentText.trimmingCharacters(in: .whitespaces)
+        }
+        let trimmed = working.trimmingCharacters(in: .whitespaces)
+        guard trimmed.hasPrefix("L") else { return nil }
+        let chars = Array(trimmed)
+        var idx = 1
+        var digits = ""
+        while idx < chars.count && ("0"..."9").contains(chars[idx]) {
+            digits.append(chars[idx])
+            idx += 1
+        }
+        while idx < chars.count && (chars[idx] == " " || chars[idx] == "\t") {
+            idx += 1
+        }
+        guard idx < chars.count && chars[idx] == "|" else { return nil }
+        let content = String(chars[(idx + 1)...])
+        let stanzaIdx = digits.isEmpty ? nil : Int(digits)
+        return (
+            stanzaIndex: stanzaIdx,
+            stanzaDigits: digits,
+            content: content,
+            commentSuffix: commentSuffix
+        )
+    }
+
+    static func formatLyricLine(_ line: String, indent: Int) -> (
+        stanzaSortKey: Int, formatted: String
+    )? {
+        guard let parsed = parseLyricLine(line) else { return nil }
+        let indentPrefix = String(repeating: "    ", count: indent)
+        let formattedContent = formatLyricContent(parsed.content, includeOuterBarlines: true)
+        let prefix = "\(indentPrefix)L\(parsed.stanzaDigits)|"
+        let formatted =
+            formattedContent.isEmpty
+            ? "\(prefix) |\(parsed.commentSuffix)"
+            : "\(prefix) \(formattedContent)\(parsed.commentSuffix)"
+        return (stanzaSortKey: parsed.stanzaIndex ?? 0, formatted: formatted)
+    }
+
+    private static func formatLyricContent(_ content: String, includeOuterBarlines: Bool) -> String {
+        let chars = Array(content)
+        var tokens: [String] = []
+        var i = 0
+
+        while i < chars.count {
+            let ch = chars[i]
+            if ch == " " || ch == "\t" {
+                i += 1
+                continue
+            }
+            if ch == "|" {
+                tokens.append("|")
+                i += 1
+                continue
+            }
+            if ch == "(" {
+                if let closeIdx = findMatchingParen(in: chars, from: i) {
+                    let inner = String(chars[(i + 1)..<closeIdx])
+                    let formattedInner = formatLyricContent(inner, includeOuterBarlines: false)
+                    tokens.append("(\(formattedInner))")
+                    i = closeIdx + 1
+                    continue
+                }
+            }
+            var word = ""
+            while i < chars.count {
+                let cur = chars[i]
+                if cur == " " || cur == "\t" || cur == "|" || cur == "(" || cur == ")" {
+                    break
+                }
+                word.append(cur)
+                i += 1
+            }
+            if !word.isEmpty {
+                tokens.append(word)
+            } else {
+                i += 1
+            }
+        }
+
+        if includeOuterBarlines {
+            while tokens.first == "|" {
+                tokens.removeFirst()
+            }
+            if tokens.last != "|" {
+                tokens.append("|")
+            }
+        }
+
+        return tokens.joined(separator: " ")
+    }
+
+    private static func formatPlaybackLine(_ trimmed: String) -> String {
+        let chars = Array(trimmed)
+        var normalized = ""
+        var i = 0
+
+        while i < chars.count {
+            let ch = chars[i]
+            if ch == "{" {
+                if let closeIdx = chars[(i + 1)...].firstIndex(of: "}") {
+                    let inner = String(chars[(i + 1)..<closeIdx]).trimmingCharacters(in: .whitespaces)
+                    if !normalized.isEmpty && !normalized.hasSuffix(" ") {
+                        normalized.append(" ")
+                    }
+                    normalized.append(formatInlineDirective(inner))
+                    i = closeIdx + 1
+                    continue
+                }
+            }
+            if ch == "[" {
+                if let closeIdx = chars[(i + 1)...].firstIndex(of: "]") {
+                    while normalized.hasSuffix(" ") {
+                        normalized.removeLast()
+                    }
+                    let inner = String(chars[(i + 1)..<closeIdx]).filter { $0 != " " && $0 != "\t" }
+                    normalized.append("[\(inner)]")
+                    i = closeIdx + 1
+                    continue
+                }
+            }
+            if ch == "-" && i + 1 < chars.count && chars[i + 1] == ">" {
+                if !normalized.isEmpty && !normalized.hasSuffix(" ") {
+                    normalized.append(" ")
+                }
+                if i + 2 < chars.count && chars[i + 2] == "#" {
+                    normalized.append("-># ")
+                    i += 3
+                } else {
+                    normalized.append("-> ")
+                    i += 2
+                }
+                continue
+            }
+            if ch == " " || ch == "\t" {
+                if !normalized.isEmpty && !normalized.hasSuffix(" ") && !normalized.hasSuffix("(") {
+                    normalized.append(" ")
+                }
+                i += 1
+                continue
+            }
+            if ch == ")" {
+                while normalized.hasSuffix(" ") {
+                    normalized.removeLast()
+                }
+                normalized.append(")")
+                i += 1
+                continue
+            }
+            normalized.append(ch)
+            i += 1
+        }
+
+        return normalized.trimmingCharacters(in: .whitespaces)
     }
 
     static func formatMusicalUnits(_ text: String, addOuterBarlines: Bool = true) -> String {

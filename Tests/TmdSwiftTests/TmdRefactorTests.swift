@@ -1149,4 +1149,111 @@ struct TmdRefactorTests {
         #expect(formatted.contains("    | 1'^ 5,_ 2'^^ 1+3 1'^+3,_ |\n"))
         #expect(formatted.contains("    | {!=120} {?=D} {?+2} {key= C} {<3/4>} {mf} XsTt |\n"))
     }
+
+    @Test("Issue #64: Formatter normalizes lyric lines, completes lyric barlines, compacts lyric groups, and sorts stanzas numerically")
+    func testFormatterLyricLinesAndStanzaSorting() {
+        let input = """
+            ::SCORE::
+            ** Lyric Format Test **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+                <4*>
+                1 1 2 2 | 2 3 4 5
+                L | A   A   A   A | U   U   U   U
+
+                | (1 1)%(--) 3 4 | 5 - 3 1 |
+                L10 | 第 十 段 詞 | 結 - 尾 囉
+                L2 | 吃 飽 了 嗎 | 還 - 沒 吃
+                L1 | (  你  好  )   嗎   喔 | 我 - 很 好
+            }
+
+            -> verse[ L1 ] -> verse[ L2 ] ->#
+            """
+        let formatted = TmdRefactor.format(input)
+        let expected = """
+            ::SCORE::
+            ** Lyric Format Test **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+                <4*>
+                | 1 1 2 2 | 2 3 4 5 |
+                L| A A A A | U U U U |
+
+                | (1 1)%(--) 3 4 | 5 - 3 1 |
+                L1| (你 好) 嗎 喔 | 我 - 很 好 |
+                L2| 吃 飽 了 嗎 | 還 - 沒 吃 |
+                L10| 第 十 段 詞 | 結 - 尾 囉 |
+            }
+
+            -> verse[L1] -> verse[L2] ->#
+            """ + "\n"
+        #expect(formatted == expected)
+        #expect(TmdRefactor.format(formatted) == formatted)
+    }
+
+    @Test("Issue #64: Formatter normalizes top-level blank lines, inner entry blank lines, multi-line playback indentation, and EOF newline")
+    func testFormatterBlankLinesMultiLinePlaybackAndIdempotency() throws {
+        let input = """
+            ::SCORE::
+            ** Blank Line & Playback Test **
+            != 120
+            ?= C
+            <4/4>
+            intro:Piano@|0|{
+
+                <4*>
+                | 1 2 3 4 |
+
+
+
+                | 5 6 7 1^ |
+
+            }
+            verse:Piano@|0|{
+                <4*>
+                | 1 3 5 1^ |
+            }
+            -> intro -> verse[ L1 ]
+            -> { ? + 2 } -> verse[ L2 ] ->#
+
+
+            """
+        let formatted = TmdRefactor.format(input)
+        let expected = """
+            ::SCORE::
+            ** Blank Line & Playback Test **
+            != 120
+            ?= C
+            <4/4>
+
+            intro:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
+
+                | 5 6 7 1^ |
+            }
+
+            verse:Piano@|0|{
+                <4*>
+                | 1 3 5 1^ |
+            }
+
+            -> intro -> verse[L1]
+                -> {?+2} -> verse[L2] ->#
+            """ + "\n"
+        #expect(formatted == expected)
+        #expect(!formatted.hasSuffix("\n\n"))
+        #expect(TmdRefactor.format(formatted) == formatted)
+
+        // Verify AST serializer and source formatter round-trip idempotency
+        let parsed = try #require(TmdParser.parse(string: "::SCORE::\n** Round Trip **\n!= 120\n?= C\n<4/4>\n\nintro:Piano@|0|{\n    <4*>\n    | (1 2)%(-) 3 4 5 |\n}\n\n-> intro ->#\n"))
+        let serialized = parsed.format()
+        #expect(TmdRefactor.format(serialized) == serialized)
+    }
 }
