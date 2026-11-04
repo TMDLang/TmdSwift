@@ -165,7 +165,8 @@ public struct TmdBrailleGenerator {
         if !sheet.playback.isEmpty {
             for item in sheet.playback {
                 if case .name(let secName) = item {
-                    for entry in sheet.entries where entry.name == secName {
+                    let baseName = Playback.parseSectionSelector(secName).name
+                    for entry in sheet.entries where entry.name == baseName {
                         appendIfMusical(entry)
                     }
                 }
@@ -703,7 +704,37 @@ public struct TmdBrailleGenerator {
         if !currentLine.trimmingCharacters(in: .whitespaces).isEmpty {
             lines.append(currentLine)
         }
+        let lyricLine = renderBrailleLyricLine(from: preparations)
+        if !lyricLine.isEmpty {
+            lines.append(lyricLine)
+        }
         return lines
+    }
+
+    private static func renderBrailleLyricLine(from preparations: [MeasurePreparation]) -> String {
+        var words: [String] = []
+        var currentWord = ""
+        for prep in preparations {
+            for group in prep.measure.simultaneousEventGroups {
+                guard let noteEv = group.first(where: { $0.content.isNote }),
+                    let syl = noteEv.lyric
+                else { continue }
+                let lit = syl.rawText.brailleLiteraryString
+                guard !lit.isEmpty else { continue }
+                if syl.hasTrailingHyphen {
+                    currentWord += lit
+                } else {
+                    currentWord += lit
+                    words.append(currentWord)
+                    currentWord = ""
+                }
+            }
+        }
+        if !currentWord.isEmpty {
+            words.append(currentWord)
+        }
+        guard !words.isEmpty else { return "" }
+        return ";2 " + words.joined(separator: " ")
     }
 
     private static func joinTrackMeasuresAscii(_ measures: [RenderedBrailleMeasure]) -> String {

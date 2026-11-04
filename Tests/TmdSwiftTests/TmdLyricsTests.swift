@@ -1,6 +1,11 @@
 import Foundation
 import Testing
+import TmdABC
+import TmdBraille
+import TmdChordPro
+import TmdLilyPond
 import TmdMIDI
+import TmdMusicXML
 import TmdUTAU
 import TmdVocaloid
 
@@ -354,5 +359,72 @@ struct TmdLyricsTests {
         #expect(ust.contains("Lyric=拉\r\n"))
         #expect(ust.contains("Length=960\r\nLyric=咪\r\n"))
         #expect(ust.contains("Lyric=索\r\n"))
+    }
+
+    @Test("Exports rawText lyrics, multi-stanza verses, hyphenation, and melismas in MusicXML, LilyPond, ABC, ChordPro, and Music Braille")
+    func testSheetEngravingExportersMusicXMLLilyPondABCChordProBraille() throws {
+        let source = """
+            ::SCORE::
+            ** Sheet Engraving Lyrics **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+                <4*>
+                | 1 2 3 4 |
+                L1| 「我 愛」 你 - |
+                L2| yes- ter- day - |
+            }
+
+            verse:Chord@|0|{
+                <4*>
+                | [C] - [G] - |
+            }
+
+            -> verse[L1] -> verse[L2] ->#
+            """
+
+        let sheet = try #require(TmdParser.parse(string: source))
+
+        // 1. MusicXML (<lyric number="1">, <lyric number="2">, <syllabic>, <text>, <extend/>)
+        let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
+        #expect(xml.contains("<lyric number=\"1\">"))
+        #expect(xml.contains("<text>「我</text>"))
+        #expect(xml.contains("<text>愛」</text>"))
+        #expect(xml.contains("<text>你</text>"))
+        #expect(xml.contains("<lyric number=\"2\">"))
+        #expect(xml.contains("<syllabic>begin</syllabic>"))
+        #expect(xml.contains("<text>yes</text>"))
+        #expect(xml.contains("<syllabic>middle</syllabic>"))
+        #expect(xml.contains("<text>ter</text>"))
+        #expect(xml.contains("<syllabic>end</syllabic>"))
+        #expect(xml.contains("<text>day</text>"))
+        #expect(xml.contains("<extend"))
+
+        // 2. LilyPond (\addlyrics, hyphenation --, melisma __)
+        let ly = TmdLilyPondGenerator.generateLilyPond(from: sheet)
+        #expect(ly.contains("\\addlyrics"))
+        #expect(ly.contains("「我"))
+        #expect(ly.contains("yes\" -- \"ter\" -- \"day"))
+        #expect(ly.contains("__"))
+
+        // 3. ABC Notation (w: lyric lines with hyphenation and melisma _)
+        let abc = TmdABCGenerator.generateABC(from: sheet)
+        #expect(abc.contains("w:"))
+        #expect(abc.contains("「我 愛」 你 _"))
+        #expect(abc.contains("yes- ter- day _"))
+
+        // 4. ChordPro (inline [C] / [G] chords above/before lyrics)
+        let cho = TmdChordProGenerator.generateChordPro(from: sheet)
+        #expect(cho.contains("[C]「我 愛」 [G]你"))
+        #expect(cho.contains("[C]yes- ter- [G]day"))
+
+        // 5. Music Braille (literary braille lyrics alongside braille music)
+        let brf = TmdBrailleGenerator.generateBraille(
+            from: sheet,
+            options: TmdBrailleOptions(encoding: .ascii)
+        )
+        #expect(brf.contains("YES-TER-DAY") || brf.contains("YES"))
     }
 }

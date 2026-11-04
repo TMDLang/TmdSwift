@@ -96,7 +96,8 @@ public struct TmdChordProGenerator: Sendable {
                 guard !pName.isEmpty else { continue }
             }
             guard case .name(let pName) = order else { continue }
-            let sectionParagraphs = sheet.entries.filter { $0.name == pName }
+            let baseSectionName = Playback.parseSectionSelector(pName).name
+            let sectionParagraphs = sheet.entries.filter { $0.name == baseSectionName }
             let sectionKey = keySignature(for: currentKeyOffset)
             let sectionSheet = Sheet(
                 name: sheet.name,
@@ -122,7 +123,21 @@ public struct TmdChordProGenerator: Sendable {
                 instrument: instToRender
             )
 
-            if sectionMeasures.isEmpty { continue }
+            let vocalInstrument = sectionParagraphs.first {
+                $0.sections.contains { !$0.lyrics.isEmpty }
+            }?.assignment
+            let vocalMeasures: [Measure] =
+                if let vocalInstrument, vocalInstrument != instToRender {
+                    TmdMeasureRenderer.renderMeasures(
+                        sheet: sectionSheet,
+                        instrument: vocalInstrument
+                    )
+                } else {
+                    sectionMeasures
+                }
+
+            let measureCount = max(sectionMeasures.count, vocalMeasures.count)
+            if measureCount == 0 { continue }
 
             lines.append("")
             if currentKeyOffset != emittedKeyOffset {
@@ -135,17 +150,47 @@ public struct TmdChordProGenerator: Sendable {
 
             var measureStrings: [String] = []
 
-            for m in sectionMeasures {
-                var chordsInMeasure: [String] = []
-                for ev in m.events {
-                    if case .chord(let chord) = ev.content {
-                        chordsInMeasure.append(
-                            "[\(chordText(chord, keyOffset: ev.state.keyOffset))]")
+            for mIdx in 0..<measureCount {
+                let chordEvents: [(offset: Double, text: String)] =
+                    (mIdx < sectionMeasures.count ? sectionMeasures[mIdx].events : []).compactMap {
+                        ev in
+                        if case .chord(let chord) = ev.content {
+                            return (
+                                ev.startOffset,
+                                "[\(chordText(chord, keyOffset: ev.state.keyOffset))]"
+                            )
+                        }
+                        return nil
                     }
-                }
+                let lyricEvents: [(offset: Double, text: String)] =
+                    (mIdx < vocalMeasures.count
+                        ? vocalMeasures[mIdx].simultaneousEventGroups : []).compactMap { group in
+                        guard let noteEv = group.first(where: { $0.content.isNote }),
+                            let syl = noteEv.lyric
+                        else { return nil }
+                        return (noteEv.startOffset, syl.rawText)
+                    }
 
-                if !chordsInMeasure.isEmpty {
-                    measureStrings.append(chordsInMeasure.joined(separator: " "))
+                if !lyricEvents.isEmpty {
+                    var chordCursor = 0
+                    var tokens: [String] = []
+                    for lyr in lyricEvents {
+                        var prefixChords = ""
+                        while chordCursor < chordEvents.count
+                            && chordEvents[chordCursor].offset <= lyr.offset + 1e-4
+                        {
+                            prefixChords += chordEvents[chordCursor].text
+                            chordCursor += 1
+                        }
+                        tokens.append(prefixChords + lyr.text)
+                    }
+                    while chordCursor < chordEvents.count {
+                        tokens.append(chordEvents[chordCursor].text)
+                        chordCursor += 1
+                    }
+                    measureStrings.append(tokens.joined(separator: " "))
+                } else if !chordEvents.isEmpty {
+                    measureStrings.append(chordEvents.map(\.text).joined(separator: " "))
                 } else {
                     measureStrings.append("")
                 }
