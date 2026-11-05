@@ -662,4 +662,70 @@ struct TmdLyricsTests {
         let reverseNotes = reverseTimeline.events.filter { $0.content.isNote }
         #expect(reverseNotes.map { $0.lyric?.cleanWord } == ["c", "b", "a"])
     }
+
+    @Test("Preserves pitch/tempo changes across melismas in VSQX/UST, emits MusicXML extend stop, consumes untied melisma notes in LilyPond, binds ABC stanza numbers with ~, and emits Braille lyrics in all layouts")
+    func testBatch3ExporterMelismaAndAlignmentEdgeCases() throws {
+        let source = """
+            ::SCORE::
+            ** Batch 3 Exporter Edge Cases **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+                <4*>
+                | 1 2 3 4 |
+                L1| la - - end |
+                L2| go - - now |
+            }
+
+            -> verse[L1] ->#
+            """
+
+        let sheet = try #require(TmdParser.parse(string: source))
+
+        // 1. Pitch-changing melisma (1 -> 2 -> 3) must NOT swallow notes 2 and 3 in monophonicEvents / VSQX / UST
+        let timeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Vocal")
+        let monoNotes = timeline.monophonicEvents(mergeMelisma: true).filter { $0.content.isNote }
+        #expect(monoNotes.count == 4)
+
+        let vsqx = TmdVSQXGenerator.generateVSQX(from: sheet)
+        #expect(vsqx.contains("<y><![CDATA[la]]></y>"))
+        #expect(vsqx.contains("<y><![CDATA[-]]></y>"))
+        #expect(vsqx.contains("<y><![CDATA[end]]></y>"))
+
+        let ust = TmdUSTGenerator.generateUST(from: sheet)
+        #expect(ust.contains("Lyric=la\r\n"))
+        #expect(ust.contains("Lyric=-\r\n"))
+        #expect(ust.contains("Lyric=end\r\n"))
+
+        // 2. MusicXML emits <extend type="start"/>, <extend type="continue"/>, and <extend type="stop"/>
+        let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
+        #expect(xml.contains("<extend type=\"start\"/>"))
+        #expect(xml.contains("<extend type=\"continue\"/>"))
+        #expect(xml.contains("<extend type=\"stop\"/>"))
+
+        // 3. LilyPond emits extender `__` and note-consuming skip `_` for each untied melisma note
+        let ly = TmdLilyPondGenerator.generateLilyPond(from: sheet)
+        #expect(ly.contains("\"la\" __ _ _ \"end\""))
+        #expect(ly.contains("\"go\" __ _ _ \"now\""))
+
+        // 4. ABC Notation binds multi-stanza prefix with `~` (`w: 1.~la _ _ end`)
+        let abc = TmdABCGenerator.generateABC(from: sheet)
+        #expect(abc.contains("w: 1.~la _ _ end"))
+        #expect(abc.contains("w: 2.~go _ _ now"))
+
+        // 5. Music Braille outputs lyrics when lineWidth is nil and in .barOverBar layout
+        let brfUnwrapped = TmdBrailleGenerator.generateBraille(
+            from: sheet,
+            options: TmdBrailleOptions(encoding: .ascii, layout: .partByPart, lineWidth: nil)
+        )
+        #expect(brfUnwrapped.contains(";2 LA END"))
+
+        let brfBarOverBar = TmdBrailleGenerator.generateBraille(
+            from: sheet,
+            options: TmdBrailleOptions(encoding: .ascii, layout: .barOverBar)
+        )
+        #expect(brfBarOverBar.contains(";2 LA END"))
+    }
 }

@@ -93,6 +93,8 @@ public struct TmdUSTGenerator: Sendable {
                 let lyric: String
                 if let clean = event.lyric?.cleanWord, !clean.isEmpty {
                     lyric = clean
+                } else if event.isLyricMelisma {
+                    lyric = "-"
                 } else if lyricIndex < options.lyrics.count {
                     lyric = options.lyrics[lyricIndex]
                     lyricIndex += 1

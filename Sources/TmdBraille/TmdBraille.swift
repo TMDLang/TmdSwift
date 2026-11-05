@@ -132,6 +132,9 @@ public struct TmdBrailleGenerator {
                         mIdx < track.measures.count ? track.measures[mIdx].ascii : "M"
                     let suffix = isLastMeasure ? "<K" : ""
                     asciiLines.append("  \(prefix) \(mAscii)\(suffix)")
+                    if mIdx < track.measures.count, !track.measures[mIdx].lyricAscii.isEmpty {
+                        asciiLines.append("  ;2 \(track.measures[mIdx].lyricAscii)")
+                    }
                 }
             }
         }
@@ -203,6 +206,7 @@ public struct TmdBrailleGenerator {
         let groupTokens: [String]
         let endsWithCrossBarTie: Bool
         let startsWithCrossBarTie: Bool
+        let lyricAscii: String
     }
 
     private struct RenderedBrailleTrack {
@@ -370,7 +374,8 @@ public struct TmdBrailleGenerator {
                 ascii: "M",
                 groupTokens: ["M"],
                 endsWithCrossBarTie: false,
-                startsWithCrossBarTie: false
+                startsWithCrossBarTie: false,
+                lyricAscii: ""
             )
         }
 
@@ -491,7 +496,8 @@ public struct TmdBrailleGenerator {
             ascii: groupTokens.joined(),
             groupTokens: groupTokens,
             endsWithCrossBarTie: prep.endsWithTie,
-            startsWithCrossBarTie: prep.startsWithTie
+            startsWithCrossBarTie: prep.startsWithTie,
+            lyricAscii: renderBrailleLyricWords(from: [prep])
         )
     }
 
@@ -575,7 +581,12 @@ public struct TmdBrailleGenerator {
         guard let maxW = lineWidth, maxW > 0 else {
             let rendered = renderTrackMeasures(instrument: instrument, sheet: sheet, isSolo: isSolo)
             let body = joinTrackMeasuresAscii(rendered.measures)
-            return ["\(initialPrefix) \(body)<K"]
+            var out = ["\(initialPrefix) \(body)<K"]
+            let lyricLine = renderBrailleLyricLine(from: preparations)
+            if !lyricLine.isEmpty {
+                out.append(lyricLine)
+            }
+            return out
         }
 
         var lines: [String] = []
@@ -712,6 +723,12 @@ public struct TmdBrailleGenerator {
     }
 
     private static func renderBrailleLyricLine(from preparations: [MeasurePreparation]) -> String {
+        let joined = renderBrailleLyricWords(from: preparations)
+        guard !joined.isEmpty else { return "" }
+        return ";2 " + joined
+    }
+
+    private static func renderBrailleLyricWords(from preparations: [MeasurePreparation]) -> String {
         var words: [String] = []
         var currentWord = ""
         for prep in preparations {
@@ -733,8 +750,7 @@ public struct TmdBrailleGenerator {
         if !currentWord.isEmpty {
             words.append(currentWord)
         }
-        guard !words.isEmpty else { return "" }
-        return ";2 " + words.joined(separator: " ")
+        return words.joined(separator: " ")
     }
 
     private static func joinTrackMeasuresAscii(_ measures: [RenderedBrailleMeasure]) -> String {

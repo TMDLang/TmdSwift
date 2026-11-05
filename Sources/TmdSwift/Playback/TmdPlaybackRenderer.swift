@@ -132,7 +132,9 @@ public struct PlaybackTimeline: Equatable, Sendable {
                 }
                 if mergeMelisma && bestEvent.isLyricMelisma,
                     let prev = result.last,
-                    prev.content.isNote
+                    prev.content == bestEvent.content,
+                    prev.state == bestEvent.state,
+                    abs((prev.position + prev.duration) - bestEvent.position) < 1e-4
                 {
                     let extendedDur = max(
                         prev.duration,

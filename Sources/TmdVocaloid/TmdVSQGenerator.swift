@@ -45,8 +45,14 @@ struct VocaloidNoteItem: Sendable, Equatable {
             let durTicks = (event.duration * Double(ticksPerQuarter)).rounded()
             let tick = preMeasureTicks + (posTicks.isFinite ? max(0, Int(posTicks)) : 0)
             let dur = max(1, durTicks.isFinite ? Int(durTicks) : 1)
-            let resolvedLyric =
-                (event.lyric?.cleanWord).flatMap { $0.isEmpty ? nil : $0 } ?? defaultLyric
+            let resolvedLyric: String
+            if let clean = event.lyric?.cleanWord, !clean.isEmpty {
+                resolvedLyric = clean
+            } else if event.isLyricMelisma {
+                resolvedLyric = "-"
+            } else {
+                resolvedLyric = defaultLyric
+            }
             let phoneme = VocaloidPhoneme.resolvePhoneme(for: resolvedLyric)
             noteItems.append(
                 VocaloidNoteItem(

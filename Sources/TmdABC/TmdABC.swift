@@ -157,7 +157,7 @@ public struct TmdABCGenerator {
                     }
                 }
                 if !measureStrings.isEmpty {
-                    lines.append("w: \(stanza). \(measureStrings.joined(separator: " | "))")
+                    lines.append("w: \(stanza).~\(measureStrings.joined(separator: " | "))")
                 }
             }
             return lines.joined(separator: "\n")

@@ -283,6 +283,16 @@ public struct TmdMusicXMLGenerator {
                     if case .chord = $0.content { return false }
                     return true
                 }
+                var nextNoteEvent: MeasureEvent? = nil
+                if flatNoteCursor < flatNoteEvents.count,
+                    flatNoteEvents[flatNoteCursor].measureIndex == mIdx,
+                    flatNoteEvents[flatNoteCursor].groupIndex == idx
+                {
+                    if flatNoteCursor + 1 < flatNoteEvents.count {
+                        nextNoteEvent = flatNoteEvents[flatNoteCursor + 1].event
+                    }
+                    flatNoteCursor += 1
+                }
                 let chunks = decomposeDivisions(duration, divisions: currentDivisions)
                 for (chunkIdx, chunkDur) in chunks.enumerated() {
                     let isFirstChunk = (chunkIdx == 0)
@@ -308,21 +318,12 @@ public struct TmdMusicXMLGenerator {
                             let subTieStop = isFirstChunk ? event.tieStop : true
                             let subTieStart = isLastChunk ? event.tieStart : true
                             var lyricsXML = ""
-                            if isFirstChunk && !emittedNoteInGroup {
-                                var nextNoteEvent: MeasureEvent? = nil
-                                if flatNoteCursor < flatNoteEvents.count,
-                                    flatNoteEvents[flatNoteCursor].measureIndex == mIdx,
-                                    flatNoteEvents[flatNoteCursor].groupIndex == idx
-                                {
-                                    if flatNoteCursor + 1 < flatNoteEvents.count {
-                                        nextNoteEvent = flatNoteEvents[flatNoteCursor + 1].event
-                                    }
-                                    flatNoteCursor += 1
-                                }
+                            if !emittedNoteInGroup {
                                 lyricsXML = generateLyricsXML(
                                     for: event,
                                     nextNoteEvent: nextNoteEvent,
-                                    hasMultipleChunks: chunks.count > 1,
+                                    chunkIndex: chunkIdx,
+                                    chunkCount: chunks.count,
                                     inHyphenatedWord: &inHyphenatedWord
                                 )
                             }
@@ -694,16 +695,39 @@ public struct TmdMusicXMLGenerator {
     private static func generateLyricsXML(
         for event: MeasureEvent,
         nextNoteEvent: MeasureEvent?,
-        hasMultipleChunks: Bool,
+        chunkIndex: Int,
+        chunkCount: Int,
         inHyphenatedWord: inout [Int: Bool]
     ) -> String {
         let stanzaMap = resolveStanzaUnits(for: event)
         guard !stanzaMap.isEmpty else { return "" }
         let nextStanzaMap = nextNoteEvent.map { resolveStanzaUnits(for: $0) } ?? [:]
+        let hasMoreChunks = chunkIndex < chunkCount - 1
 
         var xml = ""
         for stanza in stanzaMap.keys.sorted() {
             guard let unit = stanzaMap[stanza] else { continue }
+            let nextHasTie: Bool
+            if case .tie = nextStanzaMap[stanza] {
+                nextHasTie = true
+            } else {
+                nextHasTie = false
+            }
+
+            if chunkIndex > 0 {
+                switch unit {
+                case .syllable, .tie:
+                    let continuesFurther = hasMoreChunks || event.tieStart || nextHasTie
+                    let extendType = continuesFurther ? "continue" : "stop"
+                    xml += "          <lyric number=\"\(stanza)\">\n"
+                    xml += "            <extend type=\"\(extendType)\"/>\n"
+                    xml += "          </lyric>\n"
+                case .rest:
+                    break
+                }
+                continue
+            }
+
             switch unit {
             case .syllable(let syl):
                 let wasInHyphen = inHyphenatedWord[stanza] ?? false
@@ -715,13 +739,7 @@ public struct TmdMusicXMLGenerator {
                     syllabic = wasInHyphen ? "end" : "single"
                     inHyphenatedWord[stanza] = false
                 }
-                let nextHasTie: Bool
-                if case .tie = nextStanzaMap[stanza] {
-                    nextHasTie = true
-                } else {
-                    nextHasTie = false
-                }
-                let needsExtendStart = nextHasTie || event.tieStart || hasMultipleChunks
+                let needsExtendStart = nextHasTie || event.tieStart || chunkCount > 1
                 xml += "          <lyric number=\"\(stanza)\">\n"
                 xml += "            <syllabic>\(syllabic)</syllabic>\n"
                 xml += "            <text>\(escapeXML(syl.displaySyllable))</text>\n"
@@ -730,8 +748,10 @@ public struct TmdMusicXMLGenerator {
                 }
                 xml += "          </lyric>\n"
             case .tie:
+                let continuesFurther = hasMoreChunks || event.tieStart || nextHasTie
+                let extendType = continuesFurther ? "continue" : "stop"
                 xml += "          <lyric number=\"\(stanza)\">\n"
-                xml += "            <extend type=\"continue\"/>\n"
+                xml += "            <extend type=\"\(extendType)\"/>\n"
                 xml += "          </lyric>\n"
             case .rest:
                 break
