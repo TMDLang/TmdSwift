@@ -1278,9 +1278,27 @@ public struct LyricLine: Equatable, Sendable {
                 index += 1
                 continue
             }
-            if c == ")" && stopAtCloseParen {
+            if c == ")" {
                 index += 1
-                break
+                if stopAtCloseParen {
+                    break
+                }
+                continue
+            }
+            if c == "}" {
+                index += 1
+                continue
+            }
+            if c == "/" && index + 1 < chars.count && chars[index + 1] == "*" {
+                index += 2
+                while index < chars.count {
+                    if chars[index] == "*" && index + 1 < chars.count && chars[index + 1] == "/" {
+                        index += 2
+                        break
+                    }
+                    index += 1
+                }
+                continue
             }
             if c == "(" {
                 index += 1
@@ -1550,6 +1568,9 @@ public enum Playback: Equatable {
             .trimmingCharacters(in: .whitespacesAndNewlines)
         if inside.uppercased().hasPrefix("L") {
             let numStr = String(inside.dropFirst()).trimmingCharacters(in: .whitespacesAndNewlines)
+            if !numStr.isEmpty && numStr.allSatisfy({ $0 >= "0" && $0 <= "9" }) {
+                return (baseName, Int(numStr) ?? Int.max)
+            }
             if let stanza = Int(numStr) {
                 return (baseName, stanza)
             }

@@ -466,4 +466,82 @@ struct TmdLyricsTests {
         #expect(itemsReusingBracket.map(\.label) == ["L1", "L2"])
         #expect(itemsReusingBracket.first?.insertText == "L1")
     }
+
+    @Test("Handles unmatched closing delimiters, overflowing stanza numbers, inline block comments, selector range diagnostics, and per-measure trailing rest omission")
+    func testBatch1LexerParserAndValidatorEdgeCases() throws {
+        // 1. Unmatched ')' and '}' in LyricLine.parseMeasure must not hang
+        let measureWithUnmatchedClose = LyricLine.parseMeasure("a ) b } c")
+        #expect(measureWithUnmatchedClose.flatSoundingUnits.count == 3)
+
+        // 2. Inline block comment inside lyric line must not truncate remainder of line
+        let inlineCommentScore = """
+            ::SCORE::
+            ** Inline Lyric Comment **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+                <4*>
+                | 1 2 3 4 |
+                L| a /* inline comment */ b ) c d |
+            }
+
+            -> verse ->#
+            """
+        let commentSheet = try #require(TmdParser.parse(string: inlineCommentScore))
+        let commentUnits = commentSheet.entries.first?.sections.first?.lyrics.first?.measures.first?
+            .flatSoundingUnits
+        #expect(commentUnits?.count == 4)
+        let commentDiags = TmdScoreValidator.validate(source: inlineCommentScore)
+        #expect(commentDiags.filter { $0.severity == .error }.isEmpty)
+
+        // 3. Overflowing stanza index on lyric line and playback selector must emit E-STANZA-RANGE / E-STANZA-ZERO
+        let overflowScore = """
+            ::SCORE::
+            ** Overflow Stanza **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+                <4*>
+                | 1 2 3 4 |
+                L999999999999999999999999999999| a b c d |
+            }
+
+            -> verse[L0] -> verse[L65] -> verse[L999999999999999999999999999999] ->#
+            """
+        let overflowDiags = TmdScoreValidator.validate(source: overflowScore)
+        let stanzaZeroDiags = overflowDiags.filter { $0.rule == .stanzaZero }
+        let stanzaRangeDiags = overflowDiags.filter { $0.rule == .stanzaRange }
+        #expect(stanzaZeroDiags.count == 1)
+        #expect(stanzaRangeDiags.count == 3)
+
+        // 4. Per-measure trailing rest omission alignment (| 1 2 0 0 | 3 4 5 6 | with L| a b | c d e f |)
+        let trailingRestScore = """
+            ::SCORE::
+            ** Trailing Rest Omission **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+                <4*>
+                | 1 2 0 0 | 3 4 5 6 |
+                L| a b | c d e f |
+            }
+
+            -> verse ->#
+            """
+        let trailingRestDiags = TmdScoreValidator.validate(source: trailingRestScore)
+        #expect(trailingRestDiags.filter { $0.severity == .error }.isEmpty)
+
+        let trailingRestSheet = try #require(TmdParser.parse(string: trailingRestScore))
+        let timeline = TmdPlaybackRenderer.render(sheet: trailingRestSheet, instrument: "Vocal")
+        let noteEvents = timeline.events.filter { $0.content.isNote }
+        #expect(noteEvents.map { $0.lyric?.cleanWord } == ["a", "b", "c", "d", "e", "f"])
+        #expect(noteEvents[2].position == 4.0)
+        #expect(noteEvents[2].lyric?.cleanWord == "c")
+    }
 }

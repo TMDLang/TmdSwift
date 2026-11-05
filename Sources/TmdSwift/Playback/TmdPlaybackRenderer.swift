@@ -634,32 +634,48 @@ public enum TmdPlaybackRenderer {
                     ?? phraseLyrics.first
             }
 
-            let activeFlat = activeLine?.measures.flatMap(\.flatSoundingUnits) ?? []
-            let flattenedByStanza: [(stanza: Int, units: [LyricSoundingUnit])] = phraseLyrics.compactMap
-            { line in
-                let idx = line.stanza ?? 1
-                guard (1...64).contains(idx) else { return nil }
-                return (idx, line.measures.flatMap(\.flatSoundingUnits))
-            }
+            let measureRanges =
+                activeLine?.measureUnitGroupRanges
+                ?? phraseLyrics.first?.measureUnitGroupRanges
+                ?? [phraseRange]
 
-            let lower = max(0, min(section.unitGroups.count, phraseRange.lowerBound))
-            let upper = max(lower, min(section.unitGroups.count, phraseRange.upperBound))
-            var flatCursor = 0
-            for gIdx in lower..<upper {
-                let group = section.unitGroups[gIdx]
-                for uIdx in 0..<group.units.count {
-                    let key = LyricSlotKey(groupIndex: gIdx, unitIndex: uIdx)
-                    if flatCursor < activeFlat.count {
-                        activeBySlot[key] = activeFlat[flatCursor]
+            for (mIdx, mRange) in measureRanges.enumerated() {
+                let activeMeasureUnits =
+                    (activeLine != nil && mIdx < activeLine!.measures.count)
+                    ? activeLine!.measures[mIdx].flatSoundingUnits
+                    : []
+                let stanzaMeasureUnits: [(stanza: Int, units: [LyricSoundingUnit])] =
+                    phraseLyrics.compactMap { line in
+                        let idx = line.stanza ?? 1
+                        guard (1...64).contains(idx), mIdx < line.measures.count else { return nil }
+                        return (idx, line.measures[mIdx].flatSoundingUnits)
                     }
-                    var stanzaDict: [Int: LyricSoundingUnit] = [:]
-                    for item in flattenedByStanza where flatCursor < item.units.count {
-                        stanzaDict[item.stanza] = item.units[flatCursor]
+
+                let lower = max(0, min(section.unitGroups.count, mRange.lowerBound))
+                let upper = max(lower, min(section.unitGroups.count, mRange.upperBound))
+                var measureCursor = 0
+                for gIdx in lower..<upper {
+                    let group = section.unitGroups[gIdx]
+                    for uIdx in 0..<group.units.count {
+                        let key = LyricSlotKey(groupIndex: gIdx, unitIndex: uIdx)
+                        if measureCursor < activeMeasureUnits.count {
+                            activeBySlot[key] = activeMeasureUnits[measureCursor]
+                        } else if group.units[uIdx] == .rest {
+                            activeBySlot[key] = .rest
+                        }
+                        var stanzaDict: [Int: LyricSoundingUnit] = [:]
+                        for item in stanzaMeasureUnits {
+                            if measureCursor < item.units.count {
+                                stanzaDict[item.stanza] = item.units[measureCursor]
+                            } else if group.units[uIdx] == .rest {
+                                stanzaDict[item.stanza] = .rest
+                            }
+                        }
+                        if !stanzaDict.isEmpty {
+                            stanzasBySlot[key] = stanzaDict
+                        }
+                        measureCursor += 1
                     }
-                    if !stanzaDict.isEmpty {
-                        stanzasBySlot[key] = stanzaDict
-                    }
-                    flatCursor += 1
                 }
             }
         }

@@ -283,12 +283,30 @@ public final class Lexer {
             }
             if peek(offset: offset) == "|" {
                 for _ in 0...offset { advance() }
-                let stanza = stanzaStr.isEmpty ? nil : Int(stanzaStr)
+                let stanza = stanzaStr.isEmpty ? nil : (Int(stanzaStr) ?? Int.max)
                 var rawContent = ""
                 var braceDepth = 0
                 while !isAtEnd, let ch = peek(), ch != "\n" && ch != "\r" {
                     if ch == "/" && peek(offset: 1) == "*" {
-                        break
+                        advance()
+                        advance()
+                        var crossedNewline = false
+                        while !isAtEnd, let cmt = peek() {
+                            if cmt == "*" && peek(offset: 1) == "/" {
+                                advance()
+                                advance()
+                                break
+                            }
+                            if cmt == "\n" || cmt == "\r" {
+                                crossedNewline = true
+                            }
+                            advance()
+                        }
+                        if crossedNewline {
+                            break
+                        }
+                        rawContent.append(" ")
+                        continue
                     }
                     if ch == "{" {
                         braceDepth += 1

@@ -935,21 +935,49 @@ public enum TmdScoreValidator {
             }
         }
 
-        // Check W-STANZA-FALLBACK in playback flow
+        // Check playback stanza selector validity (E-STANZA-ZERO / E-STANZA-RANGE) and W-STANZA-FALLBACK
         for order in sheet.playback {
             guard case .name(let raw) = order else { continue }
             let parsed = Playback.parseSectionSelector(raw)
-            guard parsed.stanza == nil else { continue }
+            let orderLine =
+                (lines.firstIndex {
+                    let t = $0.trimmingCharacters(in: .whitespaces)
+                    return !t.hasPrefix("//") && t.contains("->") && t.contains(parsed.name)
+                }.map { $0 + 1 } ?? 1) + options.lineOffset
+
+            if let sel = parsed.stanza {
+                if sel == 0 {
+                    diagnostics.append(
+                        TmdScoreDiagnostic(
+                            file: options.file,
+                            line: orderLine,
+                            column: 1,
+                            severity: .error,
+                            rule: .stanzaZero,
+                            message:
+                                "Playback stanza selector '[L0]' for '\(parsed.name)' is invalid; stanza numbering is 1-based (L1..L64)."
+                        ))
+                } else if sel < 1 || sel > 64 {
+                    let displayLabel = sel == Int.max ? "L..." : "L\(sel)"
+                    diagnostics.append(
+                        TmdScoreDiagnostic(
+                            file: options.file,
+                            line: orderLine,
+                            column: 1,
+                            severity: .error,
+                            rule: .stanzaRange,
+                            message:
+                                "Playback stanza selector '[\(displayLabel)]' for '\(parsed.name)' exceeds the maximum supported stanza index of 64 (L1..L64)."
+                        ))
+                }
+                continue
+            }
+
             let matchingEntries = sheet.entries.filter { $0.name == parsed.name }
             let isMultiStanza = matchingEntries.contains { entry in
                 entry.sections.contains { $0.activeStanzaBitmask.nonzeroBitCount > 1 }
             }
             if isMultiStanza {
-                let orderLine =
-                    (lines.firstIndex {
-                        let t = $0.trimmingCharacters(in: .whitespaces)
-                        return !t.hasPrefix("//") && t.contains("->") && t.contains(parsed.name)
-                    }.map { $0 + 1 } ?? 1) + options.lineOffset
                 diagnostics.append(
                     TmdScoreDiagnostic(
                         file: options.file,
@@ -1027,20 +1055,38 @@ public enum TmdScoreValidator {
                 }
             }
 
-            // 3. Check E-LYRIC-GROUP and E-LYRIC-COUNT
+            // 3. Check E-LYRIC-GROUP and E-LYRIC-COUNT (allowing trailing rest omission per measure)
+            let canAutoPadTrailingRests =
+                lyricMeasure.slots.count < melodicGroups.count
+                && melodicGroups[lyricMeasure.slots.count...].allSatisfy {
+                    $0.units.allSatisfy { $0 == .rest }
+                }
+            let effectiveLyricSlots: [LyricSlot] =
+                canAutoPadTrailingRests
+                ? (lyricMeasure.slots
+                    + melodicGroups[lyricMeasure.slots.count...].map { grp in
+                        grp.units.count > 1
+                            ? .group(Array(repeating: .rest, count: grp.units.count))
+                            : .unit(.rest)
+                    })
+                : lyricMeasure.slots
             let totalMelodicUnits = melodicGroups.reduce(0) { $0 + $1.units.count }
-            let totalLyricUnits = lyricMeasure.flatSoundingUnits.count
+            let totalLyricUnits =
+                canAutoPadTrailingRests
+                ? (lyricMeasure.flatSoundingUnits.count
+                    + melodicGroups[lyricMeasure.slots.count...].reduce(0) { $0 + $1.units.count })
+                : lyricMeasure.flatSoundingUnits.count
 
             let hasMelodicSubdivision = melodicGroups.contains { $0.units.count > 1 }
-            let hasLyricGroup = lyricMeasure.slots.contains {
+            let hasLyricGroup = effectiveLyricSlots.contains {
                 if case .group = $0 { return true }
                 return false
             }
 
-            if lyricMeasure.slots.count == melodicGroups.count {
+            if effectiveLyricSlots.count == melodicGroups.count {
                 var groupMismatch = false
                 for (gIdx, mGroup) in melodicGroups.enumerated() {
-                    let lSlot = lyricMeasure.slots[gIdx]
+                    let lSlot = effectiveLyricSlots[gIdx]
                     if mGroup.units.count > 1 {
                         if case .group(let lUnits) = lSlot {
                             if lUnits.count != mGroup.units.count {
