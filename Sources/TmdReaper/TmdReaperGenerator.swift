@@ -263,7 +263,7 @@ extension MIDIMessage {
             let status = String(format: "%02x", 0x80 | (ch & 0x0F))
             let d1 = String(format: "%02x", note & 0x7F)
             return "        E \(delta) \(status) \(d1) 00"
-        case .trackName, .tempo, .timeSignature, .endOfTrack, .text, .customMeta:
+        case .trackName, .tempo, .timeSignature, .endOfTrack, .text, .lyric, .customMeta:
             return nil
         }
     }

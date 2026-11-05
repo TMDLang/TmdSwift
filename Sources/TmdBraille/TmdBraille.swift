@@ -132,6 +132,9 @@ public struct TmdBrailleGenerator {
                         mIdx < track.measures.count ? track.measures[mIdx].ascii : "M"
                     let suffix = isLastMeasure ? "<K" : ""
                     asciiLines.append("  \(prefix) \(mAscii)\(suffix)")
+                    if mIdx < track.measures.count, !track.measures[mIdx].lyricAscii.isEmpty {
+                        asciiLines.append("  ;2 \(track.measures[mIdx].lyricAscii)")
+                    }
                 }
             }
         }
@@ -165,7 +168,8 @@ public struct TmdBrailleGenerator {
         if !sheet.playback.isEmpty {
             for item in sheet.playback {
                 if case .name(let secName) = item {
-                    for entry in sheet.entries where entry.name == secName {
+                    let baseName = Playback.parseSectionSelector(secName).name
+                    for entry in sheet.entries where entry.name == baseName {
                         appendIfMusical(entry)
                     }
                 }
@@ -202,6 +206,7 @@ public struct TmdBrailleGenerator {
         let groupTokens: [String]
         let endsWithCrossBarTie: Bool
         let startsWithCrossBarTie: Bool
+        let lyricAscii: String
     }
 
     private struct RenderedBrailleTrack {
@@ -369,7 +374,8 @@ public struct TmdBrailleGenerator {
                 ascii: "M",
                 groupTokens: ["M"],
                 endsWithCrossBarTie: false,
-                startsWithCrossBarTie: false
+                startsWithCrossBarTie: false,
+                lyricAscii: ""
             )
         }
 
@@ -490,7 +496,8 @@ public struct TmdBrailleGenerator {
             ascii: groupTokens.joined(),
             groupTokens: groupTokens,
             endsWithCrossBarTie: prep.endsWithTie,
-            startsWithCrossBarTie: prep.startsWithTie
+            startsWithCrossBarTie: prep.startsWithTie,
+            lyricAscii: renderBrailleLyricWords(from: [prep])
         )
     }
 
@@ -574,7 +581,12 @@ public struct TmdBrailleGenerator {
         guard let maxW = lineWidth, maxW > 0 else {
             let rendered = renderTrackMeasures(instrument: instrument, sheet: sheet, isSolo: isSolo)
             let body = joinTrackMeasuresAscii(rendered.measures)
-            return ["\(initialPrefix) \(body)<K"]
+            var out = ["\(initialPrefix) \(body)<K"]
+            let lyricLine = renderBrailleLyricLine(from: preparations)
+            if !lyricLine.isEmpty {
+                out.append(lyricLine)
+            }
+            return out
         }
 
         var lines: [String] = []
@@ -703,7 +715,42 @@ public struct TmdBrailleGenerator {
         if !currentLine.trimmingCharacters(in: .whitespaces).isEmpty {
             lines.append(currentLine)
         }
+        let lyricLine = renderBrailleLyricLine(from: preparations)
+        if !lyricLine.isEmpty {
+            lines.append(lyricLine)
+        }
         return lines
+    }
+
+    private static func renderBrailleLyricLine(from preparations: [MeasurePreparation]) -> String {
+        let joined = renderBrailleLyricWords(from: preparations)
+        guard !joined.isEmpty else { return "" }
+        return ";2 " + joined
+    }
+
+    private static func renderBrailleLyricWords(from preparations: [MeasurePreparation]) -> String {
+        var words: [String] = []
+        var currentWord = ""
+        for prep in preparations {
+            for group in prep.measure.simultaneousEventGroups {
+                guard let noteEv = group.first(where: { $0.content.isNote }),
+                    let syl = noteEv.lyric
+                else { continue }
+                let lit = syl.rawText.brailleLiteraryString
+                guard !lit.isEmpty else { continue }
+                if syl.hasTrailingHyphen {
+                    currentWord += lit
+                } else {
+                    currentWord += lit
+                    words.append(currentWord)
+                    currentWord = ""
+                }
+            }
+        }
+        if !currentWord.isEmpty {
+            words.append(currentWord)
+        }
+        return words.joined(separator: " ")
     }
 
     private static func joinTrackMeasuresAscii(_ measures: [RenderedBrailleMeasure]) -> String {

@@ -308,11 +308,54 @@ public enum TmdMacroEvaluator {
                     )
                 }
                 let themeTarget = items[1]
-                guard case .list(let instList) = items[2], !instList.isEmpty else {
+                guard case .list(let rawInstList) = items[2], !rawInstList.isEmpty else {
                     throw TmdMacroError("'canon' requires a non-empty instrument list")
                 }
+                let instList: [SExpr]
+                if rawInstList.count > 1,
+                    case .symbol(let firstSym) = rawInstList[0],
+                    firstSym.lowercased() == "instruments"
+                {
+                    instList = Array(rawInstList.dropFirst())
+                } else {
+                    instList = rawInstList
+                }
                 let instruments = instList.map(\.description)
-                guard case .number(let offsetBars) = items[3], offsetBars >= 0 else {
+
+                var explicitOffsets: [Int]?
+                var offsetBars = 0
+                if case .number(let n) = items[3], n >= 0 {
+                    offsetBars = n
+                } else if case .list(let rawOffsetList) = items[3], !rawOffsetList.isEmpty {
+                    let offsetList: [SExpr]
+                    if rawOffsetList.count > 1,
+                        case .symbol(let firstSym) = rawOffsetList[0],
+                        firstSym.lowercased() == "offsets"
+                    {
+                        offsetList = Array(rawOffsetList.dropFirst())
+                    } else {
+                        offsetList = rawOffsetList
+                    }
+                    var parsedOffsets: [Int] = []
+                    for elem in offsetList {
+                        if case .number(let n) = elem, n >= 0 {
+                            parsedOffsets.append(n)
+                        } else if case .symbol(let s) = elem, let n = Int(s), n >= 0 {
+                            parsedOffsets.append(n)
+                        } else {
+                            throw TmdMacroError("'canon' offset must be a non-negative integer")
+                        }
+                    }
+                    if !instruments.isEmpty && parsedOffsets.count != instruments.count {
+                        throw TmdMacroError(
+                            "'canon' explicit offsets count (\(parsedOffsets.count)) must match instruments count (\(instruments.count))"
+                        )
+                    }
+                    explicitOffsets = parsedOffsets
+                    if let firstOffset = parsedOffsets.first {
+                        offsetBars = firstOffset
+                    }
+                } else {
                     throw TmdMacroError("'canon' offset must be a non-negative integer")
                 }
 
@@ -349,11 +392,19 @@ public enum TmdMacroEvaluator {
                             let mappedInst =
                                 (instIdx >= 0 && instIdx < instruments.count)
                                 ? instruments[instIdx] : (ip.assignment ?? "")
+                            let deltaBars: Int =
+                                if let explicitOffsets,
+                                    instIdx >= 0 && instIdx < explicitOffsets.count
+                                {
+                                    explicitOffsets[instIdx]
+                                } else {
+                                    offsetBars
+                                }
 
                             let outerP = createSyntheticParagraph(
                                 baseName: ip.name,
                                 assignment: mappedInst,
-                                startOffset: ip.start + offsetBars,
+                                startOffset: ip.start + deltaBars,
                                 sections: ip.sections
                             )
                             concreteParagraphs.removeAll { $0.name == outerP.name }
@@ -361,7 +412,7 @@ public enum TmdMacroEvaluator {
                                 Entry(
                                     name: outerCanonSectionName,
                                     assignment: mappedInst,
-                                    start: ip.start + offsetBars,
+                                    start: ip.start + deltaBars,
                                     sections: ip.sections
                                 ))
                         }
@@ -391,17 +442,28 @@ public enum TmdMacroEvaluator {
                 }
                 let prototypeBars =
                     prototypeQuarterDuration / TmdPlaybackRenderer.measureDuration(for: sheet.beat)
-                if let lastIndex = instruments.indices.last,
-                    Double(lastIndex * offsetBars) > prototypeBars
-                {
-                    throw TmdMacroError(
-                        "Canon voice \(lastIndex + 1) enters after the combined prototype ends")
+                for idx in instruments.indices {
+                    let voiceOffset =
+                        if let explicitOffsets, idx < explicitOffsets.count {
+                            explicitOffsets[idx]
+                        } else {
+                            idx * offsetBars
+                        }
+                    if Double(voiceOffset) > prototypeBars {
+                        throw TmdMacroError(
+                            "Canon voice \(idx + 1) enters after the combined prototype ends")
+                    }
                 }
                 genCounter += 1
                 let canonSectionName = "__canon_\(themeName)_\(genCounter)"
 
                 for (idx, inst) in instruments.enumerated() {
-                    let startOffset = idx * offsetBars
+                    let startOffset =
+                        if let explicitOffsets, idx < explicitOffsets.count {
+                            explicitOffsets[idx]
+                        } else {
+                            idx * offsetBars
+                        }
                     let p = Entry(
                         name: canonSectionName,
                         assignment: inst,

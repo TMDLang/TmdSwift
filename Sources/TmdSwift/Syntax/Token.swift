@@ -34,6 +34,7 @@ public enum Token: Equatable, Sendable {
     case percussion(String)  // e.g. XsTt
     case metadata(String, String)  // metadata key and value
     case programText(String)  // triple-quoted show-program body
+    case lyricLine(Int?, String)  // L| or L1|..L64| lyric line content
     case tie  // -
     case plus  // +
     case identifier(String)  // e.g. Piano, intro, C, A'
@@ -71,6 +72,7 @@ public enum Token: Equatable, Sendable {
         case .percussion: return "percussion"
         case .metadata: return "metadata"
         case .programText: return "program block"
+        case .lyricLine: return "lyric line"
         case .tie: return "-"
         case .plus: return "+"
         case .identifier: return "identifier"

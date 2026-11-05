@@ -3,16 +3,21 @@
 public struct TmdParser {
     /// Parses a TMD score from a text string.
     public static func parse(string: String) -> Sheet? {
-        let lexer = Lexer(string: string)
-        let tokens = lexer.tokenize()
-        var parser = TokenParser(tokens: tokens)
+        let lexedTokens = Lexer(string: string).tokenizeWithRanges()
+        var parser = TokenParser(
+            tokens: lexedTokens.map(\.token),
+            tokenLines: lexedTokens.map { $0.range.start.line }
+        )
         return parser.parseSheet()
     }
 
     /// Parses a TMD score and reports the offending token when syntax is invalid.
     public static func parseThrowing(string: String) throws -> Sheet {
         let lexedTokens = Lexer(string: string).tokenizeWithRanges()
-        var parser = TokenParser(tokens: lexedTokens.map(\.token))
+        var parser = TokenParser(
+            tokens: lexedTokens.map(\.token),
+            tokenLines: lexedTokens.map { $0.range.start.line }
+        )
         guard let sheet = parser.parseSheet() else {
             let index = diagnosticIndex(
                 parser.failureIndex ?? parser.position, tokenCount: lexedTokens.count)
@@ -50,14 +55,23 @@ public struct TmdParser {
 
 private struct TokenParser {
     private let tokens: [Token]
+    private let tokenLines: [Int]
     private var pos: Int = 0
     private(set) var failureIndex: Int?
     private(set) var expectedTokens: [String] = []
 
     var position: Int { pos }
 
-    init(tokens: [Token]) {
+    init(tokens: [Token], tokenLines: [Int] = []) {
         self.tokens = tokens
+        self.tokenLines = tokenLines
+    }
+
+    private var currentLine: Int {
+        if pos < tokenLines.count {
+            return tokenLines[pos]
+        }
+        return 1
     }
 
     private var current: Token {
@@ -265,7 +279,14 @@ private struct TokenParser {
                     if s == "#" {
                         break
                     }
-                    playback.append(.name(s))
+                    if case .chord(let selectorRaw) = current {
+                        let normalizedSelector = selectorRaw.replacingOccurrences(of: " ", with: "")
+                            .replacingOccurrences(of: "\t", with: "")
+                        advance()
+                        playback.append(.name("\(s)[\(normalizedSelector)]"))
+                    } else {
+                        playback.append(.name(s))
+                    }
                 case .openParen:
                     if let expr = parseSExpr() {
                         playback.append(.macro(expr))
@@ -424,13 +445,72 @@ private struct TokenParser {
                 var unitGroups: [UnitGroup] = []
                 var directives: [SectionDirective] = []
                 var barlinePositions: [Int] = []
+                var barlineGroupIndices: [Int] = []
+                var lyrics: [LyricLine] = []
+                var phraseStartGroupIndex = 0
+                var currentMelodicLine: Int?
+                var sawDirectiveSinceLastUnit = false
+                var endedAtBarline = false
                 while current != .openAngle && current != .closeBrace && current != .eof {
+                    if case .lyricLine = current {
+                        let phraseRange = phraseStartGroupIndex..<unitGroups.count
+                        let internalCuts = Array(
+                            Set(
+                                barlineGroupIndices.filter {
+                                    $0 > phraseRange.lowerBound && $0 < phraseRange.upperBound
+                                }
+                            )
+                        ).sorted()
+                        var measureRanges: [Range<Int>] = []
+                        var startIdx = phraseRange.lowerBound
+                        for cut in internalCuts {
+                            measureRanges.append(startIdx..<cut)
+                            startIdx = cut
+                        }
+                        measureRanges.append(startIdx..<phraseRange.upperBound)
+
+                        while case .lyricLine(let stanza, let rawContent) = current {
+                            let lineNum = currentLine
+                            advance()
+                            lyrics.append(
+                                LyricLine.parse(
+                                    stanza: stanza,
+                                    rawContent: rawContent,
+                                    unitGroupRange: phraseRange,
+                                    measureUnitGroupRanges: measureRanges,
+                                    sourceLine: lineNum
+                                )
+                            )
+                        }
+                        phraseStartGroupIndex = unitGroups.count
+                        currentMelodicLine = nil
+                        sawDirectiveSinceLastUnit = false
+                        endedAtBarline = false
+                        continue
+                    }
+
                     while current == .pipe {
+                        if let melodicLine = currentMelodicLine,
+                            currentLine != melodicLine,
+                            unitGroups.count > phraseStartGroupIndex,
+                            !sawDirectiveSinceLastUnit && endedAtBarline
+                        {
+                            phraseStartGroupIndex = unitGroups.count
+                            currentMelodicLine = currentLine
+                            endedAtBarline = false
+                        }
                         barlinePositions.append(unitGroups.reduce(0) { $0 + $1.length })
+                        barlineGroupIndices.append(unitGroups.count)
+                        if unitGroups.count > phraseStartGroupIndex {
+                            endedAtBarline = true
+                        }
                         advance()
                     }
                     if current == .openAngle || current == .closeBrace || current == .eof {
                         break
+                    }
+                    if case .lyricLine = current {
+                        continue
                     }
 
                     if current == .openBrace || current == .relativeOrderPrefix
@@ -444,8 +524,20 @@ private struct TokenParser {
                         } else {
                             advance()
                         }
+                        sawDirectiveSinceLastUnit = true
                         continue
                     }
+
+                    if let melodicLine = currentMelodicLine,
+                        currentLine != melodicLine,
+                        unitGroups.count > phraseStartGroupIndex,
+                        !sawDirectiveSinceLastUnit && endedAtBarline
+                    {
+                        phraseStartGroupIndex = unitGroups.count
+                    }
+                    currentMelodicLine = currentLine
+                    sawDirectiveSinceLastUnit = false
+                    endedAtBarline = false
 
                     if match(.openParen) {
                         skipPipes()
@@ -495,7 +587,7 @@ private struct TokenParser {
                 sections.append(
                     Section(
                         noteLength: noteLength, unitGroups: unitGroups, directives: directives,
-                        barlinePositions: barlinePositions))
+                        barlinePositions: barlinePositions, lyrics: lyrics))
             } else {
                 recordFailure(at: pos, expected: .openAngle)
                 return nil

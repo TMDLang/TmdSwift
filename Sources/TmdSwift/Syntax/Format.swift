@@ -150,9 +150,35 @@ extension Section {
 
         var position = 0
         let barlines = Set(barlinePositions)
+        let lyricStarts = Set(lyrics.map { $0.unitGroupRange.lowerBound })
+        var lyricsByEnd: [Int: [LyricLine]] = [:]
+        for line in lyrics {
+            lyricsByEnd[line.unitGroupRange.upperBound, default: []].append(line)
+        }
+        func isInsideLyricPhrase(_ groupIndex: Int) -> Bool {
+            lyrics.contains {
+                groupIndex > $0.unitGroupRange.lowerBound && groupIndex < $0.unitGroupRange.upperBound
+            }
+        }
+        func flushLyricsEnding(at groupIndex: Int) {
+            guard let attached = lyricsByEnd[groupIndex], !attached.isEmpty else { return }
+            flushCurrentLine()
+            counter = 0
+            let sortedLyrics = attached.sorted { lhs, rhs in
+                (lhs.stanza ?? 0) < (rhs.stanza ?? 0)
+            }
+            for lyricLine in sortedLyrics {
+                lines.append("    " + lyricLine.format())
+            }
+        }
+
         appendDirectives(at: position)
-        for unitGroup in unitGroups {
-            if counter >= 8 {
+        flushLyricsEnding(at: 0)
+        for (groupIndex, unitGroup) in unitGroups.enumerated() {
+            if lyricStarts.contains(groupIndex) && !currentLineTokens.isEmpty {
+                flushCurrentLine()
+                counter = 0
+            } else if counter >= 8 && !isInsideLyricPhrase(groupIndex) {
                 flushCurrentLine()
                 counter = 0
             } else if position > 0 && barlines.contains(position) {
@@ -166,6 +192,7 @@ extension Section {
             counter += unitGroup.length
             position += unitGroup.length
             appendDirectives(at: position)
+            flushLyricsEnding(at: groupIndex + 1)
         }
         while directiveIndex < sortedDirectives.count {
             ensureLineStarted()

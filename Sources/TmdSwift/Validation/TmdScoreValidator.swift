@@ -21,6 +21,18 @@ public enum TmdDiagnosticRule: String, Codable, Equatable, Sendable {
     case instrumentUnknown = "W-INSTRUMENT-UNKNOWN"
     case sectionLengthMismatch = "W-SECTION-LENGTH-MISMATCH"
     case tempoOutOfRange = "W-TEMPO-OUT-OF-RANGE"
+    case lyricCount = "E-LYRIC-COUNT"
+    case lyricDirective = "E-LYRIC-DIRECTIVE"
+    case lyricGroup = "E-LYRIC-GROUP"
+    case lyricTokenUnseparated = "E-LYRIC-TOKEN-UNSEPARATED"
+    case stanzaZero = "E-STANZA-ZERO"
+    case stanzaRange = "E-STANZA-RANGE"
+    case stanzaDuplicate = "E-STANZA-DUPLICATE"
+    case stanzaInconsistent = "E-STANZA-INCONSISTENT"
+    case stanzaGap = "W-STANZA-GAP"
+    case stanzaFallback = "W-STANZA-FALLBACK"
+
+    public static let lyricSlotMismatch: TmdDiagnosticRule = .lyricCount
 }
 
 /// A structured diagnostic produced by `TmdScoreValidator`.
@@ -386,7 +398,7 @@ public enum TmdScoreValidator {
         if !options.isSnippet && !sheet.playback.isEmpty {
             let referencedInExpanded = Set(
                 expandedSheet.playback.compactMap { order -> String? in
-                    if case .name(let n) = order { return n }
+                    if case .name(let n) = order { return Playback.parseSectionSelector(n).name }
                     return nil
                 })
             var macroSymbols = Set<String>()
@@ -589,6 +601,14 @@ public enum TmdScoreValidator {
             }
         }
 
+        // Stage 7: Vocal Lyrics & Stanza Validation (E-LYRIC-*, E-STANZA-*, W-STANZA-*)
+        validateLyricsAndStanzas(
+            sheet: sheet,
+            lines: lines,
+            options: options,
+            diagnostics: &diagnostics
+        )
+
         return diagnostics
     }
 
@@ -783,5 +803,377 @@ public enum TmdScoreValidator {
             }
         }
         return (startLineIdx + 1, 1)
+    }
+
+    // MARK: - Stage 7: Vocal Lyrics & Stanza Validation
+
+    private static func validateLyricsAndStanzas(
+        sheet: Sheet,
+        lines: [String],
+        options: TmdValidationOptions,
+        diagnostics: inout [TmdScoreDiagnostic]
+    ) {
+        for entry in sheet.entries {
+            for section in entry.sections where !section.lyrics.isEmpty {
+                var stanzasByPhrase: [Range<Int>: [LyricLine]] = [:]
+                var phraseOrder: [Range<Int>] = []
+                for lyricLine in section.lyrics {
+                    if stanzasByPhrase[lyricLine.unitGroupRange] == nil {
+                        phraseOrder.append(lyricLine.unitGroupRange)
+                    }
+                    stanzasByPhrase[lyricLine.unitGroupRange, default: []].append(lyricLine)
+                }
+
+                var sectionValidStanzas = Set<Int>()
+                var validStanzasByPhrase: [Range<Int>: Set<Int>] = [:]
+
+                for phraseRange in phraseOrder {
+                    guard let phraseLyrics = stanzasByPhrase[phraseRange] else { continue }
+                    var seenStanzas = Set<Int>()
+                    var validInPhrase = Set<Int>()
+
+                    for lyricLine in phraseLyrics {
+                        let lineNum = max(1, lyricLine.sourceLine) + options.lineOffset
+                        let rawStanza = lyricLine.stanza
+                        if rawStanza == 0 {
+                            diagnostics.append(
+                                TmdScoreDiagnostic(
+                                    file: options.file,
+                                    line: lineNum,
+                                    column: 1,
+                                    severity: .error,
+                                    rule: .stanzaZero,
+                                    message:
+                                        "Invalid stanza index 'L0|' in '\(entry.name)': stanza numbering is 1-based (L1..L64)."
+                                ))
+                        } else if let s = rawStanza, (s < 0 || s > 64) {
+                            diagnostics.append(
+                                TmdScoreDiagnostic(
+                                    file: options.file,
+                                    line: lineNum,
+                                    column: 1,
+                                    severity: .error,
+                                    rule: .stanzaRange,
+                                    message:
+                                        "Stanza index 'L\(s)|' in '\(entry.name)' exceeds the maximum limit of 64 (L1..L64)."
+                                ))
+                        } else {
+                            let effectiveStanza = rawStanza ?? 1
+                            if !seenStanzas.insert(effectiveStanza).inserted {
+                                diagnostics.append(
+                                    TmdScoreDiagnostic(
+                                        file: options.file,
+                                        line: lineNum,
+                                        column: 1,
+                                        severity: .error,
+                                        rule: .stanzaDuplicate,
+                                        message:
+                                            "Duplicate stanza 'L\(effectiveStanza)|' under the same melodic phrase in '\(entry.name)'."
+                                    ))
+                            }
+                            validInPhrase.insert(effectiveStanza)
+                            sectionValidStanzas.insert(effectiveStanza)
+                        }
+
+                        // Check directives, groups, unseparated tokens, and 1:1 slot count per measure
+                        validateLyricLineMeasures(
+                            lyricLine: lyricLine,
+                            section: section,
+                            entry: entry,
+                            lineNum: lineNum,
+                            options: options,
+                            diagnostics: &diagnostics
+                        )
+                    }
+                    validStanzasByPhrase[phraseRange] = validInPhrase
+                }
+
+                // Check W-STANZA-GAP
+                if let maxStanza = sectionValidStanzas.max(), maxStanza > 1 {
+                    let missing = (1...maxStanza).filter { !sectionValidStanzas.contains($0) }
+                    if !missing.isEmpty {
+                        let firstLine =
+                            max(1, section.lyrics.first?.sourceLine ?? 1) + options.lineOffset
+                        let missingStr = missing.map { "L\($0)" }.joined(separator: ", ")
+                        diagnostics.append(
+                            TmdScoreDiagnostic(
+                                file: options.file,
+                                line: firstLine,
+                                column: 1,
+                                severity: .warning,
+                                rule: .stanzaGap,
+                                message:
+                                    "Discontinuous stanza numbering in '\(entry.name)': missing \(missingStr)."
+                            ))
+                    }
+                }
+
+                // Check E-STANZA-INCONSISTENT across phrases in the same section
+                if phraseOrder.count >= 2 && !sectionValidStanzas.isEmpty {
+                    for phraseRange in phraseOrder {
+                        let phraseSet = validStanzasByPhrase[phraseRange] ?? []
+                        if !phraseSet.isEmpty && phraseSet != sectionValidStanzas {
+                            let missing =
+                                sectionValidStanzas.subtracting(phraseSet).sorted()
+                                .map { "L\($0)" }.joined(separator: ", ")
+                            let lineNum =
+                                max(1, stanzasByPhrase[phraseRange]?.first?.sourceLine ?? 1)
+                                + options.lineOffset
+                            diagnostics.append(
+                                TmdScoreDiagnostic(
+                                    file: options.file,
+                                    line: lineNum,
+                                    column: 1,
+                                    severity: .error,
+                                    rule: .stanzaInconsistent,
+                                    message:
+                                        "Inconsistent stanza declarations in '\(entry.name)': melodic phrase is missing \(missing)."
+                                ))
+                        }
+                    }
+                }
+            }
+        }
+
+        // Check playback stanza selector validity (E-STANZA-ZERO / E-STANZA-RANGE) and W-STANZA-FALLBACK
+        for order in sheet.playback {
+            guard case .name(let raw) = order else { continue }
+            let parsed = Playback.parseSectionSelector(raw)
+            let orderLine =
+                (lines.firstIndex {
+                    let t = $0.trimmingCharacters(in: .whitespaces)
+                    return !t.hasPrefix("//") && t.contains("->") && t.contains(parsed.name)
+                }.map { $0 + 1 } ?? 1) + options.lineOffset
+
+            if let sel = parsed.stanza {
+                if sel == 0 {
+                    diagnostics.append(
+                        TmdScoreDiagnostic(
+                            file: options.file,
+                            line: orderLine,
+                            column: 1,
+                            severity: .error,
+                            rule: .stanzaZero,
+                            message:
+                                "Playback stanza selector '[L0]' for '\(parsed.name)' is invalid; stanza numbering is 1-based (L1..L64)."
+                        ))
+                } else if sel < 1 || sel > 64 {
+                    let displayLabel = sel == Int.max ? "L..." : "L\(sel)"
+                    diagnostics.append(
+                        TmdScoreDiagnostic(
+                            file: options.file,
+                            line: orderLine,
+                            column: 1,
+                            severity: .error,
+                            rule: .stanzaRange,
+                            message:
+                                "Playback stanza selector '[\(displayLabel)]' for '\(parsed.name)' exceeds the maximum supported stanza index of 64 (L1..L64)."
+                        ))
+                }
+                continue
+            }
+
+            let matchingEntries = sheet.entries.filter { $0.name == parsed.name }
+            let isMultiStanza = matchingEntries.contains { entry in
+                entry.sections.contains { $0.activeStanzaBitmask.nonzeroBitCount > 1 }
+            }
+            if isMultiStanza {
+                diagnostics.append(
+                    TmdScoreDiagnostic(
+                        file: options.file,
+                        line: orderLine,
+                        column: 1,
+                        severity: .warning,
+                        rule: .stanzaFallback,
+                        message:
+                            "Playback order '-> \(parsed.name)' references multi-stanza section '\(parsed.name)' without an explicit stanza selector (falling back to '[L1]').",
+                        suggestion:
+                            "Specify an explicit stanza selector such as '-> \(parsed.name)[L1]'."
+                    ))
+            }
+        }
+    }
+
+    private static func validateLyricLineMeasures(
+        lyricLine: LyricLine,
+        section: Section,
+        entry: Entry,
+        lineNum: Int,
+        options: TmdValidationOptions,
+        diagnostics: inout [TmdScoreDiagnostic]
+    ) {
+        let measureRanges = lyricLine.measureUnitGroupRanges
+        if lyricLine.measures.count != measureRanges.count {
+            diagnostics.append(
+                TmdScoreDiagnostic(
+                    file: options.file,
+                    line: lineNum,
+                    column: 1,
+                    severity: .error,
+                    rule: .lyricCount,
+                    message:
+                        "Lyric line in '\(entry.name)' has \(lyricLine.measures.count) measure(s), but the corresponding melodic line has \(measureRanges.count) measure(s)."
+                ))
+        }
+
+        let pairCount = min(lyricLine.measures.count, measureRanges.count)
+        for mIdx in 0..<pairCount {
+            let lyricMeasure = lyricLine.measures[mIdx]
+            let groupRange = measureRanges[mIdx]
+            let clampedLower = max(0, min(section.unitGroups.count, groupRange.lowerBound))
+            let clampedUpper = max(
+                clampedLower, min(section.unitGroups.count, groupRange.upperBound))
+            let melodicGroups = Array(section.unitGroups[clampedLower..<clampedUpper])
+
+            // 1. Check E-LYRIC-DIRECTIVE
+            if containsDirective(in: lyricMeasure.elements) {
+                diagnostics.append(
+                    TmdScoreDiagnostic(
+                        file: options.file,
+                        line: lineNum,
+                        column: 1,
+                        severity: .error,
+                        rule: .lyricDirective,
+                        message:
+                            "Musical directive inside lyric measure \(mIdx + 1) in '\(entry.name)' is forbidden."
+                    ))
+            }
+
+            // 2. Check E-LYRIC-TOKEN-UNSEPARATED (multiple CJK ideographs in a single syllable token)
+            for unit in lyricMeasure.flatSoundingUnits {
+                if case .syllable(let syl) = unit, countCJKIdeographs(in: syl.cleanWord) >= 2 {
+                    diagnostics.append(
+                        TmdScoreDiagnostic(
+                            file: options.file,
+                            line: lineNum,
+                            column: 1,
+                            severity: .error,
+                            rule: .lyricTokenUnseparated,
+                            message:
+                                "Unseparated multi-character lyric token '\(syl.rawText)' in '\(entry.name)': separate each syllable with spaces."
+                        ))
+                }
+            }
+
+            // 3. Check E-LYRIC-GROUP and E-LYRIC-COUNT (allowing trailing rest omission per measure)
+            let canAutoPadTrailingRests =
+                lyricMeasure.slots.count < melodicGroups.count
+                && melodicGroups[lyricMeasure.slots.count...].allSatisfy {
+                    $0.units.allSatisfy { $0 == .rest }
+                }
+            let effectiveLyricSlots: [LyricSlot] =
+                canAutoPadTrailingRests
+                ? (lyricMeasure.slots
+                    + melodicGroups[lyricMeasure.slots.count...].map { grp in
+                        grp.units.count > 1
+                            ? .group(Array(repeating: .rest, count: grp.units.count))
+                            : .unit(.rest)
+                    })
+                : lyricMeasure.slots
+            let totalMelodicUnits = melodicGroups.reduce(0) { $0 + $1.units.count }
+            let totalLyricUnits =
+                canAutoPadTrailingRests
+                ? (lyricMeasure.flatSoundingUnits.count
+                    + melodicGroups[lyricMeasure.slots.count...].reduce(0) { $0 + $1.units.count })
+                : lyricMeasure.flatSoundingUnits.count
+
+            let hasMelodicSubdivision = melodicGroups.contains { $0.units.count > 1 }
+            let hasLyricGroup = effectiveLyricSlots.contains {
+                if case .group = $0 { return true }
+                return false
+            }
+
+            if effectiveLyricSlots.count == melodicGroups.count {
+                var groupMismatch = false
+                for (gIdx, mGroup) in melodicGroups.enumerated() {
+                    let lSlot = effectiveLyricSlots[gIdx]
+                    if mGroup.units.count > 1 {
+                        if case .group(let lUnits) = lSlot {
+                            if lUnits.count != mGroup.units.count {
+                                groupMismatch = true
+                            }
+                        } else {
+                            groupMismatch = true
+                        }
+                    } else if case .group(let lUnits) = lSlot {
+                        if lUnits.count != mGroup.units.count {
+                            groupMismatch = true
+                        }
+                    }
+                }
+                if groupMismatch {
+                    diagnostics.append(
+                        TmdScoreDiagnostic(
+                            file: options.file,
+                            line: lineNum,
+                            column: 1,
+                            severity: .error,
+                            rule: .lyricGroup,
+                            message:
+                                "Parenthesized lyric group in measure \(mIdx + 1) of '\(entry.name)' does not match melodic unit group subdivision."
+                        ))
+                } else if totalLyricUnits != totalMelodicUnits {
+                    diagnostics.append(
+                        TmdScoreDiagnostic(
+                            file: options.file,
+                            line: lineNum,
+                            column: 1,
+                            severity: .error,
+                            rule: .lyricCount,
+                            message:
+                                "Lyric measure \(mIdx + 1) in '\(entry.name)' has \(totalLyricUnits) sounding token(s), expected \(totalMelodicUnits) to match melodic slots."
+                        ))
+                }
+            } else {
+                if hasMelodicSubdivision || hasLyricGroup {
+                    diagnostics.append(
+                        TmdScoreDiagnostic(
+                            file: options.file,
+                            line: lineNum,
+                            column: 1,
+                            severity: .error,
+                            rule: .lyricGroup,
+                            message:
+                                "Hierarchical grouping mismatch in measure \(mIdx + 1) of '\(entry.name)': melodic measure has \(melodicGroups.count) top-level slot(s) while lyric measure has \(lyricMeasure.slots.count)."
+                        ))
+                }
+                if totalLyricUnits != totalMelodicUnits {
+                    diagnostics.append(
+                        TmdScoreDiagnostic(
+                            file: options.file,
+                            line: lineNum,
+                            column: 1,
+                            severity: .error,
+                            rule: .lyricCount,
+                            message:
+                                "Lyric measure \(mIdx + 1) in '\(entry.name)' has \(totalLyricUnits) sounding token(s), expected \(totalMelodicUnits) to match melodic slots."
+                        ))
+                }
+            }
+        }
+    }
+
+    private static func containsDirective(in elements: [LyricElement]) -> Bool {
+        for element in elements {
+            switch element {
+            case .directive:
+                return true
+            case .group(let children):
+                if containsDirective(in: children) {
+                    return true
+                }
+            default:
+                break
+            }
+        }
+        return false
+    }
+
+    private static func countCJKIdeographs(in text: String) -> Int {
+        text.unicodeScalars.filter { scalar in
+            (0x4E00...0x9FFF).contains(scalar.value)
+                || (0x3400...0x4DBF).contains(scalar.value)
+                || (0xF900...0xFAFF).contains(scalar.value)
+        }.count
     }
 }

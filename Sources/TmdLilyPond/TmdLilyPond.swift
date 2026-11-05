@@ -77,6 +77,9 @@ public struct TmdLilyPondGenerator {
                     }
 
                 """
+            if !isDrum {
+                ly += generateTrackLyricsBlocks(instrument: inst, sheet: sheet)
+            }
         }
         ly += "  >>\n"
         ly += "  \\layout { }\n"
@@ -138,6 +141,86 @@ public struct TmdLilyPondGenerator {
             result += "|\n  "
         }
         return result.trimmingCharacters(in: .whitespaces) + "\n"
+    }
+
+    private static func generateTrackLyricsBlocks(
+        instrument: String,
+        sheet: Sheet
+    ) -> String {
+        let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: instrument)
+        var stanzaSet: Set<Int> = []
+        var hasActiveLyrics = false
+        for measure in measures {
+            for group in measure.simultaneousEventGroups {
+                guard let noteEv = group.first(where: { $0.content.isNote }) else { continue }
+                if noteEv.lyric != nil || noteEv.isLyricMelisma {
+                    hasActiveLyrics = true
+                }
+                for k in noteEv.stanzaLyrics.keys {
+                    stanzaSet.insert(k)
+                }
+            }
+        }
+        guard hasActiveLyrics || !stanzaSet.isEmpty else { return "" }
+
+        let sortedStanzas = stanzaSet.sorted()
+        var noteEvents: [MeasureEvent] = []
+        for measure in measures {
+            for group in measure.simultaneousEventGroups {
+                if let noteEv = group.first(where: { $0.content.isNote }), !noteEv.tieStop {
+                    noteEvents.append(noteEv)
+                }
+            }
+        }
+
+        if sortedStanzas.count > 1 {
+            var blocks = ""
+            for stanza in sortedStanzas {
+                var tokens: [String] = ["\\set stanza = \"\(stanza).\""]
+                for (idx, noteEv) in noteEvents.enumerated() {
+                    if let unit = noteEv.stanzaLyrics[stanza] {
+                        switch unit {
+                        case .syllable(let syl):
+                            var tok = "\"\(escapeLilyPond(syl.displaySyllable))\""
+                            let nextIsTie =
+                                (idx + 1 < noteEvents.count)
+                                && (noteEvents[idx + 1].stanzaLyrics[stanza] == .tie)
+                            if syl.hasTrailingHyphen {
+                                tok += " --"
+                            } else if nextIsTie || noteEv.tieStart {
+                                tok += " __"
+                            }
+                            tokens.append(tok)
+                        case .tie, .rest:
+                            tokens.append("_")
+                        }
+                    } else {
+                        tokens.append("_")
+                    }
+                }
+                blocks += "    \\addlyrics {\n      \(tokens.joined(separator: " "))\n    }\n"
+            }
+            return blocks
+        } else {
+            var tokens: [String] = []
+            for (idx, noteEv) in noteEvents.enumerated() {
+                if let syl = noteEv.lyric {
+                    var tok = "\"\(escapeLilyPond(syl.displaySyllable))\""
+                    let nextIsTie =
+                        (idx + 1 < noteEvents.count) && noteEvents[idx + 1].isLyricMelisma
+                    if syl.hasTrailingHyphen {
+                        tok += " --"
+                    } else if nextIsTie || noteEv.tieStart {
+                        tok += " __"
+                    }
+                    tokens.append(tok)
+                } else {
+                    tokens.append("_")
+                }
+            }
+            guard !tokens.isEmpty else { return "" }
+            return "    \\addlyrics {\n      \(tokens.joined(separator: " "))\n    }\n"
+        }
     }
 
     public static func resolveTempo(beat: Beat, quarterBPM: Double) -> String {

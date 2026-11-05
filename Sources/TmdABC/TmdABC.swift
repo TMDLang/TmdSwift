@@ -65,7 +65,9 @@ public struct TmdABCGenerator {
         let initialKey = sheet.declaredKey ?? sheet.keySignature.description
         var currentKeyStepAlters = PitchMapping.keySignatureStepAlters(forKey: initialKey)
 
+        var lineMeasures: [Measure] = []
         for (mIdx, measure) in measures.enumerated() {
+            lineMeasures.append(measure)
             var measureStepAlters: [Int: [Int]] = [:]
             for directive in measure.directives {
                 switch directive.kind {
@@ -94,14 +96,92 @@ public struct TmdABCGenerator {
                 result += " "
             }
             result += "|"
-            if (mIdx + 1) % 4 == 0 && mIdx < measures.count - 1 {
+            let isEndOfLine = ((mIdx + 1) % 4 == 0) || (mIdx == measures.count - 1)
+            if isEndOfLine {
                 result += "\n"
+                let lyricLines = formatABCLyricLines(for: lineMeasures)
+                if !lyricLines.isEmpty {
+                    result += lyricLines + "\n"
+                }
+                lineMeasures.removeAll()
             } else {
                 result += " "
             }
         }
         let trimmed = result.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? "" : trimmed + "\n"
+    }
+
+    private static func formatABCLyricLines(for measures: [Measure]) -> String {
+        var stanzaSet: Set<Int> = []
+        var hasActiveLyrics = false
+        for measure in measures {
+            for group in measure.simultaneousEventGroups {
+                guard let noteEv = group.first(where: { $0.content.isNote }) else { continue }
+                if noteEv.lyric != nil || noteEv.isLyricMelisma {
+                    hasActiveLyrics = true
+                }
+                for k in noteEv.stanzaLyrics.keys {
+                    stanzaSet.insert(k)
+                }
+            }
+        }
+        guard hasActiveLyrics || !stanzaSet.isEmpty else { return "" }
+
+        let sortedStanzas = stanzaSet.sorted()
+        if sortedStanzas.count > 1 {
+            var lines: [String] = []
+            for stanza in sortedStanzas {
+                var measureStrings: [String] = []
+                for measure in measures {
+                    var tokens: [String] = []
+                    for group in measure.simultaneousEventGroups {
+                        guard let noteEv = group.first(where: { $0.content.isNote }) else {
+                            continue
+                        }
+                        if let unit = noteEv.stanzaLyrics[stanza] {
+                            switch unit {
+                            case .syllable(let syl):
+                                tokens.append(syl.rawText)
+                            case .tie:
+                                tokens.append("_")
+                            case .rest:
+                                tokens.append("*")
+                            }
+                        } else {
+                            tokens.append("*")
+                        }
+                    }
+                    if !tokens.isEmpty {
+                        measureStrings.append(tokens.joined(separator: " "))
+                    }
+                }
+                if !measureStrings.isEmpty {
+                    lines.append("w: \(stanza).~\(measureStrings.joined(separator: " | "))")
+                }
+            }
+            return lines.joined(separator: "\n")
+        } else {
+            var measureStrings: [String] = []
+            for measure in measures {
+                var tokens: [String] = []
+                for group in measure.simultaneousEventGroups {
+                    guard let noteEv = group.first(where: { $0.content.isNote }) else { continue }
+                    if let syl = noteEv.lyric {
+                        tokens.append(syl.rawText)
+                    } else if noteEv.isLyricMelisma {
+                        tokens.append("_")
+                    } else {
+                        tokens.append("*")
+                    }
+                }
+                if !tokens.isEmpty {
+                    measureStrings.append(tokens.joined(separator: " "))
+                }
+            }
+            guard !measureStrings.isEmpty else { return "" }
+            return "w: \(measureStrings.joined(separator: " | "))"
+        }
     }
 
     public static func resolveTempo(beat: Beat, quarterBPM: Double) -> String {

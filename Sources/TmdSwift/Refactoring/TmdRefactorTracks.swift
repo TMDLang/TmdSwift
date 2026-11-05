@@ -43,10 +43,10 @@ extension TmdRefactor {
             withTemplate: "$1\(newSection):"
         )
 
-        // 2. Rename in orders: `-> <oldSection> ` or `-> <oldSection>\n` or `-> <oldSection>->`
+        // 2. Rename in orders: `-> <oldSection> ` or `-> <oldSection>[L1]` or `-> <oldSection>\n` or `-> <oldSection>->`
         let orderPattern =
             "(->\\s*)" + NSRegularExpression.escapedPattern(for: oldSection)
-            + "(?=\\s*(->|->#|\\n|$))"
+            + "(?=\\s*(\\[[^\\]]*\\])?\\s*(->|->#|\\n|$))"
         let orderRegex = try NSRegularExpression(pattern: orderPattern, options: [])
         result = orderRegex.stringByReplacingMatches(
             in: result,
@@ -228,33 +228,53 @@ extension TmdRefactor {
 
             for ord in sheet.playback {
                 guard case .name(let sName) = ord else { continue }
+                let parsed = Playback.parseSectionSelector(sName)
                 guard
                     let para = sheet.entries.first(where: {
-                        $0.name == sName && $0.assignment == inst
+                        $0.name == parsed.name && $0.assignment == inst
                     })
                 else {
                     continue
                 }
                 sourceEntries.append(para)
                 for sec in para.sections {
-                    if let prev = combinedSections.last, prev.noteLength == sec.noteLength {
+                    let materializedSec = Self.materializeStanzaLyrics(
+                        in: sec, requestedStanza: parsed.stanza
+                    )
+                    if let prev = combinedSections.last,
+                        prev.noteLength == materializedSec.noteLength
+                    {
                         combinedSections.removeLast()
                         let offset = prev.unitGroups.reduce(0) { $0 + $1.length }
-                        let shiftedDirectives = sec.directives.map {
+                        let groupOffset = prev.unitGroups.count
+                        let shiftedDirectives = materializedSec.directives.map {
                             SectionDirective(position: $0.position + offset, kind: $0.kind)
                         }
-                        let shiftedBarlines = sec.barlinePositions.map { $0 + offset }
+                        let shiftedBarlines = materializedSec.barlinePositions.map { $0 + offset }
                         let mergedBarlines = Array(Set(prev.barlinePositions + shiftedBarlines))
                             .sorted()
+                        let shiftedLyrics = materializedSec.lyrics.map { line in
+                            LyricLine(
+                                stanza: line.stanza,
+                                measures: line.measures,
+                                unitGroupRange: (line.unitGroupRange.lowerBound + groupOffset)..<(line
+                                    .unitGroupRange.upperBound + groupOffset),
+                                measureUnitGroupRanges: line.measureUnitGroupRanges.map {
+                                    ($0.lowerBound + groupOffset)..<($0.upperBound + groupOffset)
+                                },
+                                sourceLine: line.sourceLine
+                            )
+                        }
                         combinedSections.append(
                             Section(
                                 noteLength: prev.noteLength,
-                                unitGroups: prev.unitGroups + sec.unitGroups,
+                                unitGroups: prev.unitGroups + materializedSec.unitGroups,
                                 directives: prev.directives + shiftedDirectives,
-                                barlinePositions: mergedBarlines
+                                barlinePositions: mergedBarlines,
+                                lyrics: prev.lyrics + shiftedLyrics
                             ))
                     } else {
-                        combinedSections.append(sec)
+                        combinedSections.append(materializedSec)
                     }
                 }
             }
@@ -286,6 +306,52 @@ extension TmdRefactor {
             metadata: sheet.metadata
         )
         return format(newSheet.format())
+    }
+
+    private static func materializeStanzaLyrics(in section: Section, requestedStanza: Int?)
+        -> Section
+    {
+        guard !section.lyrics.isEmpty else { return section }
+        var byPhrase: [Range<Int>: [LyricLine]] = [:]
+        var phraseOrder: [Range<Int>] = []
+        for line in section.lyrics {
+            if byPhrase[line.unitGroupRange] == nil {
+                phraseOrder.append(line.unitGroupRange)
+            }
+            byPhrase[line.unitGroupRange, default: []].append(line)
+        }
+
+        var materializedLines: [LyricLine] = []
+        for phraseRange in phraseOrder {
+            guard let phraseLyrics = byPhrase[phraseRange], !phraseLyrics.isEmpty else { continue }
+            let selected: LyricLine?
+            if let req = requestedStanza {
+                selected =
+                    phraseLyrics.first { $0.stanza == req || (req == 1 && $0.stanza == nil) }
+                    ?? (phraseLyrics.count == 1 ? phraseLyrics[0] : nil)
+            } else {
+                selected =
+                    phraseLyrics.first { $0.stanza == nil || $0.stanza == 1 }
+                    ?? phraseLyrics.first
+            }
+            if let selected {
+                materializedLines.append(
+                    LyricLine(
+                        stanza: nil,
+                        measures: selected.measures,
+                        unitGroupRange: selected.unitGroupRange,
+                        measureUnitGroupRanges: selected.measureUnitGroupRanges,
+                        sourceLine: selected.sourceLine
+                    ))
+            }
+        }
+        return Section(
+            noteLength: section.noteLength,
+            unitGroups: section.unitGroups,
+            directives: section.directives,
+            barlinePositions: section.barlinePositions,
+            lyrics: materializedLines
+        )
     }
 
 }
