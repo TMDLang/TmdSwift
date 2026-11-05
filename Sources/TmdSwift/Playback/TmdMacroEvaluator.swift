@@ -346,9 +346,14 @@ public enum TmdMacroEvaluator {
                             throw TmdMacroError("'canon' offset must be a non-negative integer")
                         }
                     }
+                    if !instruments.isEmpty && parsedOffsets.count != instruments.count {
+                        throw TmdMacroError(
+                            "'canon' explicit offsets count (\(parsedOffsets.count)) must match instruments count (\(instruments.count))"
+                        )
+                    }
                     explicitOffsets = parsedOffsets
-                    if parsedOffsets.count >= 2 {
-                        offsetBars = parsedOffsets[1] - parsedOffsets[0]
+                    if let firstOffset = parsedOffsets.first {
+                        offsetBars = firstOffset
                     }
                 } else {
                     throw TmdMacroError("'canon' offset must be a non-negative integer")
@@ -387,11 +392,19 @@ public enum TmdMacroEvaluator {
                             let mappedInst =
                                 (instIdx >= 0 && instIdx < instruments.count)
                                 ? instruments[instIdx] : (ip.assignment ?? "")
+                            let deltaBars: Int =
+                                if let explicitOffsets,
+                                    instIdx >= 0 && instIdx < explicitOffsets.count
+                                {
+                                    explicitOffsets[instIdx]
+                                } else {
+                                    offsetBars
+                                }
 
                             let outerP = createSyntheticParagraph(
                                 baseName: ip.name,
                                 assignment: mappedInst,
-                                startOffset: ip.start + offsetBars,
+                                startOffset: ip.start + deltaBars,
                                 sections: ip.sections
                             )
                             concreteParagraphs.removeAll { $0.name == outerP.name }
@@ -399,7 +412,7 @@ public enum TmdMacroEvaluator {
                                 Entry(
                                     name: outerCanonSectionName,
                                     assignment: mappedInst,
-                                    start: ip.start + offsetBars,
+                                    start: ip.start + deltaBars,
                                     sections: ip.sections
                                 ))
                         }
@@ -429,16 +442,16 @@ public enum TmdMacroEvaluator {
                 }
                 let prototypeBars =
                     prototypeQuarterDuration / TmdPlaybackRenderer.measureDuration(for: sheet.beat)
-                if let lastIndex = instruments.indices.last {
-                    let lastOffset =
-                        if let explicitOffsets, lastIndex < explicitOffsets.count {
-                            explicitOffsets[lastIndex]
+                for idx in instruments.indices {
+                    let voiceOffset =
+                        if let explicitOffsets, idx < explicitOffsets.count {
+                            explicitOffsets[idx]
                         } else {
-                            lastIndex * offsetBars
+                            idx * offsetBars
                         }
-                    if Double(lastOffset) > prototypeBars {
+                    if Double(voiceOffset) > prototypeBars {
                         throw TmdMacroError(
-                            "Canon voice \(lastIndex + 1) enters after the combined prototype ends")
+                            "Canon voice \(idx + 1) enters after the combined prototype ends")
                     }
                 }
                 genCounter += 1

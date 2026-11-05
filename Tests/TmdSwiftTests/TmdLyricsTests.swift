@@ -544,4 +544,122 @@ struct TmdLyricsTests {
         #expect(noteEvents[2].position == 4.0)
         #expect(noteEvents[2].lyric?.cleanWord == "c")
     }
+
+    @Test("Preserves stanza selectors in renameSection/inlineOrders, completes Unicode section stanzas in LSP, validates canon explicit offsets, and reverses lyrics in reverse macro")
+    func testBatch2RefactorLSPAndMacroLyrics() throws {
+        let source = """
+            ::SCORE::
+            ** Batch 2 Refactor & Macro Lyrics **
+            != 120
+            ?= C
+            <4/4>
+
+            副歌:Vocal@|0|{
+                <4*>
+                | 1 2 3 0 |
+                L1| 春 風 吹 0 |
+                L2| 秋 雨 落 0 |
+            }
+
+            -> 副歌[L1] -> 副歌[L2] ->#
+            """
+
+        // 1. renameSection updates `-> 副歌[L1]` to `-> chorus[L1]`
+        let renamed = try TmdRefactor.renameSection(in: source, from: "副歌", to: "chorus")
+        #expect(renamed.contains("chorus:Vocal@|0|{"))
+        #expect(renamed.contains("-> chorus[L1] -> chorus[L2] ->#"))
+
+        // 2. inlineOrders resolves `副歌[L1]` and `副歌[L2]` and preserves merged lyrics across sections
+        let inlined = try TmdRefactor.inlineOrders(source: source)
+        let inlinedSheet = try #require(TmdParser.parse(string: inlined))
+        let inlinedTimeline = TmdPlaybackRenderer.render(sheet: inlinedSheet, instrument: "Vocal")
+        let inlinedWords = inlinedTimeline.events.filter { $0.content.isNote }.compactMap {
+            $0.lyric?.cleanWord
+        }
+        #expect(inlinedWords == ["春", "風", "吹", "秋", "雨", "落"])
+
+        // 3. LSP auto-completion supports Unicode section names (`-> 副歌[`)
+        let lspSource = """
+            ::SCORE::
+            ** Unicode LSP **
+            != 120
+            ?= C
+            <4/4>
+
+            副歌:Vocal@|0|{
+                <4*>
+                | 1 2 3 4 |
+                L1| 春 風 吹 過 |
+                L2| 秋 雨 落 下 |
+            }
+
+            -> 副歌[
+            """
+        let utf16Count = "-> 副歌[".utf16.count
+        let lspItems = TmdLSPCompletionEngine.complete(
+            source: lspSource,
+            position: TmdLSPPosition(line: 13, character: utf16Count)
+        )
+        #expect(lspItems.map(\.label) == ["L1", "L2"])
+
+        // 4. Canon explicit (offsets ...) count mismatch and out-of-bounds first voice must throw
+        let mismatchCanonScore = """
+            ::SCORE::
+            ** Mismatch Canon **
+            != 120
+            ?= C
+            <4/4>
+
+            Theme {
+                <4*>
+                | 1 2 3 4 |
+            }
+
+            -> (canon Theme (instruments V1 V2 V3) (offsets 1 0)) ->#
+            """
+        let mismatchSheet = try #require(TmdParser.parse(string: mismatchCanonScore))
+        #expect(throws: TmdMacroError.self) {
+            _ = try TmdMacroEvaluator.expandThrowing(mismatchSheet)
+        }
+
+        let lateFirstVoiceCanonScore = """
+            ::SCORE::
+            ** Late First Voice Canon **
+            != 120
+            ?= C
+            <4/4>
+
+            Theme {
+                <4*>
+                | 1 2 3 4 |
+            }
+
+            -> (canon Theme (instruments V1 V2) (offsets 2 0)) ->#
+            """
+        let lateSheet = try #require(TmdParser.parse(string: lateFirstVoiceCanonScore))
+        #expect(throws: TmdMacroError.self) {
+            _ = try TmdMacroEvaluator.expandThrowing(lateSheet)
+        }
+
+        // 5. Reverse macro reverses lyric slots so (1:a, 2:b, 3:c, 0:0) becomes (0:0, 3:c, 2:b, 1:a)
+        let reverseScore = """
+            ::SCORE::
+            ** Reverse Lyrics **
+            != 120
+            ?= C
+            <4/4>
+
+            Theme {
+                <4*>
+                | 1 2 3 0 |
+                L| a b c 0 |
+            }
+
+            -> (play (reverse Theme) Vocal) ->#
+            """
+        let reverseSheet = try #require(TmdParser.parse(string: reverseScore))
+        let reverseTimeline = TmdPlaybackRenderer.render(sheet: reverseSheet, instrument: "Vocal")
+        let reverseNotes = reverseTimeline.events.filter { $0.content.isNote }
+        #expect(reverseNotes.map { $0.lyric?.cleanWord } == ["c", "b", "a"])
+    }
 }

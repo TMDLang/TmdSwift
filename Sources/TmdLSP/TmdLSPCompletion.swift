@@ -289,7 +289,7 @@ public struct TmdLSPCompletionEngine {
         sectionName: String, typedPrefix: String
     )? {
         guard let regex = try? NSRegularExpression(
-            pattern: #"->\s*([A-Za-z_][A-Za-z0-9_-]*)\[\s*([A-Za-z0-9]*)$"#
+            pattern: #"->\s*([^\s\[\]\->{}():@]+)\[\s*([A-Za-z0-9]*)$"#
         ),
             let match = regex.firstMatch(
                 in: prefix,
