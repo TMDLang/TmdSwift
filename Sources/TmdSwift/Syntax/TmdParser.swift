@@ -449,6 +449,8 @@ private struct TokenParser {
                 var lyrics: [LyricLine] = []
                 var phraseStartGroupIndex = 0
                 var currentMelodicLine: Int?
+                var sawDirectiveSinceLastUnit = false
+                var endedAtBarline = false
                 while current != .openAngle && current != .closeBrace && current != .eof {
                     if case .lyricLine = current {
                         let phraseRange = phraseStartGroupIndex..<unitGroups.count
@@ -482,29 +484,26 @@ private struct TokenParser {
                         }
                         phraseStartGroupIndex = unitGroups.count
                         currentMelodicLine = nil
+                        sawDirectiveSinceLastUnit = false
+                        endedAtBarline = false
                         continue
-                    }
-
-                    if let melodicLine = currentMelodicLine,
-                        currentLine != melodicLine,
-                        unitGroups.count > phraseStartGroupIndex
-                    {
-                        phraseStartGroupIndex = unitGroups.count
-                        currentMelodicLine = currentLine
-                    } else if currentMelodicLine == nil {
-                        currentMelodicLine = currentLine
                     }
 
                     while current == .pipe {
                         if let melodicLine = currentMelodicLine,
                             currentLine != melodicLine,
-                            unitGroups.count > phraseStartGroupIndex
+                            unitGroups.count > phraseStartGroupIndex,
+                            !sawDirectiveSinceLastUnit && endedAtBarline
                         {
                             phraseStartGroupIndex = unitGroups.count
                             currentMelodicLine = currentLine
+                            endedAtBarline = false
                         }
                         barlinePositions.append(unitGroups.reduce(0) { $0 + $1.length })
                         barlineGroupIndices.append(unitGroups.count)
+                        if unitGroups.count > phraseStartGroupIndex {
+                            endedAtBarline = true
+                        }
                         advance()
                     }
                     if current == .openAngle || current == .closeBrace || current == .eof {
@@ -512,16 +511,6 @@ private struct TokenParser {
                     }
                     if case .lyricLine = current {
                         continue
-                    }
-
-                    if let melodicLine = currentMelodicLine,
-                        currentLine != melodicLine,
-                        unitGroups.count > phraseStartGroupIndex
-                    {
-                        phraseStartGroupIndex = unitGroups.count
-                        currentMelodicLine = currentLine
-                    } else if currentMelodicLine == nil {
-                        currentMelodicLine = currentLine
                     }
 
                     if current == .openBrace || current == .relativeOrderPrefix
@@ -535,8 +524,20 @@ private struct TokenParser {
                         } else {
                             advance()
                         }
+                        sawDirectiveSinceLastUnit = true
                         continue
                     }
+
+                    if let melodicLine = currentMelodicLine,
+                        currentLine != melodicLine,
+                        unitGroups.count > phraseStartGroupIndex,
+                        !sawDirectiveSinceLastUnit && endedAtBarline
+                    {
+                        phraseStartGroupIndex = unitGroups.count
+                    }
+                    currentMelodicLine = currentLine
+                    sawDirectiveSinceLastUnit = false
+                    endedAtBarline = false
 
                     if match(.openParen) {
                         skipPipes()

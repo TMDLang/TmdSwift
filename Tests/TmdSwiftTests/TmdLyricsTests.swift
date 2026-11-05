@@ -388,13 +388,12 @@ struct TmdLyricsTests {
 
         let sheet = try #require(TmdParser.parse(string: source))
 
-        // 1. MusicXML (<lyric number="1">, <lyric number="2">, <syllabic>, <text>, <extend/>)
+        // 1. MusicXML (<lyric number="1">, <syllabic>, <text>, <extend/>)
         let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
         #expect(xml.contains("<lyric number=\"1\">"))
         #expect(xml.contains("<text>「我</text>"))
         #expect(xml.contains("<text>愛」</text>"))
         #expect(xml.contains("<text>你</text>"))
-        #expect(xml.contains("<lyric number=\"2\">"))
         #expect(xml.contains("<syllabic>begin</syllabic>"))
         #expect(xml.contains("<text>yes</text>"))
         #expect(xml.contains("<syllabic>middle</syllabic>"))
@@ -679,7 +678,7 @@ struct TmdLyricsTests {
                 L2| go - - now |
             }
 
-            -> verse[L1] ->#
+            -> verse ->#
             """
 
         let sheet = try #require(TmdParser.parse(string: source))
@@ -701,6 +700,8 @@ struct TmdLyricsTests {
 
         // 2. MusicXML emits <extend type="start"/>, <extend type="continue"/>, and <extend type="stop"/>
         let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
+        #expect(xml.contains("<lyric number=\"1\">"))
+        #expect(xml.contains("<lyric number=\"2\">"))
         #expect(xml.contains("<extend type=\"start\"/>"))
         #expect(xml.contains("<extend type=\"continue\"/>"))
         #expect(xml.contains("<extend type=\"stop\"/>"))
@@ -727,5 +728,119 @@ struct TmdLyricsTests {
             options: TmdBrailleOptions(encoding: .ascii, layout: .barOverBar)
         )
         #expect(brfBarOverBar.contains(";2 LA END"))
+    }
+
+    @Test("Handles directive-only lines inside melodic phrases, cross-section reverse macro lyrics, sequential stanza selectors in sheet exporters, and rest-aligned LilyPond/ABC output")
+    func testRound2ReviewFixes() throws {
+        // 1. Directive-only or comment-only line between melodic units before `L|` must not split the phrase
+        let directiveLineScore = """
+            ::SCORE::
+            ** Directive Line Inside Phrase **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+                <4*>
+                1 2
+                {p}
+                3 4
+                L| 春 風 吹 過 |
+            }
+
+            -> verse ->#
+            """
+        let directiveDiags = TmdScoreValidator.validate(source: directiveLineScore)
+        #expect(directiveDiags.filter { $0.severity == .error }.isEmpty)
+
+        let directiveSheet = try #require(TmdParser.parse(string: directiveLineScore))
+        let directiveTimeline = TmdPlaybackRenderer.render(sheet: directiveSheet, instrument: "Vocal")
+        let directiveWords = directiveTimeline.events.filter { $0.content.isNote }.compactMap {
+            $0.lyric?.cleanWord
+        }
+        #expect(directiveWords == ["春", "風", "吹", "過"])
+
+        // 2. Multi-section `reverse` macro preserves lyric alignment across `<N*>` sections
+        let multiSectionReverseScore = """
+            ::SCORE::
+            ** Multi-Section Reverse Lyrics **
+            != 120
+            ?= C
+            <4/4>
+
+            Theme {
+                <4*>
+                | 1 2 |
+                L| a b |
+                <8*>
+                | 3 4 |
+                L| c d |
+            }
+
+            -> (play (reverse Theme) Vocal) ->#
+            """
+        let multiRevSheet = try #require(TmdParser.parse(string: multiSectionReverseScore))
+        let multiRevTimeline = TmdPlaybackRenderer.render(sheet: multiRevSheet, instrument: "Vocal")
+        let multiRevWords = multiRevTimeline.events.filter { $0.content.isNote }.compactMap {
+            $0.lyric?.cleanWord
+        }
+        #expect(multiRevWords == ["d", "c", "b", "a"])
+
+        // 3. Explicit sequential stanza selectors `-> verse[L1] -> verse[L2] ->#` must NOT duplicate both stanzas per pass
+        let sequentialStanzaScore = """
+            ::SCORE::
+            ** Sequential Stanza Selection **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+                <4*>
+                | 1 2 3 4 |
+                L1| 春 風 吹 過 |
+                L2| 秋 雨 落 下 |
+            }
+
+            -> verse[L1] -> verse[L2] ->#
+            """
+        let seqSheet = try #require(TmdParser.parse(string: sequentialStanzaScore))
+        let seqXml = TmdMusicXMLGenerator.generateMusicXML(from: seqSheet)
+        #expect(!seqXml.contains("<lyric number=\"2\">"))
+        #expect(seqXml.components(separatedBy: "<text>春</text>").count - 1 == 1)
+        #expect(seqXml.components(separatedBy: "<text>秋</text>").count - 1 == 1)
+
+        let seqLy = TmdLilyPondGenerator.generateLilyPond(from: seqSheet)
+        #expect(!seqLy.contains("\\set stanza = \"2.\""))
+        #expect(seqLy.contains("\"春\" \"風\" \"吹\" \"過\" \"秋\" \"雨\" \"落\" \"下\""))
+
+        let seqAbc = TmdABCGenerator.generateABC(from: seqSheet)
+        #expect(!seqAbc.contains("w: 1.~"))
+        #expect(!seqAbc.contains("w: 2.~"))
+        #expect(seqAbc.contains("w: 春 風 吹 過 | 秋 雨 落 下"))
+
+        // 4. Rest alignment (`1 0 2 3` with `L| 一 0 二 三 |`): LilyPond `\addlyrics` and ABC `w:` natively skip rests
+        let restAlignedScore = """
+            ::SCORE::
+            ** Rest Alignment **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+                <4*>
+                | 1 0 2 3 |
+                L| 一 0 二 三 |
+            }
+
+            -> verse ->#
+            """
+        let restSheet = try #require(TmdParser.parse(string: restAlignedScore))
+        let restLy = TmdLilyPondGenerator.generateLilyPond(from: restSheet)
+        #expect(restLy.contains("c'4 r4 d'4 e'4"))
+        #expect(restLy.contains("\"一\" \"二\" \"三\""))
+
+        let restAbc = TmdABCGenerator.generateABC(from: restSheet)
+        #expect(restAbc.contains("C4 z4 D4 E4"))
+        #expect(restAbc.contains("w: 一 二 三"))
     }
 }

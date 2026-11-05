@@ -646,12 +646,20 @@ public enum TmdPlaybackRenderer {
                     (activeLine != nil && mIdx < activeLine!.measures.count)
                     ? activeLine!.measures[mIdx].flatSoundingUnits
                     : []
-                let stanzaMeasureUnits: [(stanza: Int, units: [LyricSoundingUnit])] =
-                    phraseLyrics.compactMap { line in
-                        let idx = line.stanza ?? 1
-                        guard (1...64).contains(idx), mIdx < line.measures.count else { return nil }
-                        return (idx, line.measures[mIdx].flatSoundingUnits)
-                    }
+                let stanzaMeasureUnits: [(stanza: Int, units: [LyricSoundingUnit])]
+                if requestedStanza != nil {
+                    stanzaMeasureUnits =
+                        activeMeasureUnits.isEmpty ? [] : [(1, activeMeasureUnits)]
+                } else {
+                    stanzaMeasureUnits =
+                        phraseLyrics.compactMap { line in
+                            let idx = line.stanza ?? 1
+                            guard (1...64).contains(idx), mIdx < line.measures.count else {
+                                return nil
+                            }
+                            return (idx, line.measures[mIdx].flatSoundingUnits)
+                        }
+                }
 
                 let lower = max(0, min(section.unitGroups.count, mRange.lowerBound))
                 let upper = max(lower, min(section.unitGroups.count, mRange.upperBound))
