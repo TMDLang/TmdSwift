@@ -26,11 +26,9 @@ extension TmdRefactor {
         var working = line
         var commentSuffix = ""
 
-        // Extract inline block comment if present at end of line
-        if let commentStart = working.range(of: "/*") {
-            let commentText = String(working[commentStart.lowerBound...])
-            working = String(working[..<commentStart.lowerBound])
-            commentSuffix = "  " + commentText.trimmingCharacters(in: .whitespaces)
+        if let extracted = splitInlineComment(working) {
+            working = extracted.content
+            commentSuffix = extracted.commentSuffix
         }
 
         let trimmed = working.trimmingCharacters(in: .whitespaces)
@@ -138,13 +136,44 @@ extension TmdRefactor {
         }
 
         // Content / measure line
-        let formattedContent = formatMusicalUnits(trimmed)
+        let formattedContent = formatMusicalUnits(
+            trimmed,
+            addOuterBarlines: !containsOnlyDirectives(trimmed)
+        )
         return indentPrefix + formattedContent + commentSuffix
     }
 
+    static func splitInlineComment(_ text: String) -> (content: String, commentSuffix: String)? {
+        var working = text
+        var comments: [String] = []
+
+        while let commentStart = working.range(of: "/*") {
+            let afterOpen = working[commentStart.upperBound...]
+            if let commentEnd = afterOpen.range(of: "*/") {
+                let commentRange = commentStart.lowerBound..<commentEnd.upperBound
+                let commentText = working[commentRange].trimmingCharacters(in: .whitespaces)
+                comments.append(commentText)
+                working.replaceSubrange(commentRange, with: " ")
+            } else {
+                let commentText = working[commentStart.lowerBound...].trimmingCharacters(
+                    in: .whitespaces
+                )
+                comments.append(commentText)
+                working = String(working[..<commentStart.lowerBound])
+                break
+            }
+        }
+
+        guard !comments.isEmpty else { return nil }
+        return (
+            content: working,
+            commentSuffix: "  " + comments.joined(separator: " ")
+        )
+    }
+
     static func stripInlineComment(from text: String) -> String {
-        if let commentStart = text.range(of: "/*") {
-            return String(text[..<commentStart.lowerBound]).trimmingCharacters(in: .whitespaces)
+        if let extracted = splitInlineComment(text) {
+            return extracted.content.trimmingCharacters(in: .whitespaces)
         }
         return text.trimmingCharacters(in: .whitespaces)
     }
@@ -154,10 +183,9 @@ extension TmdRefactor {
     )? {
         var working = line
         var commentSuffix = ""
-        if let commentStart = working.range(of: "/*") {
-            let commentText = String(working[commentStart.lowerBound...])
-            working = String(working[..<commentStart.lowerBound])
-            commentSuffix = "  " + commentText.trimmingCharacters(in: .whitespaces)
+        if let extracted = splitInlineComment(working) {
+            working = extracted.content
+            commentSuffix = extracted.commentSuffix
         }
         let trimmed = working.trimmingCharacters(in: .whitespaces)
         guard trimmed.hasPrefix("L") else { return nil }
@@ -501,6 +529,30 @@ extension TmdRefactor {
             result += String(repeating: "_", count: -octave)
         }
         return result
+    }
+
+    private static func containsOnlyDirectives(_ text: String) -> Bool {
+        let chars = Array(text)
+        var index = 0
+        var sawDirective = false
+
+        while index < chars.count {
+            while index < chars.count && (chars[index] == " " || chars[index] == "\t") {
+                index += 1
+            }
+            guard index < chars.count else { break }
+            guard chars[index] == "{",
+                let closeIdx = chars[(index + 1)...].firstIndex(of: "}")
+            else {
+                return false
+            }
+            let inner = String(chars[(index + 1)..<closeIdx]).trimmingCharacters(in: .whitespaces)
+            guard !inner.isEmpty else { return false }
+            sawDirective = true
+            index = closeIdx + 1
+        }
+
+        return sawDirective
     }
 
     private static func formatInlineDirective(_ inner: String) -> String {

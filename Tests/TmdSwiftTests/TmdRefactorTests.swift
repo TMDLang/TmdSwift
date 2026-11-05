@@ -1256,4 +1256,123 @@ struct TmdRefactorTests {
         let serialized = parsed.format()
         #expect(TmdRefactor.format(serialized) == serialized)
     }
+
+    @Test("Standalone directives are preserved without synthetic outer barlines")
+    func testFormatterPreservesStandaloneDirectives() throws {
+        let singleDirectiveInput = """
+            ::SCORE::
+            ** Standalone Directive Test **
+            != 120
+            ?= C
+            <4/4>
+
+            intro:Piano@|0|{
+                <4*>
+                { p }
+                | 1 2 3 4 |
+            }
+
+            -> intro ->#
+            """
+        let formattedSingle = TmdRefactor.format(singleDirectiveInput)
+        #expect(formattedSingle.contains("    <4*>\n    {p}\n    | 1 2 3 4 |\n"))
+        #expect(!formattedSingle.contains("| {p} |"))
+        #expect(TmdRefactor.format(formattedSingle) == formattedSingle)
+
+        let parsedSingle = try #require(TmdParser.parse(string: formattedSingle))
+        #expect(parsedSingle.entries[0].sections[0].directives.count == 1)
+        #expect(parsedSingle.entries[0].sections[0].unitGroups.count == 4)
+
+        let multiDirectiveInput = """
+            ::SCORE::
+            ** Multiple Standalone Directives Test **
+            != 120
+            ?= C
+            <4/4>
+
+            intro:Piano@|0|{
+                <4*>
+                { p } { != 140 }
+                | 1 2 3 4 |
+            }
+
+            -> intro ->#
+            """
+        let formattedMulti = TmdRefactor.format(multiDirectiveInput)
+        #expect(formattedMulti.contains("    <4*>\n    {p} {!=140}\n    | 1 2 3 4 |\n"))
+        #expect(!formattedMulti.contains("| {p}"))
+        #expect(TmdRefactor.format(formattedMulti) == formattedMulti)
+
+        let parsedMulti = try #require(TmdParser.parse(string: formattedMulti))
+        #expect(parsedMulti.entries[0].sections[0].directives.count == 2)
+        #expect(parsedMulti.entries[0].sections[0].unitGroups.count == 4)
+    }
+
+    @Test("Inline block comments preserve all musical units before and after the comment")
+    func testFormatterInlineBlockCommentsPreserveFollowingUnits() throws {
+        // 1. Mid-line inline block comment
+        let midLineInput = """
+            ::SCORE::
+            ** Mid-Line Inline Comment **
+            != 120
+            ?= C
+            <4/4>
+
+            intro:Piano@|0|{
+                <4*>
+                1 2 /* comment */ 3 4
+            }
+
+            -> intro ->#
+            """
+        let formattedMid = TmdRefactor.format(midLineInput)
+        #expect(formattedMid.contains("    | 1 2 3 4 |  /* comment */\n"))
+        #expect(TmdRefactor.format(formattedMid) == formattedMid)
+        let reparsedMid = try #require(TmdParser.parse(string: formattedMid))
+        #expect(reparsedMid.entries[0].sections[0].unitGroups.count == 4)
+
+        // 2. Unspaced inline block comment (1/* comment */2 3 4) and multiple inline comments
+        let unspacedAndMultipleInput = """
+            ::SCORE::
+            ** Unspaced and Multiple Inline Comments **
+            != 120
+            ?= C
+            <4/4>
+
+            intro:Piano@|0|{
+                <4*>
+                1/* c0 */2 3 4
+                1 /* c1 */ 2 /* c2 */ 3 4
+            }
+
+            -> intro ->#
+            """
+        let formattedUnspaced = TmdRefactor.format(unspacedAndMultipleInput)
+        #expect(formattedUnspaced.contains("    | 1 2 3 4 |  /* c0 */\n"))
+        #expect(formattedUnspaced.contains("    | 1 2 3 4 |  /* c1 */ /* c2 */\n"))
+        #expect(TmdRefactor.format(formattedUnspaced) == formattedUnspaced)
+        let reparsedUnspaced = try #require(TmdParser.parse(string: formattedUnspaced))
+        #expect(reparsedUnspaced.entries[0].sections[0].unitGroups.count == 8)
+
+        // 3. Leading inline block comment followed by musical units on the same line
+        let leadingInlineInput = """
+            ::SCORE::
+            ** Leading Inline Comment **
+            != 120
+            ?= C
+            <4/4>
+
+            intro:Piano@|0|{
+                <4*>
+                /* comment */ 1 2 3 4
+            }
+
+            -> intro ->#
+            """
+        let formattedLeading = TmdRefactor.format(leadingInlineInput)
+        #expect(formattedLeading.contains("    | 1 2 3 4 |  /* comment */\n"))
+        #expect(TmdRefactor.format(formattedLeading) == formattedLeading)
+        let reparsedLeading = try #require(TmdParser.parse(string: formattedLeading))
+        #expect(reparsedLeading.entries[0].sections[0].unitGroups.count == 4)
+    }
 }
