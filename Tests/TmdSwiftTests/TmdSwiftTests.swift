@@ -1933,6 +1933,8 @@ func testPlaybackOrderModifiersShareStateTransition() throws {
     #expect(TmdSkill.skillMarkdown.contains("Contrapuntal Techniques: Canon and Fugue"))
     #expect(TmdSkill.skillMarkdown.contains("Strict Canon with Measure Offsets"))
     #expect(TmdSkill.skillMarkdown.contains("Fugue Architecture"))
+    #expect(TmdSkill.skillMarkdown.contains("Vocal Lyrics & Grid-Counting Alignment"))
+    #expect(TmdSkill.skillMarkdown.contains("verse[L1]"))
 
     let tempDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(
         "tmd-skill-test-\(UUID().uuidString)")
