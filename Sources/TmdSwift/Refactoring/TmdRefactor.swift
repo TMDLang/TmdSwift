@@ -155,8 +155,10 @@ public struct TmdRefactor {
                 justClosedEntry = false
             }
 
-            // If line starts a block comment
-            if trimmed.hasPrefix("/*") {
+            // If line starts a standalone or multi-line block comment
+            if trimmed.hasPrefix("/*")
+                && (!trimmed.contains("*/") || stripInlineComment(from: trimmed).isEmpty)
+            {
                 var commentLines = [line]
                 if !trimmed.contains("*/") || trimmed == "/*" {
                     var j = i + 1
