@@ -106,6 +106,38 @@ struct VocaloidTests {
         #expect(vsqx.contains("<y><![CDATA[la]]></y>"))
     }
 
+    @Test("Finds lyrics in macro-instantiated tracks and matches explicit instruments case-insensitively")
+    func testMacroLyricBearingTrackIsPreferred() throws {
+        let tmdContent = """
+            ::SCORE::
+            ** Macro Lyric Track Selection **
+            != 120
+            ?= C
+            <4/4>
+
+            accompaniment:Accompaniment@|0|{
+                <4*>
+                1 2 3 4
+            }
+
+            Theme {
+                <4*>
+                1 2 3 4
+                L| do re mi fa |
+            }
+
+            -> accompaniment -> (play Theme PartB) ->#
+            """
+        let sheet = try TmdParser.parseThrowing(string: tmdContent)
+
+        #expect(sheet.resolveVocalInstrument() == "PartB")
+        #expect(sheet.resolveVocalInstrument(requested: "partb") == "PartB")
+
+        let vsqx = TmdVSQXGenerator.generateVSQX(from: sheet)
+        #expect(vsqx.contains("<name><![CDATA[PartB]]></name>"))
+        #expect(vsqx.contains("<y><![CDATA[do]]></y>"))
+    }
+
     @Test("Test monophonic reduction of simultaneous multi-notes (1+3+5 picks highest pitch 5=67)")
     func testMonophonicMultiNoteReduction() throws {
         let tmdContent = """

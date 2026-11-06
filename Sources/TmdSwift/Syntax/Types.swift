@@ -1690,13 +1690,18 @@ public struct Sheet: Equatable {
     /// Resolves the target vocal instrument for singing-synthesis exporters (VSQ, VSQX, UST).
     /// Checks the requested instrument first, then matches common vocal keywords, falling back to the first instrument or `"Vocal"`.
     public func resolveVocalInstrument(requested: String? = nil) -> String {
-        let distinct = distinctInstruments(fallbackToDefault: false)
-        if let requested = requested, distinct.contains(requested) {
-            return requested
+        let expanded = TmdMacroEvaluator.expandOrTrap(self)
+        let distinct = expanded.distinctInstruments(fallbackToDefault: false)
+        if let requested = requested,
+            let match = distinct.first(where: {
+                $0.caseInsensitiveCompare(requested) == .orderedSame
+            })
+        {
+            return match
         }
 
         let lyricBearing = distinct.filter { instrument in
-            entries
+            expanded.entries
                 .filter { ($0.assignment ?? "").caseInsensitiveCompare(instrument) == .orderedSame }
                 .contains { entry in
                     entry.sections.contains { !$0.lyrics.isEmpty }
