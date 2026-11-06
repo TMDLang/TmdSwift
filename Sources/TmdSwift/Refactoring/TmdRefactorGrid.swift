@@ -40,7 +40,12 @@ extension TmdRefactor {
                 continue
             }
 
-            if trimmed.contains("|")
+            if isLyricLine(trimmed) {
+                let indent = String(rawLine.prefix(while: { $0 == " " || $0 == "\t" }))
+                resultLines.append(indent + (try transformLyricLine(trimmed, mode: .double)))
+            } else if isStandaloneDirective(trimmed) {
+                resultLines.append(rawLine)
+            } else if trimmed.hasPrefix("|")
                 || trimmed.rangeOfCharacter(from: CharacterSet(charactersIn: "01234567[]-")) != nil
             {
                 let indent = String(rawLine.prefix(while: { $0 == " " || $0 == "\t" }))
@@ -96,7 +101,13 @@ extension TmdRefactor {
                 continue
             }
 
-            if trimmed.contains("|")
+            if isLyricLine(trimmed) {
+                let indent = String(rawLine.prefix(while: { $0 == " " || $0 == "\t" }))
+                let transformed = try transformLyricLine(trimmed, mode: .halve)
+                resultLines.append(indent + transformed)
+            } else if isStandaloneDirective(trimmed) {
+                resultLines.append(rawLine)
+            } else if trimmed.hasPrefix("|")
                 || trimmed.rangeOfCharacter(from: CharacterSet(charactersIn: "01234567[]-")) != nil
             {
                 let indent = String(rawLine.prefix(while: { $0 == " " || $0 == "\t" }))
@@ -339,6 +350,142 @@ extension TmdRefactor {
             return false
         }
         return Lexer(string: line).tokenize().contains(where: \.isTransposableUnit)
+    }
+
+    private enum LyricGridMode {
+        case double
+        case halve
+    }
+
+    private static func isLyricLine(_ line: String) -> Bool {
+        line.range(of: "^L(?:[1-9][0-9]?)?\\s*\\|", options: .regularExpression) != nil
+    }
+
+    private static func isStandaloneDirective(_ line: String) -> Bool {
+        line.range(of: "^\\{[^{}]*\\}$", options: .regularExpression) != nil
+    }
+
+    private static func transformLyricLine(_ line: String, mode: LyricGridMode) throws -> String {
+        var working = line
+        var commentSuffix = ""
+        if let commentStart = working.range(of: "/*") {
+            commentSuffix = " " + String(working[commentStart.lowerBound...])
+            working = String(working[..<commentStart.lowerBound]).trimmingCharacters(
+                in: .whitespaces)
+        }
+
+        guard let prefixEnd = working.firstIndex(of: "|") else { return line }
+        let prefix = String(working[...prefixEnd])
+        let body = String(working[working.index(after: prefixEnd)...])
+        let measures = splitLyricMeasures(body)
+        let transformed = try measures.map { measure in
+            let tokens = splitLyricTokens(measure)
+            switch mode {
+            case .double:
+                return doubleLyricMeasure(tokens)
+            case .halve:
+                return try halveLyricMeasure(tokens)
+            }
+        }
+        return "\(prefix) \(transformed.joined(separator: " | ")) |\(commentSuffix)"
+    }
+
+    private static func splitLyricMeasures(_ body: String) -> [String] {
+        var measures: [String] = []
+        var current = ""
+        var depth = 0
+        for character in body {
+            if character == "(" { depth += 1 }
+            if character == ")" { depth = max(0, depth - 1) }
+            if character == "|" && depth == 0 {
+                measures.append(current)
+                current = ""
+            } else {
+                current.append(character)
+            }
+        }
+        if !current.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            measures.append(current)
+        }
+        return measures.isEmpty ? [""] : measures
+    }
+
+    private static func splitLyricTokens(_ measure: String) -> [String] {
+        var tokens: [String] = []
+        var current = ""
+        var depth = 0
+        for character in measure.trimmingCharacters(in: .whitespacesAndNewlines) {
+            if character == "(" { depth += 1 }
+            if character == ")" { depth = max(0, depth - 1) }
+            if character.isWhitespace && depth == 0 {
+                if !current.isEmpty {
+                    tokens.append(current)
+                    current = ""
+                }
+            } else {
+                current.append(character)
+            }
+        }
+        if !current.isEmpty { tokens.append(current) }
+        return tokens
+    }
+
+    private static func isLyricGroup(_ token: String) -> Bool {
+        token.hasPrefix("(") && token.hasSuffix(")")
+    }
+
+    private static func isTransparentLyricToken(_ token: String) -> Bool {
+        LyricSyllable.isTransparentToken(token)
+    }
+
+    private static func doubleLyricMeasure(_ tokens: [String]) -> String {
+        var output: [String] = []
+        for token in tokens {
+            if isLyricGroup(token) || isTransparentLyricToken(token) {
+                output.append(token)
+            } else if token == "0" {
+                output.append(contentsOf: ["0", "0"])
+            } else {
+                output.append(contentsOf: [token, "-"])
+            }
+        }
+        return output.joined(separator: " ")
+    }
+
+    private static func halveLyricMeasure(_ tokens: [String]) throws -> String {
+        var output: [String] = []
+        var pending: String?
+        for token in tokens {
+            if isTransparentLyricToken(token) {
+                output.append(token)
+                continue
+            }
+            if isLyricGroup(token) {
+                if let pending {
+                    throw TmdRefactorError.invalidOperation(
+                        "Cannot halve lyric measure: '\(pending) \(token)' contains two distinct slots")
+                }
+                output.append(token)
+                continue
+            }
+            guard let first = pending else {
+                pending = token
+                continue
+            }
+            let collapsible = token == "-" || (first == "0" && token == "0")
+                || (first == "-" && token == "-")
+            guard collapsible else {
+                throw TmdRefactorError.invalidOperation(
+                    "Cannot halve lyric grid: unit '\(first) \(token)' would lose a lyric")
+            }
+            output.append(first)
+            pending = nil
+        }
+        if let pending {
+            throw TmdRefactorError.invalidOperation(
+                "Cannot halve lyric measure with odd number of units: '\(pending)'")
+        }
+        return output.joined(separator: " ")
     }
 
     // MARK: - Private Formatting Helpers
