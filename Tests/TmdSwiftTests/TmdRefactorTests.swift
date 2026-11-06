@@ -358,7 +358,7 @@ struct TmdRefactorTests {
         #expect(halveIssues.isEmpty)
     }
 
-    @Test("Issue #72: grid refactors preserve lyric lines and stanza prefixes")
+    @Test("grid refactors preserve lyric lines and stanza prefixes")
     func testGridRefactorsPreserveLyricLines() throws {
         let input = """
             ::SCORE::
@@ -398,7 +398,19 @@ struct TmdRefactorTests {
         let optimized = TmdRefactor.optimizeGrid(source: doubled)
         #expect(optimized.contains("<4*>"))
         #expect(optimized.contains("L| 「春」 風 吹 過 |"))
+        #expect(TmdScoreValidator.validate(source: doubled).filter { $0.severity == .error }.isEmpty)
         #expect(TmdScoreValidator.validate(source: halved).filter { $0.severity == .error }.isEmpty)
+
+        let edgeCases = input.replacingOccurrences(
+            of: "L| 「春」 風 吹 過 |",
+            with: "L| 春 /* c */ 風 吹 過 |\nL1| (春 風) 吹 過 |\n{p} {!=120}\n{!=120} /* comment */"
+        )
+        let edgeCasesDoubled = try TmdRefactor.doubleGrid(source: edgeCases)
+        #expect(edgeCasesDoubled.contains("L| 春 - 風 - 吹 - 過 - |"))
+        #expect(edgeCasesDoubled.contains("/* c */"))
+        #expect(edgeCasesDoubled.contains("L1| (春 風) 吹 - 過 - |"))
+        #expect(edgeCasesDoubled.contains("{p} {!=120}"))
+        #expect(edgeCasesDoubled.contains("{!=120}  /* comment */"))
 
         let invalid = input.replacingOccurrences(of: "L| 「春」 風 吹 過 |", with: "L| 春 夏 風 - |")
         #expect(throws: Error.self) {

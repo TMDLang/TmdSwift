@@ -362,17 +362,14 @@ extension TmdRefactor {
     }
 
     private static func isStandaloneDirective(_ line: String) -> Bool {
-        line.range(of: "^\\{[^{}]*\\}$", options: .regularExpression) != nil
+        let content = stripInlineComment(from: line)
+        return content.range(of: "^(?:\\{[^{}]*\\}\\s*)+$", options: .regularExpression) != nil
     }
 
     private static func transformLyricLine(_ line: String, mode: LyricGridMode) throws -> String {
-        var working = line
-        var commentSuffix = ""
-        if let commentStart = working.range(of: "/*") {
-            commentSuffix = " " + String(working[commentStart.lowerBound...])
-            working = String(working[..<commentStart.lowerBound]).trimmingCharacters(
-                in: .whitespaces)
-        }
+        let extracted = splitInlineComment(line)
+        let working = (extracted?.content ?? line).trimmingCharacters(in: .whitespaces)
+        let commentSuffix = extracted?.commentSuffix ?? ""
 
         guard let prefixEnd = working.firstIndex(of: "|") else { return line }
         let prefix = String(working[...prefixEnd])
@@ -470,6 +467,7 @@ extension TmdRefactor {
             }
             guard let first = pending else {
                 pending = token
+                output.append(token)
                 continue
             }
             let collapsible = token == "-" || (first == "0" && token == "0")
@@ -478,7 +476,6 @@ extension TmdRefactor {
                 throw TmdRefactorError.invalidOperation(
                     "Cannot halve lyric grid: unit '\(first) \(token)' would lose a lyric")
             }
-            output.append(first)
             pending = nil
         }
         if let pending {
