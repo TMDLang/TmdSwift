@@ -155,13 +155,9 @@ extension TmdRefactor {
     }
 
     static func doubleGridInLine(_ line: String) -> String {
-        var working = line
-        var commentSuffix = ""
-        if let commentStart = working.range(of: "/*") {
-            commentSuffix = " " + String(working[commentStart.lowerBound...])
-            working = String(working[..<commentStart.lowerBound]).trimmingCharacters(
-                in: .whitespaces)
-        }
+        let extracted = splitInlineComment(line)
+        let working = (extracted?.content ?? line).trimmingCharacters(in: .whitespaces)
+        let commentSuffix = extracted?.commentSuffix ?? ""
 
         let tokens = measureUnits(in: working)
         var outTokens: [String] = []
@@ -219,13 +215,9 @@ extension TmdRefactor {
     }
 
     static func halveGridInLine(_ line: String) throws -> String {
-        var working = line
-        var commentSuffix = ""
-        if let commentStart = working.range(of: "/*") {
-            commentSuffix = " " + String(working[commentStart.lowerBound...])
-            working = String(working[..<commentStart.lowerBound]).trimmingCharacters(
-                in: .whitespaces)
-        }
+        let extracted = splitInlineComment(line)
+        let working = (extracted?.content ?? line).trimmingCharacters(in: .whitespaces)
+        let commentSuffix = extracted?.commentSuffix ?? ""
 
         let tokens = measureUnits(in: working)
         var outTokens: [String] = []
@@ -358,7 +350,7 @@ extension TmdRefactor {
     }
 
     private static func isLyricLine(_ line: String) -> Bool {
-        line.range(of: "^L(?:[1-9][0-9]?)?\\s*\\|", options: .regularExpression) != nil
+        line.range(of: "^L[0-9]*\\s*\\|", options: .regularExpression) != nil
     }
 
     private static func isStandaloneDirective(_ line: String) -> Bool {

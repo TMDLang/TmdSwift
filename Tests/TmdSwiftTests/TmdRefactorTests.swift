@@ -412,6 +412,29 @@ struct TmdRefactorTests {
         #expect(edgeCasesDoubled.contains("{p} {!=120}"))
         #expect(edgeCasesDoubled.contains("{!=120}  /* comment */"))
 
+        let melodicCommentInput = input.replacingOccurrences(
+            of: "| 1 2 3 4 |",
+            with: "| 1 2 /* c */ 3 4 |"
+        )
+        let melodicCommentDoubled = try TmdRefactor.doubleGrid(source: melodicCommentInput)
+        #expect(melodicCommentDoubled.contains("| 1 - 2 - 3 - 4 - |"))
+
+        let punctuationInput = input.replacingOccurrences(
+            of: "L| 「春」 風 吹 過 |",
+            with: "L| 「 春 」 風 吹 過 |\nL0| 0 春 風 吹 |\nL100| 0 風 吹 過 |"
+        )
+        let punctuationDoubled = try TmdRefactor.doubleGrid(source: punctuationInput)
+        #expect(punctuationDoubled.contains("L| 「 春 - 」 風 - 吹 - 過 - |"))
+        #expect(punctuationDoubled.contains("L0| 0 0 春 - 風 - 吹 - |"))
+        #expect(punctuationDoubled.contains("L100| 0 0 風 - 吹 - 過 - |"))
+
+        let trailingRestInput = input
+            .replacingOccurrences(of: "| 0 2 3 4 |", with: "| 1 2 0 0 |")
+            .replacingOccurrences(of: "L1| 0 春 風 吹 |", with: "L| 春 風 |")
+            .replacingOccurrences(of: "L2| 0 風 吹 過 |", with: "")
+        let trailingRestDoubled = try TmdRefactor.doubleGrid(source: trailingRestInput)
+        #expect(TmdScoreValidator.validate(source: trailingRestDoubled).filter { $0.severity == .error }.isEmpty)
+
         let invalid = input.replacingOccurrences(of: "L| 「春」 風 吹 過 |", with: "L| 春 夏 風 - |")
         #expect(throws: Error.self) {
             _ = try TmdRefactor.halveGrid(source: invalid.replacingOccurrences(of: "<4*>", with: "<8*>"))

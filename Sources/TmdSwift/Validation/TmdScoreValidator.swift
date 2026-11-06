@@ -1058,9 +1058,22 @@ public enum TmdScoreValidator {
             // 3. Check E-LYRIC-GROUP and E-LYRIC-COUNT (allowing trailing rest omission per measure)
             let canAutoPadTrailingRests =
                 lyricMeasure.slots.count < melodicGroups.count
-                && melodicGroups[lyricMeasure.slots.count...].allSatisfy {
-                    $0.units.allSatisfy { $0 == .rest }
-                }
+                && {
+                    var previousWasRest = false
+                    for group in melodicGroups[lyricMeasure.slots.count...] {
+                        for unit in group.units {
+                            switch unit {
+                            case .rest:
+                                previousWasRest = true
+                            case .tie where previousWasRest:
+                                continue
+                            default:
+                                return false
+                            }
+                        }
+                    }
+                    return previousWasRest
+                }()
             let effectiveLyricSlots: [LyricSlot] =
                 canAutoPadTrailingRests
                 ? (lyricMeasure.slots
