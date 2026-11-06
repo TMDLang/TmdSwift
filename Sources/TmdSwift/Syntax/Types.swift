@@ -1690,13 +1690,27 @@ public struct Sheet: Equatable {
     /// Resolves the target vocal instrument for singing-synthesis exporters (VSQ, VSQX, UST).
     /// Checks the requested instrument first, then matches common vocal keywords, falling back to the first instrument or `"Vocal"`.
     public func resolveVocalInstrument(requested: String? = nil) -> String {
-        let distinct = distinctInstruments(fallbackToDefault: false)
-        if let requested = requested, distinct.contains(requested) {
-            return requested
+        let expanded = TmdMacroEvaluator.expandOrTrap(self)
+        let distinct = expanded.distinctInstruments(fallbackToDefault: false)
+        if let requested = requested,
+            let match = distinct.first(where: {
+                $0.caseInsensitiveCompare(requested) == .orderedSame
+            })
+        {
+            return match
         }
 
+        let lyricBearing = distinct.filter { instrument in
+            expanded.entries
+                .filter { ($0.assignment ?? "").caseInsensitiveCompare(instrument) == .orderedSame }
+                .contains { entry in
+                    entry.sections.contains { !$0.lyrics.isEmpty }
+                }
+        }
+        let candidates = lyricBearing.isEmpty ? distinct : lyricBearing
+
         // Tier 1: Explicit primary vocal keywords (e.g. Vocal, MainVocal, LeadVocal, 主唱, 人聲, 歌, 歌聲)
-        if let tier1 = distinct.first(where: {
+        if let tier1 = candidates.first(where: {
             $0.trimmingCharacters(in: .whitespacesAndNewlines).range(
                 of: "^(main_?vocal|lead_?vocal|vocal|voice|主唱|人聲|歌聲|歌|vo)$",
                 options: [.regularExpression, .caseInsensitive]
@@ -1713,7 +1727,7 @@ public struct Sheet: Equatable {
         }
 
         // Tier 2: Vocal / virtual singer tokens excluding accompaniment/solo indicators
-        if let tier2 = distinct.first(where: {
+        if let tier2 = candidates.first(where: {
             $0.range(
                 of: "vocal|voice|miku|utau|teto|sing|主唱|人聲|歌聲",
                 options: [.regularExpression, .caseInsensitive]
@@ -1723,7 +1737,7 @@ public struct Sheet: Equatable {
         }
 
         // Tier 3: Melody or lead keywords (not excluded)
-        if let tier3 = distinct.first(where: {
+        if let tier3 = candidates.first(where: {
             $0.range(
                 of: "melody|lead|主旋律|旋律",
                 options: [.regularExpression, .caseInsensitive]
@@ -1733,7 +1747,7 @@ public struct Sheet: Equatable {
         }
 
         // Tier 4: Any vocal keyword including backing/harm/choir
-        if let tier4 = distinct.first(where: {
+        if let tier4 = candidates.first(where: {
             $0.range(
                 of: "vocal|voice|miku|utau|teto|sing|melody|choir|soprano|alto|tenor|主唱|人聲|歌聲|旋律",
                 options: [.regularExpression, .caseInsensitive]
@@ -1742,7 +1756,7 @@ public struct Sheet: Equatable {
             return tier4
         }
 
-        return distinct.first ?? "Vocal"
+        return candidates.first ?? "Vocal"
     }
 
     /// Returns `true` if any entry assigned to `instrument` (case-insensitively) contains a `.percussion` unit.
