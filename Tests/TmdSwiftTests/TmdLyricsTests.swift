@@ -842,5 +842,66 @@ struct TmdLyricsTests {
         let restAbc = TmdABCGenerator.generateABC(from: restSheet)
         #expect(restAbc.contains("C4 z4 D4 E4"))
         #expect(restAbc.contains("w: 一 二 三"))
+
+        // 5. Standalone `_` is treated as a lyric rest placeholder alongside `0`
+        let underscoreRestScore = """
+            ::SCORE::
+            ** Underscore Rest Placeholder **
+            != 112
+            ?= G
+            <2/4>
+
+            TaiwanKoshinka:Piano@|0|{
+                <16*>
+                | 5_ - - 5_ 1 - - 2 | 3 - - 2 1 - - 1 | 5 - - 5 3 - - 1 | 2 - - - - - 0 - |
+                L1| せ - - ん だ - - ん | の - - - は - - な | か - - ぜ か - - を | る - - - - - _ - |
+            }
+
+            -> TaiwanKoshinka ->#
+            """
+        let underscoreDiags = TmdScoreValidator.validate(source: underscoreRestScore)
+        #expect(underscoreDiags.filter { $0.severity == .error }.isEmpty)
+
+        let underscoreSheet = try #require(TmdParser.parse(string: underscoreRestScore))
+        let lastMeasureUnits = underscoreSheet.entries[0].sections[0].lyrics[0].measures[3]
+            .flatSoundingUnits
+        #expect(lastMeasureUnits[6] == LyricSoundingUnit.rest)
+        #expect(lastMeasureUnits[7] == LyricSoundingUnit.tie)
+
+        let underscoreXml = TmdMusicXMLGenerator.generateMusicXML(from: underscoreSheet)
+        #expect(underscoreXml.contains("<text>る</text>"))
+        #expect(!underscoreXml.contains("<text>_</text>"))
+
+        let underscoreLy = TmdLilyPondGenerator.generateLilyPond(from: underscoreSheet)
+        #expect(underscoreLy.contains("\"る\""))
+        #expect(!underscoreLy.contains("\"_\""))
+
+        let underscoreAbc = TmdABCGenerator.generateABC(from: underscoreSheet)
+        #expect(underscoreAbc.contains("か ぜ か を | る"))
+        #expect(!underscoreAbc.contains("る _"))
+
+        let underscoreVsqx = TmdVSQXGenerator.generateVSQX(from: underscoreSheet)
+        #expect(underscoreVsqx.contains("<y><![CDATA[る]]></y>"))
+        #expect(!underscoreVsqx.contains("<y><![CDATA[_]]></y>"))
+
+        let underscoreUst = TmdUSTGenerator.generateUST(from: underscoreSheet)
+        #expect(underscoreUst.contains("Lyric=る\r\n"))
+        #expect(!underscoreUst.contains("Lyric=_\r\n"))
+
+        let underscoreTimeline = TmdPlaybackRenderer.render(
+            sheet: underscoreSheet, instrument: "Piano")
+        let underscoreMidiEvents = TmdMIDIGenerator.instrumentEvents(
+            timeline: underscoreTimeline,
+            instrument: "Piano",
+            midiInstrument: MIDIInstrument.resolve("Piano"),
+            channel: 0,
+            ticksPerQuarter: 480
+        )
+        let underscoreLyricMeta = underscoreMidiEvents.compactMap { event -> String? in
+            if case .lyric(let text) = event.message { return text }
+            return nil
+        }
+        #expect(underscoreLyricMeta.last == "る")
+        #expect(!underscoreLyricMeta.contains("_"))
     }
 }

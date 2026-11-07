@@ -1333,7 +1333,7 @@ public struct LyricLine: Equatable, Sendable {
             }
             if tokenText == "-" {
                 elements.append(.tie)
-            } else if tokenText == "0" {
+            } else if tokenText == "0" || tokenText == "_" {
                 elements.append(.rest)
             } else if LyricSyllable.isTransparentToken(tokenText) {
                 elements.append(.transparent(tokenText))
