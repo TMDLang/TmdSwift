@@ -434,6 +434,8 @@ extension TmdRefactor {
                 output.append(token)
             } else if token == "0" {
                 output.append(contentsOf: ["0", "0"])
+            } else if token == "_" {
+                output.append(contentsOf: ["_", "_"])
             } else {
                 output.append(contentsOf: [token, "-"])
             }
@@ -463,7 +465,7 @@ extension TmdRefactor {
                 continue
             }
             let collapsible = token == "-" || (first == "0" && token == "0")
-                || (first == "-" && token == "-")
+                || (first == "_" && token == "_") || (first == "-" && token == "-")
             guard collapsible else {
                 throw TmdRefactorError.invalidOperation(
                     "Cannot halve lyric grid: unit '\(first) \(token)' would lose a lyric")

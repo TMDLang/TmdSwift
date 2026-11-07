@@ -435,6 +435,15 @@ struct TmdRefactorTests {
         let trailingRestDoubled = try TmdRefactor.doubleGrid(source: trailingRestInput)
         #expect(TmdScoreValidator.validate(source: trailingRestDoubled).filter { $0.severity == .error }.isEmpty)
 
+        let underscoreInput = input.replacingOccurrences(
+            of: "L1| 0 春 風 吹 |",
+            with: "L1| _ 春 風 吹 |"
+        )
+        let underscoreDoubled = try TmdRefactor.doubleGrid(source: underscoreInput)
+        #expect(underscoreDoubled.contains("L1| _ _ 春 - 風 - 吹 - |"))
+        let underscoreHalved = try TmdRefactor.halveGrid(source: underscoreDoubled)
+        #expect(underscoreHalved.contains("L1| _ 春 風 吹 |"))
+
         let invalid = input.replacingOccurrences(of: "L| 「春」 風 吹 過 |", with: "L| 春 夏 風 - |")
         #expect(throws: Error.self) {
             _ = try TmdRefactor.halveGrid(source: invalid.replacingOccurrences(of: "<4*>", with: "<8*>"))

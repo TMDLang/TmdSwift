@@ -842,5 +842,30 @@ struct TmdLyricsTests {
         let restAbc = TmdABCGenerator.generateABC(from: restSheet)
         #expect(restAbc.contains("C4 z4 D4 E4"))
         #expect(restAbc.contains("w: 一 二 三"))
+
+        // 5. Standalone `_` is treated as a lyric rest placeholder alongside `0`
+        let underscoreRestScore = """
+            ::SCORE::
+            ** Underscore Rest Placeholder **
+            != 112
+            ?= G
+            <2/4>
+
+            TaiwanKoshinka:Piano@|0|{
+                <16*>
+                | 5_ - - 5_ 1 - - 2 | 3 - - 2 1 - - 1 | 5 - - 5 3 - - 1 | 2 - - - - - 0 - |
+                L1| せ - - ん だ - - ん | の - - - は - - な | か - - ぜ か - - を | る - - - - - _ - |
+            }
+
+            -> TaiwanKoshinka ->#
+            """
+        let underscoreDiags = TmdScoreValidator.validate(source: underscoreRestScore)
+        #expect(underscoreDiags.filter { $0.severity == .error }.isEmpty)
+
+        let underscoreSheet = try #require(TmdParser.parse(string: underscoreRestScore))
+        let lastMeasureUnits = underscoreSheet.entries[0].sections[0].lyrics[0].measures[3]
+            .flatSoundingUnits
+        #expect(lastMeasureUnits[6] == LyricSoundingUnit.rest)
+        #expect(lastMeasureUnits[7] == LyricSoundingUnit.tie)
     }
 }
