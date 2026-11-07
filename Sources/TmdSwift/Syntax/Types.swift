@@ -1133,24 +1133,24 @@ public struct LyricMeasure: Equatable, Sendable {
         var built: [LyricSlot] = []
 
         func attachTrailingPunctuation(_ punct: String) -> Bool {
-            guard !built.isEmpty else { return false }
-            let lastIdx = built.count - 1
-            switch built[lastIdx] {
-            case .unit(.syllable(let syl)):
-                let updated = Self.appendTrailingPunctuation(punct, to: syl)
-                built[lastIdx] = .unit(.syllable(updated))
-                return true
-            case .group(var units) where !units.isEmpty:
-                if case .syllable(let syl) = units[units.count - 1] {
-                    units[units.count - 1] = .syllable(
-                        Self.appendTrailingPunctuation(punct, to: syl))
-                    built[lastIdx] = .group(units)
+            for lastIdx in built.indices.reversed() {
+                switch built[lastIdx] {
+                case .unit(.syllable(let syl)):
+                    let updated = Self.appendTrailingPunctuation(punct, to: syl)
+                    built[lastIdx] = .unit(.syllable(updated))
                     return true
+                case .group(var units) where !units.isEmpty:
+                    if case .syllable(let syl) = units[units.count - 1] {
+                        units[units.count - 1] = .syllable(
+                            Self.appendTrailingPunctuation(punct, to: syl))
+                        built[lastIdx] = .group(units)
+                        return true
+                    }
+                default:
+                    continue
                 }
-                return false
-            default:
-                return false
             }
+            return false
         }
 
         for element in elements {

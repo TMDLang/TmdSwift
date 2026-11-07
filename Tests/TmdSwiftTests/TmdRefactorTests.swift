@@ -358,6 +358,89 @@ struct TmdRefactorTests {
         #expect(halveIssues.isEmpty)
     }
 
+    @Test("grid refactors preserve lyric lines and stanza prefixes")
+    func testGridRefactorsPreserveLyricLines() throws {
+        let input = """
+            ::SCORE::
+            ** Lyric Grid Refactor **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+                <4*>
+                | 1 2 3 4 |
+                L| 「春」 風 吹 過 |
+                {!=120}
+            }
+
+            chorus:Vocal@|0|{
+                <4*>
+                | 0 2 3 4 |
+                L1| 0 春 風 吹 |
+                L2| 0 風 吹 過 |
+            }
+
+            -> verse ->#
+            """
+
+        let doubled = try TmdRefactor.doubleGrid(source: input)
+        #expect(doubled.contains("L| 「春」 - 風 - 吹 - 過 - |"))
+        #expect(doubled.contains("L1| 0 0 春 - 風 - 吹 - |"))
+        #expect(doubled.contains("L2| 0 0 風 - 吹 - 過 - |"))
+        #expect(doubled.contains("{!=120}"))
+
+        let halved = try TmdRefactor.halveGrid(source: doubled)
+        #expect(halved.contains("L| 「春」 風 吹 過 |"))
+        #expect(halved.contains("L1| 0 春 風 吹 |"))
+        #expect(halved.contains("L2| 0 風 吹 過 |"))
+
+        let optimized = TmdRefactor.optimizeGrid(source: doubled)
+        #expect(optimized.contains("<4*>"))
+        #expect(optimized.contains("L| 「春」 風 吹 過 |"))
+        #expect(TmdScoreValidator.validate(source: doubled).filter { $0.severity == .error }.isEmpty)
+        #expect(TmdScoreValidator.validate(source: halved).filter { $0.severity == .error }.isEmpty)
+
+        let edgeCases = input.replacingOccurrences(
+            of: "L| 「春」 風 吹 過 |",
+            with: "L| 春 /* c */ 風 吹 過 |\nL1| (春 風) 吹 過 |\n{p} {!=120}\n{!=120} /* comment */"
+        )
+        let edgeCasesDoubled = try TmdRefactor.doubleGrid(source: edgeCases)
+        #expect(edgeCasesDoubled.contains("L| 春 - 風 - 吹 - 過 - |"))
+        #expect(edgeCasesDoubled.contains("/* c */"))
+        #expect(edgeCasesDoubled.contains("L1| (春 風) 吹 - 過 - |"))
+        #expect(edgeCasesDoubled.contains("{p} {!=120}"))
+        #expect(edgeCasesDoubled.contains("{!=120}  /* comment */"))
+
+        let melodicCommentInput = input.replacingOccurrences(
+            of: "| 1 2 3 4 |",
+            with: "| 1 2 /* c */ 3 4 |"
+        )
+        let melodicCommentDoubled = try TmdRefactor.doubleGrid(source: melodicCommentInput)
+        #expect(melodicCommentDoubled.contains("| 1 - 2 - 3 - 4 - |"))
+
+        let punctuationInput = input.replacingOccurrences(
+            of: "L| 「春」 風 吹 過 |",
+            with: "L| 「 春 」 風 吹 過 |\nL0| 0 春 風 吹 |\nL100| 0 風 吹 過 |"
+        )
+        let punctuationDoubled = try TmdRefactor.doubleGrid(source: punctuationInput)
+        #expect(punctuationDoubled.contains("L| 「 春 - 」 風 - 吹 - 過 - |"))
+        #expect(punctuationDoubled.contains("L0| 0 0 春 - 風 - 吹 - |"))
+        #expect(punctuationDoubled.contains("L100| 0 0 風 - 吹 - 過 - |"))
+
+        let trailingRestInput = input
+            .replacingOccurrences(of: "| 0 2 3 4 |", with: "| 1 2 0 0 |")
+            .replacingOccurrences(of: "L1| 0 春 風 吹 |", with: "L| 春 風 |")
+            .replacingOccurrences(of: "L2| 0 風 吹 過 |", with: "")
+        let trailingRestDoubled = try TmdRefactor.doubleGrid(source: trailingRestInput)
+        #expect(TmdScoreValidator.validate(source: trailingRestDoubled).filter { $0.severity == .error }.isEmpty)
+
+        let invalid = input.replacingOccurrences(of: "L| 「春」 風 吹 過 |", with: "L| 春 夏 風 - |")
+        #expect(throws: Error.self) {
+            _ = try TmdRefactor.halveGrid(source: invalid.replacingOccurrences(of: "<4*>", with: "<8*>"))
+        }
+    }
+
     @Test func testDoubleAndHalveGridWithTupletsAndSpacedSyntax() throws {
         let input = """
             ::SCORE::
