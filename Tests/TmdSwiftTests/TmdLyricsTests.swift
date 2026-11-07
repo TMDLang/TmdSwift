@@ -867,5 +867,41 @@ struct TmdLyricsTests {
             .flatSoundingUnits
         #expect(lastMeasureUnits[6] == LyricSoundingUnit.rest)
         #expect(lastMeasureUnits[7] == LyricSoundingUnit.tie)
+
+        let underscoreXml = TmdMusicXMLGenerator.generateMusicXML(from: underscoreSheet)
+        #expect(underscoreXml.contains("<text>る</text>"))
+        #expect(!underscoreXml.contains("<text>_</text>"))
+
+        let underscoreLy = TmdLilyPondGenerator.generateLilyPond(from: underscoreSheet)
+        #expect(underscoreLy.contains("\"る\""))
+        #expect(!underscoreLy.contains("\"_\""))
+
+        let underscoreAbc = TmdABCGenerator.generateABC(from: underscoreSheet)
+        #expect(underscoreAbc.contains("か ぜ か を | る"))
+        #expect(!underscoreAbc.contains("る _"))
+
+        let underscoreVsqx = TmdVSQXGenerator.generateVSQX(from: underscoreSheet)
+        #expect(underscoreVsqx.contains("<y><![CDATA[る]]></y>"))
+        #expect(!underscoreVsqx.contains("<y><![CDATA[_]]></y>"))
+
+        let underscoreUst = TmdUSTGenerator.generateUST(from: underscoreSheet)
+        #expect(underscoreUst.contains("Lyric=る\r\n"))
+        #expect(!underscoreUst.contains("Lyric=_\r\n"))
+
+        let underscoreTimeline = TmdPlaybackRenderer.render(
+            sheet: underscoreSheet, instrument: "Piano")
+        let underscoreMidiEvents = TmdMIDIGenerator.instrumentEvents(
+            timeline: underscoreTimeline,
+            instrument: "Piano",
+            midiInstrument: MIDIInstrument.resolve("Piano"),
+            channel: 0,
+            ticksPerQuarter: 480
+        )
+        let underscoreLyricMeta = underscoreMidiEvents.compactMap { event -> String? in
+            if case .lyric(let text) = event.message { return text }
+            return nil
+        }
+        #expect(underscoreLyricMeta.last == "る")
+        #expect(!underscoreLyricMeta.contains("_"))
     }
 }
