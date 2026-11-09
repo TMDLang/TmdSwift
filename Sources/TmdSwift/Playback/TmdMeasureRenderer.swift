@@ -104,6 +104,12 @@ public struct Measure: Equatable, Sendable {
     public let keyOffset: Int
     public let events: [MeasureEvent]
     public let directives: [PlaybackDirectiveEvent]
+    /// Source-order and engraving information used by notation exporters.
+    public let sectionName: String?
+    public let repeatStart: Bool
+    public let repeatCount: Int
+    public let foldedIntoRepeat: Bool
+    public let scoreEnd: Bool
 
     public init(
         index: Int,
@@ -113,7 +119,12 @@ public struct Measure: Equatable, Sendable {
         tempo: Double,
         keyOffset: Int,
         events: [MeasureEvent],
-        directives: [PlaybackDirectiveEvent] = []
+        directives: [PlaybackDirectiveEvent] = [],
+        sectionName: String? = nil,
+        repeatStart: Bool = false,
+        repeatCount: Int = 0,
+        foldedIntoRepeat: Bool = false,
+        scoreEnd: Bool = false
     ) {
         self.index = index
         self.startTime = startTime
@@ -123,6 +134,11 @@ public struct Measure: Equatable, Sendable {
         self.keyOffset = keyOffset
         self.events = events
         self.directives = directives
+        self.sectionName = sectionName
+        self.repeatStart = repeatStart
+        self.repeatCount = repeatCount
+        self.foldedIntoRepeat = foldedIntoRepeat
+        self.scoreEnd = scoreEnd
     }
 
     /// Groups events in the measure that start at the same offset (within `1e-4` quarter notes)
@@ -409,7 +425,85 @@ public enum TmdMeasureRenderer {
             )
         }
 
-        return measures
+        return annotateEngraving(measures, sheet: sheet)
+    }
+
+    /// Adds source-order engraving metadata while preserving the complete playback timeline.
+    /// Consecutive identical section selections are notation repeats; the later playback
+    /// occurrences remain available to playback clients but are hidden by exporters.
+    private static func annotateEngraving(_ measures: [Measure], sheet: Sheet) -> [Measure] {
+        guard !measures.isEmpty else { return measures }
+        var result = measures
+        var cursor = 0
+        var occurrences: [(name: String, stanza: Int?, range: Range<Int>)] = []
+        for order in sheet.effectivePlaybackOrders {
+            guard case .name(let rawName) = order else { continue }
+            let name = Playback.parseSectionSelector(rawName).name
+            let stanza = Playback.parseSectionSelector(rawName).stanza
+            let duration = TmdPlaybackRenderer.duration(of: name, in: sheet)
+            let start = cursor
+            guard start < measures.count else { break }
+            while cursor < measures.count,
+                measures[cursor].startTime < Double.greatestFiniteMagnitude,
+                measures[cursor].startTime < (measures[start].startTime + duration - 1e-5)
+            { cursor += 1 }
+            if cursor > start { occurrences.append((name, stanza, start..<cursor)) }
+        }
+        if occurrences.isEmpty { return result }
+
+        for (idx, occurrence) in occurrences.enumerated() {
+            for measureIndex in occurrence.range {
+                let old = result[measureIndex]
+                result[measureIndex] = Measure(
+                    index: old.index, startTime: old.startTime, nominalDuration: old.nominalDuration,
+                    timeSignature: old.timeSignature, tempo: old.tempo, keyOffset: old.keyOffset,
+                    events: old.events, directives: old.directives, sectionName: occurrence.name,
+                    scoreEnd: measureIndex == measures.count - 1)
+            }
+            var next = idx + 1
+            var repeatCount = 1
+            while next < occurrences.count && occurrences[next].name == occurrence.name {
+                repeatCount += 1
+                for measureIndex in occurrences[next].range {
+                    let old = result[measureIndex]
+                    let offset = measureIndex - occurrences[next].range.lowerBound
+                    if let base = occurrence.range.dropFirst(offset).first, base < result.count {
+                        let baseMeasure = result[base]
+                        let merged = zip(baseMeasure.events, old.events).map { lhs, rhs in
+                            MeasureEvent(startOffset: lhs.startOffset, duration: lhs.duration,
+                                content: lhs.content, tieStart: lhs.tieStart, tieStop: lhs.tieStop,
+                                state: lhs.state, lyric: lhs.lyric,
+                                isLyricMelisma: lhs.isLyricMelisma,
+                                stanzaLyrics: lhs.stanzaLyrics.merging(
+                                    rhs.stanzaLyrics.reduce(into: [:]) { map, item in
+                                        map[occurrences[next].stanza ?? item.key] = item.value
+                                    }) { first, _ in first })
+                        }
+                        result[base] = Measure(index: baseMeasure.index, startTime: baseMeasure.startTime,
+                            nominalDuration: baseMeasure.nominalDuration, timeSignature: baseMeasure.timeSignature,
+                            tempo: baseMeasure.tempo, keyOffset: baseMeasure.keyOffset, events: merged,
+                            directives: baseMeasure.directives, sectionName: baseMeasure.sectionName,
+                            repeatStart: baseMeasure.repeatStart, repeatCount: baseMeasure.repeatCount,
+                            scoreEnd: baseMeasure.scoreEnd)
+                    }
+                    result[measureIndex] = Measure(
+                        index: old.index, startTime: old.startTime, nominalDuration: old.nominalDuration,
+                        timeSignature: old.timeSignature, tempo: old.tempo, keyOffset: old.keyOffset,
+                        events: old.events, directives: old.directives, sectionName: old.sectionName,
+                        foldedIntoRepeat: true, scoreEnd: measureIndex == measures.count - 1)
+                }
+                next += 1
+            }
+            if repeatCount > 1, let first = occurrence.range.first {
+                let old = result[first]
+                result[first] = Measure(
+                    index: old.index, startTime: old.startTime, nominalDuration: old.nominalDuration,
+                    timeSignature: old.timeSignature, tempo: old.tempo, keyOffset: old.keyOffset,
+                    events: old.events, directives: old.directives, sectionName: old.sectionName,
+                    repeatStart: true, repeatCount: repeatCount, scoreEnd: old.scoreEnd)
+            }
+        }
+        return result
     }
 
     /// Builds a unified score-level time signature schedule across all playback sections.

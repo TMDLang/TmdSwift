@@ -61,6 +61,7 @@ public struct TmdABCGenerator {
         sheet: Sheet
     ) -> String {
         let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: instrument)
+            .filter { !$0.foldedIntoRepeat }
         var result = ""
         let initialKey = sheet.declaredKey ?? sheet.keySignature.description
         var currentKeyStepAlters = PitchMapping.keySignatureStepAlters(forKey: initialKey)
@@ -68,6 +69,7 @@ public struct TmdABCGenerator {
         var lineMeasures: [Measure] = []
         for (mIdx, measure) in measures.enumerated() {
             lineMeasures.append(measure)
+            if measure.repeatStart { result += "|:" }
             var measureStepAlters: [Int: [Int]] = [:]
             for directive in measure.directives {
                 switch directive.kind {
@@ -95,7 +97,17 @@ public struct TmdABCGenerator {
                 )
                 result += " "
             }
-            result += "|"
+            if measure.repeatCount > 1 {
+                result += ":|"
+                if mIdx == measures.count - 1 { result += "]" }
+            } else if mIdx == measures.count - 1 {
+                result += "|]"
+            } else if mIdx + 1 < measures.count,
+                measures[mIdx + 1].sectionName != measure.sectionName {
+                result += "||"
+            } else {
+                result += "|"
+            }
             let isEndOfLine = ((mIdx + 1) % 4 == 0) || (mIdx == measures.count - 1)
             if isEndOfLine {
                 result += "\n"

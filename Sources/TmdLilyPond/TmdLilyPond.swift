@@ -95,7 +95,11 @@ public struct TmdLilyPondGenerator {
         percussion: Bool
     ) -> String {
         let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: instrument)
+            .filter { !$0.foldedIntoRepeat }
         var result = "  "
+
+        let repeatCount = measures.first(where: { $0.repeatStart })?.repeatCount ?? 0
+        if repeatCount > 1 { result += "\\repeat volta \(repeatCount) { " }
 
         for measure in measures {
             var pendingDirectives: [(offset: Double, directive: PlaybackDirectiveEvent)] = []
@@ -138,8 +142,13 @@ public struct TmdLilyPondGenerator {
                 }
                 dirIdx += 1
             }
-            result += "|\n  "
+            let barline = measure.scoreEnd && repeatCount <= 1
+                ? "| \\bar \"|.\""
+                : (measures.dropFirst(measures.firstIndex(where: { $0.index == measure.index }) ?? 0).dropFirst().first?.sectionName != measure.sectionName
+                    ? "| \\bar \"||\"" : "|")
+            result += barline + "\n  "
         }
+        if repeatCount > 1 { result += " }" }
         return result.trimmingCharacters(in: .whitespaces) + "\n"
     }
 
@@ -148,6 +157,7 @@ public struct TmdLilyPondGenerator {
         sheet: Sheet
     ) -> String {
         let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: instrument)
+            .filter { !$0.foldedIntoRepeat }
         var stanzaSet: Set<Int> = []
         var hasActiveLyrics = false
         for measure in measures {
