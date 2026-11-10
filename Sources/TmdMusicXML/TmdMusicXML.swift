@@ -369,12 +369,20 @@ public struct TmdMusicXMLGenerator {
             if measure.repeatStart {
                 content += "        <barline location=\"left\"><bar-style>heavy-light</bar-style><repeat direction=\"forward\"/></barline>\n"
             }
+            if let volta = measure.voltaNumber {
+                content += "        <barline location=\"left\"><ending number=\"\(volta)\" type=\"start\"/></barline>\n"
+            }
             if measure.repeatCount > 1 {
                 content += "        <barline location=\"right\"><bar-style>light-heavy</bar-style><repeat direction=\"backward\" times=\"\(measure.repeatCount)\"/><ending number=\"1\" type=\"start\"/></barline>\n"
             } else if mIdx == measures.count - 1 {
                 content += "        <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n"
             } else if measures[mIdx + 1].sectionName != measure.sectionName {
                 content += "        <barline location=\"right\"><bar-style>light-light</bar-style></barline>\n"
+            }
+            if measure.voltaNumber == 1 {
+                content += "        <barline location=\"right\"><ending number=\"1\" type=\"stop\"/></barline>\n"
+            } else if measure.voltaNumber == 2 {
+                content += "        <barline location=\"right\"><ending number=\"2\" type=\"stop\"/></barline>\n"
             }
             xml += "    <measure number=\"\(mIdx + 1)\">\n\(content)    </measure>\n\n"
         }

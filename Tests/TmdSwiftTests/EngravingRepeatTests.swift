@@ -51,4 +51,26 @@ struct EngravingRepeatTests {
         #expect(xml.contains("<bar-style>light-heavy</bar-style>"))
         #expect(lily.contains("\\bar \"|.\""))
     }
+
+    @Test("renders two volta endings around a repeated section")
+    func rendersVoltaEndings() throws {
+        let tmd = """
+            ::SCORE::
+            ** Volta **
+            != 120
+            ?= C
+            <4/4>
+            A:Piano@|0|{ <4*> 1 2 3 4 }
+            B:Piano@|0|{ <4*> 5 6 7 1 }
+            C:Piano@|0|{ <4*> 2 3 4 5 }
+            -> A -> B -> A -> C ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        #expect(TmdABCGenerator.generateABC(from: sheet).contains("|1"))
+        #expect(TmdABCGenerator.generateABC(from: sheet).contains("|2"))
+        let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
+        #expect(xml.contains("<ending number=\"1\""))
+        #expect(xml.contains("<ending number=\"2\""))
+        #expect(TmdLilyPondGenerator.generateLilyPond(from: sheet).contains("\\alternative"))
+    }
 }

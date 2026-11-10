@@ -70,6 +70,7 @@ public struct TmdABCGenerator {
         for (mIdx, measure) in measures.enumerated() {
             lineMeasures.append(measure)
             if measure.repeatStart { result += "|:" }
+            if let volta = measure.voltaNumber { result += "|\(volta) " }
             var measureStepAlters: [Int: [Int]] = [:]
             for directive in measure.directives {
                 switch directive.kind {
@@ -97,7 +98,9 @@ public struct TmdABCGenerator {
                 )
                 result += " "
             }
-            if measure.repeatCount > 1 {
+            if measure.voltaNumber == 1 {
+                result += ":|"
+            } else if measure.repeatCount > 1 {
                 result += ":|"
                 if mIdx == measures.count - 1 { result += "]" }
             } else if mIdx == measures.count - 1 {

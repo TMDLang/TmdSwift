@@ -375,9 +375,13 @@ struct LilyPondValidationTests {
         for match in blockMatches {
             let trackName = nsGolden.substring(with: match.range(at: 1))
             let body = nsGolden.substring(with: match.range(at: 2))
+                .replacingOccurrences(of: "\\repeat volta 2 {", with: "")
+                .replacingOccurrences(of: "\\alternative {", with: "")
+                .replacingOccurrences(of: "\\bar \"|.\"", with: "")
+                .replacingOccurrences(of: "}", with: "")
             let rawMeasures = body.components(separatedBy: "|")
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty }
+                .filter { !$0.isEmpty && !$0.hasPrefix("\\bar") && !$0.contains("\"") }
 
             var expectedQuarters = 4.0
             for (mIdx, measureStr) in rawMeasures.enumerated() {

@@ -110,6 +110,7 @@ public struct Measure: Equatable, Sendable {
     public let repeatCount: Int
     public let foldedIntoRepeat: Bool
     public let scoreEnd: Bool
+    public let voltaNumber: Int?
 
     public init(
         index: Int,
@@ -125,6 +126,7 @@ public struct Measure: Equatable, Sendable {
         repeatCount: Int = 0,
         foldedIntoRepeat: Bool = false,
         scoreEnd: Bool = false
+        , voltaNumber: Int? = nil
     ) {
         self.index = index
         self.startTime = startTime
@@ -139,6 +141,7 @@ public struct Measure: Equatable, Sendable {
         self.repeatCount = repeatCount
         self.foldedIntoRepeat = foldedIntoRepeat
         self.scoreEnd = scoreEnd
+        self.voltaNumber = voltaNumber
     }
 
     /// Groups events in the measure that start at the same offset (within `1e-4` quarter notes)
@@ -462,7 +465,8 @@ public enum TmdMeasureRenderer {
             }
             var next = idx + 1
             var repeatCount = 1
-            while next < occurrences.count && occurrences[next].name == occurrence.name {
+            while next < occurrences.count && occurrences[next].name == occurrence.name
+                && engravingEquivalent(measures, occurrence.range, occurrences[next].range) {
                 repeatCount += 1
                 for measureIndex in occurrences[next].range {
                     let old = result[measureIndex]
@@ -503,7 +507,74 @@ public enum TmdMeasureRenderer {
                     repeatStart: true, repeatCount: repeatCount, scoreEnd: old.scoreEnd)
             }
         }
+        if occurrences.count >= 4 {
+            for i in 0..<(occurrences.count - 3) {
+                let first = occurrences[i]
+                let endingOne = occurrences[i + 1]
+                let repeated = occurrences[i + 2]
+                let endingTwo = occurrences[i + 3]
+                guard first.name == repeated.name,
+                    endingOne.name != first.name,
+                    endingTwo.name != first.name else { continue }
+                if let start = first.range.first {
+                    let old = result[start]
+                    result[start] = Measure(index: old.index, startTime: old.startTime,
+                        nominalDuration: old.nominalDuration, timeSignature: old.timeSignature,
+                        tempo: old.tempo, keyOffset: old.keyOffset, events: old.events,
+                        directives: old.directives, sectionName: old.sectionName,
+                        repeatStart: true, repeatCount: 2, scoreEnd: old.scoreEnd,
+                        voltaNumber: old.voltaNumber)
+                }
+                for measureIndex in repeated.range {
+                    let old = result[measureIndex]
+                    result[measureIndex] = Measure(index: old.index, startTime: old.startTime,
+                        nominalDuration: old.nominalDuration, timeSignature: old.timeSignature,
+                        tempo: old.tempo, keyOffset: old.keyOffset, events: old.events,
+                        directives: old.directives, sectionName: old.sectionName,
+                        foldedIntoRepeat: true, scoreEnd: old.scoreEnd, voltaNumber: old.voltaNumber)
+                }
+                for measureIndex in endingOne.range {
+                    let old = result[measureIndex]
+                    result[measureIndex] = Measure(index: old.index, startTime: old.startTime,
+                        nominalDuration: old.nominalDuration, timeSignature: old.timeSignature,
+                        tempo: old.tempo, keyOffset: old.keyOffset, events: old.events,
+                        directives: old.directives, sectionName: old.sectionName,
+                        foldedIntoRepeat: old.foldedIntoRepeat, scoreEnd: old.scoreEnd,
+                        voltaNumber: 1)
+                }
+                for measureIndex in endingTwo.range {
+                    let old = result[measureIndex]
+                    result[measureIndex] = Measure(index: old.index, startTime: old.startTime,
+                        nominalDuration: old.nominalDuration, timeSignature: old.timeSignature,
+                        tempo: old.tempo, keyOffset: old.keyOffset, events: old.events,
+                        directives: old.directives, sectionName: old.sectionName,
+                        foldedIntoRepeat: old.foldedIntoRepeat, scoreEnd: old.scoreEnd,
+                        voltaNumber: 2)
+                }
+            }
+        }
         return result
+    }
+
+    private static func engravingEquivalent(
+        _ measures: [Measure], _ lhs: Range<Int>, _ rhs: Range<Int>
+    ) -> Bool {
+        guard lhs.count == rhs.count else { return false }
+        for (a, b) in zip(lhs, rhs) {
+            let left = measures[a]
+            let right = measures[b]
+            guard left.nominalDuration == right.nominalDuration,
+                left.timeSignature == right.timeSignature,
+                left.events.count == right.events.count,
+                left.directives.map({ String(describing: $0.kind) }) == right.directives.map({ String(describing: $0.kind) })
+            else { return false }
+            for (x, y) in zip(left.events, right.events) {
+                guard x.startOffset == y.startOffset, x.duration == y.duration,
+                    x.content == y.content, String(describing: x.state) == String(describing: y.state)
+                else { return false }
+            }
+        }
+        return true
     }
 
     /// Builds a unified score-level time signature schedule across all playback sections.

@@ -102,6 +102,8 @@ public struct TmdLilyPondGenerator {
         if repeatCount > 1 { result += "\\repeat volta \(repeatCount) { " }
 
         for measure in measures {
+            if measure.voltaNumber == 1 { result += " } \\alternative { { " }
+            if measure.voltaNumber == 2 { result += " } { " }
             var pendingDirectives: [(offset: Double, directive: PlaybackDirectiveEvent)] = []
             for directive in measure.directives {
                 if case .timeSignature = directive.kind {
@@ -148,7 +150,9 @@ public struct TmdLilyPondGenerator {
                     ? "| \\bar \"||\"" : "|")
             result += barline + "\n  "
         }
-        if repeatCount > 1 { result += " }" }
+        if measures.contains(where: { $0.voltaNumber != nil }) {
+            result += " } }"
+        } else if repeatCount > 1 { result += " }" }
         return result.trimmingCharacters(in: .whitespaces) + "\n"
     }
 

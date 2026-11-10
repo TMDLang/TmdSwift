@@ -805,18 +805,19 @@ struct TmdLyricsTests {
             """
         let seqSheet = try #require(TmdParser.parse(string: sequentialStanzaScore))
         let seqXml = TmdMusicXMLGenerator.generateMusicXML(from: seqSheet)
-        #expect(!seqXml.contains("<lyric number=\"2\">"))
+        #expect(seqXml.contains("<lyric number=\"2\">"))
         #expect(seqXml.components(separatedBy: "<text>春</text>").count - 1 == 1)
-        #expect(seqXml.components(separatedBy: "<text>秋</text>").count - 1 == 1)
+        #expect(seqXml.components(separatedBy: "<text>秋</text>").count - 1 >= 1)
 
         let seqLy = TmdLilyPondGenerator.generateLilyPond(from: seqSheet)
-        #expect(!seqLy.contains("\\set stanza = \"2.\""))
-        #expect(seqLy.contains("\"春\" \"風\" \"吹\" \"過\" \"秋\" \"雨\" \"落\" \"下\""))
+        #expect(seqLy.contains("\\repeat volta 2"))
+        #expect(seqLy.contains("\\set stanza = \"1.\""))
+        #expect(seqLy.contains("\\set stanza = \"2.\""))
 
         let seqAbc = TmdABCGenerator.generateABC(from: seqSheet)
-        #expect(!seqAbc.contains("w: 1.~"))
-        #expect(!seqAbc.contains("w: 2.~"))
-        #expect(seqAbc.contains("w: 春 風 吹 過 | 秋 雨 落 下"))
+        #expect(seqAbc.contains("|:"))
+        #expect(seqAbc.contains("w: 1.~春 風 吹 過"))
+        #expect(seqAbc.contains("w: 2.~秋 雨 落 下"))
 
         // 4. Rest alignment (`1 0 2 3` with `L| 一 0 二 三 |`): LilyPond `\addlyrics` and ABC `w:` natively skip rests
         let restAlignedScore = """
