@@ -34,7 +34,7 @@ struct EngravingRepeatTests {
         #expect(abc.contains("|:") && abc.contains(":|"))
         #expect(abc.contains("w: 1.") && abc.contains("w: 2."))
         #expect(xml.contains("<repeat direction=\"backward\""))
-        #expect(xml.contains("<ending number=\"1\""))
+        #expect(!xml.contains("<ending number=\"1\""))
         #expect(lily.contains("\\repeat volta 2"))
         #expect(lily.contains("\\set stanza = \"1.\""))
         #expect(lily.contains("\\set stanza = \"2.\""))
@@ -49,7 +49,7 @@ struct EngravingRepeatTests {
 
         #expect(abc.contains("|]"))
         #expect(xml.contains("<bar-style>light-heavy</bar-style>"))
-        #expect(lily.contains("\\bar \"|.\""))
+        #expect(lily.contains("\\repeat volta 2"))
     }
 
     @Test("renders two volta endings around a repeated section")
@@ -61,9 +61,9 @@ struct EngravingRepeatTests {
             ?= C
             <4/4>
             A:Piano@|0|{ <4*> 1 2 3 4 }
-            B:Piano@|0|{ <4*> 5 6 7 1 }
-            C:Piano@|0|{ <4*> 2 3 4 5 }
-            -> A -> B -> A -> C ->#
+            ending1:Piano@|0|{ <4*> 5 6 7 1 }
+            ending2:Piano@|0|{ <4*> 2 3 4 5 }
+            -> A -> ending1 -> A -> ending2 ->#
             """
         let sheet = try #require(TmdParser.parse(string: tmd))
         #expect(TmdABCGenerator.generateABC(from: sheet).contains("|1"))
@@ -72,5 +72,43 @@ struct EngravingRepeatTests {
         #expect(xml.contains("<ending number=\"1\""))
         #expect(xml.contains("<ending number=\"2\""))
         #expect(TmdLilyPondGenerator.generateLilyPond(from: sheet).contains("\\alternative"))
+    }
+
+    @Test("places repeat end metadata on the last measure and keeps ordinary repeats free of endings")
+    func placesRepeatEndOnLastMeasure() throws {
+        let tmd = """
+            ::SCORE::
+            ** Multi Measure Repeat **
+            != 120
+            ?= C
+            <4/4>
+            A:Piano@|0|{ <4*> | 1 2 3 4 | 5 6 7 1 | }
+            -> A -> A ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Piano")
+        #expect(measures.filter { !$0.foldedIntoRepeat }.count == 2)
+        #expect(measures.first?.repeatStart == true)
+        #expect(measures.first?.repeatEndCount == 0)
+        #expect(measures.contains { $0.repeatEndCount == 2 })
+        let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
+        #expect(!xml.contains("<ending number=\"1\""))
+    }
+
+    @Test("does not classify a full song form as a volta")
+    func doesNotClassifyFullSongFormAsVolta() throws {
+        let tmd = """
+            ::SCORE::
+            ** Full Form **
+            != 120
+            ?= C
+            <4/4>
+            verse:Piano@|0|{ <4*> 1 2 3 4 }
+            chorus:Piano@|0|{ <4*> 5 6 7 1 }
+            bridge:Piano@|0|{ <4*> 2 3 4 5 }
+            -> verse -> chorus -> verse -> bridge ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        #expect(!TmdLilyPondGenerator.generateLilyPond(from: sheet).contains("\\alternative"))
     }
 }

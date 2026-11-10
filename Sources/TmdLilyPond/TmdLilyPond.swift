@@ -98,12 +98,20 @@ public struct TmdLilyPondGenerator {
             .filter { !$0.foldedIntoRepeat }
         var result = "  "
 
-        let repeatCount = measures.first(where: { $0.repeatStart })?.repeatCount ?? 0
-        if repeatCount > 1 { result += "\\repeat volta \(repeatCount) { " }
+        var repeatOpen = false
+        var inAlternative = false
 
         for measure in measures {
-            if measure.voltaNumber == 1 { result += " } \\alternative { { " }
-            if measure.voltaNumber == 2 { result += " } { " }
+            if measure.repeatStart {
+                result += "\\repeat volta \(measure.repeatCount) { "
+                repeatOpen = true
+            }
+            if measure.voltaStartNumber == 1 {
+                result += " } \\alternative { { "
+                repeatOpen = false
+                inAlternative = true
+            }
+            if measure.voltaStartNumber == 2 { result += " } { " }
             var pendingDirectives: [(offset: Double, directive: PlaybackDirectiveEvent)] = []
             for directive in measure.directives {
                 if case .timeSignature = directive.kind {
@@ -144,15 +152,19 @@ public struct TmdLilyPondGenerator {
                 }
                 dirIdx += 1
             }
-            let barline = measure.scoreEnd && repeatCount <= 1
+            let barline = measure.scoreEnd && !inAlternative
                 ? "| \\bar \"|.\""
                 : (measures.dropFirst(measures.firstIndex(where: { $0.index == measure.index }) ?? 0).dropFirst().first?.sectionName != measure.sectionName
                     ? "| \\bar \"||\"" : "|")
             result += barline + "\n  "
+            if measure.repeatEndCount > 1 && repeatOpen {
+                result += " }\n  "
+                repeatOpen = false
+            }
         }
-        if measures.contains(where: { $0.voltaNumber != nil }) {
+        if inAlternative {
             result += " } }"
-        } else if repeatCount > 1 { result += " }" }
+        } else if repeatOpen { result += " }" }
         return result.trimmingCharacters(in: .whitespaces) + "\n"
     }
 

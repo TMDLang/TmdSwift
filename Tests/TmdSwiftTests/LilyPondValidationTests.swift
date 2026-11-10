@@ -371,17 +371,18 @@ struct LilyPondValidationTests {
             pattern:
                 #"\\(?:time\s+\d+/\d+|tempo\s+\S+\s*=\s*\d+|key\s+[a-z]+\s+\\[a-z]+|ppp|pp|mp|mf|fff|ff|p|f)\b"#
         )
+        let barlineRegex = try NSRegularExpression(pattern: #"\\bar\s+"[^"]+""#)
 
         for match in blockMatches {
             let trackName = nsGolden.substring(with: match.range(at: 1))
-            let body = nsGolden.substring(with: match.range(at: 2))
+            var body = nsGolden.substring(with: match.range(at: 2))
                 .replacingOccurrences(of: "\\repeat volta 2 {", with: "")
                 .replacingOccurrences(of: "\\alternative {", with: "")
-                .replacingOccurrences(of: "\\bar \"|.\"", with: "")
-                .replacingOccurrences(of: "}", with: "")
+            body = barlineRegex.stringByReplacingMatches(
+                in: body, range: NSRange(location: 0, length: (body as NSString).length), withTemplate: "")
             let rawMeasures = body.components(separatedBy: "|")
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty && !$0.hasPrefix("\\bar") && !$0.contains("\"") }
+                .filter { !$0.isEmpty && $0 != "}" }
 
             var expectedQuarters = 4.0
             for (mIdx, measureStr) in rawMeasures.enumerated() {

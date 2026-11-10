@@ -913,7 +913,9 @@ public enum TmdScoreValidator {
                     var spans: [[Range<Int>]] = []
                     var currentSpan: [Range<Int>] = []
                     for phraseRange in phraseOrder {
-                        if (validStanzasByPhrase[phraseRange] ?? []).isEmpty {
+                        let phraseLines = stanzasByPhrase[phraseRange] ?? []
+                        let isSinglePass = !phraseLines.isEmpty && phraseLines.allSatisfy { $0.stanza == nil }
+                        if (validStanzasByPhrase[phraseRange] ?? []).isEmpty || isSinglePass {
                             if !currentSpan.isEmpty { spans.append(currentSpan) }
                             currentSpan.removeAll()
                         } else {
