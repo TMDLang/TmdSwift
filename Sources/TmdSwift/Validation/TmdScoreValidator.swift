@@ -910,11 +910,29 @@ public enum TmdScoreValidator {
 
                 // Check E-STANZA-INCONSISTENT across phrases in the same section
                 if phraseOrder.count >= 2 && !sectionValidStanzas.isEmpty {
+                    var spans: [[Range<Int>]] = []
+                    var currentSpan: [Range<Int>] = []
                     for phraseRange in phraseOrder {
-                        let phraseSet = validStanzasByPhrase[phraseRange] ?? []
-                        if !phraseSet.isEmpty && phraseSet != sectionValidStanzas {
+                        let phraseLines = stanzasByPhrase[phraseRange] ?? []
+                        let isSinglePass = !phraseLines.isEmpty && phraseLines.allSatisfy { $0.stanza == nil }
+                        if (validStanzasByPhrase[phraseRange] ?? []).isEmpty || isSinglePass {
+                            if !currentSpan.isEmpty { spans.append(currentSpan) }
+                            currentSpan.removeAll()
+                        } else {
+                            currentSpan.append(phraseRange)
+                        }
+                    }
+                    if !currentSpan.isEmpty { spans.append(currentSpan) }
+                    for span in spans where span.count >= 2 {
+                        var spanValidStanzas = Set<Int>()
+                        for phraseRange in span {
+                            spanValidStanzas.formUnion(validStanzasByPhrase[phraseRange] ?? [])
+                        }
+                        for phraseRange in span {
+                            let phraseSet = validStanzasByPhrase[phraseRange] ?? []
+                            if phraseSet != spanValidStanzas {
                             let missing =
-                                sectionValidStanzas.subtracting(phraseSet).sorted()
+                                spanValidStanzas.subtracting(phraseSet).sorted()
                                 .map { "L\($0)" }.joined(separator: ", ")
                             let lineNum =
                                 max(1, stanzasByPhrase[phraseRange]?.first?.sourceLine ?? 1)
@@ -929,6 +947,7 @@ public enum TmdScoreValidator {
                                     message:
                                         "Inconsistent stanza declarations in '\(entry.name)': melodic phrase is missing \(missing)."
                                 ))
+                            }
                         }
                     }
                 }

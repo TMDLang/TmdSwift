@@ -104,6 +104,15 @@ public struct Measure: Equatable, Sendable {
     public let keyOffset: Int
     public let events: [MeasureEvent]
     public let directives: [PlaybackDirectiveEvent]
+    /// Source-order and engraving information used by notation exporters.
+    public let sectionName: String?
+    public let repeatStart: Bool
+    public let repeatCount: Int
+    public let repeatEndCount: Int
+    public let foldedIntoRepeat: Bool
+    public let scoreEnd: Bool
+    public let voltaStartNumber: Int?
+    public let voltaEndNumber: Int?
 
     public init(
         index: Int,
@@ -113,7 +122,15 @@ public struct Measure: Equatable, Sendable {
         tempo: Double,
         keyOffset: Int,
         events: [MeasureEvent],
-        directives: [PlaybackDirectiveEvent] = []
+        directives: [PlaybackDirectiveEvent] = [],
+        sectionName: String? = nil,
+        repeatStart: Bool = false,
+        repeatCount: Int = 0,
+        repeatEndCount: Int = 0,
+        foldedIntoRepeat: Bool = false,
+        scoreEnd: Bool = false,
+        voltaStartNumber: Int? = nil,
+        voltaEndNumber: Int? = nil
     ) {
         self.index = index
         self.startTime = startTime
@@ -123,6 +140,14 @@ public struct Measure: Equatable, Sendable {
         self.keyOffset = keyOffset
         self.events = events
         self.directives = directives
+        self.sectionName = sectionName
+        self.repeatStart = repeatStart
+        self.repeatCount = repeatCount
+        self.repeatEndCount = repeatEndCount
+        self.foldedIntoRepeat = foldedIntoRepeat
+        self.scoreEnd = scoreEnd
+        self.voltaStartNumber = voltaStartNumber
+        self.voltaEndNumber = voltaEndNumber
     }
 
     /// Groups events in the measure that start at the same offset (within `1e-4` quarter notes)
@@ -140,6 +165,20 @@ public struct Measure: Equatable, Sendable {
             }
         }
         return groups
+    }
+
+    fileprivate func withEngraving(
+        sectionName: String?, repeatStart: Bool, repeatCount: Int,
+        repeatEndCount: Int, foldedIntoRepeat: Bool, scoreEnd: Bool,
+        voltaStartNumber: Int? = nil, voltaEndNumber: Int? = nil
+    ) -> Measure {
+        Measure(index: index, startTime: startTime, nominalDuration: nominalDuration,
+            timeSignature: timeSignature, tempo: tempo, keyOffset: keyOffset,
+            events: events, directives: directives, sectionName: sectionName,
+            repeatStart: repeatStart, repeatCount: repeatCount,
+            repeatEndCount: repeatEndCount, foldedIntoRepeat: foldedIntoRepeat,
+            scoreEnd: scoreEnd, voltaStartNumber: voltaStartNumber,
+            voltaEndNumber: voltaEndNumber)
     }
 }
 
@@ -409,7 +448,232 @@ public enum TmdMeasureRenderer {
             )
         }
 
-        return measures
+        return annotateEngraving(measures, sheet: sheet)
+    }
+
+    /// Adds source-order engraving metadata while preserving the complete playback timeline.
+    /// Consecutive identical section selections are notation repeats; the later playback
+    /// occurrences remain available to playback clients but are hidden by exporters.
+    private static func annotateEngraving(_ measures: [Measure], sheet: Sheet) -> [Measure] {
+        guard !measures.isEmpty else { return measures }
+        var result = measures
+        var cursor = 0
+        var occurrences: [(name: String, stanza: Int?, range: Range<Int>)] = []
+        for order in sheet.effectivePlaybackOrders {
+            guard case .name(let rawName) = order else { continue }
+            let name = Playback.parseSectionSelector(rawName).name
+            let stanza = Playback.parseSectionSelector(rawName).stanza
+            let duration = TmdPlaybackRenderer.duration(of: name, in: sheet)
+            let start = cursor
+            guard start < measures.count else { break }
+            while cursor < measures.count,
+                measures[cursor].startTime < Double.greatestFiniteMagnitude,
+                measures[cursor].startTime < (measures[start].startTime + duration - 1e-5)
+            { cursor += 1 }
+            if cursor > start { occurrences.append((name, stanza, start..<cursor)) }
+        }
+        if occurrences.isEmpty { return result }
+        var occurrenceIndex = 0
+        while occurrenceIndex < occurrences.count {
+            let occurrence = occurrences[occurrenceIndex]
+            for measureIndex in occurrence.range {
+                result[measureIndex] = result[measureIndex].withEngraving(
+                    sectionName: occurrence.name, repeatStart: false, repeatCount: 0,
+                    repeatEndCount: 0, foldedIntoRepeat: result[measureIndex].foldedIntoRepeat,
+                    scoreEnd: measureIndex == measures.count - 1)
+            }
+            var next = occurrenceIndex + 1
+            var repeatCount = 1
+            while next < occurrences.count,
+                occurrences[next].name == occurrence.name,
+                engravingEquivalent(measures, occurrence.range, occurrences[next].range)
+            {
+                repeatCount += 1
+                mergeLyrics(from: occurrences[next], into: occurrence, result: &result)
+                for measureIndex in occurrences[next].range {
+                    result[measureIndex] = result[measureIndex].withEngraving(
+                        sectionName: occurrence.name, repeatStart: false, repeatCount: 0,
+                        repeatEndCount: 0, foldedIntoRepeat: true,
+                        scoreEnd: measureIndex == measures.count - 1)
+                }
+                next += 1
+            }
+            if repeatCount > 1 {
+                let first = occurrence.range.lowerBound
+                let last = occurrence.range.upperBound - 1
+                result[first] = result[first].withEngraving(
+                    sectionName: occurrence.name, repeatStart: true, repeatCount: repeatCount,
+                    repeatEndCount: 0, foldedIntoRepeat: false, scoreEnd: result[first].scoreEnd)
+                result[last] = result[last].withEngraving(
+                    sectionName: occurrence.name, repeatStart: result[last].repeatStart,
+                    repeatCount: result[last].repeatCount, repeatEndCount: repeatCount,
+                    foldedIntoRepeat: false, scoreEnd: result[last].scoreEnd)
+            } else if occurrence.stanza == nil && stanzaCount(for: occurrence.name, in: sheet) > 1 {
+                let count = stanzaCount(for: occurrence.name, in: sheet)
+                var rangeStart: Int?
+                for measureIndex in occurrence.range.lowerBound...occurrence.range.upperBound - 1 {
+                    let hasMultipleStanzas = result[measureIndex].events.contains {
+                        $0.stanzaLyrics.count > 1
+                    }
+                    if hasMultipleStanzas && rangeStart == nil { rangeStart = measureIndex }
+                    if (!hasMultipleStanzas || measureIndex == occurrence.range.upperBound - 1),
+                        let first = rangeStart {
+                        let last = hasMultipleStanzas ? measureIndex : measureIndex - 1
+                        result[first] = result[first].withEngraving(
+                            sectionName: occurrence.name, repeatStart: true, repeatCount: count,
+                            repeatEndCount: 0, foldedIntoRepeat: false, scoreEnd: result[first].scoreEnd)
+                        result[last] = result[last].withEngraving(
+                            sectionName: occurrence.name, repeatStart: result[last].repeatStart,
+                            repeatCount: result[last].repeatCount, repeatEndCount: count,
+                            foldedIntoRepeat: false, scoreEnd: result[last].scoreEnd)
+                        rangeStart = nil
+                    }
+                }
+            }
+            occurrenceIndex = next
+        }
+
+        if occurrences.count >= 4 {
+            for i in 0..<(occurrences.count - 3) {
+                let first = occurrences[i], endingOne = occurrences[i + 1]
+                let repeated = occurrences[i + 2], endingTwo = occurrences[i + 3]
+                guard first.name == repeated.name,
+                    endingOne.name != endingTwo.name,
+                    isQualifiedVoltaName(endingOne.name), isQualifiedVoltaName(endingTwo.name),
+                    engravingEquivalent(measures, first.range, repeated.range) else { continue }
+                mergeLyrics(from: repeated, into: first, result: &result)
+                for m in repeated.range {
+                    result[m] = result[m].withEngraving(sectionName: repeated.name,
+                        repeatStart: false, repeatCount: 0, repeatEndCount: 0,
+                        foldedIntoRepeat: true, scoreEnd: result[m].scoreEnd)
+                }
+                let bodyLast = first.range.upperBound - 1
+                result[first.range.lowerBound] = result[first.range.lowerBound].withEngraving(
+                    sectionName: first.name, repeatStart: true, repeatCount: 2,
+                    repeatEndCount: 0, foldedIntoRepeat: false, scoreEnd: result[first.range.lowerBound].scoreEnd)
+                result[bodyLast] = result[bodyLast].withEngraving(
+                    sectionName: first.name, repeatStart: result[bodyLast].repeatStart,
+                    repeatCount: result[bodyLast].repeatCount, repeatEndCount: 0,
+                    foldedIntoRepeat: false, scoreEnd: result[bodyLast].scoreEnd)
+                markVolta(endingOne.range, number: 1, result: &result)
+                markVolta(endingTwo.range, number: 2, result: &result)
+            }
+        }
+        if occurrences.count >= 4 {
+            for i in 0..<(occurrences.count - 3) {
+                let first = occurrences[i], second = occurrences[i + 1]
+                let repeatedFirst = occurrences[i + 2], repeatedSecond = occurrences[i + 3]
+                guard first.name == repeatedFirst.name, second.name == repeatedSecond.name,
+                    let firstStanza = first.stanza, let repeatedFirstStanza = repeatedFirst.stanza,
+                    firstStanza != repeatedFirstStanza,
+                    !isQualifiedVoltaName(second.name),
+                    engravingEquivalent(measures, first.range, repeatedFirst.range),
+                    engravingEquivalent(measures, second.range, repeatedSecond.range) else { continue }
+                mergeLyrics(from: repeatedFirst, into: first, result: &result)
+                mergeLyrics(from: repeatedSecond, into: second, result: &result)
+                for m in repeatedFirst.range {
+                    result[m] = result[m].withEngraving(sectionName: repeatedFirst.name,
+                        repeatStart: false, repeatCount: 0, repeatEndCount: 0,
+                        foldedIntoRepeat: true, scoreEnd: result[m].scoreEnd)
+                }
+                for m in repeatedSecond.range {
+                    result[m] = result[m].withEngraving(sectionName: repeatedSecond.name,
+                        repeatStart: false, repeatCount: 0, repeatEndCount: 0,
+                        foldedIntoRepeat: true, scoreEnd: result[m].scoreEnd)
+                }
+                result[first.range.lowerBound] = result[first.range.lowerBound].withEngraving(
+                    sectionName: first.name, repeatStart: true, repeatCount: 2,
+                    repeatEndCount: 0, foldedIntoRepeat: false, scoreEnd: result[first.range.lowerBound].scoreEnd)
+                let last = second.range.upperBound - 1
+                result[last] = result[last].withEngraving(
+                    sectionName: second.name, repeatStart: result[last].repeatStart,
+                    repeatCount: result[last].repeatCount, repeatEndCount: 2,
+                    foldedIntoRepeat: false, scoreEnd: result[last].scoreEnd)
+            }
+        }
+        return result
+    }
+
+    private static func mergeLyrics(
+        from source: (name: String, stanza: Int?, range: Range<Int>),
+        into target: (name: String, stanza: Int?, range: Range<Int>),
+        result: inout [Measure]
+    ) {
+        for offset in 0..<min(source.range.count, target.range.count) {
+            let sourceMeasure = result[source.range.lowerBound + offset]
+            let targetIndex = target.range.lowerBound + offset
+            let targetMeasure = result[targetIndex]
+            let events = zip(targetMeasure.events, sourceMeasure.events).map { lhs, rhs in
+                MeasureEvent(startOffset: lhs.startOffset, duration: lhs.duration, content: lhs.content,
+                    tieStart: lhs.tieStart, tieStop: lhs.tieStop, state: lhs.state, lyric: lhs.lyric,
+                    isLyricMelisma: lhs.isLyricMelisma,
+                    stanzaLyrics: lhs.stanzaLyrics.merging(rhs.stanzaLyrics.reduce(into: [:]) { map, item in
+                        map[source.stanza ?? item.key] = item.value
+                    }) { first, _ in first })
+            }
+            result[targetIndex] = targetMeasure.withEngraving(sectionName: targetMeasure.sectionName,
+                repeatStart: targetMeasure.repeatStart, repeatCount: targetMeasure.repeatCount,
+                repeatEndCount: targetMeasure.repeatEndCount, foldedIntoRepeat: targetMeasure.foldedIntoRepeat,
+                scoreEnd: targetMeasure.scoreEnd, voltaStartNumber: targetMeasure.voltaStartNumber,
+                voltaEndNumber: targetMeasure.voltaEndNumber)
+            result[targetIndex] = Measure(index: targetMeasure.index, startTime: targetMeasure.startTime,
+                nominalDuration: targetMeasure.nominalDuration, timeSignature: targetMeasure.timeSignature,
+                tempo: targetMeasure.tempo, keyOffset: targetMeasure.keyOffset, events: events,
+                directives: targetMeasure.directives, sectionName: targetMeasure.sectionName,
+                repeatStart: targetMeasure.repeatStart, repeatCount: targetMeasure.repeatCount,
+                repeatEndCount: targetMeasure.repeatEndCount, foldedIntoRepeat: targetMeasure.foldedIntoRepeat,
+                scoreEnd: targetMeasure.scoreEnd, voltaStartNumber: targetMeasure.voltaStartNumber,
+                voltaEndNumber: targetMeasure.voltaEndNumber)
+        }
+    }
+
+    private static func markVolta(_ range: Range<Int>, number: Int, result: inout [Measure]) {
+        guard let first = range.first, let last = range.last else { return }
+        result[first] = result[first].withEngraving(sectionName: result[first].sectionName,
+            repeatStart: result[first].repeatStart, repeatCount: result[first].repeatCount,
+            repeatEndCount: result[first].repeatEndCount, foldedIntoRepeat: result[first].foldedIntoRepeat,
+            scoreEnd: result[first].scoreEnd, voltaStartNumber: number,
+            voltaEndNumber: first == last ? number : result[first].voltaEndNumber)
+        if last != first {
+            result[last] = result[last].withEngraving(sectionName: result[last].sectionName,
+                repeatStart: result[last].repeatStart, repeatCount: result[last].repeatCount,
+                repeatEndCount: result[last].repeatEndCount, foldedIntoRepeat: result[last].foldedIntoRepeat,
+                scoreEnd: result[last].scoreEnd, voltaStartNumber: result[last].voltaStartNumber,
+                voltaEndNumber: number)
+        }
+    }
+
+    private static func stanzaCount(for name: String, in sheet: Sheet) -> Int {
+        let stanzas = sheet.entries.filter { $0.name == name }.flatMap { entry in
+            entry.sections.flatMap { section in section.lyrics.compactMap(\.stanza) }
+        }
+        return Set(stanzas.filter { $0 > 0 }).count
+    }
+
+    private static func isQualifiedVoltaName(_ name: String) -> Bool {
+        let lower = name.lowercased()
+        return ["ending1", "ending2", "a1", "a2", "e1", "e2", "volta1", "volta2"].contains(lower)
+    }
+
+    private static func engravingEquivalent(
+        _ measures: [Measure], _ lhs: Range<Int>, _ rhs: Range<Int>
+    ) -> Bool {
+        guard lhs.count == rhs.count else { return false }
+        for (a, b) in zip(lhs, rhs) {
+            let left = measures[a]
+            let right = measures[b]
+            guard left.nominalDuration == right.nominalDuration,
+                left.timeSignature == right.timeSignature,
+                left.events.count == right.events.count,
+                left.directives.map({ String(describing: $0.kind) }) == right.directives.map({ String(describing: $0.kind) })
+            else { return false }
+            for (x, y) in zip(left.events, right.events) {
+                guard x.startOffset == y.startOffset, x.duration == y.duration,
+                    x.content == y.content, String(describing: x.state) == String(describing: y.state)
+                else { return false }
+            }
+        }
+        return true
     }
 
     /// Builds a unified score-level time signature schedule across all playback sections.

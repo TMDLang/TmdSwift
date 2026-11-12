@@ -49,7 +49,7 @@ struct ABCValidationTests {
             body
             .components(separatedBy: "|")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
+            .filter { !$0.isEmpty && $0 != "]" }
 
         #expect(
             measures.count >= 2,
@@ -377,7 +377,7 @@ struct ABCValidationTests {
                 musicBody
                 .components(separatedBy: "|")
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty }
+                    .filter { !$0.isEmpty && $0 != "]" }
 
             var expectedSixteenths = 16.0  // Initial M:4/4 -> 16 sixteenth notes
             for (mIdx, measureStr) in measures.enumerated() {

@@ -50,6 +50,7 @@ public struct TmdMusicXMLGenerator {
             (
                 instrument: inst,
                 measures: TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: inst)
+                    .filter { !$0.foldedIntoRepeat }
             )
         }
         let divisions = resolveDivisions(for: partMeasures.map(\.measures))
@@ -365,7 +366,25 @@ public struct TmdMusicXMLGenerator {
                     }
                 }
             }
-            xml += "    <measure number=\"\(measure.index + 1)\">\n\(content)    </measure>\n\n"
+            if measure.repeatStart {
+                content += "        <barline location=\"left\"><bar-style>heavy-light</bar-style><repeat direction=\"forward\"/></barline>\n"
+            }
+            if let volta = measure.voltaStartNumber {
+                content += "        <barline location=\"left\"><ending number=\"\(volta)\" type=\"start\"/></barline>\n"
+            }
+            if measure.voltaEndNumber == 1 {
+                content += "        <barline location=\"right\"><bar-style>light-heavy</bar-style><ending number=\"1\" type=\"stop\"/><repeat direction=\"backward\"/></barline>\n"
+            } else if measure.voltaEndNumber == 2 {
+                let style = mIdx == measures.count - 1 ? "light-heavy" : "light-light"
+                content += "        <barline location=\"right\"><bar-style>\(style)</bar-style><ending number=\"2\" type=\"discontinue\"/></barline>\n"
+            } else if measure.repeatEndCount > 1 {
+                content += "        <barline location=\"right\"><bar-style>light-heavy</bar-style><repeat direction=\"backward\" times=\"\(measure.repeatEndCount)\"/></barline>\n"
+            } else if mIdx == measures.count - 1 {
+                content += "        <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n"
+            } else if measures[mIdx + 1].sectionName != measure.sectionName {
+                content += "        <barline location=\"right\"><bar-style>light-light</bar-style></barline>\n"
+            }
+            xml += "    <measure number=\"\(mIdx + 1)\">\n\(content)    </measure>\n\n"
         }
         return xml
     }
