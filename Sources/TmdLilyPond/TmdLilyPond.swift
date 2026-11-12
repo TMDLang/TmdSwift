@@ -152,6 +152,10 @@ public struct TmdLilyPondGenerator {
                 }
                 dirIdx += 1
             }
+            if measure.voltaEndNumber == 2 && inAlternative {
+                result += " } }\n  "
+                inAlternative = false
+            }
             let barline = measure.scoreEnd && !inAlternative
                 ? "| \\bar \"|.\""
                 : (measures.dropFirst(measures.firstIndex(where: { $0.index == measure.index }) ?? 0).dropFirst().first?.sectionName != measure.sectionName
@@ -160,10 +164,6 @@ public struct TmdLilyPondGenerator {
             if measure.repeatEndCount > 1 && repeatOpen {
                 result += " }\n  "
                 repeatOpen = false
-            }
-            if measure.voltaEndNumber == 2 && inAlternative {
-                result += " } }\n  "
-                inAlternative = false
             }
         }
         if inAlternative {

@@ -74,6 +74,7 @@ struct EngravingRepeatTests {
         #expect(xml.contains("<ending number=\"2\""))
         #expect(TmdLilyPondGenerator.generateLilyPond(from: sheet).contains("\\alternative"))
         #expect(xml.components(separatedBy: "<barline location=\"right\">").count - 1 == 3)
+        #expect(TmdLilyPondGenerator.generateLilyPond(from: sheet).contains("\\bar \"|.\""))
         let lily = TmdLilyPondGenerator.generateLilyPond(from: sheet)
         #expect(lily.contains("} }"))
         #expect(!lily.hasSuffix("} }\n"))
@@ -154,5 +155,23 @@ struct EngravingRepeatTests {
         #expect(measures.filter { !$0.foldedIntoRepeat }.count == 2)
         #expect(measures.first?.repeatStart == true)
         #expect(measures.contains { $0.repeatEndCount == 2 })
+    }
+
+    @Test("does not fold an ordinary alternating song form as a tuple repeat")
+    func doesNotFoldOrdinaryAlternatingForm() throws {
+        let tmd = """
+            ::SCORE::
+            ** Alternating Form **
+            != 120
+            ?= C
+            <4/4>
+            verse:Piano@|0|{ <4*> 1 2 3 4 }
+            chorus:Piano@|0|{ <4*> 5 6 7 1 }
+            -> verse -> chorus -> verse -> chorus ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Piano")
+        #expect(measures.filter { !$0.foldedIntoRepeat }.count == 4)
+        #expect(!measures.contains { $0.repeatEndCount == 2 })
     }
 }

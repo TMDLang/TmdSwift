@@ -564,6 +564,8 @@ public enum TmdMeasureRenderer {
                 let first = occurrences[i], second = occurrences[i + 1]
                 let repeatedFirst = occurrences[i + 2], repeatedSecond = occurrences[i + 3]
                 guard first.name == repeatedFirst.name, second.name == repeatedSecond.name,
+                    let firstStanza = first.stanza, let repeatedFirstStanza = repeatedFirst.stanza,
+                    firstStanza != repeatedFirstStanza,
                     !isQualifiedVoltaName(second.name),
                     engravingEquivalent(measures, first.range, repeatedFirst.range),
                     engravingEquivalent(measures, second.range, repeatedSecond.range) else { continue }
