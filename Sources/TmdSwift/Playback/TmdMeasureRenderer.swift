@@ -508,17 +508,27 @@ public enum TmdMeasureRenderer {
                     sectionName: occurrence.name, repeatStart: result[last].repeatStart,
                     repeatCount: result[last].repeatCount, repeatEndCount: repeatCount,
                     foldedIntoRepeat: false, scoreEnd: result[last].scoreEnd)
-            } else if stanzaCount(for: occurrence.name, in: sheet) > 1 {
-                let first = occurrence.range.lowerBound
-                let last = occurrence.range.upperBound - 1
+            } else if occurrence.stanza == nil && stanzaCount(for: occurrence.name, in: sheet) > 1 {
                 let count = stanzaCount(for: occurrence.name, in: sheet)
-                result[first] = result[first].withEngraving(
-                    sectionName: occurrence.name, repeatStart: true, repeatCount: count,
-                    repeatEndCount: 0, foldedIntoRepeat: false, scoreEnd: result[first].scoreEnd)
-                result[last] = result[last].withEngraving(
-                    sectionName: occurrence.name, repeatStart: result[last].repeatStart,
-                    repeatCount: result[last].repeatCount, repeatEndCount: count,
-                    foldedIntoRepeat: false, scoreEnd: result[last].scoreEnd)
+                var rangeStart: Int?
+                for measureIndex in occurrence.range.lowerBound...occurrence.range.upperBound - 1 {
+                    let hasMultipleStanzas = result[measureIndex].events.contains {
+                        $0.stanzaLyrics.count > 1
+                    }
+                    if hasMultipleStanzas && rangeStart == nil { rangeStart = measureIndex }
+                    if (!hasMultipleStanzas || measureIndex == occurrence.range.upperBound - 1),
+                        let first = rangeStart {
+                        let last = hasMultipleStanzas ? measureIndex : measureIndex - 1
+                        result[first] = result[first].withEngraving(
+                            sectionName: occurrence.name, repeatStart: true, repeatCount: count,
+                            repeatEndCount: 0, foldedIntoRepeat: false, scoreEnd: result[first].scoreEnd)
+                        result[last] = result[last].withEngraving(
+                            sectionName: occurrence.name, repeatStart: result[last].repeatStart,
+                            repeatCount: result[last].repeatCount, repeatEndCount: count,
+                            foldedIntoRepeat: false, scoreEnd: result[last].scoreEnd)
+                        rangeStart = nil
+                    }
+                }
             }
             occurrenceIndex = next
         }
@@ -547,6 +557,36 @@ public enum TmdMeasureRenderer {
                     foldedIntoRepeat: false, scoreEnd: result[bodyLast].scoreEnd)
                 markVolta(endingOne.range, number: 1, result: &result)
                 markVolta(endingTwo.range, number: 2, result: &result)
+            }
+        }
+        if occurrences.count >= 4 {
+            for i in 0..<(occurrences.count - 3) {
+                let first = occurrences[i], second = occurrences[i + 1]
+                let repeatedFirst = occurrences[i + 2], repeatedSecond = occurrences[i + 3]
+                guard first.name == repeatedFirst.name, second.name == repeatedSecond.name,
+                    !isQualifiedVoltaName(second.name),
+                    engravingEquivalent(measures, first.range, repeatedFirst.range),
+                    engravingEquivalent(measures, second.range, repeatedSecond.range) else { continue }
+                mergeLyrics(from: repeatedFirst, into: first, result: &result)
+                mergeLyrics(from: repeatedSecond, into: second, result: &result)
+                for m in repeatedFirst.range {
+                    result[m] = result[m].withEngraving(sectionName: repeatedFirst.name,
+                        repeatStart: false, repeatCount: 0, repeatEndCount: 0,
+                        foldedIntoRepeat: true, scoreEnd: result[m].scoreEnd)
+                }
+                for m in repeatedSecond.range {
+                    result[m] = result[m].withEngraving(sectionName: repeatedSecond.name,
+                        repeatStart: false, repeatCount: 0, repeatEndCount: 0,
+                        foldedIntoRepeat: true, scoreEnd: result[m].scoreEnd)
+                }
+                result[first.range.lowerBound] = result[first.range.lowerBound].withEngraving(
+                    sectionName: first.name, repeatStart: true, repeatCount: 2,
+                    repeatEndCount: 0, foldedIntoRepeat: false, scoreEnd: result[first.range.lowerBound].scoreEnd)
+                let last = second.range.upperBound - 1
+                result[last] = result[last].withEngraving(
+                    sectionName: second.name, repeatStart: result[last].repeatStart,
+                    repeatCount: result[last].repeatCount, repeatEndCount: 2,
+                    foldedIntoRepeat: false, scoreEnd: result[last].scoreEnd)
             }
         }
         return result

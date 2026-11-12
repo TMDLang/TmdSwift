@@ -49,7 +49,8 @@ struct EngravingRepeatTests {
 
         #expect(abc.contains("|]"))
         #expect(xml.contains("<bar-style>light-heavy</bar-style>"))
-        #expect(lily.contains("\\repeat volta 2"))
+        #expect(!lily.contains("\\repeat volta 2"))
+        #expect(lily.contains("\\bar \"|.\""))
     }
 
     @Test("renders two volta endings around a repeated section")
@@ -72,6 +73,10 @@ struct EngravingRepeatTests {
         #expect(xml.contains("<ending number=\"1\""))
         #expect(xml.contains("<ending number=\"2\""))
         #expect(TmdLilyPondGenerator.generateLilyPond(from: sheet).contains("\\alternative"))
+        #expect(xml.components(separatedBy: "<barline location=\"right\">").count - 1 == 3)
+        let lily = TmdLilyPondGenerator.generateLilyPond(from: sheet)
+        #expect(lily.contains("} }"))
+        #expect(!lily.hasSuffix("} }\n"))
     }
 
     @Test("places repeat end metadata on the last measure and keeps ordinary repeats free of endings")
@@ -110,5 +115,44 @@ struct EngravingRepeatTests {
             """
         let sheet = try #require(TmdParser.parse(string: tmd))
         #expect(!TmdLilyPondGenerator.generateLilyPond(from: sheet).contains("\\alternative"))
+    }
+
+    @Test("closes a volta alternative before the following section")
+    func closesAlternativeBeforeFollowingSection() throws {
+        let tmd = """
+            ::SCORE::
+            ** Volta Followed By Outro **
+            != 120
+            ?= C
+            <4/4>
+            A:Piano@|0|{ <4*> 1 2 3 4 }
+            ending1:Piano@|0|{ <4*> 5 6 7 1 }
+            ending2:Piano@|0|{ <4*> 2 3 4 5 }
+            outro:Piano@|0|{ <4*> 6 7 1 2 }
+            -> A -> ending1 -> A -> ending2 -> outro ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let lily = TmdLilyPondGenerator.generateLilyPond(from: sheet)
+        #expect(lily.contains("} }"))
+        #expect(!lily.hasSuffix("} }\n"))
+    }
+
+    @Test("folds a repeated two-section tuple")
+    func foldsRepeatedTuple() throws {
+        let tmd = """
+            ::SCORE::
+            ** Tuple Repeat **
+            != 120
+            ?= C
+            <4/4>
+            verse:Piano@|0|{ <4*> 1 2 3 4 }
+            chorus:Piano@|0|{ <4*> 5 6 7 1 }
+            -> verse[L1] -> chorus -> verse[L2] -> chorus ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Piano")
+        #expect(measures.filter { !$0.foldedIntoRepeat }.count == 2)
+        #expect(measures.first?.repeatStart == true)
+        #expect(measures.contains { $0.repeatEndCount == 2 })
     }
 }

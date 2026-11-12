@@ -102,7 +102,6 @@ public struct TmdABCGenerator {
                 result += ":|"
             } else if measure.repeatEndCount > 1 {
                 result += ":|"
-                if mIdx == measures.count - 1 { result += "]" }
             } else if mIdx == measures.count - 1 {
                 result += "|]"
             } else if mIdx + 1 < measures.count,

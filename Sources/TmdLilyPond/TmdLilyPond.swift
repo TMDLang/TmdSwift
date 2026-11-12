@@ -161,6 +161,10 @@ public struct TmdLilyPondGenerator {
                 result += " }\n  "
                 repeatOpen = false
             }
+            if measure.voltaEndNumber == 2 && inAlternative {
+                result += " } }\n  "
+                inAlternative = false
+            }
         }
         if inAlternative {
             result += " } }"
