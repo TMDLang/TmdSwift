@@ -174,4 +174,83 @@ struct EngravingRepeatTests {
         #expect(measures.filter { !$0.foldedIntoRepeat }.count == 4)
         #expect(!measures.contains { $0.repeatEndCount == 2 })
     }
+
+    @Test("does not fold a repeated section across a playback modulation")
+    func doesNotFoldAcrossPlaybackModulation() throws {
+        let tmd = """
+            ::SCORE::
+            ** Modulated Repeat **
+            != 120
+            ?= C
+            <4/4>
+            A:Piano@|0|{ <4*> 1 2 3 4 }
+            -> A -> {?+2} -> A ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Piano")
+
+        #expect(measures.filter { !$0.foldedIntoRepeat }.count == 2)
+        #expect(!measures.contains { $0.repeatStart })
+        #expect(!measures.contains { $0.repeatEndCount > 0 })
+    }
+
+    @Test("does not fold rest-only measures across a playback modulation")
+    func doesNotFoldRestOnlyMeasureAcrossPlaybackModulation() throws {
+        let tmd = """
+            ::SCORE::
+            ** Rest Modulated Repeat **
+            != 120
+            ?= C
+            <4/4>
+            A:Piano@|0|{
+                <4*>
+                | 1 2 3 4 |
+                | 0 0 0 0 |
+            }
+            -> A -> {?+2} -> A ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Piano")
+
+        #expect(measures.filter { !$0.foldedIntoRepeat }.count == 4)
+        #expect(!measures.contains { $0.repeatStart })
+        #expect(!measures.contains { $0.repeatEndCount > 0 })
+    }
+
+    @Test("carries the declared notation key through playback state")
+    func carriesDeclaredKeyThroughPlaybackState() throws {
+        let tmd = """
+            ::SCORE::
+            ** Declared Key State **
+            != 120
+            ?= C
+            key= Am
+            <4/4>
+            A:Piano@|0|{ <4*> 1 2 3 4 }
+            -> A ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let timeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+
+        #expect(timeline.events.first?.state.declaredKey == "Am")
+    }
+
+    @Test("updates the declared notation key for an inline explicit-key directive")
+    func updatesInlineDeclaredKeyInPlaybackState() throws {
+        let tmd = """
+            ::SCORE::
+            ** Inline Declared Key State **
+            != 120
+            ?= C
+            key= C
+            <4/4>
+            A:Piano@|0|{ <4*> {key= D} 1 2 3 4 }
+            -> A ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let timeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: "Piano")
+
+        #expect(timeline.events.first?.state.declaredKey == "D")
+        #expect(timeline.events.first?.state.keyOffset == sheet.keySignature.semitoneOffset)
+    }
 }

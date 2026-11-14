@@ -10,6 +10,7 @@ public enum TmdSongTimingAnalyzer {
         var state = PlaybackState(
             tempo: sheet.speed > 0 ? sheet.speed : 120.0,
             keyOffset: sheet.keySignature.semitoneOffset,
+            declaredKey: sheet.declaredKey,
             timeSignature: sheet.beat
         )
         var sections: [TmdSectionTimingProfile] = []
@@ -25,12 +26,14 @@ public enum TmdSongTimingAnalyzer {
                 if let delta = Int(val.replacingOccurrences(of: "+", with: "")) {
                     state = PlaybackState(
                         tempo: state.tempo, keyOffset: state.keyOffset + delta,
+                        declaredKey: state.declaredKey,
                         timeSignature: state.timeSignature)
                 }
             case .absolute(let val):
                 state = PlaybackState(
                     tempo: state.tempo,
                     keyOffset: KeySignature(string: val).semitoneOffset,
+                    declaredKey: state.declaredKey,
                     timeSignature: state.timeSignature)
             case .name(let secName):
                 let duration = TmdPlaybackRenderer.duration(of: secName, in: sheet)
@@ -84,7 +87,8 @@ public enum TmdSongTimingAnalyzer {
                 currentMeasure += sectionMeasures
                 totalMeasures += sectionMeasures
                 state = PlaybackState(
-                    tempo: tempo, keyOffset: state.keyOffset, timeSignature: meter)
+                    tempo: tempo, keyOffset: state.keyOffset, declaredKey: state.declaredKey,
+                    timeSignature: meter)
             case .macro:
                 break
             }

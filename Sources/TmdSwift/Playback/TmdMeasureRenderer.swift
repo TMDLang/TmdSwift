@@ -235,6 +235,7 @@ public enum TmdMeasureRenderer {
                 ? TmdPlaybackRenderer.clampTempo(sheet.speed)
                 : TmdPlaybackRenderer.defaultTempoBPM,
             keyOffset: sheet.keySignature.semitoneOffset,
+            declaredKey: sheet.declaredKey,
             timeSignature: defaultBeat
         )
         var prevMeasureBeat = defaultBeat
@@ -253,6 +254,7 @@ public enum TmdMeasureRenderer {
             activeState = PlaybackState(
                 tempo: activeState.tempo,
                 keyOffset: activeState.keyOffset,
+                declaredKey: activeState.declaredKey,
                 timeSignature: mBeat,
                 dynamicLevel: activeState.dynamicLevel
             )
@@ -260,6 +262,7 @@ public enum TmdMeasureRenderer {
                 activeState = PlaybackState(
                     tempo: dir.state.tempo,
                     keyOffset: dir.state.keyOffset,
+                    declaredKey: dir.state.declaredKey,
                     timeSignature: mBeat,
                     dynamicLevel: dir.state.dynamicLevel
                 )
@@ -443,6 +446,7 @@ public enum TmdMeasureRenderer {
             activeState = PlaybackState(
                 tempo: activeState.tempo,
                 keyOffset: activeState.keyOffset,
+                declaredKey: activeState.declaredKey,
                 timeSignature: mBeat,
                 dynamicLevel: activeState.dynamicLevel
             )
@@ -663,13 +667,20 @@ public enum TmdMeasureRenderer {
             let left = measures[a]
             let right = measures[b]
             guard left.nominalDuration == right.nominalDuration,
+                left.tempo == right.tempo,
+                left.keyOffset == right.keyOffset,
                 left.timeSignature == right.timeSignature,
                 left.events.count == right.events.count,
                 left.directives.map({ String(describing: $0.kind) }) == right.directives.map({ String(describing: $0.kind) })
             else { return false }
             for (x, y) in zip(left.events, right.events) {
                 guard x.startOffset == y.startOffset, x.duration == y.duration,
-                    x.content == y.content, String(describing: x.state) == String(describing: y.state)
+                    x.content == y.content,
+                    x.state.tempo == y.state.tempo,
+                    x.state.keyOffset == y.state.keyOffset,
+                    x.state.declaredKey == y.state.declaredKey,
+                    x.state.timeSignature == y.state.timeSignature,
+                    x.state.dynamicLevel == y.state.dynamicLevel
                 else { return false }
             }
         }

@@ -28,13 +28,21 @@ public enum PlaybackContent: Equatable, Sendable {
 public struct PlaybackState: Equatable, Sendable {
     public let tempo: Double
     public let keyOffset: Int
+    public let declaredKey: String?
     public let timeSignature: Beat
     public let dynamicLevel: DynamicMark
 
-    public init(tempo: Double, keyOffset: Int, timeSignature: Beat, dynamicLevel: DynamicMark = .mf)
+    public init(
+        tempo: Double,
+        keyOffset: Int,
+        declaredKey: String? = nil,
+        timeSignature: Beat,
+        dynamicLevel: DynamicMark = .mf
+    )
     {
         self.tempo = tempo
         self.keyOffset = keyOffset
+        self.declaredKey = declaredKey
         self.timeSignature = timeSignature
         self.dynamicLevel = dynamicLevel
     }
@@ -220,12 +228,14 @@ public enum TmdPlaybackRenderer {
                 if let delta = Int(value.replacingOccurrences(of: "+", with: "")) {
                     state = PlaybackState(
                         tempo: state.tempo, keyOffset: state.keyOffset + delta,
+                        declaredKey: state.declaredKey,
                         timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
                 }
                 return nil
             case .absolute(let value):
                 state = PlaybackState(
                     tempo: state.tempo, keyOffset: KeySignature(string: value).semitoneOffset,
+                    declaredKey: state.declaredKey,
                     timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
                 return nil
             case .name(let rawName):
@@ -305,6 +315,7 @@ public enum TmdPlaybackRenderer {
         PlaybackState(
             tempo: sheet.speed > 0 ? clampTempo(sheet.speed) : defaultTempoBPM,
             keyOffset: sheet.keySignature.semitoneOffset,
+            declaredKey: sheet.declaredKey,
             timeSignature: sheet.beat
         )
     }
@@ -434,6 +445,7 @@ public enum TmdPlaybackRenderer {
                     paragraph.pitchMode == .fixed
                     ? PlaybackState(
                         tempo: cursor.state.tempo, keyOffset: 0,
+                        declaredKey: cursor.state.declaredKey,
                         timeSignature: cursor.state.timeSignature,
                         dynamicLevel: cursor.state.dynamicLevel)
                     : cursor.state
@@ -451,6 +463,7 @@ public enum TmdPlaybackRenderer {
                     tempo: rendered.state.tempo,
                     keyOffset: paragraph.pitchMode == .fixed
                         ? cursor.state.keyOffset : rendered.state.keyOffset,
+                    declaredKey: rendered.state.declaredKey,
                     timeSignature: cursor.state.timeSignature,
                     dynamicLevel: rendered.state.dynamicLevel
                 )
@@ -532,6 +545,7 @@ public enum TmdPlaybackRenderer {
                     paragraph.pitchMode == .fixed
                     ? PlaybackState(
                         tempo: cursor.state.tempo, keyOffset: 0,
+                        declaredKey: cursor.state.declaredKey,
                         timeSignature: cursor.state.timeSignature,
                         dynamicLevel: cursor.state.dynamicLevel)
                     : cursor.state
@@ -558,6 +572,7 @@ public enum TmdPlaybackRenderer {
                     tempo: rendered.state.tempo,
                     keyOffset: paragraph.pitchMode == .fixed
                         ? cursor.state.keyOffset : rendered.state.keyOffset,
+                    declaredKey: rendered.state.declaredKey,
                     timeSignature: cursor.state.timeSignature,
                     dynamicLevel: rendered.state.dynamicLevel
                 )
@@ -998,36 +1013,46 @@ extension SectionDirectiveKind {
         case .tempo(let value):
             PlaybackState(
                 tempo: TmdPlaybackRenderer.clampTempo(value), keyOffset: state.keyOffset,
+                declaredKey: state.declaredKey,
                 timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
         case .relativeTempo(let value):
             PlaybackState(
                 tempo: TmdPlaybackRenderer.clampTempo(state.tempo + value),
                 keyOffset: state.keyOffset,
+                declaredKey: state.declaredKey,
                 timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
         case .absoluteKey(let value):
             PlaybackState(
                 tempo: state.tempo, keyOffset: KeySignature(string: value).semitoneOffset,
+                declaredKey: state.declaredKey,
                 timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
         case .relativeKey(let value):
             PlaybackState(
                 tempo: state.tempo, keyOffset: state.keyOffset + value,
+                declaredKey: state.declaredKey,
                 timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
-        case .explicitKey:
+        case .explicitKey(let key):
             // `key=` is notation metadata only. Unlike `?=` and relative
             // movable-do directives, it must not alter the sounding pitch
             // context.
-            state
+            PlaybackState(
+                tempo: state.tempo, keyOffset: state.keyOffset,
+                declaredKey: key,
+                timeSignature: state.timeSignature, dynamicLevel: state.dynamicLevel)
         case .dynamics(let mark):
             PlaybackState(
-                tempo: state.tempo, keyOffset: state.keyOffset, timeSignature: state.timeSignature,
+                tempo: state.tempo, keyOffset: state.keyOffset, declaredKey: state.declaredKey,
+                timeSignature: state.timeSignature,
                 dynamicLevel: mark)
         case .fixedPitch:
             PlaybackState(
-                tempo: state.tempo, keyOffset: 0, timeSignature: state.timeSignature,
+                tempo: state.tempo, keyOffset: 0, declaredKey: state.declaredKey,
+                timeSignature: state.timeSignature,
                 dynamicLevel: state.dynamicLevel)
         case .timeSignature(let beat):
             PlaybackState(
-                tempo: state.tempo, keyOffset: state.keyOffset, timeSignature: beat,
+                tempo: state.tempo, keyOffset: state.keyOffset, declaredKey: state.declaredKey,
+                timeSignature: beat,
                 dynamicLevel: state.dynamicLevel)
         }
     }
