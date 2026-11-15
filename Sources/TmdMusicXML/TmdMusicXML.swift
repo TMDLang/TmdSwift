@@ -46,11 +46,11 @@ public struct TmdMusicXMLGenerator {
         }
         xml += "  </part-list>\n"
 
+        let renderedTracks = TmdMeasureRenderer.renderMeasuresByInstrument(sheet: sheet)
         let partMeasures: [(instrument: String, measures: [Measure])] = instruments.map { inst in
             (
                 instrument: inst,
-                measures: TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: inst)
-                    .filter { !$0.foldedIntoRepeat }
+                measures: (renderedTracks[inst] ?? []).filter { !$0.foldedIntoRepeat }
             )
         }
         let divisions = resolveDivisions(for: partMeasures.map(\.measures))

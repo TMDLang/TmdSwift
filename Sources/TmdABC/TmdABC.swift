@@ -44,13 +44,15 @@ public struct TmdABCGenerator {
         }
 
         // Generate lines per instrument track
+        let renderedTracks = TmdMeasureRenderer.renderMeasuresByInstrument(sheet: sheet)
         for (idx, inst) in instruments.enumerated() {
             let vId = "V\(idx + 1)"
             abc += "[V:\(vId)]\n"
             if sheet.containsPercussionUnits(forInstrument: inst) {
                 abc += "%%MIDI channel 10\n"
             }
-            abc += generateTrackMusic(instrument: inst, sheet: sheet)
+            abc += generateTrackMusic(
+                instrument: inst, sheet: sheet, renderedMeasures: renderedTracks[inst] ?? [])
         }
 
         return abc
@@ -58,10 +60,10 @@ public struct TmdABCGenerator {
 
     private static func generateTrackMusic(
         instrument: String,
-        sheet: Sheet
+        sheet: Sheet,
+        renderedMeasures: [Measure]
     ) -> String {
-        let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: instrument)
-            .filter { !$0.foldedIntoRepeat }
+        let measures = renderedMeasures.filter { !$0.foldedIntoRepeat }
         var result = ""
         let initialKey = sheet.declaredKey ?? sheet.keySignature.description
         var currentKeyStepAlters = PitchMapping.keySignatureStepAlters(forKey: initialKey)

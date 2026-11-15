@@ -38,6 +38,7 @@ public struct TmdLilyPondGenerator {
 
         var identifierMap: [String: String] = [:]
         var usedNames: Set<String> = []
+        let renderedTracks = TmdMeasureRenderer.renderMeasuresByInstrument(sheet: sheet)
         for (idx, inst) in instruments.enumerated() {
             var name = sanitizeIdentifier(inst, index: idx)
             if usedNames.contains(name) {
@@ -57,7 +58,9 @@ public struct TmdLilyPondGenerator {
             let isDrum = sheet.containsPercussionUnits(forInstrument: inst)
             ly += "\(varName) = \(isDrum ? "\\drummode " : ""){\n"
             ly += "  \\global\n"
-            ly += generateTrackMusic(instrument: inst, sheet: sheet, percussion: isDrum)
+            ly += generateTrackMusic(
+                instrument: inst, sheet: sheet, percussion: isDrum,
+                renderedMeasures: renderedTracks[inst] ?? [])
             ly += "}\n\n"
         }
 
@@ -78,7 +81,8 @@ public struct TmdLilyPondGenerator {
 
                 """
             if !isDrum {
-                ly += generateTrackLyricsBlocks(instrument: inst, sheet: sheet)
+                ly += generateTrackLyricsBlocks(
+                    instrument: inst, sheet: sheet, renderedMeasures: renderedTracks[inst] ?? [])
             }
         }
         ly += "  >>\n"
@@ -92,10 +96,10 @@ public struct TmdLilyPondGenerator {
     private static func generateTrackMusic(
         instrument: String,
         sheet: Sheet,
-        percussion: Bool
+        percussion: Bool,
+        renderedMeasures: [Measure]
     ) -> String {
-        let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: instrument)
-            .filter { !$0.foldedIntoRepeat }
+        let measures = renderedMeasures.filter { !$0.foldedIntoRepeat }
         var result = "  "
 
         var repeatOpen = false
@@ -174,10 +178,10 @@ public struct TmdLilyPondGenerator {
 
     private static func generateTrackLyricsBlocks(
         instrument: String,
-        sheet: Sheet
+        sheet: Sheet,
+        renderedMeasures: [Measure]
     ) -> String {
-        let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: instrument)
-            .filter { !$0.foldedIntoRepeat }
+        let measures = renderedMeasures.filter { !$0.foldedIntoRepeat }
         var stanzaSet: Set<Int> = []
         var hasActiveLyrics = false
         for measure in measures {

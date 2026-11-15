@@ -338,7 +338,34 @@ struct EngravingRepeatTests {
         let sheet = try #require(TmdParser.parse(string: tmd))
         let piano = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Piano")
         let bass = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Bass")
+        let batched = TmdMeasureRenderer.renderMeasuresByInstrument(sheet: sheet)
 
+        #expect(!piano.contains { $0.repeatStart })
+        #expect(!bass.contains { $0.repeatStart })
+        #expect(batched["Piano"] == piano)
+        #expect(batched["Bass"] == bass)
+    }
+
+    @Test("does not fold unrelated sections in a multi-track score")
+    func doesNotFoldUnrelatedMultiTrackSections() throws {
+        let tmd = """
+            ::SCORE::
+            ** Multi Track No Repeat Candidate **
+            != 120
+            ?= C
+            <4/4>
+            A:Piano@|0|{ <4*> 1 2 3 4 }
+            B:Piano@|0|{ <4*> 5 6 7 1 }
+            A:Bass@|0|{ <4*> 0 0 0 0 }
+            B:Bass@|0|{ <4*> 0 0 0 0 }
+            -> A -> B ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let piano = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Piano")
+        let bass = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Bass")
+
+        #expect(piano.filter { !$0.foldedIntoRepeat }.count == 2)
+        #expect(bass.filter { !$0.foldedIntoRepeat }.count == 2)
         #expect(!piano.contains { $0.repeatStart })
         #expect(!bass.contains { $0.repeatStart })
     }
