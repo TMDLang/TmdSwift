@@ -94,6 +94,18 @@ public struct MeasureEvent: Equatable, Sendable {
     }
 }
 
+/// A structural barline assigned by the engraving planner.
+public enum EngravingBarline: Equatable, Sendable {
+    case regular
+    case sectionDouble
+    case finalHeavy
+    case repeatForward
+    case repeatBackward(times: Int)
+    case voltaStart(number: Int)
+    case voltaStop(number: Int)
+    case voltaDiscontinue(number: Int)
+}
+
 /// Represents a discrete measure in a score for engraving and notation.
 public struct Measure: Equatable, Sendable {
     public let index: Int
@@ -102,6 +114,7 @@ public struct Measure: Equatable, Sendable {
     public let timeSignature: Beat
     public let tempo: Double
     public let keyOffset: Int
+    public let declaredKey: String?
     public let events: [MeasureEvent]
     public let directives: [PlaybackDirectiveEvent]
     /// Source-order and engraving information used by notation exporters.
@@ -111,6 +124,7 @@ public struct Measure: Equatable, Sendable {
     public let repeatEndCount: Int
     public let foldedIntoRepeat: Bool
     public let scoreEnd: Bool
+    public let sectionEnd: Bool
     public let voltaStartNumber: Int?
     public let voltaEndNumber: Int?
 
@@ -121,6 +135,7 @@ public struct Measure: Equatable, Sendable {
         timeSignature: Beat,
         tempo: Double,
         keyOffset: Int,
+        declaredKey: String? = nil,
         events: [MeasureEvent],
         directives: [PlaybackDirectiveEvent] = [],
         sectionName: String? = nil,
@@ -129,6 +144,7 @@ public struct Measure: Equatable, Sendable {
         repeatEndCount: Int = 0,
         foldedIntoRepeat: Bool = false,
         scoreEnd: Bool = false,
+        sectionEnd: Bool = false,
         voltaStartNumber: Int? = nil,
         voltaEndNumber: Int? = nil
     ) {
@@ -138,6 +154,7 @@ public struct Measure: Equatable, Sendable {
         self.timeSignature = timeSignature
         self.tempo = tempo
         self.keyOffset = keyOffset
+        self.declaredKey = declaredKey
         self.events = events
         self.directives = directives
         self.sectionName = sectionName
@@ -146,6 +163,7 @@ public struct Measure: Equatable, Sendable {
         self.repeatEndCount = repeatEndCount
         self.foldedIntoRepeat = foldedIntoRepeat
         self.scoreEnd = scoreEnd
+        self.sectionEnd = sectionEnd
         self.voltaStartNumber = voltaStartNumber
         self.voltaEndNumber = voltaEndNumber
     }
@@ -167,17 +185,37 @@ public struct Measure: Equatable, Sendable {
         return groups
     }
 
+    public var leftBarline: EngravingBarline {
+        if let number = voltaStartNumber { return .voltaStart(number: number) }
+        if repeatStart { return .repeatForward }
+        return .regular
+    }
+
+    public var rightBarline: EngravingBarline {
+        if let number = voltaEndNumber {
+            return number == 1
+                ? .voltaStop(number: number)
+                : .voltaDiscontinue(number: number)
+        }
+        if repeatEndCount > 1 { return .repeatBackward(times: repeatEndCount) }
+        if scoreEnd { return .finalHeavy }
+        if sectionEnd { return .sectionDouble }
+        return .regular
+    }
+
     fileprivate func withEngraving(
         sectionName: String?, repeatStart: Bool, repeatCount: Int,
         repeatEndCount: Int, foldedIntoRepeat: Bool, scoreEnd: Bool,
-        voltaStartNumber: Int? = nil, voltaEndNumber: Int? = nil
+        sectionEnd: Bool? = nil, voltaStartNumber: Int? = nil, voltaEndNumber: Int? = nil
     ) -> Measure {
         Measure(index: index, startTime: startTime, nominalDuration: nominalDuration,
             timeSignature: timeSignature, tempo: tempo, keyOffset: keyOffset,
+            declaredKey: declaredKey,
             events: events, directives: directives, sectionName: sectionName,
             repeatStart: repeatStart, repeatCount: repeatCount,
             repeatEndCount: repeatEndCount, foldedIntoRepeat: foldedIntoRepeat,
-            scoreEnd: scoreEnd, voltaStartNumber: voltaStartNumber,
+            scoreEnd: scoreEnd, sectionEnd: sectionEnd ?? self.sectionEnd,
+            voltaStartNumber: voltaStartNumber,
             voltaEndNumber: voltaEndNumber)
     }
 }
@@ -430,6 +468,7 @@ public enum TmdMeasureRenderer {
                     timeSignature: mBeat,
                     tempo: state.tempo,
                     keyOffset: state.keyOffset,
+                    declaredKey: state.declaredKey,
                     events: paddedEvents,
                     directives: directivesInMeasure
                 ))
@@ -484,7 +523,9 @@ public enum TmdMeasureRenderer {
                 result[measureIndex] = result[measureIndex].withEngraving(
                     sectionName: occurrence.name, repeatStart: false, repeatCount: 0,
                     repeatEndCount: 0, foldedIntoRepeat: result[measureIndex].foldedIntoRepeat,
-                    scoreEnd: measureIndex == measures.count - 1)
+                    scoreEnd: measureIndex == measures.count - 1,
+                    sectionEnd: measureIndex == occurrence.range.upperBound - 1
+                        && occurrence.range.upperBound < measures.count)
             }
             var next = occurrenceIndex + 1
             var repeatCount = 1
@@ -633,11 +674,13 @@ public enum TmdMeasureRenderer {
             result[targetIndex] = targetMeasure.withEngraving(sectionName: targetMeasure.sectionName,
                 repeatStart: targetMeasure.repeatStart, repeatCount: targetMeasure.repeatCount,
                 repeatEndCount: targetMeasure.repeatEndCount, foldedIntoRepeat: targetMeasure.foldedIntoRepeat,
-                scoreEnd: targetMeasure.scoreEnd, voltaStartNumber: targetMeasure.voltaStartNumber,
+                scoreEnd: targetMeasure.scoreEnd, sectionEnd: targetMeasure.sectionEnd,
+                voltaStartNumber: targetMeasure.voltaStartNumber,
                 voltaEndNumber: targetMeasure.voltaEndNumber)
             result[targetIndex] = Measure(index: targetMeasure.index, startTime: targetMeasure.startTime,
                 nominalDuration: targetMeasure.nominalDuration, timeSignature: targetMeasure.timeSignature,
-                tempo: targetMeasure.tempo, keyOffset: targetMeasure.keyOffset, events: events,
+                tempo: targetMeasure.tempo, keyOffset: targetMeasure.keyOffset,
+                declaredKey: targetMeasure.declaredKey, events: events,
                 directives: targetMeasure.directives, sectionName: targetMeasure.sectionName,
                 repeatStart: targetMeasure.repeatStart, repeatCount: targetMeasure.repeatCount,
                 repeatEndCount: targetMeasure.repeatEndCount, foldedIntoRepeat: targetMeasure.foldedIntoRepeat,
@@ -684,6 +727,7 @@ public enum TmdMeasureRenderer {
             guard left.nominalDuration == right.nominalDuration,
                 left.tempo == right.tempo,
                 left.keyOffset == right.keyOffset,
+                left.declaredKey == right.declaredKey,
                 left.timeSignature == right.timeSignature,
                 left.events.count == right.events.count,
                 left.directives.map({ String(describing: $0.kind) }) == right.directives.map({ String(describing: $0.kind) })

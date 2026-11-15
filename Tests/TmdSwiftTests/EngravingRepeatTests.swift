@@ -254,6 +254,54 @@ struct EngravingRepeatTests {
         #expect(timeline.events.first?.state.keyOffset == sheet.keySignature.semitoneOffset)
     }
 
+    @Test("exposes the active declared notation key on rendered measures")
+    func exposesDeclaredKeyOnRenderedMeasures() throws {
+        let tmd = """
+            ::SCORE::
+            ** Declared Key Measure State **
+            != 120
+            ?= C
+            key= Am
+            <4/4>
+            A:Piano@|0|{ <4*> 0 0 0 0 }
+            -> A ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Piano")
+
+        #expect(measures.first?.declaredKey == "Am")
+    }
+
+    @Test("exposes explicit left and right engraving barline metadata")
+    func exposesEngravingBarlineMetadata() throws {
+        let tmd = """
+            ::SCORE::
+            ** Barline Metadata **
+            != 120
+            ?= C
+            <4/4>
+            A:Piano@|0|{ <4*> 1 2 3 4 }
+            B:Piano@|0|{ <4*> 5 6 7 1 }
+            -> A -> B ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Piano")
+
+        #expect(measures[0].leftBarline == .regular)
+        #expect(measures[0].rightBarline == .sectionDouble)
+        #expect(measures[1].rightBarline == .finalHeavy)
+    }
+
+    @Test("exposes repeat barline metadata on folded repeats")
+    func exposesRepeatBarlineMetadata() throws {
+        let sheet = try #require(TmdParser.parse(string: source))
+        let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Vocal")
+        let visible = measures.filter { !$0.foldedIntoRepeat }
+
+        #expect(visible.first?.leftBarline == .repeatForward)
+        #expect(visible.last?.rightBarline == .repeatBackward(times: 2))
+    }
+
     @Test("bridges instrumental measures inside an intra-section stanza repeat span")
     func bridgesInstrumentalMeasuresInsideStanzaRepeatSpan() throws {
         let tmd = """
