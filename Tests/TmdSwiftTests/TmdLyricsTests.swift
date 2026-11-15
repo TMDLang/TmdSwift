@@ -102,6 +102,32 @@ struct TmdLyricsTests {
         #expect(TmdRefactor.format(formatted) == formatted)
     }
 
+    @Test("allows unnumbered single-pass lyric measures between numbered stanza spans")
+    func allowsSinglePassBoundaryBetweenNumberedStanzaSpans() throws {
+        let source = """
+            ::SCORE::
+            ** Numbered Stanza Boundary **
+            != 120
+            ?= C
+            <4/4>
+            verse:Vocal@|0|{
+                <4*>
+                | 1 2 3 4 |
+                L1| spring - - - |
+                L2| autumn - - - |
+                | 5 6 7 1 |
+                L| bridge - - - |
+                | 2 3 4 5 |
+                L1| river - - - |
+                L2| mountain - - - |
+            }
+            -> verse ->#
+            """
+
+        let diagnostics = TmdScoreValidator.validate(source: source)
+        #expect(!diagnostics.contains { $0.rule == .stanzaInconsistent })
+    }
+
     @Test("Validates 1:1 grid slot counting, dyads, transparent punctuation, groups, and stanza diagnostics")
     func testLyricsSemanticValidationAndDiagnostics() {
         // 1. Valid multi-stanza score with dyads, transparent tokens, and groups
