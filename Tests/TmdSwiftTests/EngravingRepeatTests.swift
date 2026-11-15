@@ -253,4 +253,37 @@ struct EngravingRepeatTests {
         #expect(timeline.events.first?.state.declaredKey == "D")
         #expect(timeline.events.first?.state.keyOffset == sheet.keySignature.semitoneOffset)
     }
+
+    @Test("bridges instrumental measures inside an intra-section stanza repeat span")
+    func bridgesInstrumentalMeasuresInsideStanzaRepeatSpan() throws {
+        let tmd = """
+            ::SCORE::
+            ** Stanza Span With Instrumental Measure **
+            != 120
+            ?= C
+            <4/4>
+            verse:Vocal@|0|{
+                <4*>
+                | 1 2 3 4 |
+                L| intro - - - |
+                | 5 6 7 1 |
+                L1| spring - - - |
+                L2| autumn - - - |
+                | 2 3 4 5 |
+                | 6 7 1 2 |
+                L1| river - - - |
+                L2| mountain - - - |
+                | 3 4 5 6 |
+                L| outro - - - |
+            }
+            -> verse ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Vocal")
+
+        #expect(measures.filter { $0.repeatStart }.count == 1)
+        #expect(measures.filter { $0.repeatEndCount == 2 }.count == 1)
+        #expect(measures.first(where: { $0.repeatStart })?.index == 1)
+        #expect(measures.first(where: { $0.repeatEndCount == 2 })?.index == 3)
+    }
 }

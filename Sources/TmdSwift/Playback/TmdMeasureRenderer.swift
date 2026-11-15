@@ -515,14 +515,19 @@ public enum TmdMeasureRenderer {
             } else if occurrence.stanza == nil && stanzaCount(for: occurrence.name, in: sheet) > 1 {
                 let count = stanzaCount(for: occurrence.name, in: sheet)
                 var rangeStart: Int?
+                var lastNumberedMeasure: Int?
                 for measureIndex in occurrence.range.lowerBound...occurrence.range.upperBound - 1 {
                     let hasMultipleStanzas = result[measureIndex].events.contains {
                         $0.stanzaLyrics.count > 1
                     }
-                    if hasMultipleStanzas && rangeStart == nil { rangeStart = measureIndex }
-                    if (!hasMultipleStanzas || measureIndex == occurrence.range.upperBound - 1),
-                        let first = rangeStart {
-                        let last = hasMultipleStanzas ? measureIndex : measureIndex - 1
+                    let hasAnyStanza = result[measureIndex].events.contains {
+                        !$0.stanzaLyrics.isEmpty
+                    }
+                    if hasMultipleStanzas {
+                        if rangeStart == nil { rangeStart = measureIndex }
+                        lastNumberedMeasure = measureIndex
+                    } else if hasAnyStanza, let first = rangeStart,
+                        let last = lastNumberedMeasure {
                         result[first] = result[first].withEngraving(
                             sectionName: occurrence.name, repeatStart: true, repeatCount: count,
                             repeatEndCount: 0, foldedIntoRepeat: false, scoreEnd: result[first].scoreEnd)
@@ -531,7 +536,17 @@ public enum TmdMeasureRenderer {
                             repeatCount: result[last].repeatCount, repeatEndCount: count,
                             foldedIntoRepeat: false, scoreEnd: result[last].scoreEnd)
                         rangeStart = nil
+                        lastNumberedMeasure = nil
                     }
+                }
+                if let first = rangeStart, let last = lastNumberedMeasure {
+                    result[first] = result[first].withEngraving(
+                        sectionName: occurrence.name, repeatStart: true, repeatCount: count,
+                        repeatEndCount: 0, foldedIntoRepeat: false, scoreEnd: result[first].scoreEnd)
+                    result[last] = result[last].withEngraving(
+                        sectionName: occurrence.name, repeatStart: result[last].repeatStart,
+                        repeatCount: result[last].repeatCount, repeatEndCount: count,
+                        foldedIntoRepeat: false, scoreEnd: result[last].scoreEnd)
                 }
             }
             occurrenceIndex = next
