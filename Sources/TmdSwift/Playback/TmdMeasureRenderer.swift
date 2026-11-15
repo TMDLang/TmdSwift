@@ -640,31 +640,59 @@ public enum TmdMeasureRenderer {
         }
 
         if occurrences.count >= 4 {
-            for i in 0..<(occurrences.count - 3) {
-                let first = occurrences[i], endingOne = occurrences[i + 1]
-                let repeated = occurrences[i + 2], endingTwo = occurrences[i + 3]
-                guard first.name == repeated.name,
-                    endingOne.name != endingTwo.name,
-                    qualifiesVoltaEnding(endingOne, body: first),
-                    qualifiesVoltaEnding(endingTwo, body: first),
-                    engravingEquivalent(measures, first.range, repeated.range),
-                    crossTrackEquivalent(first.range, repeated.range) else { continue }
-                mergeLyrics(from: repeated, into: first, result: &result)
-                for m in repeated.range {
-                    result[m] = result[m].withEngraving(sectionName: repeated.name,
-                        repeatStart: false, repeatCount: 0, repeatEndCount: 0,
-                        foldedIntoRepeat: true, scoreEnd: result[m].scoreEnd)
+            var i = 0
+            while i + 3 < occurrences.count {
+                let first = occurrences[i]
+                var bodyOccurrences = [first]
+                var endings: [(occurrence: (name: String, stanza: Int?, range: Range<Int>), number: Int)] = []
+                var cursor = i + 1
+                while cursor < occurrences.count {
+                    let ending = occurrences[cursor]
+                    guard !endings.contains(where: { $0.occurrence.name == ending.name }),
+                        qualifiesVoltaEnding(ending, body: first) else { break }
+                    guard cursor + 1 < occurrences.count else {
+                        endings.append((ending, endings.count + 1))
+                        cursor += 1
+                        break
+                    }
+                    let repeatedBody = occurrences[cursor + 1]
+                    if repeatedBody.name != first.name {
+                        endings.append((ending, endings.count + 1))
+                        cursor += 1
+                        break
+                    }
+                    guard repeatedBody.name == first.name,
+                        engravingEquivalent(measures, first.range, repeatedBody.range),
+                        crossTrackEquivalent(first.range, repeatedBody.range) else { break }
+                    endings.append((ending, endings.count + 1))
+                    bodyOccurrences.append(repeatedBody)
+                    cursor += 2
+                }
+                guard endings.count >= 2 else {
+                    i += 1
+                    continue
+                }
+                for repeated in bodyOccurrences.dropFirst() {
+                    mergeLyrics(from: repeated, into: first, result: &result)
+                    for m in repeated.range {
+                        result[m] = result[m].withEngraving(sectionName: repeated.name,
+                            repeatStart: false, repeatCount: 0, repeatEndCount: 0,
+                            foldedIntoRepeat: true, scoreEnd: result[m].scoreEnd)
+                    }
                 }
                 let bodyLast = first.range.upperBound - 1
                 result[first.range.lowerBound] = result[first.range.lowerBound].withEngraving(
-                    sectionName: first.name, repeatStart: true, repeatCount: 2,
-                    repeatEndCount: 0, foldedIntoRepeat: false, scoreEnd: result[first.range.lowerBound].scoreEnd)
+                    sectionName: first.name, repeatStart: true, repeatCount: endings.count,
+                    repeatEndCount: 0, foldedIntoRepeat: false,
+                    scoreEnd: result[first.range.lowerBound].scoreEnd)
                 result[bodyLast] = result[bodyLast].withEngraving(
                     sectionName: first.name, repeatStart: result[bodyLast].repeatStart,
                     repeatCount: result[bodyLast].repeatCount, repeatEndCount: 0,
                     foldedIntoRepeat: false, scoreEnd: result[bodyLast].scoreEnd)
-                markVolta(endingOne.range, number: 1, result: &result)
-                markVolta(endingTwo.range, number: 2, result: &result)
+                for ending in endings {
+                    markVolta(ending.occurrence.range, number: ending.number, result: &result)
+                }
+                i = cursor
             }
         }
         if occurrences.count >= 4 {

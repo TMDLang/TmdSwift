@@ -372,11 +372,13 @@ public struct TmdMusicXMLGenerator {
             if let volta = measure.voltaStartNumber {
                 content += "        <barline location=\"left\"><ending number=\"\(volta)\" type=\"start\"/></barline>\n"
             }
-            if measure.voltaEndNumber == 1 {
-                content += "        <barline location=\"right\"><bar-style>light-heavy</bar-style><ending number=\"1\" type=\"stop\"/><repeat direction=\"backward\"/></barline>\n"
-            } else if measure.voltaEndNumber == 2 {
-                let style = mIdx == measures.count - 1 ? "light-heavy" : "light-light"
-                content += "        <barline location=\"right\"><bar-style>\(style)</bar-style><ending number=\"2\" type=\"discontinue\"/></barline>\n"
+            if let volta = measure.voltaEndNumber {
+                if volta == 1 {
+                    content += "        <barline location=\"right\"><bar-style>light-heavy</bar-style><ending number=\"1\" type=\"stop\"/><repeat direction=\"backward\"/></barline>\n"
+                } else {
+                    let style = measure.scoreEnd ? "light-heavy" : "light-light"
+                    content += "        <barline location=\"right\"><bar-style>\(style)</bar-style><ending number=\"\(volta)\" type=\"discontinue\"/></barline>\n"
+                }
             } else if measure.repeatEndCount > 1 {
                 content += "        <barline location=\"right\"><bar-style>light-heavy</bar-style><repeat direction=\"backward\" times=\"\(measure.repeatEndCount)\"/></barline>\n"
             } else if mIdx == measures.count - 1 {

@@ -100,8 +100,10 @@ public struct TmdABCGenerator {
                 )
                 result += " "
             }
-            if measure.voltaEndNumber == 1 {
-                result += ":|"
+            if measure.voltaEndNumber != nil {
+                let hasFollowingAlternative = mIdx + 1 < measures.count
+                    && measures[mIdx + 1].voltaStartNumber != nil
+                result += hasFollowingAlternative ? ":|" : "||"
             } else if measure.repeatEndCount > 1 {
                 result += ":|"
             } else if mIdx == measures.count - 1 {

@@ -115,7 +115,7 @@ public struct TmdLilyPondGenerator {
                 repeatOpen = false
                 inAlternative = true
             }
-            if measure.voltaStartNumber == 2 { result += " } { " }
+            if let volta = measure.voltaStartNumber, volta > 1 { result += " } { " }
             var pendingDirectives: [(offset: Double, directive: PlaybackDirectiveEvent)] = []
             for directive in measure.directives {
                 if case .timeSignature = directive.kind {
@@ -156,7 +156,10 @@ public struct TmdLilyPondGenerator {
                 }
                 dirIdx += 1
             }
-            if measure.voltaEndNumber == 2 && inAlternative {
+            let hasFollowingAlternative = measures.drop(
+                while: { $0.index != measure.index }
+            ).dropFirst().first?.voltaStartNumber != nil
+            if measure.voltaEndNumber != nil, inAlternative, !hasFollowingAlternative {
                 result += " } }\n  "
                 inAlternative = false
             }
