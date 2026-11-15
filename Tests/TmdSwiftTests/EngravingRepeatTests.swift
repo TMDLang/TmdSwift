@@ -323,6 +323,51 @@ struct EngravingRepeatTests {
         #expect(visible.last?.rightBarline == .repeatBackward(times: 2))
     }
 
+    @Test("requires engraving equivalence across all active tracks")
+    func requiresCrossTrackEngravingEquivalence() throws {
+        let tmd = """
+            ::SCORE::
+            ** Cross Track Engraving State **
+            != 120
+            ?= C
+            <4/4>
+            A:Piano@|0|{ <4*> 1 2 3 4 }
+            A:Bass@|0|{ <4*> 1 2 3 4 {!= 140} }
+            -> A -> A ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let piano = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Piano")
+        let bass = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Bass")
+
+        #expect(!piano.contains { $0.repeatStart })
+        #expect(!bass.contains { $0.repeatStart })
+    }
+
+    @Test("preserves section boundaries while merging repeated lyrics")
+    func preservesSectionBoundaryDuringLyricMerge() throws {
+        let tmd = """
+            ::SCORE::
+            ** Repeat Boundary Preservation **
+            != 120
+            ?= C
+            <4/4>
+            verse:Vocal@|0|{
+                <4*>
+                | 1 2 3 4 |
+                L1| la |
+                L2| lu |
+            }
+            chorus:Vocal@|0|{ <4*> 5 6 7 1 }
+            -> verse[L1] -> verse[L2] -> chorus ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Vocal")
+        let visible = measures.filter { !$0.foldedIntoRepeat }
+
+        #expect(visible.first?.repeatStart == true)
+        #expect(visible.first?.sectionEnd == true)
+    }
+
     @Test("bridges instrumental measures inside an intra-section stanza repeat span")
     func bridgesInstrumentalMeasuresInsideStanzaRepeatSpan() throws {
         let tmd = """

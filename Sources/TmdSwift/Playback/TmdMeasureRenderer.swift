@@ -226,6 +226,12 @@ public enum TmdMeasureRenderer {
     /// Renders an instrument track into an array of strictly bounded measures.
     public static func renderMeasures(sheet inputSheet: Sheet, instrument: String) -> [Measure] {
         let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
+        return renderMeasures(sheet: sheet, instrument: instrument, applyEngraving: true)
+    }
+
+    private static func renderMeasures(
+        sheet: Sheet, instrument: String, applyEngraving: Bool
+    ) -> [Measure] {
         let timeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: instrument)
         let defaultBeat =
             sheet.beat.count > 0 && sheet.beat.noteValue > 0
@@ -491,15 +497,22 @@ public enum TmdMeasureRenderer {
             )
         }
 
-        return annotateEngraving(measures, sheet: sheet)
+        return applyEngraving
+            ? annotateEngraving(measures, sheet: sheet, instrument: instrument)
+            : measures
     }
 
     /// Adds source-order engraving metadata while preserving the complete playback timeline.
     /// Consecutive identical section selections are notation repeats; the later playback
     /// occurrences remain available to playback clients but are hidden by exporters.
-    private static func annotateEngraving(_ measures: [Measure], sheet: Sheet) -> [Measure] {
+    private static func annotateEngraving(
+        _ measures: [Measure], sheet: Sheet, instrument: String
+    ) -> [Measure] {
         guard !measures.isEmpty else { return measures }
         var result = measures
+        let otherTrackMeasures = sheet.distinctInstruments(fallbackToDefault: false)
+            .filter { $0.caseInsensitiveCompare(instrument) != .orderedSame }
+            .map { renderMeasures(sheet: sheet, instrument: $0, applyEngraving: false) }
         var cursor = 0
         var occurrences: [(name: String, stanza: Int?, range: Range<Int>)] = []
         for order in sheet.effectivePlaybackOrders {
@@ -531,7 +544,9 @@ public enum TmdMeasureRenderer {
             var repeatCount = 1
             while next < occurrences.count,
                 occurrences[next].name == occurrence.name,
-                engravingEquivalent(measures, occurrence.range, occurrences[next].range)
+                engravingEquivalent(measures, occurrence.range, occurrences[next].range),
+                engravingEquivalentAcrossTracks(
+                    otherTrackMeasures, occurrence.range, occurrences[next].range)
             {
                 repeatCount += 1
                 mergeLyrics(from: occurrences[next], into: occurrence, result: &result)
@@ -601,7 +616,9 @@ public enum TmdMeasureRenderer {
                     endingOne.name != endingTwo.name,
                     qualifiesVoltaEnding(endingOne, body: first),
                     qualifiesVoltaEnding(endingTwo, body: first),
-                    engravingEquivalent(measures, first.range, repeated.range) else { continue }
+                    engravingEquivalent(measures, first.range, repeated.range),
+                    engravingEquivalentAcrossTracks(
+                        otherTrackMeasures, first.range, repeated.range) else { continue }
                 mergeLyrics(from: repeated, into: first, result: &result)
                 for m in repeated.range {
                     result[m] = result[m].withEngraving(sectionName: repeated.name,
@@ -629,7 +646,11 @@ public enum TmdMeasureRenderer {
                     firstStanza != repeatedFirstStanza,
                     !qualifiesVoltaEnding(second, body: first),
                     engravingEquivalent(measures, first.range, repeatedFirst.range),
-                    engravingEquivalent(measures, second.range, repeatedSecond.range) else { continue }
+                    engravingEquivalent(measures, second.range, repeatedSecond.range),
+                    engravingEquivalentAcrossTracks(
+                        otherTrackMeasures, first.range, repeatedFirst.range),
+                    engravingEquivalentAcrossTracks(
+                        otherTrackMeasures, second.range, repeatedSecond.range) else { continue }
                 mergeLyrics(from: repeatedFirst, into: first, result: &result)
                 mergeLyrics(from: repeatedSecond, into: second, result: &result)
                 for m in repeatedFirst.range {
@@ -685,7 +706,8 @@ public enum TmdMeasureRenderer {
                 directives: targetMeasure.directives, sectionName: targetMeasure.sectionName,
                 repeatStart: targetMeasure.repeatStart, repeatCount: targetMeasure.repeatCount,
                 repeatEndCount: targetMeasure.repeatEndCount, foldedIntoRepeat: targetMeasure.foldedIntoRepeat,
-                scoreEnd: targetMeasure.scoreEnd, voltaStartNumber: targetMeasure.voltaStartNumber,
+                scoreEnd: targetMeasure.scoreEnd, sectionEnd: targetMeasure.sectionEnd,
+                voltaStartNumber: targetMeasure.voltaStartNumber,
                 voltaEndNumber: targetMeasure.voltaEndNumber)
         }
     }
@@ -726,6 +748,15 @@ public enum TmdMeasureRenderer {
             || (body.range.count >= 2
                 && ending.range.count <= body.range.count
                 && ending.range.count <= 4)
+    }
+
+    private static func engravingEquivalentAcrossTracks(
+        _ tracks: [[Measure]], _ lhs: Range<Int>, _ rhs: Range<Int>
+    ) -> Bool {
+        tracks.allSatisfy { measures in
+            measures.count >= max(lhs.upperBound, rhs.upperBound)
+                && engravingEquivalent(measures, lhs, rhs)
+        }
     }
 
     private static func engravingEquivalent(
