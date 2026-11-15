@@ -80,6 +80,27 @@ struct EngravingRepeatTests {
         #expect(!lily.hasSuffix("} }\n"))
     }
 
+    @Test("recognizes short non-conventional sections as volta endings")
+    func recognizesShortTailVoltaEndings() throws {
+        let tmd = """
+            ::SCORE::
+            ** Short Tail Volta **
+            != 120
+            ?= C
+            <4/4>
+            body:Piano@|0|{ <4*> | 1 2 3 4 | 5 6 7 1 | }
+            firstTail:Piano@|0|{ <4*> 5 6 7 1 }
+            secondTail:Piano@|0|{ <4*> 2 3 4 5 }
+            -> body -> firstTail -> body -> secondTail ->#
+            """
+        let sheet = try #require(TmdParser.parse(string: tmd))
+        let measures = TmdMeasureRenderer.renderMeasures(sheet: sheet, instrument: "Piano")
+
+        #expect(measures.contains { $0.voltaStartNumber == 1 })
+        #expect(measures.contains { $0.voltaStartNumber == 2 })
+        #expect(TmdLilyPondGenerator.generateLilyPond(from: sheet).contains("\\alternative"))
+    }
+
     @Test("places repeat end metadata on the last measure and keeps ordinary repeats free of endings")
     func placesRepeatEndOnLastMeasure() throws {
         let tmd = """

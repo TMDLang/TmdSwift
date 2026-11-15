@@ -599,7 +599,8 @@ public enum TmdMeasureRenderer {
                 let repeated = occurrences[i + 2], endingTwo = occurrences[i + 3]
                 guard first.name == repeated.name,
                     endingOne.name != endingTwo.name,
-                    isQualifiedVoltaName(endingOne.name), isQualifiedVoltaName(endingTwo.name),
+                    qualifiesVoltaEnding(endingOne, body: first),
+                    qualifiesVoltaEnding(endingTwo, body: first),
                     engravingEquivalent(measures, first.range, repeated.range) else { continue }
                 mergeLyrics(from: repeated, into: first, result: &result)
                 for m in repeated.range {
@@ -626,7 +627,7 @@ public enum TmdMeasureRenderer {
                 guard first.name == repeatedFirst.name, second.name == repeatedSecond.name,
                     let firstStanza = first.stanza, let repeatedFirstStanza = repeatedFirst.stanza,
                     firstStanza != repeatedFirstStanza,
-                    !isQualifiedVoltaName(second.name),
+                    !qualifiesVoltaEnding(second, body: first),
                     engravingEquivalent(measures, first.range, repeatedFirst.range),
                     engravingEquivalent(measures, second.range, repeatedSecond.range) else { continue }
                 mergeLyrics(from: repeatedFirst, into: first, result: &result)
@@ -715,6 +716,16 @@ public enum TmdMeasureRenderer {
     private static func isQualifiedVoltaName(_ name: String) -> Bool {
         let lower = name.lowercased()
         return ["ending1", "ending2", "a1", "a2", "e1", "e2", "volta1", "volta2"].contains(lower)
+    }
+
+    private static func qualifiesVoltaEnding(
+        _ ending: (name: String, stanza: Int?, range: Range<Int>),
+        body: (name: String, stanza: Int?, range: Range<Int>)
+    ) -> Bool {
+        isQualifiedVoltaName(ending.name)
+            || (body.range.count >= 2
+                && ending.range.count <= body.range.count
+                && ending.range.count <= 4)
     }
 
     private static func engravingEquivalent(
