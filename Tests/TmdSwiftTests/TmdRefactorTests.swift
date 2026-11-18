@@ -1242,6 +1242,37 @@ struct TmdRefactorTests {
         #expect(formatted.contains("    | {!=120} {?=D} {?+2} {key= C} {<3/4>} {mf} XsTt |\n"))
     }
 
+    @Test("Formatter scopes automatic barlines to bodies and disables them above grid 32")
+    func testFormatterScopesAndLimitsAutomaticBarlines() {
+        let input = """
+            ::SCORE::
+            ** Scoped Barline Test **
+            != 120
+            ?= C
+            <4/4>
+
+            Theme{
+                <32*>
+                1 2 3 4
+                <64*>
+                5 6 7 1^
+                | 2 3 4 5 |
+            }
+
+            -> (layer
+            (seq Theme Theme))
+            ->#
+            """
+        let formatted = TmdRefactor.format(input)
+
+        #expect(formatted.contains("    | 1 2 3 4 |\n"))
+        #expect(formatted.contains("    5 6 7 1^\n"))
+        #expect(formatted.contains("    | 2 3 4 5 |\n"))
+        #expect(formatted.contains("-> (layer\n    (seq Theme Theme))\n    ->#\n"))
+        #expect(!formatted.contains("| (seq"))
+        #expect(TmdRefactor.format(formatted) == formatted)
+    }
+
     @Test("Formatter normalizes lyric lines, completes lyric barlines, compacts lyric groups, and sorts stanzas numerically")
     func testFormatterLyricLinesAndStanzaSorting() {
         let input = """

@@ -21,7 +21,12 @@ extension TmdRefactor {
                 + line.trimmingCharacters(in: .whitespaces)
         }
     }
-    static func formatLine(_ line: String, indent: Int = 0) -> String {
+    static func formatLine(
+        _ line: String,
+        indent: Int = 0,
+        addOuterBarlines: Bool = true,
+        playbackContinuation: Bool = false
+    ) -> String {
         let indentPrefix = String(repeating: "    ", count: indent)
         var working = line
         var commentSuffix = ""
@@ -32,6 +37,10 @@ extension TmdRefactor {
         }
 
         let trimmed = working.trimmingCharacters(in: .whitespaces)
+
+        if playbackContinuation {
+            return indentPrefix + formatPlaybackContinuation(trimmed) + commentSuffix
+        }
 
         // Check if header line
         if trimmed.hasPrefix("::SCORE::") {
@@ -138,7 +147,7 @@ extension TmdRefactor {
         // Content / measure line
         let formattedContent = formatMusicalUnits(
             trimmed,
-            addOuterBarlines: !containsOnlyDirectives(trimmed)
+            addOuterBarlines: addOuterBarlines && !containsOnlyDirectives(trimmed)
         )
         return indentPrefix + formattedContent + commentSuffix
     }
@@ -339,6 +348,14 @@ extension TmdRefactor {
         }
 
         return normalized.trimmingCharacters(in: .whitespaces)
+    }
+
+    private static func formatPlaybackContinuation(_ trimmed: String) -> String {
+        trimmed
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            .replacingOccurrences(of: "( ", with: "(")
+            .replacingOccurrences(of: " )", with: ")")
+            .trimmingCharacters(in: .whitespaces)
     }
 
     static func formatMusicalUnits(_ text: String, addOuterBarlines: Bool = true) -> String {

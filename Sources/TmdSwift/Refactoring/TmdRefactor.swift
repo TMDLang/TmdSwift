@@ -98,6 +98,7 @@ public struct TmdRefactor {
         var inPlaybackFlow = false
         var justClosedEntry = false
         var indentLevel = 0
+        var activeGridSize: Int?
         var i = 0
 
         while i < rawLines.count {
@@ -142,6 +143,7 @@ public struct TmdRefactor {
                 resultLines.append(formatLine(line, indent: indentLevel))
                 if indentLevel == 0 {
                     justClosedEntry = true
+                    activeGridSize = nil
                 }
                 inPlaybackFlow = false
                 i += 1
@@ -213,6 +215,19 @@ public struct TmdRefactor {
                 let isEntryStart = trimmedNoComment.hasSuffix("{") && !trimmedNoComment.hasPrefix("->")
                 let isPlaybackLine = trimmedNoComment.hasPrefix("->")
 
+                if inPlaybackFlow && !isPlaybackLine {
+                    resultLines.append(
+                        formatLine(
+                            line,
+                            indent: 1,
+                            addOuterBarlines: false,
+                            playbackContinuation: true
+                        )
+                    )
+                    i += 1
+                    continue
+                }
+
                 if isEntryStart || (isPlaybackLine && !inPlaybackFlow) {
                     if let last = resultLines.last,
                         !last.trimmingCharacters(in: .whitespaces).isEmpty,
@@ -234,10 +249,19 @@ public struct TmdRefactor {
                 }
             }
 
-            let formattedLine = formatLine(line, indent: indentLevel)
+            if indentLevel > 0, let gridSize = parseGridSubdivisionLine(trimmedNoComment) {
+                activeGridSize = gridSize
+            }
+            let shouldAddOuterBarlines = indentLevel > 0 && (activeGridSize ?? 4) <= 32
+            let formattedLine = formatLine(
+                line,
+                indent: indentLevel,
+                addOuterBarlines: shouldAddOuterBarlines
+            )
             resultLines.append(formattedLine)
 
             if trimmedNoComment.hasSuffix("{") {
+                activeGridSize = nil
                 indentLevel += 1
             }
             i += 1
