@@ -1273,6 +1273,34 @@ struct TmdRefactorTests {
         #expect(TmdRefactor.format(formatted) == formatted)
     }
 
+    @Test("Formatter ends playback flow before declarations that follow ->#")
+    func testFormatterEndsPlaybackBeforeFollowingDeclaration() {
+        let input = """
+            ::SCORE::
+            ** Declaration After Playback **
+            != 120
+            ?= C
+            <4/4>
+
+            -> A
+            ->#
+
+            AfterEntry {
+                <4*>
+                1 2 3 4
+            }
+            """
+        let formatted = TmdRefactor.format(input)
+
+        #expect(
+            formatted.contains(
+                "-> A\n    ->#\n\nAfterEntry {\n    <4*>\n    | 1 2 3 4 |\n}"
+            )
+        )
+        #expect(!formatted.contains("    AfterEntry {"))
+        #expect(TmdRefactor.format(formatted) == formatted)
+    }
+
     @Test("Formatter normalizes lyric lines, completes lyric barlines, compacts lyric groups, and sorts stanzas numerically")
     func testFormatterLyricLinesAndStanzaSorting() {
         let input = """
