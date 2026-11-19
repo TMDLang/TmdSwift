@@ -59,6 +59,38 @@ struct EngravingRepeatTests {
         #expect(!lily.contains("\\set stanza = \"2.\""))
     }
 
+    @Test("flattens an implicit repeat spanning multiple measures")
+    func flattensMultiMeasureImplicitRepeat() throws {
+        let sheet = try #require(TmdParser.parse(string: """
+            ::SCORE::
+            ** Multi-Measure Repeat **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|0|{
+              <4*>
+              | 1 2 3 4 | 5 6 7 1 |
+              L1| la li lu le | lo la li lu |
+              L2| sa si su se | so sa si su |
+            }
+
+            -> verse ->#
+            """))
+        let abc = TmdABCGenerator.generateABC(
+            from: sheet, options: TmdNotationExportOptions(flattenRepeats: true))
+        let xml = TmdMusicXMLGenerator.generateMusicXML(
+            from: sheet, options: TmdNotationExportOptions(flattenRepeats: true))
+        let lily = TmdLilyPondGenerator.generateLilyPond(
+            from: sheet, options: TmdNotationExportOptions(flattenRepeats: true))
+
+        #expect(abc.contains("la li lu le"))
+        #expect(abc.contains("sa si su se"))
+        #expect(!abc.contains("|:"))
+        #expect(!xml.contains("<repeat direction="))
+        #expect(!lily.contains("\\repeat volta"))
+    }
+
     @Test("marks section transitions and score endings")
     func marksSectionTransitionsAndEndings() throws {
         let sheet = try #require(TmdParser.parse(string: source.replacingOccurrences(of: "-> verse[L1] -> verse[L2] ->#", with: "-> verse[L1] ->#")))

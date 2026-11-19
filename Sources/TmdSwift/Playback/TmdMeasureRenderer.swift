@@ -267,8 +267,7 @@ public enum TmdMeasureRenderer {
         var index = 0
         while index < measures.count {
             let measure = measures[index]
-            guard measure.repeatStart, measure.repeatEndCount > 1,
-                  !measure.foldedIntoRepeat else {
+            guard measure.repeatStart, !measure.foldedIntoRepeat else {
                 output.append(normalize(measure, index: output.count, scoreEnd: false))
                 index += 1
                 continue
