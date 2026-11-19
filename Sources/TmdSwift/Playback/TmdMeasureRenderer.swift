@@ -123,6 +123,7 @@ public struct Measure: Equatable, Sendable {
     public let repeatCount: Int
     public let repeatEndCount: Int
     public let foldedIntoRepeat: Bool
+    public let isPickup: Bool
     public let scoreEnd: Bool
     public let sectionEnd: Bool
     public let voltaStartNumber: Int?
@@ -143,6 +144,7 @@ public struct Measure: Equatable, Sendable {
         repeatCount: Int = 0,
         repeatEndCount: Int = 0,
         foldedIntoRepeat: Bool = false,
+        isPickup: Bool = false,
         scoreEnd: Bool = false,
         sectionEnd: Bool = false,
         voltaStartNumber: Int? = nil,
@@ -162,6 +164,7 @@ public struct Measure: Equatable, Sendable {
         self.repeatCount = repeatCount
         self.repeatEndCount = repeatEndCount
         self.foldedIntoRepeat = foldedIntoRepeat
+        self.isPickup = isPickup
         self.scoreEnd = scoreEnd
         self.sectionEnd = sectionEnd
         self.voltaStartNumber = voltaStartNumber
@@ -214,6 +217,7 @@ public struct Measure: Equatable, Sendable {
             events: events, directives: directives, sectionName: sectionName,
             repeatStart: repeatStart, repeatCount: repeatCount,
             repeatEndCount: repeatEndCount, foldedIntoRepeat: foldedIntoRepeat,
+            isPickup: isPickup,
             scoreEnd: scoreEnd, sectionEnd: sectionEnd ?? self.sectionEnd,
             voltaStartNumber: voltaStartNumber,
             voltaEndNumber: voltaEndNumber)
@@ -228,7 +232,9 @@ public enum TmdMeasureRenderer {
         sheet inputSheet: Sheet, instrument: String, flattenRepeats: Bool = false
     ) -> [Measure] {
         let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
-        let measures = renderMeasures(sheet: sheet, instrument: instrument, applyEngraving: true)
+        let measures = renderMeasures(
+            sheet: sheet, instrument: instrument, applyEngraving: true,
+            preservePickup: flattenRepeats)
         return flattenRepeats ? flatten(measures) : measures
     }
 
@@ -241,7 +247,9 @@ public enum TmdMeasureRenderer {
         let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
         let instruments = sheet.distinctInstruments(fallbackToDefault: true)
         let rawMeasures = Dictionary(uniqueKeysWithValues: instruments.map { instrument in
-            (instrument, renderMeasures(sheet: sheet, instrument: instrument, applyEngraving: false))
+            (instrument, renderMeasures(
+                sheet: sheet, instrument: instrument, applyEngraving: false,
+                preservePickup: flattenRepeats))
         })
         let annotated = Dictionary(uniqueKeysWithValues: instruments.map { instrument in
             let others = instruments
@@ -251,7 +259,8 @@ public enum TmdMeasureRenderer {
                 instrument,
                 annotateEngraving(
                     rawMeasures[instrument] ?? [], sheet: sheet, instrument: instrument,
-                    preRenderedOtherTrackMeasures: others)
+                    preRenderedOtherTrackMeasures: others,
+                    preservePickup: flattenRepeats)
             )
         })
         guard flattenRepeats else { return annotated }
@@ -327,6 +336,7 @@ public enum TmdMeasureRenderer {
             events: events, directives: measure.directives, sectionName: measure.sectionName,
             repeatStart: measure.repeatStart, repeatCount: measure.repeatCount,
             repeatEndCount: measure.repeatEndCount, foldedIntoRepeat: measure.foldedIntoRepeat,
+            isPickup: measure.isPickup,
             scoreEnd: measure.scoreEnd, sectionEnd: measure.sectionEnd,
             voltaStartNumber: measure.voltaStartNumber, voltaEndNumber: measure.voltaEndNumber)
     }
@@ -335,11 +345,12 @@ public enum TmdMeasureRenderer {
         Measure(index: index, startTime: measure.startTime, nominalDuration: measure.nominalDuration,
             timeSignature: measure.timeSignature, tempo: measure.tempo, keyOffset: measure.keyOffset,
             declaredKey: measure.declaredKey, events: measure.events, directives: measure.directives,
-            sectionName: measure.sectionName, scoreEnd: scoreEnd, sectionEnd: measure.sectionEnd)
+            sectionName: measure.sectionName, isPickup: measure.isPickup,
+            scoreEnd: scoreEnd, sectionEnd: measure.sectionEnd)
     }
 
     private static func renderMeasures(
-        sheet: Sheet, instrument: String, applyEngraving: Bool
+        sheet: Sheet, instrument: String, applyEngraving: Bool, preservePickup: Bool = false
     ) -> [Measure] {
         let timeline = TmdPlaybackRenderer.render(sheet: sheet, instrument: instrument)
         let defaultBeat =
@@ -358,6 +369,15 @@ public enum TmdMeasureRenderer {
         var intervals: [Interval] = []
         var curStart = 0.0
         var curBeat = defaultBeat
+
+        let pickupDuration = preservePickup
+            ? initialPickupDuration(sheet: sheet, fallback: defaultBeat)
+            : nil
+        if let pickupDuration {
+            intervals.append(
+                Interval(start: 0.0, end: pickupDuration, duration: pickupDuration, beat: curBeat))
+            curStart = pickupDuration
+        }
 
         let timeSigDirectives = buildScoreTimeSignatures(sheet: sheet, defaultBeat: defaultBeat)
         var nextDirectiveIndex = 0
@@ -585,7 +605,8 @@ public enum TmdMeasureRenderer {
                     keyOffset: state.keyOffset,
                     declaredKey: state.declaredKey,
                     events: paddedEvents,
-                    directives: directivesInMeasure
+                    directives: directivesInMeasure,
+                    isPickup: mIdx == 0 && pickupDuration != nil
                 ))
 
             if let lastEvent = rawMeasureEvents.last {
@@ -607,8 +628,24 @@ public enum TmdMeasureRenderer {
         }
 
         return applyEngraving
-            ? annotateEngraving(measures, sheet: sheet, instrument: instrument)
+            ? annotateEngraving(measures, sheet: sheet, instrument: instrument,
+                preservePickup: preservePickup)
             : measures
+    }
+
+    private static func initialPickupDuration(sheet: Sheet, fallback: Beat) -> Double? {
+        guard TmdPlaybackRenderer.globalEarliestPosition(in: sheet) < -1e-6 else { return nil }
+        for entry in sheet.entries where !entry.isPrototype && entry.start < 0 {
+            guard let section = entry.sections.first else { continue }
+            let beat = TmdPlaybackRenderer.entryInitialBeat(for: entry, in: sheet, fallback: fallback)
+            let expectedUnits = Double(max(1, beat.count * section.noteLength))
+                / Double(max(1, beat.noteValue))
+            let totalUnits = section.unitGroups.reduce(0) { $0 + max(0, $1.length) }
+            let firstBoundary = section.barlinePositions.first(where: { $0 > 0 }) ?? totalUnits
+            guard firstBoundary > 0, Double(firstBoundary) < expectedUnits - 1e-6 else { continue }
+            return Double(firstBoundary) * 4.0 / Double(max(1, section.noteLength))
+        }
+        return nil
     }
 
     /// Adds source-order engraving metadata while preserving the complete playback timeline.
@@ -616,7 +653,7 @@ public enum TmdMeasureRenderer {
     /// occurrences remain available to playback clients but are hidden by exporters.
     private static func annotateEngraving(
         _ measures: [Measure], sheet: Sheet, instrument: String,
-        preRenderedOtherTrackMeasures: [[Measure]]? = nil
+        preRenderedOtherTrackMeasures: [[Measure]]? = nil, preservePickup: Bool = false
     ) -> [Measure] {
         guard !measures.isEmpty else { return measures }
         var result = measures
@@ -627,7 +664,8 @@ public enum TmdMeasureRenderer {
             guard !otherTrackNames.isEmpty else { return true }
             if otherTrackMeasures == nil {
                 otherTrackMeasures = otherTrackNames.map {
-                    renderMeasures(sheet: sheet, instrument: $0, applyEngraving: false)
+                    renderMeasures(sheet: sheet, instrument: $0, applyEngraving: false,
+                        preservePickup: preservePickup)
                 }
             }
             return engravingEquivalentAcrossTracks(otherTrackMeasures!, lhs, rhs)
@@ -849,6 +887,7 @@ public enum TmdMeasureRenderer {
                 directives: targetMeasure.directives, sectionName: targetMeasure.sectionName,
                 repeatStart: targetMeasure.repeatStart, repeatCount: targetMeasure.repeatCount,
                 repeatEndCount: targetMeasure.repeatEndCount, foldedIntoRepeat: targetMeasure.foldedIntoRepeat,
+                isPickup: targetMeasure.isPickup,
                 scoreEnd: targetMeasure.scoreEnd, sectionEnd: targetMeasure.sectionEnd,
                 voltaStartNumber: targetMeasure.voltaStartNumber,
                 voltaEndNumber: targetMeasure.voltaEndNumber)

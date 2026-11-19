@@ -91,6 +91,40 @@ struct EngravingRepeatTests {
         #expect(!lily.contains("\\repeat volta"))
     }
 
+    @Test("preserves a score-level pickup when flattening repeats")
+    func preservesScoreLevelPickupWhenFlatteningRepeats() throws {
+        let sheet = try #require(TmdParser.parse(string: """
+            ::SCORE::
+            ** Pickup Repeat **
+            != 120
+            ?= C
+            <4/4>
+
+            verse:Vocal@|-1|{
+              <4*>
+              | 5 | 1 2 3 4 |
+              L1| la | li lu le |
+              L2| sa | si su se |
+            }
+
+            -> verse[L1] -> verse[L2] ->#
+            """))
+        let measures = TmdMeasureRenderer.renderMeasures(
+            sheet: sheet, instrument: "Vocal", flattenRepeats: true)
+        let options = TmdNotationExportOptions(flattenRepeats: true)
+        let abc = TmdABCGenerator.generateABC(from: sheet, options: options)
+        let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet, options: options)
+        let lily = TmdLilyPondGenerator.generateLilyPond(from: sheet, options: options)
+
+        #expect(measures.first?.isPickup == true)
+        #expect(measures.first?.nominalDuration == 1)
+        #expect(xml.contains("<measure number=\"1\" implicit=\"yes\">"))
+        #expect(lily.contains("\\partial 4"))
+        #expect(abc.contains("G4 |"))
+        #expect(abc.contains("w: la"))
+        #expect(!TmdMusicXMLGenerator.generateMusicXML(from: sheet).contains("implicit=\"yes\""))
+    }
+
     @Test("marks section transitions and score endings")
     func marksSectionTransitionsAndEndings() throws {
         let sheet = try #require(TmdParser.parse(string: source.replacingOccurrences(of: "-> verse[L1] -> verse[L2] ->#", with: "-> verse[L1] ->#")))

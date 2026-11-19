@@ -131,6 +131,10 @@ public struct TmdLilyPondGenerator {
                 }
             }
             let groups = measure.simultaneousEventGroups
+            if measure.isPickup {
+                let pickupDuration = decomposeLilyPondDurations(quarterNotes: measure.nominalDuration).first ?? "4"
+                result += "\\partial \(pickupDuration) "
+            }
             var dirIdx = 0
             for (gIdx, group) in groups.enumerated() {
                 let nextGroupStart =
