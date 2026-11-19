@@ -1,3 +1,4 @@
+#if !os(Windows)
 import Testing
 @testable import TmdMCP
 
@@ -10,3 +11,4 @@ struct TmdMCPTests {
         ])
     }
 }
+#endif

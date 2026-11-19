@@ -143,7 +143,7 @@ let package = Package(
                 "TmdSwift", "TmdMIDI", "TmdMusicXML", "TmdLilyPond", "TmdABC",
                 "TmdChordPro", "TmdBraille", "TmdReaper", "TmdAudio", "TmdSkill",
                 "TmdVocaloid", "TmdUTAU",
-                .product(name: "MCP", package: "swift-sdk"),
+                .product(name: "MCP", package: "swift-sdk", condition: .when(platforms: [.macOS, .linux])),
             ]
         ),
         .executableTarget(
@@ -151,7 +151,7 @@ let package = Package(
             dependencies: [
                 "TmdSwift",
                 "TmdLSP",
-                "TmdMCP",
+                .target(name: "TmdMCP", condition: .when(platforms: [.macOS, .linux])),
                 "TmdMIDI",
                 "TmdMusicXML",
                 "TmdLilyPond",
@@ -171,7 +171,8 @@ let package = Package(
             name: "TmdSwiftTests",
             dependencies: [
                 "TmdSwift", "TmdLSP", "TmdMIDI", "TmdMusicXML", "TmdLilyPond", "TmdABC",
-                "TmdChordPro", "TmdBraille", "TmdReaper", "TmdAudio", "TmdSkill", "TmdUtils", "TmdMCP",
+                "TmdChordPro", "TmdBraille", "TmdReaper", "TmdAudio", "TmdSkill", "TmdUtils",
+                .target(name: "TmdMCP", condition: .when(platforms: [.macOS, .linux])),
                 "TmdVocaloid", "TmdUTAU",
             ]
         ),

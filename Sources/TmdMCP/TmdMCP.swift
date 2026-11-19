@@ -1,3 +1,4 @@
+#if !os(Windows)
 import Foundation
 import MCP
 import TmdABC
@@ -27,7 +28,7 @@ public enum TmdMCPServer {
             do {
                 try await start()
             } catch {
-                fputs("TMD MCP server error: \(error.localizedDescription)\n", stderr)
+                FileHandle.standardError.write(Data("TMD MCP server error: \(error.localizedDescription)\n".utf8))
             }
         }
         semaphore.wait()
@@ -281,3 +282,4 @@ public enum TmdMCPServer {
         case data(Data)
     }
 }
+#endif
