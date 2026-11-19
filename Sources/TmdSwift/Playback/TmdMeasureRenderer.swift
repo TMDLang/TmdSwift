@@ -224,21 +224,26 @@ public struct Measure: Equatable, Sendable {
 public enum TmdMeasureRenderer {
 
     /// Renders an instrument track into an array of strictly bounded measures.
-    public static func renderMeasures(sheet inputSheet: Sheet, instrument: String) -> [Measure] {
+    public static func renderMeasures(
+        sheet inputSheet: Sheet, instrument: String, flattenRepeats: Bool = false
+    ) -> [Measure] {
         let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
-        return renderMeasures(sheet: sheet, instrument: instrument, applyEngraving: true)
+        let measures = renderMeasures(sheet: sheet, instrument: instrument, applyEngraving: true)
+        return flattenRepeats ? flatten(measures) : measures
     }
 
     /// Renders and annotates every assigned instrument track in one shared pass.
     /// Exporters should use this when they need multiple tracks so cross-track engraving
     /// equivalence does not repeatedly rebuild the same raw timelines.
-    public static func renderMeasuresByInstrument(sheet inputSheet: Sheet) -> [String: [Measure]] {
+    public static func renderMeasuresByInstrument(
+        sheet inputSheet: Sheet, flattenRepeats: Bool = false
+    ) -> [String: [Measure]] {
         let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
         let instruments = sheet.distinctInstruments(fallbackToDefault: true)
         let rawMeasures = Dictionary(uniqueKeysWithValues: instruments.map { instrument in
             (instrument, renderMeasures(sheet: sheet, instrument: instrument, applyEngraving: false))
         })
-        return Dictionary(uniqueKeysWithValues: instruments.map { instrument in
+        let annotated = Dictionary(uniqueKeysWithValues: instruments.map { instrument in
             let others = instruments
                 .filter { $0.caseInsensitiveCompare(instrument) != .orderedSame }
                 .compactMap { rawMeasures[$0] }
@@ -249,6 +254,89 @@ public enum TmdMeasureRenderer {
                     preRenderedOtherTrackMeasures: others)
             )
         })
+        guard flattenRepeats else { return annotated }
+        return annotated.mapValues(flatten)
+    }
+
+    /// Converts engraving metadata into a literal playback timeline for structured exporters.
+    /// Explicit occurrences retain every rendered measure; implicit multi-stanza sections are
+    /// duplicated once per stanza and each copy receives only its active lyric.
+    private static func flatten(_ measures: [Measure]) -> [Measure] {
+        guard !measures.isEmpty else { return measures }
+        var output: [Measure] = []
+        var index = 0
+        while index < measures.count {
+            let measure = measures[index]
+            guard measure.repeatStart, measure.repeatEndCount > 1,
+                  !measure.foldedIntoRepeat else {
+                output.append(normalize(measure, index: output.count, scoreEnd: false))
+                index += 1
+                continue
+            }
+            var end = index
+            while end < measures.count,
+                  measures[end].repeatEndCount <= 1 { end += 1 }
+            guard end < measures.count else {
+                output.append(normalize(measure, index: output.count, scoreEnd: false))
+                index += 1
+                continue
+            }
+            let range = Array(measures[index...end])
+            let stanzas = Set(range.flatMap { $0.events.flatMap { $0.stanzaLyrics.keys } }).sorted()
+            if stanzas.count > 1, range.allSatisfy({ !$0.foldedIntoRepeat }) {
+                for stanza in stanzas {
+                    output.append(contentsOf: range.map {
+                        normalize(selectStanza($0, stanza: stanza), index: output.count, scoreEnd: false)
+                    })
+                }
+            } else {
+                output.append(contentsOf: range.map {
+                    normalize($0, index: output.count, scoreEnd: false)
+                })
+            }
+            index = end + 1
+        }
+        return output.enumerated().map { offset, measure in
+            normalize(measure, index: offset, scoreEnd: offset == output.count - 1)
+        }
+    }
+
+    private static func selectStanza(_ measure: Measure, stanza: Int) -> Measure {
+        let events = measure.events.map { event -> MeasureEvent in
+            guard !event.stanzaLyrics.isEmpty else { return event }
+            let unit = event.stanzaLyrics[stanza]
+            switch unit {
+            case .syllable(let lyric):
+                return MeasureEvent(startOffset: event.startOffset, duration: event.duration,
+                    content: event.content, tieStart: event.tieStart, tieStop: event.tieStop,
+                    state: event.state, lyric: lyric, isLyricMelisma: false)
+            case .tie:
+                return MeasureEvent(startOffset: event.startOffset, duration: event.duration,
+                    content: event.content, tieStart: event.tieStart, tieStop: event.tieStop,
+                    state: event.state, isLyricMelisma: true)
+            case .rest:
+                return MeasureEvent(startOffset: event.startOffset, duration: event.duration,
+                    content: event.content, tieStart: event.tieStart, tieStop: event.tieStop,
+                    state: event.state)
+            case nil:
+                return event
+            }
+        }
+        return Measure(index: measure.index, startTime: measure.startTime,
+            nominalDuration: measure.nominalDuration, timeSignature: measure.timeSignature,
+            tempo: measure.tempo, keyOffset: measure.keyOffset, declaredKey: measure.declaredKey,
+            events: events, directives: measure.directives, sectionName: measure.sectionName,
+            repeatStart: measure.repeatStart, repeatCount: measure.repeatCount,
+            repeatEndCount: measure.repeatEndCount, foldedIntoRepeat: measure.foldedIntoRepeat,
+            scoreEnd: measure.scoreEnd, sectionEnd: measure.sectionEnd,
+            voltaStartNumber: measure.voltaStartNumber, voltaEndNumber: measure.voltaEndNumber)
+    }
+
+    private static func normalize(_ measure: Measure, index: Int, scoreEnd: Bool) -> Measure {
+        Measure(index: index, startTime: measure.startTime, nominalDuration: measure.nominalDuration,
+            timeSignature: measure.timeSignature, tempo: measure.tempo, keyOffset: measure.keyOffset,
+            declaredKey: measure.declaredKey, events: measure.events, directives: measure.directives,
+            sectionName: measure.sectionName, scoreEnd: scoreEnd, sectionEnd: measure.sectionEnd)
     }
 
     private static func renderMeasures(

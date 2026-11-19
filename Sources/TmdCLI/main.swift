@@ -51,6 +51,9 @@ struct TmdCLICommand: ParsableCommand {
     @Flag(name: [.long], help: "Play the score using the macOS default sound bank.")
     var play: Bool = false
 
+    @Flag(name: [.customLong("flatten-repeats")], help: "Expand repeats into a linear lyric timeline for structured notation exports.")
+    var flattenRepeats: Bool = false
+
     @Flag(
         name: [.long],
         help:
@@ -273,7 +276,7 @@ struct TmdCLICommand: ParsableCommand {
 
         // Export to MusicXML if requested
         if let xmlPath = musicxmlOutput {
-            let xmlString = TmdMusicXMLGenerator.generateMusicXML(from: sheet)
+            let xmlString = TmdMusicXMLGenerator.generateMusicXML(from: sheet, options: TmdNotationExportOptions(flattenRepeats: flattenRepeats))
             let outURL = URL(fileURLWithPath: xmlPath)
             do {
                 try xmlString.write(to: outURL, atomically: true, encoding: .utf8)
@@ -287,7 +290,7 @@ struct TmdCLICommand: ParsableCommand {
 
         // Export to LilyPond if requested
         if let lyPath = lilypondOutput {
-            let lyString = TmdLilyPondGenerator.generateLilyPond(from: sheet)
+            let lyString = TmdLilyPondGenerator.generateLilyPond(from: sheet, options: TmdNotationExportOptions(flattenRepeats: flattenRepeats))
             let outURL = URL(fileURLWithPath: lyPath)
             do {
                 try lyString.write(to: outURL, atomically: true, encoding: .utf8)
@@ -303,7 +306,7 @@ struct TmdCLICommand: ParsableCommand {
             let tempLyURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(
                 UUID().uuidString + ".ly")
             defer { try? FileManager.default.removeItem(at: tempLyURL) }
-            let lyString = TmdLilyPondGenerator.generateLilyPond(from: sheet)
+            let lyString = TmdLilyPondGenerator.generateLilyPond(from: sheet, options: TmdNotationExportOptions(flattenRepeats: flattenRepeats))
             try? lyString.write(to: tempLyURL, atomically: true, encoding: .utf8)
 
             let pdfBase = pdfPath.hasSuffix(".pdf") ? String(pdfPath.dropLast(4)) : pdfPath
@@ -334,7 +337,7 @@ struct TmdCLICommand: ParsableCommand {
 
         // Export to ABC notation if requested
         if let abcPath = abcOutput {
-            let abcString = TmdABCGenerator.generateABC(from: sheet)
+            let abcString = TmdABCGenerator.generateABC(from: sheet, options: TmdNotationExportOptions(flattenRepeats: flattenRepeats))
             let outURL = URL(fileURLWithPath: abcPath)
             do {
                 try abcString.write(to: outURL, atomically: true, encoding: .utf8)

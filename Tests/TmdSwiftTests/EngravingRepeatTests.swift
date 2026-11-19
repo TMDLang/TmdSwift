@@ -40,6 +40,25 @@ struct EngravingRepeatTests {
         #expect(lily.contains("\\set stanza = \"2.\""))
     }
 
+    @Test("flattens repeated notation and emits one lyric stream without stanza numbering")
+    func flattensRepeatedNotation() throws {
+        let sheet = try #require(TmdParser.parse(string: source))
+        let options = TmdNotationExportOptions(flattenRepeats: true)
+        let abc = TmdABCGenerator.generateABC(from: sheet, options: options)
+        let xml = TmdMusicXMLGenerator.generateMusicXML(from: sheet, options: options)
+        let lily = TmdLilyPondGenerator.generateLilyPond(from: sheet, options: options)
+
+        #expect(!abc.contains("|:"))
+        #expect(!abc.contains(":|"))
+        #expect(!abc.contains("w: 1."))
+        #expect(!abc.contains("w: 2."))
+        #expect(!xml.contains("<repeat direction="))
+        #expect(!xml.contains("<lyric number=\"2\""))
+        #expect(!lily.contains("\\repeat volta"))
+        #expect(!lily.contains("\\set stanza = \"1.\""))
+        #expect(!lily.contains("\\set stanza = \"2.\""))
+    }
+
     @Test("marks section transitions and score endings")
     func marksSectionTransitionsAndEndings() throws {
         let sheet = try #require(TmdParser.parse(string: source.replacingOccurrences(of: "-> verse[L1] -> verse[L2] ->#", with: "-> verse[L1] ->#")))
