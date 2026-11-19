@@ -206,6 +206,16 @@ public struct Measure: Equatable, Sendable {
         return .regular
     }
 
+    fileprivate func withEvents(_ events: [MeasureEvent]) -> Measure {
+        Measure(index: index, startTime: startTime, nominalDuration: nominalDuration,
+            timeSignature: timeSignature, tempo: tempo, keyOffset: keyOffset,
+            declaredKey: declaredKey, events: events, directives: directives,
+            sectionName: sectionName, repeatStart: repeatStart, repeatCount: repeatCount,
+            repeatEndCount: repeatEndCount, foldedIntoRepeat: foldedIntoRepeat,
+            isPickup: isPickup, scoreEnd: scoreEnd, sectionEnd: sectionEnd,
+            voltaStartNumber: voltaStartNumber, voltaEndNumber: voltaEndNumber)
+    }
+
     fileprivate func withEngraving(
         sectionName: String?, repeatStart: Bool, repeatCount: Int,
         repeatEndCount: Int, foldedIntoRepeat: Bool, scoreEnd: Bool,
@@ -235,7 +245,9 @@ public enum TmdMeasureRenderer {
         let measures = renderMeasures(
             sheet: sheet, instrument: instrument, applyEngraving: true,
             preservePickup: flattenRepeats)
-        return flattenRepeats ? flatten(measures) : measures
+        return flattenRepeats
+            ? flatten(connectSectionBoundaryTies(measures, sheet: sheet))
+            : measures
     }
 
     /// Renders and annotates every assigned instrument track in one shared pass.
@@ -264,7 +276,7 @@ public enum TmdMeasureRenderer {
             )
         })
         guard flattenRepeats else { return annotated }
-        return annotated.mapValues(flatten)
+        return annotated.mapValues { flatten(connectSectionBoundaryTies($0, sheet: sheet)) }
     }
 
     /// Converts engraving metadata into a literal playback timeline for structured exporters.
@@ -646,6 +658,49 @@ public enum TmdMeasureRenderer {
             return Double(firstBoundary) * 4.0 / Double(max(1, section.noteLength))
         }
         return nil
+    }
+
+    private static func connectSectionBoundaryTies(_ measures: [Measure], sheet: Sheet) -> [Measure] {
+        var result = measures
+        for index in 0..<(max(0, result.count - 1)) {
+            let previous = result[index]
+            let next = result[index + 1]
+            guard let previousSection = previous.sectionName,
+                let nextSection = next.sectionName,
+                previousSection != nextSection,
+                sheet.entries.contains(where: {
+                    !$0.isPrototype && $0.name == nextSection && $0.start < 0
+                }) else { continue }
+
+            var previousEvents = previous.events
+            var nextEvents = next.events
+            for previousIndex in previousEvents.indices {
+                let previousEvent = previousEvents[previousIndex]
+                guard previousEvent.content.isNote,
+                    abs(previousEvent.startOffset + previousEvent.duration - previous.nominalDuration) <= 1e-6
+                else { continue }
+                guard let nextIndex = nextEvents.firstIndex(where: {
+                    $0.content == previousEvent.content && $0.content.isNote &&
+                        $0.startOffset <= 1e-6
+                }) else { continue }
+                previousEvents[previousIndex] = MeasureEvent(
+                    startOffset: previousEvent.startOffset, duration: previousEvent.duration,
+                    content: previousEvent.content, tieStart: true, tieStop: previousEvent.tieStop,
+                    state: previousEvent.state, lyric: previousEvent.lyric,
+                    isLyricMelisma: previousEvent.isLyricMelisma,
+                    stanzaLyrics: previousEvent.stanzaLyrics)
+                let nextEvent = nextEvents[nextIndex]
+                nextEvents[nextIndex] = MeasureEvent(
+                    startOffset: nextEvent.startOffset, duration: nextEvent.duration,
+                    content: nextEvent.content, tieStart: nextEvent.tieStart, tieStop: true,
+                    state: nextEvent.state, lyric: nextEvent.lyric,
+                    isLyricMelisma: nextEvent.isLyricMelisma,
+                    stanzaLyrics: nextEvent.stanzaLyrics)
+            }
+            result[index] = previous.withEvents(previousEvents)
+            result[index + 1] = next.withEvents(nextEvents)
+        }
+        return result
     }
 
     /// Adds source-order engraving metadata while preserving the complete playback timeline.
