@@ -7,6 +7,7 @@ import TmdChordPro
 import TmdLSP
 import TmdLilyPond
 import TmdMIDI
+import TmdMCP
 import TmdMusicXML
 import TmdReaper
 import TmdSkill
@@ -51,6 +52,9 @@ struct TmdCLICommand: ParsableCommand {
     @Flag(name: [.long], help: "Play the score using the macOS default sound bank.")
     var play: Bool = false
 
+    @Flag(name: [.customLong("mcp")], help: "Run the TMD Model Context Protocol server over stdio.")
+    var runMCP: Bool = false
+
     @Flag(name: [.customLong("flatten-repeats")], help: "Expand repeats into a linear lyric timeline for structured notation exports.")
     var flattenRepeats: Bool = false
 
@@ -60,6 +64,9 @@ struct TmdCLICommand: ParsableCommand {
             "Install TMD skill definitions to local AI agent skill directories (Codex, Antigravity, Claude, etc.)."
     )
     var installSkills: Bool = false
+
+    @Flag(name: [.customLong("install-mcp")], help: "Install TMD MCP server entries into local AI client configurations.")
+    var installMCP: Bool = false
 
     @Option(name: [.short, .long], help: "Export to MIDI file at the specified path.")
     var midiOutput: String?
@@ -142,6 +149,25 @@ struct TmdCLICommand: ParsableCommand {
     var force: Bool = false
 
     func run() throws {
+        if runMCP {
+            TmdMCPServer.runBlocking()
+            return
+        }
+
+        if installMCP {
+            print("Installing TMD MCP server configuration...")
+            for result in TmdMCPServer.installConfiguration() {
+                if result.installed {
+                    print("Installed TMD MCP configuration: \(result.path)")
+                } else {
+                    print("Failed to install TMD MCP configuration: \(result.path) (\(result.error ?? "unknown error"))")
+                }
+            }
+            if inputPath == nil {
+                return
+            }
+        }
+
         if installSkills {
             print("Installing TMD skill for AI agents...")
             let results = TmdSkill.installSkills()

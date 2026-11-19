@@ -6,6 +6,9 @@ import PackageDescription
 let package = Package(
     name: "TmdSwift",
     defaultLocalization: "zh-Hant",
+    platforms: [
+        .macOS(.v13),
+    ],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
@@ -64,13 +67,18 @@ let package = Package(
             name: "TmdLSP",
             targets: ["TmdLSP"]
         ),
+        .library(
+            name: "TmdMCP",
+            targets: ["TmdMCP"]
+        ),
         .executable(
             name: "tmd",
             targets: ["TmdCLI"]
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.3.0")
+        .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.3.0"),
+        .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.12.0")
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -129,11 +137,21 @@ let package = Package(
             name: "TmdLSP",
             dependencies: ["TmdSwift"]
         ),
+        .target(
+            name: "TmdMCP",
+            dependencies: [
+                "TmdSwift", "TmdMIDI", "TmdMusicXML", "TmdLilyPond", "TmdABC",
+                "TmdChordPro", "TmdBraille", "TmdReaper", "TmdAudio", "TmdSkill",
+                "TmdVocaloid", "TmdUTAU",
+                .product(name: "MCP", package: "swift-sdk"),
+            ]
+        ),
         .executableTarget(
             name: "TmdCLI",
             dependencies: [
                 "TmdSwift",
                 "TmdLSP",
+                "TmdMCP",
                 "TmdMIDI",
                 "TmdMusicXML",
                 "TmdLilyPond",
@@ -153,7 +171,7 @@ let package = Package(
             name: "TmdSwiftTests",
             dependencies: [
                 "TmdSwift", "TmdLSP", "TmdMIDI", "TmdMusicXML", "TmdLilyPond", "TmdABC",
-                "TmdChordPro", "TmdBraille", "TmdReaper", "TmdAudio", "TmdSkill", "TmdUtils",
+                "TmdChordPro", "TmdBraille", "TmdReaper", "TmdAudio", "TmdSkill", "TmdUtils", "TmdMCP",
                 "TmdVocaloid", "TmdUTAU",
             ]
         ),
