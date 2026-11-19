@@ -8,7 +8,9 @@ import TmdSwift
 public struct TmdLilyPondGenerator {
 
     /// Generates LilyPond `.ly` file content from a Sheet.
-    public static func generateLilyPond(from inputSheet: Sheet) -> String {
+    public static func generateLilyPond(
+        from inputSheet: Sheet, options: TmdNotationExportOptions = TmdNotationExportOptions()
+    ) -> String {
         let (sheet, instruments) = inputSheet.preparedForExport()
         let composer = sheet.metadata["composer"] ?? "TMD"
         let initialTempoCommand = resolveTempo(
@@ -38,7 +40,8 @@ public struct TmdLilyPondGenerator {
 
         var identifierMap: [String: String] = [:]
         var usedNames: Set<String> = []
-        let renderedTracks = TmdMeasureRenderer.renderMeasuresByInstrument(sheet: sheet)
+        let renderedTracks = TmdMeasureRenderer.renderMeasuresByInstrument(
+            sheet: sheet, flattenRepeats: options.flattenRepeats)
         for (idx, inst) in instruments.enumerated() {
             var name = sanitizeIdentifier(inst, index: idx)
             if usedNames.contains(name) {
@@ -60,7 +63,7 @@ public struct TmdLilyPondGenerator {
             ly += "  \\global\n"
             ly += generateTrackMusic(
                 instrument: inst, sheet: sheet, percussion: isDrum,
-                renderedMeasures: renderedTracks[inst] ?? [])
+                renderedMeasures: renderedTracks[inst] ?? [], flattenRepeats: options.flattenRepeats)
             ly += "}\n\n"
         }
 
@@ -82,7 +85,8 @@ public struct TmdLilyPondGenerator {
                 """
             if !isDrum {
                 ly += generateTrackLyricsBlocks(
-                    instrument: inst, sheet: sheet, renderedMeasures: renderedTracks[inst] ?? [])
+                    instrument: inst, sheet: sheet, renderedMeasures: renderedTracks[inst] ?? [],
+                    flattenRepeats: options.flattenRepeats)
             }
         }
         ly += "  >>\n"
@@ -97,9 +101,10 @@ public struct TmdLilyPondGenerator {
         instrument: String,
         sheet: Sheet,
         percussion: Bool,
-        renderedMeasures: [Measure]
+        renderedMeasures: [Measure],
+        flattenRepeats: Bool
     ) -> String {
-        let measures = renderedMeasures.filter { !$0.foldedIntoRepeat }
+        let measures = flattenRepeats ? renderedMeasures : renderedMeasures.filter { !$0.foldedIntoRepeat }
         var result = "  "
 
         var repeatOpen = false
@@ -182,9 +187,10 @@ public struct TmdLilyPondGenerator {
     private static func generateTrackLyricsBlocks(
         instrument: String,
         sheet: Sheet,
-        renderedMeasures: [Measure]
+        renderedMeasures: [Measure],
+        flattenRepeats: Bool
     ) -> String {
-        let measures = renderedMeasures.filter { !$0.foldedIntoRepeat }
+        let measures = flattenRepeats ? renderedMeasures : renderedMeasures.filter { !$0.foldedIntoRepeat }
         var stanzaSet: Set<Int> = []
         var hasActiveLyrics = false
         for measure in measures {

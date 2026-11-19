@@ -8,7 +8,9 @@ import TmdSwift
 public struct TmdABCGenerator {
 
     /// Generates ABC notation string from a Sheet.
-    public static func generateABC(from inputSheet: Sheet) -> String {
+    public static func generateABC(
+        from inputSheet: Sheet, options: TmdNotationExportOptions = TmdNotationExportOptions()
+    ) -> String {
         let (sheet, instruments) = inputSheet.preparedForExport()
         var abc = ""
 
@@ -44,7 +46,8 @@ public struct TmdABCGenerator {
         }
 
         // Generate lines per instrument track
-        let renderedTracks = TmdMeasureRenderer.renderMeasuresByInstrument(sheet: sheet)
+        let renderedTracks = TmdMeasureRenderer.renderMeasuresByInstrument(
+            sheet: sheet, flattenRepeats: options.flattenRepeats)
         for (idx, inst) in instruments.enumerated() {
             let vId = "V\(idx + 1)"
             abc += "[V:\(vId)]\n"
@@ -52,7 +55,8 @@ public struct TmdABCGenerator {
                 abc += "%%MIDI channel 10\n"
             }
             abc += generateTrackMusic(
-                instrument: inst, sheet: sheet, renderedMeasures: renderedTracks[inst] ?? [])
+                instrument: inst, sheet: sheet, renderedMeasures: renderedTracks[inst] ?? [],
+                flattenRepeats: options.flattenRepeats)
         }
 
         return abc
@@ -61,9 +65,10 @@ public struct TmdABCGenerator {
     private static func generateTrackMusic(
         instrument: String,
         sheet: Sheet,
-        renderedMeasures: [Measure]
+        renderedMeasures: [Measure],
+        flattenRepeats: Bool
     ) -> String {
-        let measures = renderedMeasures.filter { !$0.foldedIntoRepeat }
+        let measures = flattenRepeats ? renderedMeasures : renderedMeasures.filter { !$0.foldedIntoRepeat }
         var result = ""
         let initialKey = sheet.declaredKey ?? sheet.keySignature.description
         var currentKeyStepAlters = PitchMapping.keySignatureStepAlters(forKey: initialKey)

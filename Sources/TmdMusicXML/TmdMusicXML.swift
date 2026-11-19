@@ -8,7 +8,9 @@ import TmdSwift
 public struct TmdMusicXMLGenerator {
 
     /// Generates MusicXML UTF-8 string from a Sheet.
-    public static func generateMusicXML(from inputSheet: Sheet) -> String {
+    public static func generateMusicXML(
+        from inputSheet: Sheet, options: TmdNotationExportOptions = TmdNotationExportOptions()
+    ) -> String {
         let (sheet, instruments) = inputSheet.preparedForExport()
         let metadataCreators = sheet.metadata.sorted { $0.key < $1.key }.map { key, value in
             let type =
@@ -46,11 +48,14 @@ public struct TmdMusicXMLGenerator {
         }
         xml += "  </part-list>\n"
 
-        let renderedTracks = TmdMeasureRenderer.renderMeasuresByInstrument(sheet: sheet)
+        let renderedTracks = TmdMeasureRenderer.renderMeasuresByInstrument(
+            sheet: sheet, flattenRepeats: options.flattenRepeats)
         let partMeasures: [(instrument: String, measures: [Measure])] = instruments.map { inst in
             (
                 instrument: inst,
-                measures: (renderedTracks[inst] ?? []).filter { !$0.foldedIntoRepeat }
+                measures: options.flattenRepeats
+                    ? (renderedTracks[inst] ?? [])
+                    : (renderedTracks[inst] ?? []).filter { !$0.foldedIntoRepeat }
             )
         }
         let divisions = resolveDivisions(for: partMeasures.map(\.measures))
