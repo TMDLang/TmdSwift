@@ -132,6 +132,9 @@ cd TmdSwift
 swift build -c release
 ```
 
+The Swift CLI requires macOS 13 or newer. Use `tmd --help` to list all global
+options and commands, then `tmd <subcommand> --help` for detailed options.
+
 ## CLI Usage (`tmd`)
 
 The `tmd` CLI tool provides comprehensive score compilation, export, verification, inspection, and refactoring commands:
@@ -192,6 +195,12 @@ tmd studio-url sample/basic/三天三夜.tmd --base-url https://tmdlang.github.i
 
 # Install TMD skill definition into local AI agent environments (Codex, Antigravity, Claude, etc.)
 tmd --install-skills
+
+# Run the TMD Model Context Protocol server over stdio
+tmd --mcp
+
+# Register the MCP server in local AI client configurations
+tmd --install-mcp
 ```
 
 ### Formatting & Arrangement Operations
