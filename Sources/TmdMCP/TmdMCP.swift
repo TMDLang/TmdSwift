@@ -1,6 +1,7 @@
 import Foundation
 import MCP
 import TmdABC
+import TmdAudio
 import TmdBraille
 import TmdChordPro
 import TmdLilyPond
@@ -121,7 +122,7 @@ public enum TmdMCPServer {
                     "filePath": .object(["type": .string("string")]),
                     "format": .object([
                         "type": .string("string"),
-                        "enum": .array(["midi", "musicxml", "lilypond", "abc", "reaper", "chordpro", "vsq", "vsqx", "ust", "braille"].map(Value.string)),
+                        "enum": .array(["midi", "wav", "musicxml", "lilypond", "abc", "reaper", "rpp", "chordpro", "cho", "vsq", "vsqx", "ust", "braille", "brl", "brf"].map(Value.string)),
                     ]),
                     "outputPath": .object(["type": .string("string")]),
                     "section": .object(["type": .string("string")]),
@@ -229,25 +230,32 @@ public enum TmdMCPServer {
         let section = arguments?["section"]?.stringValue
         let instrument = arguments?["instrument"]?.stringValue
         let flatten = arguments?["flattenRepeats"]?.boolValue ?? false
-        let output: String
+        let output: ExportedArtifact
         switch format {
-        case "musicxml": output = TmdMusicXMLGenerator.generateMusicXML(from: sheet, options: .init(flattenRepeats: flatten))
-        case "lilypond": output = TmdLilyPondGenerator.generateLilyPond(from: sheet, options: .init(flattenRepeats: flatten))
-        case "abc": output = TmdABCGenerator.generateABC(from: sheet, options: .init(flattenRepeats: flatten))
-        case "chordpro": output = TmdChordProGenerator.generateChordPro(from: sheet)
-        case "reaper": output = try TmdReaperGenerator.generateRPP(from: sheet)
-        case "braille": output = TmdBrailleGenerator.generateBraille(from: sheet, options: .init(targetSection: section, targetInstrument: instrument))
-        case "ust": output = TmdUSTGenerator.generateUST(from: sheet, targetInstrument: instrument)
-        case "vsqx": output = TmdVSQXGenerator.generateVSQX(from: sheet, targetInstrument: instrument)
-        case "vsq": output = TmdVSQGenerator.generateVSQ(from: sheet, targetInstrument: instrument).base64EncodedString()
-        case "midi": output = try TmdMIDIGenerator.generateMIDI(from: sheet, targetParagraph: section, targetInstrument: instrument).base64EncodedString()
+        case "musicxml": output = .text(TmdMusicXMLGenerator.generateMusicXML(from: sheet, options: .init(flattenRepeats: flatten)))
+        case "lilypond": output = .text(TmdLilyPondGenerator.generateLilyPond(from: sheet, options: .init(flattenRepeats: flatten)))
+        case "abc": output = .text(TmdABCGenerator.generateABC(from: sheet, options: .init(flattenRepeats: flatten)))
+        case "chordpro", "cho": output = .text(TmdChordProGenerator.generateChordPro(from: sheet))
+        case "reaper", "rpp": output = .text(try TmdReaperGenerator.generateRPP(from: sheet))
+        case "braille", "brl", "brf": output = .text(TmdBrailleGenerator.generateBraille(from: sheet, options: .init(targetSection: section, targetInstrument: instrument)))
+        case "ust": output = .text(TmdUSTGenerator.generateUST(from: sheet, targetInstrument: instrument))
+        case "vsqx": output = .text(TmdVSQXGenerator.generateVSQX(from: sheet, targetInstrument: instrument))
+        case "vsq": output = .data(TmdVSQGenerator.generateVSQ(from: sheet, targetInstrument: instrument))
+        case "midi": output = .data(try TmdMIDIGenerator.generateMIDI(from: sheet, targetParagraph: section, targetInstrument: instrument))
+        case "wav": output = .data(try TmdWAVRenderer.renderWAV(from: sheet, targetParagraph: section, targetInstrument: instrument))
         default: throw MCPError.invalidParams("Unsupported TMD format: \(format)")
         }
         if let path = arguments?["outputPath"]?.stringValue {
-            try output.write(toFile: path, atomically: true, encoding: .utf8)
+            switch output {
+            case .text(let value): try value.write(toFile: path, atomically: true, encoding: .utf8)
+            case .data(let value): try value.write(to: URL(fileURLWithPath: path), options: .atomic)
+            }
             return "Wrote \(format) output to \(path)"
         }
-        return output
+        switch output {
+        case .text(let value): return value
+        case .data(let value): return value.base64EncodedString()
+        }
     }
 
     private static func exportBraille(arguments: [String: Value]?) throws -> String {
@@ -266,5 +274,10 @@ public enum TmdMCPServer {
     private static func json(_ value: Any) throws -> String {
         guard JSONSerialization.isValidJSONObject(value) else { throw MCPError.internalError("Could not encode JSON result") }
         return String(data: try JSONSerialization.data(withJSONObject: value, options: [.prettyPrinted, .sortedKeys]), encoding: .utf8) ?? "{}"
+    }
+
+    private enum ExportedArtifact {
+        case text(String)
+        case data(Data)
     }
 }
