@@ -245,8 +245,14 @@ public enum TmdMeasureRenderer {
         let measures = renderMeasures(
             sheet: sheet, instrument: instrument, applyEngraving: true,
             preservePickup: flattenRepeats)
+        let hasExplicitStanzaPlayback = sheet.effectivePlaybackOrders.contains { order in
+            guard case .name(let rawName) = order else { return false }
+            return Playback.parseSectionSelector(rawName).stanza != nil
+        }
         return flattenRepeats
-            ? flatten(connectSectionBoundaryTies(measures, sheet: sheet))
+            ? flatten(
+                connectSectionBoundaryTies(measures, sheet: sheet),
+                expandImplicitStanzas: !hasExplicitStanzaPlayback)
             : measures
     }
 
@@ -276,13 +282,23 @@ public enum TmdMeasureRenderer {
             )
         })
         guard flattenRepeats else { return annotated }
-        return annotated.mapValues { flatten(connectSectionBoundaryTies($0, sheet: sheet)) }
+        let hasExplicitStanzaPlayback = sheet.effectivePlaybackOrders.contains { order in
+            guard case .name(let rawName) = order else { return false }
+            return Playback.parseSectionSelector(rawName).stanza != nil
+        }
+        return annotated.mapValues {
+            flatten(
+                connectSectionBoundaryTies($0, sheet: sheet),
+                expandImplicitStanzas: !hasExplicitStanzaPlayback)
+        }
     }
 
     /// Converts engraving metadata into a literal playback timeline for structured exporters.
     /// Explicit occurrences retain every rendered measure; implicit multi-stanza sections are
     /// duplicated once per stanza and each copy receives only its active lyric.
-    private static func flatten(_ measures: [Measure]) -> [Measure] {
+    private static func flatten(
+        _ measures: [Measure], expandImplicitStanzas: Bool = true
+    ) -> [Measure] {
         guard !measures.isEmpty else { return measures }
         var output: [Measure] = []
         var index = 0
@@ -303,11 +319,26 @@ public enum TmdMeasureRenderer {
             }
             let range = Array(measures[index...end])
             let stanzas = Set(range.flatMap { $0.events.flatMap { $0.stanzaLyrics.keys } }).sorted()
-            if stanzas.count > 1, range.allSatisfy({ !$0.foldedIntoRepeat }) {
-                for stanza in stanzas {
-                    output.append(contentsOf: range.map {
-                        normalize(selectStanza($0, stanza: stanza), index: output.count, scoreEnd: false)
-                    })
+            if stanzas.count > 1,
+                (expandImplicitStanzas || range.allSatisfy({ !$0.foldedIntoRepeat })) {
+                if expandImplicitStanzas {
+                    for stanza in stanzas {
+                        output.append(contentsOf: range.map {
+                            normalize(selectStanza($0, stanza: stanza), index: output.count, scoreEnd: false)
+                        })
+                    }
+                } else {
+                    let passCount = max(range.first?.repeatCount ?? 0, stanzas.count)
+                    let passLength = max(1, range.count / passCount)
+                    for pass in 0..<passCount {
+                        let stanza = stanzas[min(pass, stanzas.count - 1)]
+                        let start = pass * passLength
+                        let end = min(range.count, start + passLength)
+                        if start >= end { break }
+                        output.append(contentsOf: range[start..<end].map {
+                            normalize(selectStanza($0, stanza: stanza), index: output.count, scoreEnd: false)
+                        })
+                    }
                 }
             } else {
                 output.append(contentsOf: range.map {

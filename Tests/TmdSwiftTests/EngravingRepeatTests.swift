@@ -197,6 +197,37 @@ struct EngravingRepeatTests {
         #expect(!lily.hasSuffix("} }\n"))
     }
 
+    @Test("keeps lyric and lyric-less accompaniment tracks aligned when flattening")
+    func keepsMultitrackStanzaExpansionAligned() throws {
+        let sheet = try #require(TmdParser.parse(string: """
+            ::SCORE::
+            ** Suzume Multitrack Repeat **
+            != 100
+            ?= F
+            <2/4>
+
+            Main:PianoRH@|0|{
+                <16*>
+                | 1 - 3 - 2 - 1 - | 5 - 5 - 5 - 0 - |
+                L1| ア - チ - ラ - ノ - | ヤ - ネ - デ - _ - |
+                L2| コ - チ - ラ - ノ - | ヤ - ネ - デ - _ - |
+            }
+
+            Main:PianoLH@|0|{
+                <8*>
+                | [1] - [5_] - | [1] - [1] 0 |
+            }
+
+            -> Main[L1] -> Main[L2] -> #
+            """))
+
+        let tracks = TmdMeasureRenderer.renderMeasuresByInstrument(
+            sheet: sheet, flattenRepeats: true)
+
+        #expect(tracks["PianoRH"]?.count == 4)
+        #expect(tracks["PianoLH"]?.count == 4)
+    }
+
     @Test("renders three generalized volta endings")
     func rendersThreeVoltaEndings() throws {
         let tmd = """
