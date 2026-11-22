@@ -228,6 +228,37 @@ struct EngravingRepeatTests {
         #expect(tracks["PianoLH"]?.count == 4)
     }
 
+    @Test("preserves all explicit stanza selectors in a four-verse arrangement")
+    func preservesFourExplicitStanzas() throws {
+        let sheet = try #require(TmdParser.parse(string: """
+            ::SCORE::
+            ** Four Stanza Repeat **
+            != 100
+            ?= F
+            <2/4>
+
+            Main:PianoRH@|0|{
+                <8*>
+                | 1 2 3 4 |
+                L1| イ ロ ハ ニ |
+                L2| ホ ヘ ト チ |
+                L3| リ ヌ ル ヲ |
+                L4| ワ カ ヨ タ |
+            }
+
+            Main:PianoLH@|0|{ <4*> | [1] [1] [1] [1] }
+
+            -> Main[L1] -> Main[L2] -> Main[L3] -> Main[L4] -> #
+            """))
+
+        let xml = TmdMusicXMLGenerator.generateMusicXML(
+            from: sheet, options: TmdNotationExportOptions(flattenRepeats: true))
+
+        for lyric in ["イ", "ホ", "リ", "ワ"] {
+            #expect(xml.contains("<text>\(lyric)</text>"))
+        }
+    }
+
     @Test("renders three generalized volta endings")
     func rendersThreeVoltaEndings() throws {
         let tmd = """

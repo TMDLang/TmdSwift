@@ -242,16 +242,21 @@ public enum TmdMeasureRenderer {
         sheet inputSheet: Sheet, instrument: String, flattenRepeats: Bool = false
     ) -> [Measure] {
         let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
-        let measures = renderMeasures(
-            sheet: sheet, instrument: instrument, applyEngraving: true,
-            preservePickup: flattenRepeats)
         let hasExplicitStanzaPlayback = sheet.effectivePlaybackOrders.contains { order in
             guard case .name(let rawName) = order else { return false }
             return Playback.parseSectionSelector(rawName).stanza != nil
         }
+        let measures = renderMeasures(
+            sheet: sheet, instrument: instrument, applyEngraving: true,
+            preservePickup: flattenRepeats)
+        let sourceMeasures = (flattenRepeats && hasExplicitStanzaPlayback)
+            ? renderMeasures(
+                sheet: sheet, instrument: instrument, applyEngraving: false,
+                preservePickup: true)
+            : measures
         return flattenRepeats
             ? flatten(
-                connectSectionBoundaryTies(measures, sheet: sheet),
+                connectSectionBoundaryTies(sourceMeasures, sheet: sheet),
                 expandImplicitStanzas: !hasExplicitStanzaPlayback)
             : measures
     }
@@ -263,6 +268,10 @@ public enum TmdMeasureRenderer {
         sheet inputSheet: Sheet, flattenRepeats: Bool = false
     ) -> [String: [Measure]] {
         let sheet = TmdMacroEvaluator.expandOrTrap(inputSheet)
+        let hasExplicitStanzaPlayback = sheet.effectivePlaybackOrders.contains { order in
+            guard case .name(let rawName) = order else { return false }
+            return Playback.parseSectionSelector(rawName).stanza != nil
+        }
         let instruments = sheet.distinctInstruments(fallbackToDefault: true)
         let rawMeasures = Dictionary(uniqueKeysWithValues: instruments.map { instrument in
             (instrument, renderMeasures(
@@ -273,6 +282,9 @@ public enum TmdMeasureRenderer {
             let others = instruments
                 .filter { $0.caseInsensitiveCompare(instrument) != .orderedSame }
                 .compactMap { rawMeasures[$0] }
+            if flattenRepeats && hasExplicitStanzaPlayback {
+                return (instrument, rawMeasures[instrument] ?? [])
+            }
             return (
                 instrument,
                 annotateEngraving(
@@ -282,10 +294,6 @@ public enum TmdMeasureRenderer {
             )
         })
         guard flattenRepeats else { return annotated }
-        let hasExplicitStanzaPlayback = sheet.effectivePlaybackOrders.contains { order in
-            guard case .name(let rawName) = order else { return false }
-            return Playback.parseSectionSelector(rawName).stanza != nil
-        }
         return annotated.mapValues {
             flatten(
                 connectSectionBoundaryTies($0, sheet: sheet),
