@@ -246,13 +246,17 @@ struct EngravingRepeatTests {
                 L4| ワ カ ヨ タ |
             }
 
-            Main:PianoLH@|0|{ <4*> | [1] [1] [1] [1] }
+            Main:PianoLH@|0|{ <8*> | [1] [1] [1] [1] }
 
             -> Main[L1] -> Main[L2] -> Main[L3] -> Main[L4] -> #
             """))
 
         let xml = TmdMusicXMLGenerator.generateMusicXML(
             from: sheet, options: TmdNotationExportOptions(flattenRepeats: true))
+
+        let notationMeasures = TmdMeasureRenderer.renderMeasures(
+            sheet: sheet, instrument: "PianoRH")
+        #expect(notationMeasures.filter { !$0.foldedIntoRepeat }.count == 1)
 
         for lyric in ["イ", "ホ", "リ", "ワ"] {
             #expect(xml.contains("<text>\(lyric)</text>"))

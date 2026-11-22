@@ -918,7 +918,8 @@ public enum TmdMeasureRenderer {
             for i in 0..<(occurrences.count - 3) {
                 let first = occurrences[i], second = occurrences[i + 1]
                 let repeatedFirst = occurrences[i + 2], repeatedSecond = occurrences[i + 3]
-                guard first.name == repeatedFirst.name, second.name == repeatedSecond.name,
+                guard first.name != second.name,
+                    first.name == repeatedFirst.name, second.name == repeatedSecond.name,
                     let firstStanza = first.stanza, let repeatedFirstStanza = repeatedFirst.stanza,
                     firstStanza != repeatedFirstStanza,
                     !qualifiesVoltaEnding(second, body: first),
